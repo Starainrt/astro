@@ -1371,7 +1371,7 @@ func SunAngle(JD, Lon, Lat, TZ float64) float64 {
 func GetGZ(year int) string {
 	tiangan := []string{"庚", "辛", "壬", "癸", "甲", "乙", "丙", "丁", "戊", "已"}
 	dizhi := []string{"申", "酉", "戌", "亥", "子", "丑", "寅", "卯", "辰", "巳", "午", "未"}
-	t := year - (year / 100 * 10)
+	t := year - (year / 10 * 10)
 	d := year % 12
 	return tiangan[t] + dizhi[d] + "年"
 }

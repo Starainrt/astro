@@ -1136,7 +1136,7 @@ func CalcMoonSH(Year float64, C int) float64 {
 		JD0 := JD1
 		stDegree := SunMoonSeek(JD0) - float64(C)
 		stDegreep := (SunMoonSeek(JD0+0.000005) - SunMoonSeek(JD0-0.000005)) / 0.00001
-		JD1 := JD0 - stDegree/stDegreep
+		JD1 = JD0 - stDegree/stDegreep
 		if math.Floor(JD1-JD0) <= 0.000001 {
 			break
 		}
@@ -1219,7 +1219,7 @@ func CalcMoonXH(Year float64, C int) float64 {
 		JD0 := JD1
 		stDegree := SunMoonSeek(JD0) - float64(C)
 		stDegreep := (SunMoonSeek(JD0+0.000005) - SunMoonSeek(JD0-0.000005)) / 0.00001
-		JD1 := JD0 - stDegree/stDegreep
+		JD1 = JD0 - stDegree/stDegreep
 		if math.Floor(JD1-JD0) <= 0.000001 {
 			break
 		}
@@ -1381,7 +1381,7 @@ func GetMoonTZTime(JD, Lon, Lat, TZ float64) float64 { //实际中天时间{
 		JD0 := JD1
 		stDegree := MoonTimeAngle(JD0, Lon, Lat, TZ) - 359.599
 		stDegreep := (MoonTimeAngle(JD0+0.000005, Lon, Lat, TZ) - MoonTimeAngle(JD0-0.000005, Lon, Lat, TZ)) / 0.00001
-		JD1 := JD0 - stDegree/stDegreep
+		JD1 = JD0 - stDegree/stDegreep
 		if math.Floor(JD1-JD0) <= 0.000001 {
 			break
 		}
