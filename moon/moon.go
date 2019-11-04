@@ -133,6 +133,9 @@ func RiseTime(jde, lon, lat, timezone float64, aero bool) (float64, error) {
 		tz = 1
 	}
 	tm := basic.GetMoonRiseTime(jde, lon, lat, timezone, tz)
+	if tm == -3 {
+		err = errors.New("非今日")
+	}
 	if tm == -2 {
 		err = errors.New("极夜")
 	}
@@ -157,6 +160,9 @@ func DownTime(jde, lon, lat, timezone float64, aero bool) (float64, error) {
 		tz = 1
 	}
 	tm := basic.GetMoonDownTime(jde, lon, lat, timezone, tz)
+	if tm == -3 {
+		err = errors.New("非今日")
+	}
 	if tm == -2 {
 		err = errors.New("极夜")
 	}

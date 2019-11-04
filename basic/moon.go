@@ -1402,7 +1402,7 @@ func GetMoonRiseTime(JD, Lon, Lat, TZ, ZS float64) float64 {
 	ntz := TZ
 	TZ = Lon / 15
 	var An, tms float64 = 0, 0
-	JD = math.Floor(JD) + 0.5 //求0时JDE
+	JD = math.Floor(JD) + 0.5 - ntz/24 + TZ/24 //求0时JDE
 	JD1 := JD
 	moonheight := MoonHeight(JD, Lon, Lat, TZ) //求此时月亮高度
 	if ZS != 0 {
@@ -1415,19 +1415,19 @@ func GetMoonRiseTime(JD, Lon, Lat, TZ, ZS float64) float64 {
 		} else {
 			tms = (180 - moonang) / 15
 		}
-		JD1 += (tms/24 + (tms/24*12.0)/15/24)
+		JD1 += (tms/24 + (tms/24*12.0)/15.0/24.0)
 
 	}
 	if moonheight < 0 && moonang > 180 {
 		tms = (180 - moonang) / 15
-		JD1 += (tms/24 + (tms/24*12.0)/15/24)
+		JD1 += (tms/24 + (tms/24*12.0)/15.0/24.0)
 	} else if moonheight < 0 && moonang < 180 {
 		tms = (-180 + moonang) / 15
-		JD1 += (tms/24 + (tms/24*12.0)/15/24)
+		JD1 += (tms/24 + (tms/24*12.0)/15.0/24.0)
 	}
 	now := MoonTimeAngle(JD1, Lon, Lat, TZ)
 	if math.Abs(now-180) > 0.5 {
-		JD1 += (180 - now) * 4 / 60 / 24
+		JD1 += (180 - now) * 4.0 / 60.0 / 24.0
 	}
 	hei := MoonHeight(JD1, Lon, Lat, TZ)
 	if !(hei < -10 && math.Abs(Lat) < 60) {
@@ -1464,7 +1464,7 @@ func GetMoonDownTime(JD, Lon, Lat, TZ, ZS float64) float64 {
 	ntz := TZ
 	TZ = Lon / 15
 	var An, tms float64 = 0, 0
-	JD = math.Floor(JD) + 0.5 //求0时JDE
+	JD = math.Floor(JD) + 0.5 - ntz/24 + TZ/24 //求0时JDE
 	JD1 := JD
 	moonheight := MoonHeight(JD, Lon, Lat, TZ) //求此时月亮高度
 	if ZS != 0 {
@@ -1473,34 +1473,34 @@ func GetMoonDownTime(JD, Lon, Lat, TZ, ZS float64) float64 {
 	moonang := MoonTimeAngle(JD, Lon, Lat, TZ)
 	if moonheight < 0 { //月亮在地平线上或在落下与下中天之间
 		tms = (360 - moonang) / 15
-		JD1 += (tms/24 + (tms/24*12.0)/15/24)
+		JD1 += (tms/24 + (tms/24.0*12.0)/15.0/24.0)
 	}
 	if moonheight > 0 && moonang < 180 {
 		tms = (-moonang) / 15
-		JD1 += (tms/24 + (tms/24*12.0)/15/24)
+		JD1 += (tms/24.0 + (tms/24.0*12.0)/15.0/24.0)
 	} else if moonheight > 0 {
 		tms = (360 - moonang) / 15
-		JD1 += (tms/24 + (tms/24*12.0)/15/24)
+		JD1 += (tms/24.0 + (tms/24.0*12.0)/15.0/24.0)
 	}
 	now := MoonTimeAngle(JD1, Lon, Lat, TZ)
 	if now < 180 {
 		now += 360
 	}
 	if math.Abs(now-360) > 0.5 {
-		JD1 += (360 - now) * 4 / 60 / 24
+		JD1 += (360 - now) * 4.0 / 60.0 / 24.0
 	}
 	hei := MoonHeight(JD1, Lon, Lat, TZ)
 	if !(hei > 10 && math.Abs(Lat) < 60) {
 		if hei < An {
 			return -2 //沉
 		}
-		if MoonHeight(JD1+12/24+6/15/24, Lon, Lat, TZ) > An {
+		if MoonHeight(JD1+12.0/24.0+6.0/15.0/24.0, Lon, Lat, TZ) > An {
 			return -1 //拱
 		}
 	}
 	dec := MoonSeeDec(JD1, Lon, Lat, TZ)
-	SJ := (ArcCos(-Tan(Lat) * Tan(dec))) / 15
-	JD1 += SJ/24 + SJ/33/15
+	SJ := (ArcCos(-Tan(Lat) * Tan(dec))) / 15.0
+	JD1 += SJ/24 + SJ/33.0/15.0
 	for {
 		JD0 := JD1
 		stDegree := HMoonHeight(JD0, Lon, Lat, TZ) - An
