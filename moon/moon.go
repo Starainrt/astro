@@ -6,30 +6,24 @@ import (
 	"github.com/starainrt/astro/basic"
 )
 
-/*
-	月亮真黄经
-	jde，世界时UTC
-*/
+// TrueLo 月亮真黄经
+// 传入UTC对应的儒略日时间
 func TrueLo(jde float64) float64 {
 	return basic.HMoonTrueLo(basic.TD2UT(jde, true))
 }
 
-/*
-	月亮视黄经
-	jde，世界时UTC
-*/
+// SeeLo 月亮视黄经
+// 传入UTC对应的儒略日时间
 func SeeLo(jde float64) float64 {
 	return basic.HMoonSeeLo(basic.TD2UT(jde, true))
 }
 
-/*
-	月亮视赤经
-	jde，世界时UTC
-	lon, 经度
-	lat, 纬度
-	timezone, 时区
-	返回站心坐标
-*/
+// SeeRa 月亮视赤经
+// jde，世界时UTC
+// lon, 经度
+// lat, 纬度
+// timezone, 时区
+// 返回站心坐标
 func SeeRa(jde, lon, lat, timezone float64) float64 {
 	return basic.HMoonSeeRa(basic.TD2UT(jde, true), lon, lat, timezone)
 }
