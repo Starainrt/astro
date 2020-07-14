@@ -7,10 +7,14 @@ import (
 )
 
 func Test_Jq(t *testing.T) {
-	//fmt.Println(GetOneYearJQ(2019))
-	fmt.Println(JDE2Date(GetWHTime(2019, 10)))
-	fmt.Println(JDE2Date(GetJQTime(2019, 15)))
-	fmt.Println(JDE2Date(GetJQTime(2019, 0)))
+	data := GetOneYearJQ(2019)
+	for i := 1; i < 25; i++ {
+		fmt.Println(JDE2Date(data[i]))
+	}
+	//fmt.Println(JDE2Date(GetWHTime(2019, 10)))
+	//fmt.Println(JDE2Date(GetJQTime(2020, 0)))
+	//date := TD2UT(GetJQTime(2020, 0), true)
+	//fmt.Println(HSunSeeLo(date))
 }
 
 func Test_SunLo(t *testing.T) {

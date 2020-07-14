@@ -70,12 +70,12 @@ func dt_cal(y float64) float64 { //传入年， 返回世界时UT与原子时（
 	if y >= y0 {
 		jsd := float64(31) // sjd是y1年之后的加速度估计
 		// 瑞士星历表jsd=31, NASA网站jsd=32, skmap的jsd=29
-		if y > y0+100 {
+		if y > y0+100.00 {
 			return dt_ext(y, jsd)
 		}
 		v := dt_ext(y, jsd)        //二次曲线外推
 		dv := dt_ext(y0, jsd) - t0 // ye年的二次外推与te的差
-		return (v - dv*(y0+100-y)/100)
+		return (v - dv*(y0+100.00-y)/100.00)
 	}
 	d := dt_at
 	var i int
@@ -85,7 +85,7 @@ func dt_cal(y float64) float64 { //传入年， 返回世界时UT与原子时（
 			// 判断年所在的区间
 		}
 	}
-	t1 := (y - d[i]) / (d[i+5] - d[i]) * 10 //////// 三次插值， 保证精确性
+	t1 := (y - d[i]) / (d[i+5] - d[i]) * 10.00 //////// 三次插值， 保证精确性
 	t2 := t1 * t1
 	t3 := t2 * t1
 	res := d[i+1] + d[i+2]*t1 + d[i+3]*t2 + d[i+4]*t3
@@ -94,7 +94,8 @@ func dt_cal(y float64) float64 { //传入年， 返回世界时UT与原子时（
 func DeltaT(Date float64, IsJDE bool) (Result float64) { //传入年或儒略日，传出为秒
 	var Year float64
 	if IsJDE {
-		Year = (Date-2451545.0)/365.25 + 0.1 + 2000
+		dates := JDE2Date(Date)
+		Year = float64(dates.Year()) + float64(dates.YearDay())/365.0
 	} else {
 		Year = Date
 	}
@@ -103,6 +104,7 @@ func DeltaT(Date float64, IsJDE bool) (Result float64) { //传入年或儒略日
 		return
 	}
 	if Year < 2100 && Year >= 2010 {
+		//fmt.Println(Year)
 		Result = dt_cal(Year) //-3.2-(Year-2017)*0.029915;
 		return
 	}
@@ -162,6 +164,41 @@ func JDE2Date(JD float64) time.Time {
 	tms := (Days - math.Floor(Days)) * 24 * 3600
 	Days = math.Floor(Days)
 	tz, _ := time.LoadLocation("Local")
+	dates := time.Date(int(Years), time.Month(int(Months)), int(Days), 0, 0, 0, 0, tz)
+	dates = time.Unix(dates.Unix()+int64(tms), int64((tms-math.Floor(tms))*1000000000))
+	return dates
+}
+
+func JDE2DateByZone(JD float64, tz *time.Location) time.Time {
+	JD = JD + 0.5
+	Z := float64(int(JD))
+	F := JD - Z
+	var A, B, Years, Months, Days float64
+	if Z < 2299161.0 {
+		A = Z
+	} else {
+		alpha := math.Floor((Z - 1867216.25) / 36524.25)
+		A = Z + 1 + alpha - math.Floor(alpha/4)
+	}
+	B = A + 1524
+	C := math.Floor((B - 122.1) / 365.25)
+	D := math.Floor(365.25 * C)
+	E := math.Floor((B - D) / 30.6001)
+	Days = B - D - math.Floor(30.6001*E) + F
+	if E < 14 {
+		Months = E - 1
+	}
+	if E == 14 || E == 15 {
+		Months = E - 13
+	}
+	if Months > 2 {
+		Years = C - 4716
+	}
+	if Months == 1 || Months == 2 {
+		Years = C - 4715
+	}
+	tms := (Days - math.Floor(Days)) * 24 * 3600
+	Days = math.Floor(Days)
 	dates := time.Date(int(Years), time.Month(int(Months)), int(Days), 0, 0, 0, 0, tz)
 	dates = time.Unix(dates.Unix()+int64(tms), int64((tms-math.Floor(tms))*1000000000))
 	return dates
@@ -320,4 +357,10 @@ func GetSolar(year, month, day int, leap bool) float64 {
 	}
 	jde := moon[min-1+month] + float64(day) - 1
 	return jde
+}
+
+// Date2JDE 日期转儒略日
+func Date2JDE(date time.Time) float64 {
+	day := float64(date.Day()) + float64(date.Hour())/24.0 + float64(date.Minute())/24.0/60.0 + float64(date.Second())/24.0/3600.0 + float64(date.Nanosecond())/1000000000.0/3600.0/24.0
+	return JDECalc(date.Year(), int(date.Month()), day)
 }

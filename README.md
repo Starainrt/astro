@@ -16,51 +16,79 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/starainrt/astro/star"
+
+	"github.com/starainrt/astro/calendar"
 	"github.com/starainrt/astro/venus"
 
 	"github.com/starainrt/astro/moon"
 	"github.com/starainrt/astro/sun"
-
-	"github.com/starainrt/astro/basic"
-
-	"github.com/starainrt/astro"
 )
 
 func main() {
-	fmt.Println(astro.Lunar(2019, 10, 24))  //2019年10月24日农历
-	fmt.Println(astro.Solar(2020, 1, 1, false))  //2020年大年初一对应的公历
-	fmt.Println(astro.JDE2Date(basic.GetJQTime(2019, 270))) //2019年冬至日时刻
-	fmt.Println(astro.SunRiseTime(astro.Date2JDE(time.Now()), 117, 40, 8, true)) //东经117北纬40度今日日出时刻
-	fmt.Println(astro.SunDownTime(astro.Date2JDE(time.Now()), 117, 40, 8, true))  //东经117北纬40度今日日落时刻
-	fmt.Println(astro.MoonRiseTime(astro.Date2JDE(time.Now()), 117, 40, 8, true))  //东经117北纬40度今日月出时刻
-	fmt.Println(astro.MoonDownTime(astro.Date2JDE(time.Now()), 117, 40, 8, true))  //东经117北纬40度今日月落时刻
-	fmt.Println(sun.Zenith(astro.Date2JDE(time.Now()), 117, 40, 8))  //当前太阳高度角
-	ra, dec := sun.SeeRaDec(astro.NowJDE() - 8.0/24.0)   //当前太阳天文坐标（赤经赤纬）
-	fmt.Println(basic.WhichCst(ra, dec, astro.NowJDE()-8.0/24.0))  //当前太阳所在星座
-	ra, dec = moon.SeeRaDec(astro.NowJDE()-8.0/24.0, 117, 40, 8) 
-	fmt.Println(basic.WhichCst(ra, dec, astro.NowJDE()-8.0/24.0))  //当前月亮所在星座
-	fmt.Println(venus.SeeRaDec(astro.NowJDE() - 8.0/24.0))  //当前金星天文坐标
+	cst := time.FixedZone("CST", 8*3600)
+	date := time.Date(2020, 1, 1, 8, 8, 8, 8, cst)  //指定2020年1月1日8时8分8秒
+	fmt.Println(calendar.ChineseLunar(date))                   //2020年1月1日农历
+	fmt.Println(calendar.ChineseLunar(date.AddDate(0, 5, 10))) //2020年06月11日农历（闰月）
+	fmt.Println(calendar.Solar(2020, 1, 1, false))             //2020年大年初一对应的公历
+	fmt.Println(calendar.JieQi(2020, calendar.JQ_大暑))          //2020年大暑时刻
+
+	fmt.Println(sun.RiseTime(date, 117, 40, 8, true)) //东经117北纬40度日出时刻
+	fmt.Println(sun.CulminationTime(date, 117, 8))    //东经117北纬40度太阳中天时刻
+	fmt.Println(sun.DownTime(date, 117, 40, 8, true)) //东经117北纬40度日落时刻
+	fmt.Println(sun.Zenith(date, 117, 40, 8))         //太阳高度角
+	fmt.Println(sun.Azimuth(date, 117, 40, 8))        //太阳方位角
+	ra, dec := sun.SeeRaDec(date)                     //太阳天文坐标（赤经赤纬）
+	fmt.Println(ra, dec)
+	fmt.Println(star.Constellation(ra, dec, date)) //太阳所在星座
+	fmt.Println(sun.EarthDistance(date))           //日地距离
+
+	fmt.Println(moon.RiseTime(date, 117, 40, 8, true)) //东经117北纬40度月出时刻
+	fmt.Println(moon.DownTime(date, 117, 40, 8, true)) //东经117北纬40度月落时刻
+	fmt.Println(moon.Zenith(date, 117, 40, 8))         //月球高度角
+	fmt.Println(moon.Azimuth(date, 117, 40, 8))        //月球方位角
+	fmt.Println(moon.Phase(date))                      //月相
+	ra, dec = moon.SeeRaDec(date, 117, 40, 8)
+	fmt.Println(star.Constellation(ra, dec, date)) //月亮所在星座
+	fmt.Println(moon.EarthDistance(date))          //日月距离
+
+	fmt.Println(venus.SeeRaDec(calendar.Date2JDE(date))) //金星天文坐标
 }
+
 ```
 
 输出如下
 
 ```
-9 26 false 九月廿六  //2019年10月24日农历
-2020-01-25 00:00:00 +0800 CST  //2020年大年初一对应的公历
-2019-12-22 04:19:19.162276983 +0800 CST  //2019年冬至日时刻
-2019-10-24 06:31:15.768019258 +0800 CST <nil> //东经117北纬40度今日日出时刻
-2019-10-24 17:20:43.362249433 +0800 CST <nil>  //东经117北纬40度今日日落时刻
-2019-10-24 01:20:47.607341408 +0800 CST <nil>  //东经117北纬40度今日月出时刻
-2019-10-24 15:27:32.907188236 +0800 CST <nil>   //东经117北纬40度今日月落时刻
-37.21988664913089  //当前太阳高度角
-室女座  //当前太阳所在星座
-狮子座  //当前月亮所在星座
-226.7261547571923 -17.473439221980396  //当前金星天文坐标
+12 7 false 腊月初七     //2020年1月1日农历
+4 20 true 闰四月二十    //2020年06月11日农历（闰月）
+2020-01-25 00:00:00 +0800 CST   //2020年大年初一对应的公历
+2020-07-22 16:36:44.138101637 +0800 CST //2020年大暑时刻
+2020-01-01 07:33:45.119036436 +0800 CST <nil>  //东经117北纬40度日出时刻
+2020-01-01 12:15:19.122876226 +0800 CST         //东经117北纬40度太阳中天时刻
+2020-01-01 16:56:47.901035249 +0800 CST <nil>   //东经117北纬40度日落时刻
+4.702335599543981   //太阳高度角
+125.59379868359358  //太阳方位角
+280.8951498494854 -23.05837169975993  //太阳天文坐标（赤经赤纬）
+人马座  //太阳所在星座
+0.9832858179003018  //日地距离，单位：天文单位（au）
+
+
+2020-01-01 11:25:58.860839903 +0800 CST <nil>   //东经117北纬40度月出时刻
+2020-01-01 22:48:32.983140349 +0800 CST <nil>   //东经117北纬40度月落时刻
+-37.1795367151122   //月球高度角
+70.09670289513748   //月球方位角
+0.3000487434203941  //月相（被照亮的比例）
+宝瓶座  //月亮所在星座
+404238.68856284436  //日月距离（单位：千米）
+
+
+317.8537654752149 -18.1404176641921 //金星天文坐标
 ```
 
 
 ## 实现
+
 1.太阳坐标、高度角、方位角、中天、晨昏朦影、日出日落、节气  
 2.月亮坐标、高度角、方位角、中天、升落  
 3. 地球偏心率、日地距离
@@ -70,6 +98,7 @@ func main() {
 7.待续  
 
 ## TODO
+
 1. 代码规范化
 2. 增加内行星上下合/留/最大距角计算
 3. 增加外行星冲/合/留计算

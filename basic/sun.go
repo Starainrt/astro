@@ -903,21 +903,34 @@ func HSunTrueLo(JD float64) float64 {
 	return L
 }
 
-func HSunSeeLo(JD float64) float64 {
-	t := (JD - 2451545) / 365250.0
-	L := HSunTrueLo(JD)
-	R := planet.WherePlanet(-1, 2, JD)
-	t2 := t * t
-	t3 := t2 * t //千年数的各次方
-	R += (-0.0020 + 0.0044*t + 0.0213*t2 - 0.0250*t3)
-	L = L + HJZD(JD) - 20.4898/R/3600
+func HSunTrueBo(JD float64) float64 {
+	L := planet.WherePlanet(0, 1, JD)
 	return L
+}
+
+func HSunSeeLo(JD float64) float64 {
+	L := HSunTrueLo(JD)
+	/*
+		t := (JD - 2451545) / 365250.0
+		R := planet.WherePlanet(-1, 2, JD)
+		t2 := t * t
+		t3 := t2 * t //千年数的各次方
+		R += (-0.0020 + 0.0044*t + 0.0213*t2 - 0.0250*t3)
+		L = L + HJZD(JD) - 20.4898/R/3600.00
+	*/
+	L = L + HJZD(JD) + SunLoGXC(JD)
+	return L
+}
+
+func SunLoGXC(JD float64) float64 {
+	R := planet.WherePlanet(0, 2, JD)
+	return -20.49552 / R / 3600
 }
 
 func EarthAway(JD float64) float64 {
 	//t=(JD - 2451545) / 365250;
 	//R=Earth_R5(t)+Earth_R4(t)+Earth_R3(t)+Earth_R2(t)+Earth_R1(t)+Earth_R0(t);
-	return planet.WherePlanet(0, 2, 2555555)
+	return planet.WherePlanet(0, 2, JD)
 }
 
 func HSunSeeRaDec(JD float64) (float64, float64) {

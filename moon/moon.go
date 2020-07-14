@@ -2,202 +2,190 @@ package moon
 
 import (
 	"errors"
+	"time"
 
 	"github.com/starainrt/astro/basic"
 )
 
+var (
+	ERR_MOON_NEVER_RISE = errors.New("ERROR:极夜，月亮在今日永远在地平线下！")
+	ERR_MOON_NEVER_DOWN = errors.New("ERROR:极昼，月亮在今日永远在地平线上！")
+	ERR_NOT_TODAY       = errors.New("ERROR:月亮已在（昨日/明日）（升起/降下）")
+)
+
 // TrueLo 月亮真黄经
-// 传入UTC对应的儒略日时间
-func TrueLo(jde float64) float64 {
+func TrueLo(date time.Time) float64 {
+	jde := basic.Date2JDE(date.UTC())
 	return basic.HMoonTrueLo(basic.TD2UT(jde, true))
 }
 
-// SeeLo 月亮视黄经
+// TrueBo 月亮真黄纬
+func TrueBo(date time.Time) float64 {
+	jde := basic.Date2JDE(date.UTC())
+	return basic.HMoonTrueBo(basic.TD2UT(jde, true))
+}
+
+// SeeLo 月亮视黄经（地心）
 // 传入UTC对应的儒略日时间
-func SeeLo(jde float64) float64 {
+func SeeLo(date time.Time) float64 {
+	jde := basic.Date2JDE(date.UTC())
 	return basic.HMoonSeeLo(basic.TD2UT(jde, true))
 }
 
-// SeeRa 月亮视赤经
+// SeeRa 月亮视赤经（站心）
 // jde，世界时UTC
 // lon, 经度
 // lat, 纬度
 // timezone, 时区
 // 返回站心坐标
-func SeeRa(jde, lon, lat, timezone float64) float64 {
+func SeeRa(date time.Time, lon, lat, timezone float64) float64 {
+	jde := basic.Date2JDE(date)
 	return basic.HMoonSeeRa(basic.TD2UT(jde, true), lon, lat, timezone)
 }
 
-/*
-	月亮视赤纬
-	jde，世界时UTC
-	lon, 经度
-	lat, 纬度
-	timezone, 时区
-	返回站心坐标
-*/
-func SeeDec(jde, lon, lat, timezone float64) float64 {
+// SeeDec 月亮视赤纬（站心）
+// jde，世界时UTC
+// lon, 经度
+// lat, 纬度
+// timezone, 时区
+// 返回站心坐标
+func SeeDec(date time.Time, lon, lat, timezone float64) float64 {
+	jde := basic.Date2JDE(date)
 	return basic.HMoonSeeDec(basic.TD2UT(jde, true), lon, lat, timezone)
 }
 
-/*
-	月亮视赤经赤纬
-	jde，世界时UTC
-	lon, 经度
-	lat, 纬度
-	timezone, 时区
-	返回站心坐标
-*/
-func SeeRaDec(jde, lon, lat, timezone float64) (float64, float64) {
+// SeeRaDec 月亮视赤纬（站心）
+// jde，世界时UTC
+// lon, 经度
+// lat, 纬度
+// timezone, 时区
+// 返回站心坐标
+func SeeRaDec(date time.Time, lon, lat, timezone float64) (float64, float64) {
+	jde := basic.Date2JDE(date)
 	return basic.HMoonSeeRaDec(basic.TD2UT(jde, true), lon, lat, timezone)
 }
 
-/*
-	月亮真赤经
-	jde，世界时UTC
-*/
-func TrueRa(jde float64) float64 {
-	return basic.HMoonTrueRa(basic.TD2UT(jde, true))
-}
-
-/*
-	月亮真赤纬
-	jde，世界时UTC
-*/
-func TrueDec(jde float64) float64 {
-	return basic.HMoonTrueDec(basic.TD2UT(jde, true))
-}
-
-/*
-  月亮时角
-  jde，世界时当地时间
-  lon，经度，东正西负
-  lat，纬度，北正南负
-  timezone，时区，东正西负
-*/
-func HourAngle(jde, lon, lat, timezone float64) float64 {
+// HourAngle 月亮时角
+//  date, 世界时（忽略此处时区）
+//  lon，经度，东正西负
+//  lat，纬度，北正南负
+//  timezone，时区，东正西负
+func HourAngle(date time.Time, lon, lat, timezone float64) float64 {
+	jde := basic.Date2JDE(date)
 	return basic.MoonTimeAngle(jde, lon, lat, timezone)
 }
 
-/*
-  月亮方位角
-  jde，世界时当地时间
-  lon，经度，东正西负
-  lat，纬度，北正南负
-  timezone，时区，东正西负
-*/
-func Azimuth(jde, lon, lat, timezone float64) float64 {
+// Azimuth 月亮方位角
+//  date, 世界时（忽略此处时区）
+//  lon，经度，东正西负
+//  lat，纬度，北正南负
+//  timezone，时区，东正西负
+func Azimuth(date time.Time, lon, lat, timezone float64) float64 {
+	jde := basic.Date2JDE(date)
 	return basic.HMoonAngle(jde, lon, lat, timezone)
 }
 
-/*
-  月亮高度角
-  jde，世界时当地时间
-  lon，经度，东正西负
-  lat，纬度，北正南负
-  timezone，时区，东正西负
-*/
-func Zenith(jde, lon, lat, timezone float64) float64 {
+// Zenith 月亮高度角
+//  date, 世界时（忽略此处时区）
+//  lon，经度，东正西负
+//  lat，纬度，北正南负
+//  timezone，时区，东正西负
+func Zenith(date time.Time, lon, lat, timezone float64) float64 {
+	jde := basic.Date2JDE(date)
 	return basic.HMoonHeight(jde, lon, lat, timezone)
 }
 
-/*
-  月亮中天时间
-  jde，世界时当地0时
-  lon，经度，东正西负
-	lat，纬度，北正南负
-  timezone，时区，东正西负
-*/
-func CulminationTime(jde, lon, lat, timezone float64) float64 {
+// CulminationTime 月亮中天时间
+//  date, 世界时（忽略此处时区）
+//  lon，经度，东正西负
+//  lat，纬度，北正南负
+//  timezone，时区，东正西负
+func CulminationTime(date time.Time, lon, lat, timezone float64) float64 {
+	jde := basic.Date2JDE(date)
 	return basic.GetMoonTZTime(jde, lon, lat, timezone)
 }
 
-/*
-  月亮升起时间
-  jde，世界时当地0时 JDE
-  lon，经度，东正西负
-  lat，纬度，北正南负
-  timezone，时区，东正西负
-  aero，true时进行大气修正
-*/
-func RiseTime(jde, lon, lat, timezone float64, aero bool) (float64, error) {
-	var err error = nil
-	tz := 0.00
+// RiseTime 月亮升起时间
+//  date, 世界时（忽略此处时区）
+//  lon，经度，东正西负
+//  lat，纬度，北正南负
+//  timezone，时区，东正西负
+func RiseTime(date time.Time, lon, lat, timezone float64, aero bool) (time.Time, error) {
+	var err error
+	jde := basic.Date2JDE(date)
+	aeroFloat := 0.00
 	if aero {
-		tz = 1
+		aeroFloat = 1
 	}
-	tm := basic.GetMoonRiseTime(jde, lon, lat, timezone, tz)
-	if tm == -3 {
-		err = errors.New("非今日")
+	riseJde := basic.GetMoonRiseTime(jde, lon, lat, timezone, aeroFloat)
+	if riseJde == -3 {
+		err = ERR_NOT_TODAY
 	}
-	if tm == -2 {
-		err = errors.New("极夜")
+	if riseJde == -2 {
+		err = ERR_MOON_NEVER_RISE
 	}
-	if tm == -1 {
-		err = errors.New("极昼")
+	if riseJde == -1 {
+		err = ERR_MOON_NEVER_DOWN
 	}
-	return tm, err
+	return basic.JDE2Date(riseJde), err
 }
 
-/*
-  月亮落下时间
-  jde，世界时当地0时 JDE
-  lon，经度，东正西负
-  lat，纬度，北正南负
-  timezone，时区，东正西负
-  aero，true时进行大气修正
-*/
-func DownTime(jde, lon, lat, timezone float64, aero bool) (float64, error) {
-	var err error = nil
-	tz := 0.00
+// DownTime 月亮降下时间
+//  date, 世界时（忽略此处时区）
+//  lon，经度，东正西负
+//  lat，纬度，北正南负
+//  timezone，时区，东正西负
+func DownTime(date time.Time, lon, lat, timezone float64, aero bool) (time.Time, error) {
+	var err error
+	jde := basic.Date2JDE(date)
+	aeroFloat := 0.00
 	if aero {
-		tz = 1
+		aeroFloat = 1
 	}
-	tm := basic.GetMoonDownTime(jde, lon, lat, timezone, tz)
-	if tm == -3 {
-		err = errors.New("非今日")
+	downJde := basic.GetMoonDownTime(jde, lon, lat, timezone, aeroFloat)
+	if downJde == -3 {
+		err = ERR_NOT_TODAY
 	}
-	if tm == -2 {
-		err = errors.New("极夜")
+	if downJde == -2 {
+		err = ERR_MOON_NEVER_RISE
 	}
-	if tm == -1 {
-		err = errors.New("极昼")
+	if downJde == -1 {
+		err = ERR_MOON_NEVER_DOWN
 	}
-	return tm, err
+	return basic.JDE2Date(downJde), err
 }
 
-/*
-月相
-jde，世界时UTC JDE
-*/
-func Phase(jde float64) float64 {
+// Phase 月相
+// 返回Date对应UTC世界时的月相大小
+func Phase(date time.Time) float64 {
+	jde := basic.Date2JDE(date.UTC())
 	return basic.MoonLight(basic.TD2UT(jde, true))
 }
 
-/*
-朔月
-*/
+// ShuoYue 朔月
 func ShuoYue(year float64) float64 {
 	return basic.CalcMoonSH(year, 0)
 }
 
-/*
-望月
-*/
+// WangYue 望月
 func WangYue(year float64) float64 {
 	return basic.CalcMoonSH(year, 1)
 }
 
-/*
-上弦月
-*/
+// ShangXianYue 上弦月
 func ShangXianYue(year float64) float64 {
 	return basic.CalcMoonXH(year, 0)
 }
 
-/*
-下弦月
-*/
+// XiaXianYue 下弦月
 func XiaXianYue(year float64) float64 {
 	return basic.CalcMoonXH(year, 1)
+}
+
+// EarthDistance 日地距离
+// 返回date对应UTC世界时日地距离
+func EarthDistance(date time.Time) float64 {
+	jde := basic.Date2JDE(date)
+	jde = basic.TD2UT(jde, true)
+	return basic.MoonAway(jde)
 }
