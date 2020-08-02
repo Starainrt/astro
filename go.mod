@@ -1,4 +1,4 @@
-module github.com/Starainrt/astro
+module github.com/starainrt/astro
 
 go 1.14
 
