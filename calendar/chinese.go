@@ -55,7 +55,7 @@ func ChineseLunar(date time.Time) (int, int, bool, string) {
 // 例：计算己亥猪年腊月三十日对应的公历（即2020年1月24日）
 // 由于农历还未到鼠年，故应当传入Solar(2019,12,30,false)
 func Solar(year, month, day int, leap bool) time.Time {
-	jde := basic.GetSolar(year, month, day, leap) - 8.0/24.0
+	jde := basic.GetSolar(year, month, day, leap)
 	zone := time.FixedZone("CST", 8*3600)
 	return basic.JDE2DateByZone(jde, zone)
 }

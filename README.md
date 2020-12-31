@@ -33,22 +33,22 @@ func main() {
 	fmt.Println(calendar.Solar(2020, 1, 1, false))             //2020年大年初一对应的公历
 	fmt.Println(calendar.JieQi(2020, calendar.JQ_大暑))          //2020年大暑时刻
 
-	fmt.Println(sun.RiseTime(date, 117, 40, 8, true)) //东经117北纬40度日出时刻
-	fmt.Println(sun.CulminationTime(date, 117, 8))    //东经117北纬40度太阳中天时刻
-	fmt.Println(sun.DownTime(date, 117, 40, 8, true)) //东经117北纬40度日落时刻
-	fmt.Println(sun.Zenith(date, 117, 40, 8))         //太阳高度角
-	fmt.Println(sun.Azimuth(date, 117, 40, 8))        //太阳方位角
+	fmt.Println(sun.RiseTime(date, 117, 40, true)) //东经117北纬40度日出时刻
+	fmt.Println(sun.CulminationTime(date, 117))    //东经117北纬40度太阳中天时刻
+	fmt.Println(sun.DownTime(date, 117, 40, true)) //东经117北纬40度日落时刻
+	fmt.Println(sun.Zenith(date, 117, 40))         //太阳高度角
+	fmt.Println(sun.Azimuth(date, 117, 40))        //太阳方位角
 	ra, dec := sun.SeeRaDec(date)                     //太阳天文坐标（赤经赤纬）
 	fmt.Println(ra, dec)
 	fmt.Println(star.Constellation(ra, dec, date)) //太阳所在星座
 	fmt.Println(sun.EarthDistance(date))           //日地距离
 
-	fmt.Println(moon.RiseTime(date, 117, 40, 8, true)) //东经117北纬40度月出时刻
-	fmt.Println(moon.DownTime(date, 117, 40, 8, true)) //东经117北纬40度月落时刻
-	fmt.Println(moon.Zenith(date, 117, 40, 8))         //月球高度角
-	fmt.Println(moon.Azimuth(date, 117, 40, 8))        //月球方位角
+	fmt.Println(moon.RiseTime(date, 117, 40, true)) //东经117北纬40度月出时刻
+	fmt.Println(moon.DownTime(date, 117, 40, true)) //东经117北纬40度月落时刻
+	fmt.Println(moon.Zenith(date, 117, 40))         //月球高度角
+	fmt.Println(moon.Azimuth(date, 117, 40))        //月球方位角
 	fmt.Println(moon.Phase(date))                      //月相
-	ra, dec = moon.SeeRaDec(date, 117, 40, 8)
+	ra, dec = moon.SeeRaDec(date, 117, 40)
 	fmt.Println(star.Constellation(ra, dec, date)) //月亮所在星座
 	fmt.Println(moon.EarthDistance(date))          //日月距离
 

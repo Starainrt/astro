@@ -89,7 +89,7 @@ func Azimuth(date time.Time, lon, lat float64) float64 {
 //  date, 世界时（忽略此处时区）
 //  lon，经度，东正西负
 //  lat，纬度，北正南负
-func Zenith(date time.Time, lon, lat, timezone float64) float64 {
+func Zenith(date time.Time, lon, lat float64) float64 {
 	jde := basic.Date2JDE(date)
 	_, loc := date.Zone()
 	return basic.HMoonHeight(jde, lon, lat, float64(loc)/3600.0)
@@ -99,7 +99,6 @@ func Zenith(date time.Time, lon, lat, timezone float64) float64 {
 //  date, 世界时（忽略此处时区）
 //  lon，经度，东正西负
 //  lat，纬度，北正南负
-//  timezone，时区，东正西负
 func CulminationTime(date time.Time, lon, lat float64) float64 {
 	jde := basic.Date2JDE(date)
 	_, loc := date.Zone()
@@ -110,7 +109,6 @@ func CulminationTime(date time.Time, lon, lat float64) float64 {
 //  date, 世界时（忽略此处时区）
 //  lon，经度，东正西负
 //  lat，纬度，北正南负
-//  timezone，时区，东正西负
 func RiseTime(date time.Time, lon, lat float64, aero bool) (time.Time, error) {
 	var err error
 	jde := basic.Date2JDE(date)
@@ -137,7 +135,6 @@ func RiseTime(date time.Time, lon, lat float64, aero bool) (time.Time, error) {
 //  date, 世界时（忽略此处时区）
 //  lon，经度，东正西负
 //  lat，纬度，北正南负
-//  timezone，时区，东正西负
 func DownTime(date time.Time, lon, lat float64, aero bool) (time.Time, error) {
 	var err error
 	jde := basic.Date2JDE(date)

@@ -197,6 +197,8 @@ func JDE2DateByZone(JD float64, tz *time.Location) time.Time {
 	if Months == 1 || Months == 2 {
 		Years = C - 4715
 	}
+
+	fmt.Println(Days)
 	tms := (Days - math.Floor(Days)) * 24 * 3600
 	Days = math.Floor(Days)
 	dates := time.Date(int(Years), time.Month(int(Months)), int(Days), 0, 0, 0, 0, time.UTC)
