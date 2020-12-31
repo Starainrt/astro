@@ -57,7 +57,7 @@ func ChineseLunar(date time.Time) (int, int, bool, string) {
 func Solar(year, month, day int, leap bool) time.Time {
 	jde := basic.GetSolar(year, month, day, leap)
 	zone := time.FixedZone("CST", 8*3600)
-	return basic.JDE2DateByZone(jde, zone)
+	return basic.JDE2DateByZone(jde, zone).Add(time.Hour * -8)
 }
 
 // GanZhi 返回传入年份对应的干支
