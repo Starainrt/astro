@@ -27,15 +27,16 @@ var (
 // date，取日期，时区忽略
 // lon，经度，东正西负
 // lat，纬度，北正南负
-// timezone，时区，东正西负
 // aero，true时进行大气修正
-func RiseTime(date time.Time, lon, lat, timezone float64, aero bool) (time.Time, error) {
+func RiseTime(date time.Time, lon, lat float64, aero bool) (time.Time, error) {
 	var err error
 	var aeroFloat float64
 	if aero {
 		aeroFloat = 1
 	}
 	jde := basic.Date2JDE(date)
+	_, loc := date.Zone()
+	timezone := float64(loc) / 3600.0
 	riseJde := basic.GetSunRiseTime(jde, lon, lat, timezone, aeroFloat)
 	if riseJde == -2 {
 		err = ERR_SUN_NEVER_RISE
@@ -47,18 +48,19 @@ func RiseTime(date time.Time, lon, lat, timezone float64, aero bool) (time.Time,
 }
 
 // SunDownTime 太阳落下时间
-// date，取日期，时区忽略
+// date，当地时区日期，务必做时区修正
 // lon，经度，东正西负
 // lat，纬度，北正南负
-// timezone，时区，东正西负
 // aero，true时进行大气修正
-func DownTime(date time.Time, lon, lat, timezone float64, aero bool) (time.Time, error) {
+func DownTime(date time.Time, lon, lat float64, aero bool) (time.Time, error) {
 	var err error
 	var aeroFloat float64
 	if aero {
 		aeroFloat = 1
 	}
 	jde := basic.Date2JDE(date)
+	_, loc := date.Zone()
+	timezone := float64(loc) / 3600.0
 	downJde := basic.GetSunDownTime(jde, lon, lat, timezone, aeroFloat)
 	if downJde == -2 {
 		err = ERR_SUN_NEVER_RISE
@@ -70,14 +72,15 @@ func DownTime(date time.Time, lon, lat, timezone float64, aero bool) (time.Time,
 }
 
 // MorningTwilight 晨朦影
-// date，取日期，时区忽略
+// date，当地时区日期
 // lon，经度，东正西负
 // lat，纬度，北正南负
-// timezone，时区，东正西负
 // angle，朦影角度：可选-6 -12 -18(民用、航海、天文)
-func MorningTwilight(date time.Time, lon, lat, timezone, angle float64) (time.Time, error) {
+func MorningTwilight(date time.Time, lon, lat, angle float64) (time.Time, error) {
 	var err error
 	jde := basic.Date2JDE(date)
+	_, loc := date.Zone()
+	timezone := float64(loc) / 3600.0
 	calcJde := basic.GetAsaTime(jde, lon, lat, timezone, angle)
 	if calcJde == -2 {
 		err = ERR_TWILIGHT_NOT_EXISTS
@@ -89,14 +92,15 @@ func MorningTwilight(date time.Time, lon, lat, timezone, angle float64) (time.Ti
 }
 
 // EveningTwilight 昏朦影
-// date，取日期，时区忽略
+// date，当地时区日期
 // lon，经度，东正西负
 // lat，纬度，北正南负
-// timezone，时区，东正西负
 // angle，朦影角度：可选-6 -12 -18(民用、航海、天文)
-func EveningTwilight(date time.Time, lon, lat, timezone, angle float64) (time.Time, error) {
+func EveningTwilight(date time.Time, lon, lat, angle float64) (time.Time, error) {
 	var err error
 	jde := basic.Date2JDE(date)
+	_, loc := date.Zone()
+	timezone := float64(loc) / 3600.0
 	//不需要进行力学时转换，会在GetBanTime中转换
 	calcJde := basic.GetBanTime(jde, lon, lat, timezone, angle)
 	if calcJde == -2 {
@@ -209,44 +213,49 @@ func EquationTime(date time.Time) float64 {
 }
 
 // HourAngle 太阳时角
-// 返回给定经纬度、对应timezone时区date时刻的太阳时角（注意，date本身的时区将默认舍去）
-func HourAngle(date time.Time, lon, lat, timezone float64) float64 {
+// 返回给定经纬度、对应date时区date时刻的太阳时角（
+func HourAngle(date time.Time, lon, lat float64) float64 {
 	jde := basic.Date2JDE(date)
+	_, loc := date.Zone()
+	timezone := float64(loc) / 3600.0
 	return basic.SunTimeAngle(jde, lon, lat, timezone)
 }
 
 // Azimuth 太阳方位角
-// 返回给定经纬度、对应timezone时区date时刻的太阳方位角（正北为0，向东增加）
-//（注意，date本身的时区将默认舍去）
-func Azimuth(date time.Time, lon, lat, timezone float64) float64 {
+// 返回给定经纬度、对应date时区date时刻的太阳方位角（正北为0，向东增加）
+func Azimuth(date time.Time, lon, lat float64) float64 {
 	jde := basic.Date2JDE(date)
+	_, loc := date.Zone()
+	timezone := float64(loc) / 3600.0
 	return basic.SunAngle(jde, lon, lat, timezone)
 }
 
 // Zenith 太阳高度角
-// 返回给定经纬度、对应timezone时区date时刻的太阳高度角
-//（注意，date本身的时区将默认舍去）
-func Zenith(date time.Time, lon, lat, timezone float64) float64 {
+// 返回给定经纬度、对应date时区date时刻的太阳高度角
+func Zenith(date time.Time, lon, lat float64) float64 {
 	jde := basic.Date2JDE(date)
+	_, loc := date.Zone()
+	timezone := float64(loc) / 3600.0
 	return basic.SunHeight(jde, lon, lat, timezone)
 }
 
 // CulminationTime 太阳中天时间
-// 返回给定经纬度、对应timezone时区date时刻的太阳中天日期
-//（注意，date本身的时区将默认舍去，返回的时间时区应当为传入的timezone）
-func CulminationTime(date time.Time, lon, timezone float64) time.Time {
+// 返回给定经纬度、对应date时区date时刻的太阳中天日期
+func CulminationTime(date time.Time, lon float64) time.Time {
 	jde := basic.Date2JDE(date)
 	if jde-math.Floor(jde) > 0.5 {
 		jde++
 	}
-	calcJde := basic.GetSunTZTime(jde, lon, timezone)
-	return basic.JDE2Date(calcJde)
+	_, loc := date.Zone()
+	timezone := float64(loc) / 3600.0
+	calcJde := basic.GetSunTZTime(jde, lon, timezone) - timezone/24.00
+	return basic.JDE2DateByZone(calcJde, date.Location())
 }
 
 // EarthDistance 日地距离
 // 返回date对应UTC世界时日地距离
 func EarthDistance(date time.Time) float64 {
-	jde := basic.Date2JDE(date)
+	jde := basic.Date2JDE(date.UTC())
 	jde = basic.TD2UT(jde, true)
 	return basic.EarthAway(jde)
 }

@@ -55,8 +55,9 @@ func ChineseLunar(date time.Time) (int, int, bool, string) {
 // 例：计算己亥猪年腊月三十日对应的公历（即2020年1月24日）
 // 由于农历还未到鼠年，故应当传入Solar(2019,12,30,false)
 func Solar(year, month, day int, leap bool) time.Time {
-	jde := basic.GetSolar(year, month, day, leap)
-	return JDE2Date(jde)
+	jde := basic.GetSolar(year, month, day, leap) - 8.0/24.0
+	zone := time.FixedZone("CST", 8*3600)
+	return basic.JDE2DateByZone(jde, zone)
 }
 
 // GanZhi 返回传入年份对应的干支
@@ -66,14 +67,14 @@ func GanZhi(year int) string {
 
 // JieQi 返回传入年份、节气对应的北京时间节气时间
 func JieQi(year, term int) time.Time {
-	calcJde := basic.GetJQTime(year, term) + 8.00/24.00
+	calcJde := basic.GetJQTime(year, term)
 	zone := time.FixedZone("CST", 8*3600)
 	return basic.JDE2DateByZone(calcJde, zone)
 }
 
 // WuHou 返回传入年份、物候对应的北京时间物候时间
 func WuHou(year, term int) time.Time {
-	calcJde := basic.GetWHTime(year, term) + 8.00/24.00
+	calcJde := basic.GetWHTime(year, term)
 	zone := time.FixedZone("CST", 8*3600)
 	return basic.JDE2DateByZone(calcJde, zone)
 }
