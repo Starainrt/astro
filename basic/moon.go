@@ -1421,7 +1421,7 @@ func GetMoonRiseTime(JD, Lon, Lat, TZ, ZS float64) float64 {
 	}
 	if moonheight < 0 && moonang > 180 {
 		tms = (180 - moonang) / 15
-		JD1 = JD1 - (tms/24 + (tms/24*12.0)/15.0/24.0)
+		JD1 += (tms/24 + (tms/24*12.0)/15.0/24.0)
 	} else if moonheight < 0 && moonang < 180 {
 		tms = (180 - moonang) / 15
 		JD1 += (tms/24 + (tms/24*12.0)/15.0/24.0)
