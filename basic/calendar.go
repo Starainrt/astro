@@ -301,7 +301,11 @@ func GetLunar(year, month, day int) (lmonth, lday int, leap bool, result string)
 	if leap {
 		result += "闰"
 	}
-	result += strmonth[lmonth] + "月"
+	if lmonth == 1 {
+		result += "正月"
+	} else {
+		result += strmonth[lmonth] + "月"
+	}
 	if lday == 20 {
 		result += "二十"
 	} else if lday == 10 {
