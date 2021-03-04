@@ -34,6 +34,9 @@ func RiseTime(date time.Time, lon, lat float64, aero bool) (time.Time, error) {
 	if aero {
 		aeroFloat = 1
 	}
+	if date.Hour() > 12 {
+		date = date.Add(time.Hour * -12)
+	}
 	jde := basic.Date2JDE(date)
 	_, loc := date.Zone()
 	timezone := float64(loc) / 3600.0
@@ -44,7 +47,7 @@ func RiseTime(date time.Time, lon, lat float64, aero bool) (time.Time, error) {
 	if riseJde == -1 {
 		err = ERR_SUN_NEVER_DOWN
 	}
-	return basic.JDE2Date(riseJde), err
+	return basic.JDE2DateByZone(riseJde, date.Location(), true), err
 }
 
 // SunDownTime 太阳落下时间
@@ -58,6 +61,9 @@ func DownTime(date time.Time, lon, lat float64, aero bool) (time.Time, error) {
 	if aero {
 		aeroFloat = 1
 	}
+	if date.Hour() > 12 {
+		date = date.Add(time.Hour * -12)
+	}
 	jde := basic.Date2JDE(date)
 	_, loc := date.Zone()
 	timezone := float64(loc) / 3600.0
@@ -68,7 +74,7 @@ func DownTime(date time.Time, lon, lat float64, aero bool) (time.Time, error) {
 	if downJde == -1 {
 		err = ERR_SUN_NEVER_DOWN
 	}
-	return basic.JDE2Date(downJde), err
+	return basic.JDE2DateByZone(downJde, date.Location(), true), err
 }
 
 // MorningTwilight 晨朦影
@@ -249,7 +255,7 @@ func CulminationTime(date time.Time, lon float64) time.Time {
 	_, loc := date.Zone()
 	timezone := float64(loc) / 3600.0
 	calcJde := basic.GetSunTZTime(jde, lon, timezone) - timezone/24.00
-	return basic.JDE2DateByZone(calcJde, date.Location())
+	return basic.JDE2DateByZone(calcJde, date.Location(), false)
 }
 
 // EarthDistance 日地距离

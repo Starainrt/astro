@@ -3,12 +3,9 @@ package moon
 import (
 	"fmt"
 	"testing"
+	"time"
 )
 
-func TestMoonI(t *testing.T) {
-	fmt.Println(MoonR(2465445.9755443))
-}
-
-func Test_NewCalc(t *testing.T) {
-	fmt.Printf("%.14f", MoonCalcNew(2, 2451546.0))
+func Test_Rise(t *testing.T) {
+	fmt.Println(RiseTime(time.Now(), 115, 32, true))
 }

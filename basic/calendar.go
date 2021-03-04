@@ -169,7 +169,7 @@ func JDE2Date(JD float64) time.Time {
 	return dates
 }
 
-func JDE2DateByZone(JD float64, tz *time.Location) time.Time {
+func JDE2DateByZone(JD float64, tz *time.Location, byZone bool) time.Time {
 	JD = JD + 0.5
 	Z := float64(int(JD))
 	F := JD - Z
@@ -199,9 +199,12 @@ func JDE2DateByZone(JD float64, tz *time.Location) time.Time {
 	}
 	tms := (Days - math.Floor(Days)) * 24 * 3600
 	Days = math.Floor(Days)
-	dates := time.Date(int(Years), time.Month(int(Months)), int(Days), 0, 0, 0, 0, time.UTC)
-	dates = time.Unix(dates.Unix()+int64(tms), int64((tms-math.Floor(tms))*1000000000)).In(tz)
-	return dates
+	if !byZone {
+		dates := time.Date(int(Years), time.Month(int(Months)), int(Days), 0, 0, 0, 0, time.UTC)
+		return time.Unix(dates.Unix()+int64(tms), int64((tms-math.Floor(tms))*1000000000)).In(tz)
+	}
+	dates := time.Date(int(Years), time.Month(int(Months)), int(Days), 0, 0, 0, 0, tz)
+	return time.Unix(dates.Unix()+int64(tms), int64((tms-math.Floor(tms))*1000000000))
 }
 
 func GetLunar(year, month, day int) (lmonth, lday int, leap bool, result string) {

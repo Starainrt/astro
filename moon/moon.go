@@ -111,6 +111,9 @@ func CulminationTime(date time.Time, lon, lat float64) float64 {
 //  lat，纬度，北正南负
 func RiseTime(date time.Time, lon, lat float64, aero bool) (time.Time, error) {
 	var err error
+	if date.Hour() > 12 {
+		date = date.Add(time.Hour * -12)
+	}
 	jde := basic.Date2JDE(date)
 	_, loc := date.Zone()
 	timezone := float64(loc) / 3600.0
@@ -128,7 +131,7 @@ func RiseTime(date time.Time, lon, lat float64, aero bool) (time.Time, error) {
 	if riseJde == -1 {
 		err = ERR_MOON_NEVER_DOWN
 	}
-	return basic.JDE2Date(riseJde), err
+	return basic.JDE2DateByZone(riseJde, date.Location(), true), err
 }
 
 // DownTime 月亮降下时间
@@ -137,6 +140,9 @@ func RiseTime(date time.Time, lon, lat float64, aero bool) (time.Time, error) {
 //  lat，纬度，北正南负
 func DownTime(date time.Time, lon, lat float64, aero bool) (time.Time, error) {
 	var err error
+	if date.Hour() > 12 {
+		date = date.Add(time.Hour * -12)
+	}
 	jde := basic.Date2JDE(date)
 	_, loc := date.Zone()
 	timezone := float64(loc) / 3600.0
@@ -154,7 +160,7 @@ func DownTime(date time.Time, lon, lat float64, aero bool) (time.Time, error) {
 	if downJde == -1 {
 		err = ERR_MOON_NEVER_DOWN
 	}
-	return basic.JDE2Date(downJde), err
+	return basic.JDE2DateByZone(downJde, date.Location(), true), err
 }
 
 // Phase 月相
@@ -167,25 +173,25 @@ func Phase(date time.Time) float64 {
 // ShuoYue 朔月
 func ShuoYue(year float64) time.Time {
 	jde := basic.TD2UT(basic.CalcMoonSH(year, 0), false)
-	return basic.JDE2DateByZone(jde, time.UTC)
+	return basic.JDE2DateByZone(jde, time.UTC, false)
 }
 
 // WangYue 望月
 func WangYue(year float64) time.Time {
 	jde := basic.TD2UT(basic.CalcMoonSH(year, 1), false)
-	return basic.JDE2DateByZone(jde, time.UTC)
+	return basic.JDE2DateByZone(jde, time.UTC, false)
 }
 
 // ShangXianYue 上弦月
 func ShangXianYue(year float64) time.Time {
 	jde := basic.TD2UT(basic.CalcMoonXH(year, 0), false)
-	return basic.JDE2DateByZone(jde, time.UTC)
+	return basic.JDE2DateByZone(jde, time.UTC, false)
 }
 
 // XiaXianYue 下弦月
 func XiaXianYue(year float64) time.Time {
 	jde := basic.TD2UT(basic.CalcMoonXH(year, 1), false)
-	return basic.JDE2DateByZone(jde, time.UTC)
+	return basic.JDE2DateByZone(jde, time.UTC, false)
 }
 
 // EarthDistance 日地距离
