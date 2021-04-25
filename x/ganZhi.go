@@ -4,8 +4,16 @@ import (
 	"fmt"
 	"github.com/starainrt/astro/basic"
 	"github.com/starainrt/astro/calendar"
+	"math"
 	"sort"
 	"time"
+)
+
+var (
+	//十天干 甲1 ...癸10
+	Gan = [11]string{"err", "甲", "乙", "丙", "丁", "戊", "己", "庚", "辛", "壬", "癸"}
+	//十二地支 子1 ...亥12
+	Zhi = [13]string{"err", "子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥"}
 )
 
 //干支信息
@@ -16,19 +24,23 @@ type GanZhi struct {
 	HGZ string `json:"hgz"`
 }
 
-func NewGanZhi(year, month, day, hour int) {
+func NewGanZhi(year, month, day, hour int) *GanZhi {
 	cust := time.Date(year, time.Month(month), day, hour, 0, 0, 0, time.Local) //精确到时
 	lcb := fixLiChun(year, cust)
 	fmt.Println(lcb)
+	ygz := GetYGZ(year, month, day, hour)
+	mgz := GetMonthGZ(year, month, day, hour)
+	dgz := GetDayGZ(year, month, day)
+	_, gn := DayGZ(year, month, day)
+	hgz := GetHourGZ(gn, hour)
 
+	return &GanZhi{
+		YGZ: ygz,
+		MGZ: mgz,
+		DGZ: dgz,
+		HGZ: hgz,
+	}
 }
-
-var (
-	//十天干 甲1 ...癸10
-	Gan = [11]string{"err", "甲", "乙", "丙", "丁", "戊", "己", "庚", "辛", "壬", "癸"}
-	//十二地支 子1 ...亥12
-	Zhi = [13]string{"err", "子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥"}
-)
 
 //##############################################s
 //计算年干支
@@ -125,6 +137,11 @@ func getJie12T(year int) (time.Time, []time.Time) {
 //计算月干支
 //##############################################
 
+//月干支
+func GetMonthGZ(year, month, day, hour int) string {
+	return MonthGZ(year, month, day, hour)
+}
+
 //传入阳历时间 返回月干支
 //以12节气定月干支
 func MonthGZ(year, month, day, hour int) string {
@@ -202,29 +219,29 @@ func mgzArr(yg string) []string {
 	case gan[0], gan[5]: //甲己 丙寅
 		end := gan[:2]
 		head := gan[2:]
-		arr = whd(gan, zhi, head, end)
+		arr = arrX(gan, zhi, head, end)
 	case gan[1], gan[6]: //乙庚 戊寅
 		end := gan[:4]
 		head := gan[4:]
-		arr = whd(gan, zhi, head, end)
+		arr = arrX(gan, zhi, head, end)
 	case gan[2], gan[7]: //丙辛 庚寅
 		end := gan[:6]
 		head := gan[6:]
-		arr = whd(gan, zhi, head, end)
+		arr = arrX(gan, zhi, head, end)
 	case gan[3], gan[8]: //丁壬 壬寅
 		end := gan[:8]
 		head := gan[8:]
-		arr = whd(gan, zhi, head, end)
+		arr = arrX(gan, zhi, head, end)
 	case gan[4], gan[9]: //戊癸 甲寅
 		end := gan
 		head := gan
-		arr = whd(gan, zhi, head, end)
+		arr = arrX(gan, zhi, head, end)
 	}
 	return arr
 }
 
-//五虎遁干支数组
-func whd(gan, zhi, head, end []string) []string {
+//干支数组
+func arrX(gan, zhi, head, end []string) []string {
 	var arr []string
 	gan = append(head, end...)
 	gan = append(gan, gan...)
@@ -241,6 +258,134 @@ func whd(gan, zhi, head, end []string) []string {
 	return arr
 }
 
-//##############################################s
+//##############################################
 //计算日干支
 //##############################################
+
+//日干支
+func GetDayGZ(year, month, day int) string {
+	dgz, _ := DayGZ(year, month, day)
+	return dgz
+}
+
+//传入阳历日期 返回日干支 日干数字 1甲 2乙 3丙...10癸
+func DayGZ(year, month, day int) (string, int) {
+	t := time.Date(year, time.Month(month), day, 0, 0, 0, 0, time.Local)
+	jd := calendar.Date2JDE(t)
+	jdi := int(math.Ceil(jd)) //>=
+	return dGz(jdi)
+}
+func dGz(jdI int) (string, int) {
+	gn := 1 + (jdI%60-1)%10 //干
+	if gn == 0 {
+		gn += 10
+	}
+	z := 1 + +(jdI%60+1)%12 //支
+
+	//g 日干数字
+	daygM := Gan[gn]
+	dayzM := Zhi[z]
+
+	dgz := daygM + dayzM
+	return dgz, gn
+}
+
+//##############################################
+//计算时干支
+//##############################################
+
+//传入日干数字 现代24小时制的时间数字 返回对应的干支
+//时干支
+func GetHourGZ(gn, hour int) string {
+	h := h24Toh12(hour)
+	arr := hgzArr(gn)
+	return arr[h-1]
+}
+
+//gn:1=甲 gn:2=乙 gn:10=癸
+//五鼠遁元
+func hgzArr(gn int) []string {
+	gan := []string{"甲", "乙", "丙", "丁", "戊", "己", "庚", "辛", "壬", "癸"}
+	zhi := []string{"子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥"}
+
+	var arr []string //月干支数组
+	switch gn {
+	case 1, 6: //甲己 甲子
+		end := gan
+		head := gan
+		arr = arrX(gan, zhi, head, end)
+	case 2, 7: //乙庚 丙子
+		end := gan[:2]
+		head := gan[2:]
+		arr = arrX(gan, zhi, head, end)
+	case 3, 8: //丙辛 戊子
+		end := gan[:4]
+		head := gan[4:]
+		arr = arrX(gan, zhi, head, end)
+	case 4, 9: //丁壬 庚子
+		end := gan[:6]
+		head := gan[6:]
+		arr = arrX(gan, zhi, head, end)
+	case 5, 10: //戊癸 壬子
+		end := gan[:8]
+		head := gan[8:]
+		arr = arrX(gan, zhi, head, end)
+	}
+	return arr
+}
+
+//现代24小时时间转换为古代12时辰
+func h24Toh12(h int) int {
+	var h12 int
+	switch h {
+	case 23:
+		h12 = 1
+	case 00:
+		h12 = 1
+	case 1:
+		h12 = 2
+	case 2:
+		h12 = 2
+	case 3:
+		h12 = 3
+	case 4:
+		h12 = 3
+	case 5:
+		h12 = 4
+	case 6:
+		h12 = 4
+	case 7:
+		h12 = 5
+	case 8:
+		h12 = 5
+	case 9:
+		h12 = 6
+	case 10:
+		h12 = 6
+	case 11:
+		h12 = 7
+	case 12:
+		h12 = 7
+	case 13:
+		h12 = 8
+	case 14:
+		h12 = 8
+	case 15:
+		h12 = 9
+	case 16:
+		h12 = 9
+	case 17:
+		h12 = 10
+	case 18:
+		h12 = 10
+	case 19:
+		h12 = 11
+	case 20:
+		h12 = 11
+	case 21:
+		h12 = 12
+	case 22:
+		h12 = 12
+	}
+	return h12
+}
