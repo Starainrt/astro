@@ -1,9 +1,7 @@
 package tools
 
 import (
-	"fmt"
 	"math"
-	"strconv"
 )
 
 func Sin(x float64) float64 {
@@ -31,9 +29,8 @@ func ArcTan(x float64) float64 {
 }
 
 func FloatRound(f float64, n int) float64 {
-	format := "%." + strconv.Itoa(n) + "f"
-	res, _ := strconv.ParseFloat(fmt.Sprintf(format, f), 64)
-	return res
+	p := math.Pow10(n)
+	return math.Floor(f*p+0.5) / p
 }
 
 func Limit360(x float64) float64 {
