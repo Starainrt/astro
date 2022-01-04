@@ -7,5 +7,5 @@ import (
 )
 
 func Test_Rise(t *testing.T) {
-	fmt.Println(RiseTime(time.Now(), 115, 32, true))
+	fmt.Println(RiseTime(time.Now(), 120, 40, 10, true))
 }

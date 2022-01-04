@@ -1078,7 +1078,7 @@ func GetJQTime(Year, Angle int) float64 { //节气时间
 			stDegree := JQLospec(JD0) - float64(Angle)
 			stDegreep := (JQLospec(JD0+0.000005) - JQLospec(JD0-0.000005)) / 0.00001
 			JD1 = JD0 - stDegree/stDegreep
-			if math.Floor(JD1-JD0) <= 0.000001 {
+			if math.Abs(JD1-JD0) <= 0.00001 {
 				break
 			}
 		}
@@ -1156,7 +1156,7 @@ func GetWHTime(Year, Angle int) float64 {
 		stDegree := JQLospec(JD0) - float64(Angle)
 		stDegreep := (JQLospec(JD0+0.000005) - JQLospec(JD0-0.000005)) / 0.00001
 		JD1 = JD0 - stDegree/stDegreep
-		if math.Floor(JD1-JD0) <= 0.000001 {
+		if math.Abs(JD1-JD0) <= 0.00001 {
 			break
 		}
 	}
@@ -1206,7 +1206,7 @@ func GetBanTime(JD, Lon, Lat, TZ, An float64) float64 {
 		stDegree := SunHeight(JD0, Lon, Lat, ntz) - An
 		stDegreep := (SunHeight(JD0+0.000005, Lon, Lat, ntz) - SunHeight(JD0-0.000005, Lon, Lat, ntz)) / 0.00001
 		JD1 = JD0 - stDegree/stDegreep
-		if math.Floor(JD1-JD0) < 0.000001 {
+		if math.Abs(JD1-JD0) < 0.00001 {
 			break
 		}
 	}
@@ -1244,7 +1244,7 @@ func GetAsaTime(JD, Lon, Lat, TZ, An float64) float64 {
 		stDegree := SunHeight(JD0, Lon, Lat, ntz) - An
 		stDegreep := (SunHeight(JD0+0.000005, Lon, Lat, ntz) - SunHeight(JD0-0.000005, Lon, Lat, ntz)) / 0.00001
 		JD1 = JD0 - stDegree/stDegreep
-		if math.Floor(JD1-JD0) < 0.000001 {
+		if math.Abs(JD1-JD0) < 0.00001 {
 			break
 		}
 	}
@@ -1266,13 +1266,14 @@ func SunTimeAngle(JD, Lon, Lat, TZ float64) float64 {
 /*
  * 精确计算，传入当日0时JDE
  */
-func GetSunRiseTime(JD, Lon, Lat, TZ, ZS float64) float64 {
+func GetSunRiseTime(JD, Lon, Lat, TZ, ZS, HEI float64) float64 {
 	var An float64
 	JD = math.Floor(JD) + 1.5
 	ntz := math.Round(Lon / 15)
 	if ZS != 0 {
 		An = -0.8333
 	}
+	An = An - HeightDegreeByLat(HEI, Lat)
 	tztime := GetSunTZTime(JD, Lon, ntz)
 	dec := HSunSeeDec(tztime)
 	tmp := -Tan(Lat) * Tan(dec)
@@ -1292,19 +1293,20 @@ func GetSunRiseTime(JD, Lon, Lat, TZ, ZS float64) float64 {
 		stDegree := SunHeight(JD0, Lon, Lat, ntz) - An
 		stDegreep := (SunHeight(JD0+0.000005, Lon, Lat, ntz) - SunHeight(JD0-0.000005, Lon, Lat, ntz)) / 0.00001
 		JD1 = JD0 - stDegree/stDegreep
-		if math.Floor(JD1-JD0) <= 0.000001 {
+		if math.Abs(JD1-JD0) <= 0.00001 {
 			break
 		}
 	}
 	return JD1 - ntz/24 + TZ/24
 }
-func GetSunDownTime(JD, Lon, Lat, TZ, ZS float64) float64 {
+func GetSunDownTime(JD, Lon, Lat, TZ, ZS, HEI float64) float64 {
 	var An float64
 	JD = math.Floor(JD) + 1.5
 	ntz := math.Round(Lon / 15)
 	if ZS != 0 {
 		An = -0.8333
 	}
+	An = An - HeightDegreeByLat(HEI, Lat)
 	tztime := GetSunTZTime(JD, Lon, ntz)
 	dec := HSunSeeDec(tztime)
 	tmp := -Tan(Lat) * Tan(dec)
@@ -1324,7 +1326,7 @@ func GetSunDownTime(JD, Lon, Lat, TZ, ZS float64) float64 {
 		stDegree := SunHeight(JD0, Lon, Lat, ntz) - An
 		stDegreep := (SunHeight(JD0+0.000005, Lon, Lat, ntz) - SunHeight(JD0-0.000005, Lon, Lat, ntz)) / 0.00001
 		JD1 = JD0 - stDegree/stDegreep
-		if math.Floor(JD1-JD0) <= 0.000001 {
+		if math.Abs(JD1-JD0) <= 0.00001 {
 			break
 		}
 	}

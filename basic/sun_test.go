@@ -22,6 +22,24 @@ func Test_SunLo(t *testing.T) {
 	fmt.Printf("%.14f", HSunSeeLo(2458840.0134162))
 }
 
+func Benchmark_SunRise(b *testing.B) {
+	jde := GetNowJDE()
+	for i := 0; i < b.N; i++ {
+		//GetNowJDE()
+		GetSunRiseTime(jde, 115, 32, 8, 0, 10)
+	}
+
+}
+
+func Benchmark_SunLo(b *testing.B) {
+	jde := GetNowJDE()
+	for i := 0; i < b.N; i++ {
+		//GetNowJDE()
+		HSunSeeLo(jde)
+	}
+
+}
+
 func Test_Cal(t *testing.T) {
 	fmt.Println(JDE2Date(GetSolar(2020, 1, 1, false)))
 	fmt.Println(JDE2Date(GetSolar(2020, 4, 1, false)))
@@ -33,17 +51,18 @@ func Test_Cal(t *testing.T) {
 
 func Test_SunRise(t *testing.T) {
 	a := time.Now().UnixNano()
-	b := GetSunRiseTime(GetNowJDE(), 115, 32, 8, 0)
-	b = GetSunRiseTime(GetNowJDE()+1, 115, 32, 8, 0)
-	b = GetSunRiseTime(GetNowJDE()+2, 115, 32, 8, 0)
-	b = GetSunRiseTime(GetNowJDE()+3, 115, 32, 8, 0)
-	b = GetSunRiseTime(GetNowJDE()+4, 115, 32, 8, 0)
-	b = GetSunRiseTime(GetNowJDE()+5, 115, 32, 8, 0)
-	b = GetSunRiseTime(GetNowJDE()+6, 115, 32, 8, 0)
-	b = GetSunRiseTime(GetNowJDE()+7, 115, 32, 8, 0)
-	b = GetSunRiseTime(GetNowJDE()+8, 115, 32, 8, 0)
-	b = GetSunRiseTime(GetNowJDE()+9, 115, 32, 8, 0)
+	//b := GetSunRiseTime(GetNowJDE(), 115, 32, 8, 0)
+	//b = GetSunRiseTime(GetNowJDE()+1, 115, 32, 8, 0)
+	//b = GetSunRiseTime(GetNowJDE()+2, 115, 32, 8, 0)
+	//b = GetSunRiseTime(GetNowJDE()+3, 115, 32, 8, 0)
+	//b = GetSunRiseTime(GetNowJDE()+4, 115, 32, 8, 0)
+	//b = GetSunRiseTime(GetNowJDE()+5, 115, 32, 8, 0)
+	//b = GetSunRiseTime(GetNowJDE()+6, 115, 32, 8, 0)
+	//b = GetSunRiseTime(GetNowJDE()+7, 115, 32, 8, 0)
+	//b = GetSunRiseTime(GetNowJDE()+8, 115, 32, 8, 0)
+	b := GetSunRiseTime(GetNowJDE()+9, 115, 32, 8, 0, 10)
 	fmt.Println(time.Now().UnixNano() - a)
+	fmt.Println(SunHeight(b, 115, 32, 8))
 	fmt.Println(JDE2Date((b)))
 	fmt.Println(time.Now().UnixNano() - a)
 }

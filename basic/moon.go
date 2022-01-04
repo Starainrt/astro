@@ -1137,7 +1137,7 @@ func CalcMoonSH(Year float64, C int) float64 {
 		stDegree := SunMoonSeek(JD0) - float64(C)
 		stDegreep := (SunMoonSeek(JD0+0.000005) - SunMoonSeek(JD0-0.000005)) / 0.00001
 		JD1 = JD0 - stDegree/stDegreep
-		if math.Floor(JD1-JD0) <= 0.000001 {
+		if math.Abs(JD1-JD0) <= 0.00001 {
 			break
 		}
 	}
@@ -1220,7 +1220,7 @@ func CalcMoonXH(Year float64, C int) float64 {
 		stDegree := SunMoonSeek(JD0) - float64(C)
 		stDegreep := (SunMoonSeek(JD0+0.000005) - SunMoonSeek(JD0-0.000005)) / 0.00001
 		JD1 = JD0 - stDegree/stDegreep
-		if math.Floor(JD1-JD0) <= 0.000001 {
+		if math.Abs(JD1-JD0) <= 0.00001 {
 			break
 		}
 	}
@@ -1382,7 +1382,7 @@ func GetMoonTZTime(JD, Lon, Lat, TZ float64) float64 { //实际中天时间{
 		stDegree := MoonTimeAngle(JD0, Lon, Lat, TZ) - 359.599
 		stDegreep := (MoonTimeAngle(JD0+0.000005, Lon, Lat, TZ) - MoonTimeAngle(JD0-0.000005, Lon, Lat, TZ)) / 0.00001
 		JD1 = JD0 - stDegree/stDegreep
-		if math.Floor(JD1-JD0) <= 0.000001 {
+		if math.Abs(JD1-JD0) <= 0.00001 {
 			break
 		}
 	}
@@ -1398,7 +1398,7 @@ func MoonTimeAngle(JD, Lon, Lat, TZ float64) float64 {
 	return timeangle
 }
 
-func GetMoonRiseTime(JD, Lon, Lat, TZ, ZS float64) float64 {
+func GetMoonRiseTime(JD, Lon, Lat, TZ, ZS, HEI float64) float64 {
 	ntz := TZ
 	TZ = Lon / 15
 	var An, tms float64 = 0, 0
@@ -1409,6 +1409,7 @@ func GetMoonRiseTime(JD, Lon, Lat, TZ, ZS float64) float64 {
 	if ZS != 0 {
 		An = -0.83333 //修正大气折射
 	}
+	An = An - HeightDegreeByLat(HEI, Lat)
 	moonang := MoonTimeAngle(JD, Lon, Lat, TZ)
 	if moonheight > 0 { //月亮在地平线上或在落下与下中天之间
 		if moonang > 180 {
@@ -1448,7 +1449,7 @@ func GetMoonRiseTime(JD, Lon, Lat, TZ, ZS float64) float64 {
 		stDegree := HMoonHeight(JD0, Lon, Lat, TZ) - An
 		stDegreep := (HMoonHeight(JD0+0.000005, Lon, Lat, TZ) - HMoonHeight(JD0-0.000005, Lon, Lat, TZ)) / 0.00001
 		JD1 = JD0 - stDegree/stDegreep
-		if math.Floor(JD1-JD0) <= 0.000001 {
+		if math.Abs(JD1-JD0) <= 0.00002 {
 			break
 		}
 	}
@@ -1461,7 +1462,7 @@ func GetMoonRiseTime(JD, Lon, Lat, TZ, ZS float64) float64 {
 	}
 }
 
-func GetMoonDownTime(JD, Lon, Lat, TZ, ZS float64) float64 {
+func GetMoonDownTime(JD, Lon, Lat, TZ, ZS, HEI float64) float64 {
 	ntz := TZ
 	TZ = Lon / 15
 	var An, tms float64 = 0, 0
@@ -1472,6 +1473,7 @@ func GetMoonDownTime(JD, Lon, Lat, TZ, ZS float64) float64 {
 	if ZS != 0 {
 		An = -0.83333 //修正大气折射
 	}
+	An = An - HeightDegreeByLat(HEI, Lat)
 	moonang := MoonTimeAngle(JD, Lon, Lat, TZ)
 	if moonheight < 0 { //月亮在地平线上或在落下与下中天之间
 		tms = (360 - moonang) / 15
@@ -1508,7 +1510,7 @@ func GetMoonDownTime(JD, Lon, Lat, TZ, ZS float64) float64 {
 		stDegree := HMoonHeight(JD0, Lon, Lat, TZ) - An
 		stDegreep := (HMoonHeight(JD0+0.000005, Lon, Lat, TZ) - HMoonHeight(JD0-0.000005, Lon, Lat, TZ)) / 0.00001
 		JD1 = JD0 - stDegree/stDegreep
-		if math.Floor(JD1-JD0) <= 0.000001 {
+		if math.Abs(JD1-JD0) <= 0.00002 {
 			break
 		}
 	}

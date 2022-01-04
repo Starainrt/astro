@@ -109,7 +109,9 @@ func CulminationTime(date time.Time, lon, lat float64) float64 {
 //  date, 世界时（忽略此处时区）
 //  lon，经度，东正西负
 //  lat，纬度，北正南负
-func RiseTime(date time.Time, lon, lat float64, aero bool) (time.Time, error) {
+//  height，高度
+//  aero,是否进行大气修正
+func RiseTime(date time.Time, lon, lat, height float64, aero bool) (time.Time, error) {
 	var err error
 	if date.Hour() > 12 {
 		date = date.Add(time.Hour * -12)
@@ -121,7 +123,7 @@ func RiseTime(date time.Time, lon, lat float64, aero bool) (time.Time, error) {
 	if aero {
 		aeroFloat = 1
 	}
-	riseJde := basic.GetMoonRiseTime(jde, lon, lat, timezone, aeroFloat)
+	riseJde := basic.GetMoonRiseTime(jde, lon, lat, timezone, aeroFloat, height)
 	if riseJde == -3 {
 		err = ERR_NOT_TODAY
 	}
@@ -138,7 +140,9 @@ func RiseTime(date time.Time, lon, lat float64, aero bool) (time.Time, error) {
 //  date, 世界时（忽略此处时区）
 //  lon，经度，东正西负
 //  lat，纬度，北正南负
-func DownTime(date time.Time, lon, lat float64, aero bool) (time.Time, error) {
+//  height，高度
+//  aero，大气修正
+func DownTime(date time.Time, lon, lat, height float64, aero bool) (time.Time, error) {
 	var err error
 	if date.Hour() > 12 {
 		date = date.Add(time.Hour * -12)
@@ -150,7 +154,7 @@ func DownTime(date time.Time, lon, lat float64, aero bool) (time.Time, error) {
 	if aero {
 		aeroFloat = 1
 	}
-	downJde := basic.GetMoonDownTime(jde, lon, lat, timezone, aeroFloat)
+	downJde := basic.GetMoonDownTime(jde, lon, lat, timezone, aeroFloat, height)
 	if downJde == -3 {
 		err = ERR_NOT_TODAY
 	}

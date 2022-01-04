@@ -27,8 +27,9 @@ var (
 // date，取日期，时区忽略
 // lon，经度，东正西负
 // lat，纬度，北正南负
+// height，高度
 // aero，true时进行大气修正
-func RiseTime(date time.Time, lon, lat float64, aero bool) (time.Time, error) {
+func RiseTime(date time.Time, lon, lat, height float64, aero bool) (time.Time, error) {
 	var err error
 	var aeroFloat float64
 	if aero {
@@ -40,7 +41,7 @@ func RiseTime(date time.Time, lon, lat float64, aero bool) (time.Time, error) {
 	jde := basic.Date2JDE(date)
 	_, loc := date.Zone()
 	timezone := float64(loc) / 3600.0
-	riseJde := basic.GetSunRiseTime(jde, lon, lat, timezone, aeroFloat)
+	riseJde := basic.GetSunRiseTime(jde, lon, lat, timezone, aeroFloat, height)
 	if riseJde == -2 {
 		err = ERR_SUN_NEVER_RISE
 	}
@@ -54,8 +55,9 @@ func RiseTime(date time.Time, lon, lat float64, aero bool) (time.Time, error) {
 // date，当地时区日期，务必做时区修正
 // lon，经度，东正西负
 // lat，纬度，北正南负
+// height，高度
 // aero，true时进行大气修正
-func DownTime(date time.Time, lon, lat float64, aero bool) (time.Time, error) {
+func DownTime(date time.Time, lon, lat, height float64, aero bool) (time.Time, error) {
 	var err error
 	var aeroFloat float64
 	if aero {
@@ -67,7 +69,7 @@ func DownTime(date time.Time, lon, lat float64, aero bool) (time.Time, error) {
 	jde := basic.Date2JDE(date)
 	_, loc := date.Zone()
 	timezone := float64(loc) / 3600.0
-	downJde := basic.GetSunDownTime(jde, lon, lat, timezone, aeroFloat)
+	downJde := basic.GetSunDownTime(jde, lon, lat, timezone, aeroFloat, height)
 	if downJde == -2 {
 		err = ERR_SUN_NEVER_RISE
 	}
