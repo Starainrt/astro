@@ -2,6 +2,7 @@ package moon
 
 import (
 	"errors"
+	"math"
 	"time"
 
 	"github.com/starainrt/astro/basic"
@@ -180,10 +181,99 @@ func ShuoYue(year float64) time.Time {
 	return basic.JDE2DateByZone(jde, time.UTC, false)
 }
 
+func NextShuoYue(date time.Time) time.Time {
+	return nextMoonPhase(date, 0)
+}
+
+func LastShuoYue(date time.Time) time.Time {
+	return lastMoonPhase(date, 0)
+}
+
+func ClosestShuoYue(date time.Time) time.Time {
+	return closestMoonPhase(date, 0)
+}
+
+func closestMoonPhase(date time.Time, typed int) time.Time {
+	//0=shuo 1=wang 2=shangxian 3=xiaxian
+	jde := basic.TD2UT(basic.Date2JDE(date.UTC()), true)
+	if typed < 2 {
+		return basic.JDE2DateByZone(basic.TD2UT(basic.CalcMoonSHByJDE(jde, typed), false), date.Location(), false)
+	}
+	return basic.JDE2DateByZone(basic.TD2UT(basic.CalcMoonXHByJDE(jde, typed-2), false), date.Location(), false)
+}
+
+func nextMoonPhase(date time.Time, typed int) time.Time {
+	//0=shuo 1=wang 2=shangxian 3=xiaxian
+	diffCode := 0.00
+	switch typed {
+	case 1:
+		diffCode = 180
+	case 2:
+		diffCode = 90
+	case 3:
+		diffCode = 270
+	}
+	jde := basic.TD2UT(basic.Date2JDE(date.UTC()), true)
+	cost := basic.HMoonSeeLo(jde) - basic.HSunSeeLo(jde) - float64(diffCode)
+	for cost < 0 {
+		cost += 360
+	}
+	if cost < 0 && math.Floor(math.Abs(cost)*10000) == 0 {
+		cost = 0
+	}
+	if cost < 240 {
+		jde += (240 - cost) / 11.19
+	}
+	if typed < 2 {
+		return basic.JDE2DateByZone(basic.TD2UT(basic.CalcMoonSHByJDE(jde, typed), false), date.Location(), false)
+	}
+	return basic.JDE2DateByZone(basic.TD2UT(basic.CalcMoonXHByJDE(jde, typed-2), false), date.Location(), false)
+}
+
+func lastMoonPhase(date time.Time, typed int) time.Time {
+	//0=shuo 1=wang 2=shangxian 3=xiaxian
+	diffCode := 0.00
+	switch typed {
+	case 1:
+		diffCode = 180
+	case 2:
+		diffCode = 90
+	case 3:
+		diffCode = 270
+	}
+	jde := basic.TD2UT(basic.Date2JDE(date.UTC()), true)
+	cost := basic.HMoonSeeLo(jde) - basic.HSunSeeLo(jde) - float64(diffCode)
+	for cost < 0 {
+		cost += 360
+	}
+	if cost > 0 && math.Floor(math.Abs(cost)*10000) == 0 {
+		cost = 360
+	}
+	if cost > 120 {
+		jde -= (cost - 120) / 11.19
+	}
+	if typed < 2 {
+		return basic.JDE2DateByZone(basic.TD2UT(basic.CalcMoonSHByJDE(jde, typed), false), date.Location(), false)
+	}
+	return basic.JDE2DateByZone(basic.TD2UT(basic.CalcMoonXHByJDE(jde, typed-2), false), date.Location(), false)
+}
+
 // WangYue 望月
 func WangYue(year float64) time.Time {
 	jde := basic.TD2UT(basic.CalcMoonSH(year, 1), false)
 	return basic.JDE2DateByZone(jde, time.UTC, false)
+}
+
+func NextWangYue(date time.Time) time.Time {
+	return nextMoonPhase(date, 1)
+}
+
+func LastWangYue(date time.Time) time.Time {
+	return lastMoonPhase(date, 1)
+}
+
+func ClosestWangYue(date time.Time) time.Time {
+	return closestMoonPhase(date, 1)
 }
 
 // ShangXianYue 上弦月
@@ -192,10 +282,34 @@ func ShangXianYue(year float64) time.Time {
 	return basic.JDE2DateByZone(jde, time.UTC, false)
 }
 
+func NextShangXianYue(date time.Time) time.Time {
+	return nextMoonPhase(date, 2)
+}
+
+func LastShangXianYue(date time.Time) time.Time {
+	return lastMoonPhase(date, 2)
+}
+
+func ClosestShangXianYue(date time.Time) time.Time {
+	return closestMoonPhase(date, 2)
+}
+
 // XiaXianYue 下弦月
 func XiaXianYue(year float64) time.Time {
 	jde := basic.TD2UT(basic.CalcMoonXH(year, 1), false)
 	return basic.JDE2DateByZone(jde, time.UTC, false)
+}
+
+func NextXiaXianYue(date time.Time) time.Time {
+	return nextMoonPhase(date, 3)
+}
+
+func LastXiaXianYue(date time.Time) time.Time {
+	return lastMoonPhase(date, 3)
+}
+
+func ClosestXiaXianYue(date time.Time) time.Time {
+	return closestMoonPhase(date, 3)
 }
 
 // EarthDistance 日地距离

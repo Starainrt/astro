@@ -1106,36 +1106,40 @@ func MoonLight(JD float64) float64 {
 	return k
 }
 
-func SunMoonSeek(JDE float64) float64 {
-	p := HMoonSeeLo(JDE) - (HSunSeeLo(JDE))
-	if p > 240 {
-		p -= 360
-	}
-	if p < -240 {
+func SunMoonSeek(JDE float64, degree float64) float64 {
+	p := HMoonSeeLo(JDE) - (HSunSeeLo(JDE)) - degree
+	for p < -180 {
 		p += 360
 	}
+	for p > 180 {
+		p -= 360
+	}
 	return p
+}
+
+func CalcMoonSHByJDE(JDE float64, C int) float64 {
+	C = C * 180
+	JD1 := JDE
+	for {
+		JD0 := JD1
+		stDegree := SunMoonSeek(JD0, float64(C))
+		stDegreep := (SunMoonSeek(JD0+0.000005, float64(C)) - SunMoonSeek(JD0-0.000005, float64(C))) / 0.00001
+		JD1 = JD0 - stDegree/stDegreep
+		if math.Abs(JD1-JD0) <= 0.00001 {
+			break
+		}
+	}
+	return JD1
 }
 
 func CalcMoonSH(Year float64, C int) float64 {
 	JDE := CalcMoonS(Year, C)
 	C = C * 180
-	i := 0
-	for {
-		JDE -= 0.005
-		i++
-		if i > 1000 {
-			break
-		}
-		if SunMoonSeek(JDE) <= float64(C) {
-			break
-		}
-	}
 	JD1 := JDE
 	for {
 		JD0 := JD1
-		stDegree := SunMoonSeek(JD0) - float64(C)
-		stDegreep := (SunMoonSeek(JD0+0.000005) - SunMoonSeek(JD0-0.000005)) / 0.00001
+		stDegree := SunMoonSeek(JD0, float64(C))
+		stDegreep := (SunMoonSeek(JD0+0.000005, float64(C)) - SunMoonSeek(JD0-0.000005, float64(C))) / 0.00001
 		JD1 = JD0 - stDegree/stDegreep
 		if math.Abs(JD1-JD0) <= 0.00001 {
 			break
@@ -1196,6 +1200,25 @@ func CalcMoonS(Year float64, C int) float64 {
 	return JDE
 }
 
+func CalcMoonXHByJDE(JDE float64, C int) float64 {
+	if C == 0 {
+		C = 90
+	} else {
+		C = -90
+	}
+	JD1 := JDE
+	for {
+		JD0 := JD1
+		stDegree := SunMoonSeek(JD0, float64(C))
+		stDegreep := (SunMoonSeek(JD0+0.000005, float64(C)) - SunMoonSeek(JD0-0.000005, float64(C))) / 0.00001
+		JD1 = JD0 - stDegree/stDegreep
+		if math.Abs(JD1-JD0) <= 0.00001 {
+			break
+		}
+	}
+	return JD1
+}
+
 func CalcMoonXH(Year float64, C int) float64 {
 	JDE := CalcMoonX(Year, C)
 	if C == 0 {
@@ -1203,22 +1226,11 @@ func CalcMoonXH(Year float64, C int) float64 {
 	} else {
 		C = -90
 	}
-	i := 0
-	for {
-		JDE -= 0.005
-		i++
-		if i > 1000 {
-			break
-		}
-		if SunMoonSeek(JDE) <= float64(C) {
-			break
-		}
-	}
 	JD1 := JDE
 	for {
 		JD0 := JD1
-		stDegree := SunMoonSeek(JD0) - float64(C)
-		stDegreep := (SunMoonSeek(JD0+0.000005) - SunMoonSeek(JD0-0.000005)) / 0.00001
+		stDegree := SunMoonSeek(JD0, float64(C))
+		stDegreep := (SunMoonSeek(JD0+0.000005, float64(C)) - SunMoonSeek(JD0-0.000005, float64(C))) / 0.00001
 		JD1 = JD0 - stDegree/stDegreep
 		if math.Abs(JD1-JD0) <= 0.00001 {
 			break

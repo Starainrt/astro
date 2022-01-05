@@ -37,7 +37,7 @@ const (
 // 传入 公历年月日
 // 返回 农历月，日，是否闰月以及文字描述
 func Lunar(year, month, day int) (int, int, bool, string) {
-	return basic.GetLunar(year, month, day)
+	return basic.GetLunar(year, month, day, 8.0/24.0)
 }
 
 // ChineseLunar 公历转农历
@@ -45,7 +45,7 @@ func Lunar(year, month, day int) (int, int, bool, string) {
 // 返回 农历月，日，是否闰月以及文字描述
 // 忽略时区，日期一律按北京时间计算
 func ChineseLunar(date time.Time) (int, int, bool, string) {
-	return basic.GetLunar(date.Year(), int(date.Month()), date.Day())
+	return basic.GetLunar(date.Year(), int(date.Month()), date.Day(), 8.0/24.0)
 }
 
 // Solar 农历转公历
@@ -55,7 +55,7 @@ func ChineseLunar(date time.Time) (int, int, bool, string) {
 // 例：计算己亥猪年腊月三十日对应的公历（即2020年1月24日）
 // 由于农历还未到鼠年，故应当传入Solar(2019,12,30,false)
 func Solar(year, month, day int, leap bool) time.Time {
-	jde := basic.GetSolar(year, month, day, leap)
+	jde := basic.GetSolar(year, month, day, leap, 8.0/24.0)
 	zone := time.FixedZone("CST", 8*3600)
 	return basic.JDE2DateByZone(jde, zone, true)
 }
