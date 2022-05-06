@@ -5,21 +5,10 @@ import (
 	"testing"
 )
 
-func Test_Isxz(t *testing.T) {
-	now := GetNowJDE()
-	for i := 0.00; i <= 360.00; i += 0.5 {
-		for j := -90.00; j <= 90.00; j += 0.5 {
-			fmt.Println(i, j)
-			fmt.Println(WhichCst(float64(i), float64(j), now))
-		}
-	}
-}
-
-func Benchmark_IsXZ(b *testing.B) {
-	jde := GetNowJDE()
-	for i := 0; i < b.N; i++ {
-		//GetNowJDE()
-		WhichCst(11.11, 12.12, jde)
-	}
-
+func Test_StarHeight(t *testing.T) {
+	date := GetNowJDE() + 6.0/24.0
+	fmt.Println(JDE2Date(date))
+	fmt.Println("Sirius Height:", StarHeight(date, 101.5, -16.8, 115, 40, 8.0))
+	fmt.Println("Sirius Azimuth:", StarAzimuth(date, 101.5, -16.8, 115, 40, 8.0))
+	//compare
 }

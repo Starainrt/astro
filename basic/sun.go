@@ -1368,16 +1368,13 @@ func SunAngle(JD, Lon, Lat, TZ float64) float64 {
 	if Angle < 0 {
 		if H/15 < 12 {
 			return Angle + 360
-		} else {
-			return Angle + 180
 		}
-	} else {
-		if H/15 < 12 {
-			return Angle + 180
-		} else {
-			return Angle
-		}
+		return Angle + 180
 	}
+	if H/15 < 12 {
+		return Angle + 180
+	}
+	return Angle
 }
 
 /*

@@ -21,3 +21,5 @@ func Date2JDE(date time.Time) float64 {
 func JDE2Date(jde float64) time.Time {
 	return basic.JDE2Date(jde)
 }
+
+

@@ -41,12 +41,12 @@ func Benchmark_SunLo(b *testing.B) {
 }
 
 func Test_Cal(t *testing.T) {
-	fmt.Println(JDE2Date(GetSolar(2020, 1, 1, false)))
-	fmt.Println(JDE2Date(GetSolar(2020, 4, 1, false)))
-	fmt.Println(JDE2Date(GetSolar(2020, 4, 1, true)))
-	fmt.Println(JDE2Date(GetSolar(2033, 11, 3, false)))
-	fmt.Println(JDE2Date(GetSolar(2033, 11, 3, true)))
-	fmt.Println(JDE2Date(GetSolar(2034, 1, 1, false)))
+	fmt.Println(JDE2Date(GetSolar(2020, 1, 1, false, 8.0/24.0)))
+	fmt.Println(JDE2Date(GetSolar(2020, 4, 1, false, 8.0/24.0)))
+	fmt.Println(JDE2Date(GetSolar(2020, 4, 1, true, 8.0/24.0)))
+	fmt.Println(JDE2Date(GetSolar(2033, 11, 3, false, 8.0/24.0)))
+	fmt.Println(JDE2Date(GetSolar(2033, 11, 3, true, 8.0/24.0)))
+	fmt.Println(JDE2Date(GetSolar(2034, 1, 1, false, 8.0/24.0)))
 }
 
 func Test_SunRise(t *testing.T) {
