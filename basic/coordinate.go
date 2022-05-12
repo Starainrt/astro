@@ -68,7 +68,7 @@ func ZhanXinRaDec(ra, dec, lat, lon, jd, au, h float64) (float64, float64) {
 	sinpi := Sin(0.0024427777777) / au
 	pcosi := pcosi(lat, h)
 	psini := psini(lat, h)
-	tH := Limit360(TD2UT(SeeStarTime(jd), false)*15 + lon - ra)
+	tH := Limit360(TD2UT(ApparentSiderealTime(jd), false)*15 + lon - ra)
 	nra := math.Atan2(-pcosi*sinpi*Sin(tH), (Cos(dec)-pcosi*sinpi*Cos(tH))) * 180 / math.Pi
 
 	ndec := math.Atan2((Sin(dec)-psini*sinpi)*Cos(nra), (Cos(dec)-pcosi*sinpi*Cos(tH))) * 180 / math.Pi
@@ -78,7 +78,7 @@ func ZhanXinRaDec(ra, dec, lat, lon, jd, au, h float64) (float64, float64) {
 func ZhanXinRa(ra, dec, lat, lon, jd, au, h float64) float64 { //jd为格林尼治标准时
 	sinpi := Sin(0.0024427777777) / au
 	pcosi := pcosi(lat, h)
-	tH := Limit360(TD2UT(SeeStarTime(jd), false)*15 + lon - ra)
+	tH := Limit360(TD2UT(ApparentSiderealTime(jd), false)*15 + lon - ra)
 	nra := math.Atan2(-pcosi*sinpi*Sin(tH), (Cos(dec)-pcosi*sinpi*Cos(tH))) * 180 / math.Pi
 	return ra + nra
 }
@@ -87,7 +87,7 @@ func ZhanXinDec(ra, dec, lat, lon, jd, au, h float64) float64 { //jd为格林尼
 	sinpi := Sin(0.0024427777777) / au
 	pcosi := pcosi(lat, h)
 	psini := psini(lat, h)
-	tH := Limit360(TD2UT(SeeStarTime(jd), false)*15 + lon - ra)
+	tH := Limit360(TD2UT(ApparentSiderealTime(jd), false)*15 + lon - ra)
 	nra := math.Atan2(-pcosi*sinpi*Sin(tH), (Cos(dec)-pcosi*sinpi*Cos(tH))) * 180 / math.Pi
 
 	ndec := math.Atan2((Sin(dec)-psini*sinpi)*Cos(nra), (Cos(dec)-pcosi*sinpi*Cos(tH))) * 180 / math.Pi
@@ -99,7 +99,7 @@ func ZhanXinLo(lo, bo, lat, lon, jd, au, h float64) float64 { //jd为格林尼�
 	S := psini(lat, h)
 	sinpi := Sin(0.0024427777777) / au
 	ra := LoToRa(lo, bo, jd)
-	tH := Limit360(TD2UT(SeeStarTime(jd), false)*15 + lon - ra)
+	tH := Limit360(TD2UT(ApparentSiderealTime(jd), false)*15 + lon - ra)
 	N := Cos(lo)*Cos(bo) - C*sinpi*Cos(tH)
 	nlo := math.Atan2(Sin(lo)*Cos(bo)-sinpi*(S*Sin(Sita(jd))+C*Cos(Sita(jd))*Sin(tH)), N) * 180 / math.Pi
 	return nlo
@@ -110,7 +110,7 @@ func ZhanXinBo(lo, bo, lat, lon, jd, au, h float64) float64 { //jd为格林尼�
 	S := psini(lat, h)
 	sinpi := Sin(0.0024427777777) / au
 	ra := LoToRa(lo, bo, jd)
-	tH := Limit360(TD2UT(SeeStarTime(jd), false)*15 + lon - ra)
+	tH := Limit360(TD2UT(ApparentSiderealTime(jd), false)*15 + lon - ra)
 	N := Cos(lo)*Cos(bo) - C*sinpi*Cos(tH)
 	nlo := math.Atan2(Sin(lo)*Cos(bo)-sinpi*(S*Sin(Sita(jd))+C*Cos(Sita(jd))*Sin(tH)), N) * 180 / math.Pi
 	nbo := math.Atan2(Cos(nlo)*(Sin(bo)-sinpi*(S*Cos(Sita(jd))-C*Sin(Sita(jd))*Sin(tH))), N) * 180 / math.Pi

@@ -17,10 +17,10 @@ func Benchmark_All(b *testing.B) {
 
 func show() {
 	jde := GetNowJDE() - 1
-	ra := HSunSeeRa(jde - 8.0/24.0)
-	dec := HSunSeeDec(jde - 8.0/24.0)
+	ra := HSunApparentRa(jde - 8.0/24.0)
+	dec := HSunApparentDec(jde - 8.0/24.0)
 	fmt.Printf("当前JDE:%.14f\n", jde)
-	fmt.Println("当前太阳黄经：", HSunSeeLo(jde-8.0/24.0))
+	fmt.Println("当前太阳黄经：", HSunApparentLo(jde-8.0/24.0))
 	fmt.Println("当前太阳赤经：", ra)
 	fmt.Println("当前太阳赤纬：", dec)
 	fmt.Println("当前太阳星座：", WhichCst(ra, dec, jde))

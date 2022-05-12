@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"time"
 )
 
 // this file contains bright 9100 stars
@@ -131,7 +132,7 @@ func parseDec(star []byte) (float64, error) {
 		}
 		minute = minute*10 + (star[i] - 48)
 	}
-	ori := string(bytes.TrimSpace(star[79:83]))
+	ori := string(bytes.TrimSpace(star[88:90]))
 	if ori != "" {
 		sec, err = strconv.ParseFloat(ori, 64)
 		if err != nil {
@@ -9275,4 +9276,15 @@ func StarDataByHR(hr int) (StarData, error) {
 	}
 	data, err := parseStarData(stardat[hr-1])
 	return StarData{starData: data}, err
+}
+
+func (s starData) RaDecByJde(jde float64) (float64, float64) {
+	//计算自行
+	year := ((jde - 2451545.0) / 365.2422)
+	return ZuoBiaoSuiCha(s.Ra+(year*s.PmRA/3600), s.Dec+(year*s.PmDec/3600), 2451545.0, jde)
+}
+
+func (s StarData) RaDecByDate(date time.Time) (float64, float64) {
+	jde := Date2JDE(date.UTC())
+	return s.RaDecByJde(jde)
 }

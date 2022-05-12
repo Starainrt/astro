@@ -86,6 +86,9 @@ func DownTime(date time.Time, lon, lat, height float64, aero bool) (time.Time, e
 // angle，朦影角度：可选-6 -12 -18(民用、航海、天文)
 func MorningTwilight(date time.Time, lon, lat, angle float64) (time.Time, error) {
 	var err error
+	if date.Hour() > 12 {
+		date = date.Add(time.Hour * -12)
+	}
 	jde := basic.Date2JDE(date)
 	_, loc := date.Zone()
 	timezone := float64(loc) / 3600.0
@@ -106,6 +109,9 @@ func MorningTwilight(date time.Time, lon, lat, angle float64) (time.Time, error)
 // angle，朦影角度：可选-6 -12 -18(民用、航海、天文)
 func EveningTwilight(date time.Time, lon, lat, angle float64) (time.Time, error) {
 	var err error
+	if date.Hour() > 12 {
+		date = date.Add(time.Hour * -12)
+	}
 	jde := basic.Date2JDE(date)
 	_, loc := date.Zone()
 	timezone := float64(loc) / 3600.0
@@ -173,36 +179,36 @@ func TrueBo(date time.Time) float64 {
 	return basic.HSunTrueLo(basic.TD2UT(jde, true))
 }
 
-// SeeLo 太阳视黄经
+// ApparentLo 太阳视黄经
 // 返回date对应UTC世界时的太阳视黄经
-func SeeLo(date time.Time) float64 {
+func ApparentLo(date time.Time) float64 {
 	//转换为UTC时间
 	jde := basic.Date2JDE(date.UTC())
-	return basic.HSunSeeLo(basic.TD2UT(jde, true))
+	return basic.HSunApparentLo(basic.TD2UT(jde, true))
 }
 
-// SeeRa 太阳地心视赤经
+// ApparentRa 太阳地心视赤经
 // 返回date对应UTC世界时的太阳视赤经（使用黄道坐标转换，且默认忽略黄纬）
-func SeeRa(date time.Time) float64 {
+func ApparentRa(date time.Time) float64 {
 	//转换为UTC时间
 	jde := basic.Date2JDE(date.UTC())
-	return basic.HSunSeeRa(basic.TD2UT(jde, true))
+	return basic.HSunApparentRa(basic.TD2UT(jde, true))
 }
 
-// SeeDec 太阳地心视赤纬
+// ApparentDec 太阳地心视赤纬
 // 返回date对应UTC世界时的太阳视赤纬（使用黄道坐标转换，且默认忽略黄纬）
-func SeeDec(date time.Time) float64 {
+func ApparentDec(date time.Time) float64 {
 	//转换为UTC时间
 	jde := basic.Date2JDE(date.UTC())
-	return basic.HSunSeeDec(basic.TD2UT(jde, true))
+	return basic.HSunApparentDec(basic.TD2UT(jde, true))
 }
 
-// SeeRaDec 太阳地心视赤经和赤纬
+// ApparentRaDec 太阳地心视赤经和赤纬
 // 返回date对应UTC世界时的太阳视赤纬（使用黄道坐标转换，且默认忽略黄纬）
-func SeeRaDec(date time.Time) (float64, float64) {
+func ApparentRaDec(date time.Time) (float64, float64) {
 	//转换为UTC时间
 	jde := basic.Date2JDE(date.UTC())
-	return basic.HSunSeeRaDec(basic.TD2UT(jde, true))
+	return basic.HSunApparentRaDec(basic.TD2UT(jde, true))
 }
 
 // MidFunc 太阳中间方程

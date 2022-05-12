@@ -1033,7 +1033,7 @@ func MoonAway(JD float64) float64 { //'月地距离
 /*
  * @name 月球视黄经
  */
-func MoonSeeLo(JD float64) float64 {
+func MoonApparentLo(JD float64) float64 {
 	return MoonTrueLo(JD) + HJZD(JD)
 }
 
@@ -1041,7 +1041,7 @@ func MoonSeeLo(JD float64) float64 {
  * 月球真赤纬
  */
 func MoonTrueDec(JD float64) float64 {
-	MoonLo := MoonSeeLo(JD)
+	MoonLo := MoonApparentLo(JD)
 	MoonBo := MoonTrueBo(JD)
 	tmp := Sin(MoonBo)*Cos(Sita(JD)) + Cos(MoonBo)*Sin(Sita(JD))*Sin(MoonLo)
 	res := ArcSin(tmp)
@@ -1052,7 +1052,7 @@ func MoonTrueDec(JD float64) float64 {
  * 月球真赤经
  */
 func MoonTrueRa(JD float64) float64 {
-	MoonLo := MoonSeeLo(JD)
+	MoonLo := MoonApparentLo(JD)
 	MoonBo := MoonTrueBo(JD)
 	tmp := (Sin(MoonLo)*Cos(Sita(JD)) - Tan(MoonBo)*Sin(Sita(JD))) / Cos(MoonLo)
 	tmp = ArcTan(tmp)
@@ -1070,7 +1070,7 @@ func MoonTrueRa(JD float64) float64 {
   *
   传入世界时
 */
-func MoonSeeRa(JD, lon, lat float64, tz int) float64 {
+func MoonApparentRa(JD, lon, lat float64, tz int) float64 {
 	jde := TD2UT(JD, true)
 	ra := MoonTrueRa(jde - float64(tz)/24.000)
 	dec := MoonTrueDec(jde - float64(tz)/24.000)
@@ -1079,7 +1079,7 @@ func MoonSeeRa(JD, lon, lat float64, tz int) float64 {
 	return nra
 }
 
-func MoonSeeDec(JD, lon, lat, tz float64) float64 {
+func MoonApparentDec(JD, lon, lat, tz float64) float64 {
 	jde := TD2UT(JD, true)
 	ra := MoonTrueRa(jde - tz/24.0)
 	dec := MoonTrueDec(jde - tz/24)
@@ -1090,8 +1090,8 @@ func MoonSeeDec(JD, lon, lat, tz float64) float64 {
 
 func MoonLight(JD float64) float64 {
 	MoonBo := HMoonTrueBo(JD)
-	SunLo := HSunSeeLo(JD)
-	MoonLo := HMoonSeeLo(JD)
+	SunLo := HSunApparentLo(JD)
+	MoonLo := HMoonApparentLo(JD)
 	tmp := Cos(MoonBo) * Cos(SunLo-MoonLo)
 	R := RDJL(JD) * 149597870.691
 	i := R * Sin(ArcCos(tmp)) / (HMoonAway(JD) - R*tmp)
@@ -1107,7 +1107,7 @@ func MoonLight(JD float64) float64 {
 }
 
 func SunMoonSeek(JDE float64, degree float64) float64 {
-	p := HMoonSeeLo(JDE) - (HSunSeeLo(JDE)) - degree
+	p := HMoonApparentLo(JDE) - (HSunApparentLo(JDE)) - degree
 	for p < -180 {
 		p += 360
 	}
@@ -1303,7 +1303,7 @@ func MoonAngle(JD, Lon, Lat, TZ float64) float64 {
 	ndec := ZhanXinDec(ra, dec, Lat, Lon, JD-TZ/24, away, 0)
 	nra := ZhanXinRa(ra, dec, Lat, Lon, JD-TZ/24, away, 0)
 	calcjd = JD - TZ/24
-	st := Limit360(SeeStarTime(calcjd)*15 + Lon)
+	st := Limit360(ApparentSiderealTime(calcjd)*15 + Lon)
 	H := Limit360(st - nra)
 	tmp2 := Sin(H) / (Cos(H)*Sin(Lat) - Tan(ndec)*Cos(Lat))
 	Angle := ArcTan(tmp2)
@@ -1333,7 +1333,7 @@ func MoonHeight(JD, Lon, Lat, TZ float64) float64 {
 	ndec := ZhanXinDec(ra, dec, Lat, Lon, JD-TZ/24, away, 0)
 	nra := ZhanXinRa(ra, dec, Lat, Lon, JD-TZ/24, away, 0)
 	calcjd = JD - TZ/24
-	st := Limit360(SeeStarTime(calcjd)*15 + Lon)
+	st := Limit360(ApparentSiderealTime(calcjd)*15 + Lon)
 	H := Limit360(st - nra)
 	tmp2 := Sin(Lat)*Sin(ndec) + Cos(ndec)*Cos(Lat)*Cos(H)
 	return ArcSin(tmp2)
@@ -1349,7 +1349,7 @@ func HMoonAngle(JD, Lon, Lat, TZ float64) float64 {
 	ndec := ZhanXinDec(ra, dec, Lat, Lon, JD-TZ/24, away, 0)
 	nra := ZhanXinRa(ra, dec, Lat, Lon, JD-TZ/24, away, 0)
 	calcjd = JD - TZ/24
-	st := Limit360(SeeStarTime(calcjd)*15 + Lon)
+	st := Limit360(ApparentSiderealTime(calcjd)*15 + Lon)
 	H := Limit360(st - nra)
 	tmp2 := Sin(H) / (Cos(H)*Sin(Lat) - Tan(ndec)*Cos(Lat))
 	Angle := ArcTan(tmp2)
@@ -1376,7 +1376,7 @@ func HMoonHeight(JD, Lon, Lat, TZ float64) float64 {
 	away := HMoonAway(calcjd) / 149597870.7
 	nra, ndec := ZhanXinRaDec(ra, dec, Lat, Lon, calcjd, away, 0)
 	calcjd = JD - TZ/24
-	st := Limit360(SeeStarTime(calcjd)*15 + Lon)
+	st := Limit360(ApparentSiderealTime(calcjd)*15 + Lon)
 	H := Limit360(st - nra)
 	tmp2 := Sin(Lat)*Sin(ndec) + Cos(ndec)*Cos(Lat)*Cos(H)
 	return ArcSin(tmp2)
@@ -1402,8 +1402,8 @@ func GetMoonTZTime(JD, Lon, Lat, TZ float64) float64 { //实际中天时间{
 }
 
 func MoonTimeAngle(JD, Lon, Lat, TZ float64) float64 {
-	startime := Limit360(SeeStarTime(JD-TZ/24)*15 + Lon)
-	timeangle := startime - HMoonSeeRa(JD-TZ/24, Lon, Lat, TZ)
+	startime := Limit360(ApparentSiderealTime(JD-TZ/24)*15 + Lon)
+	timeangle := startime - HMoonApparentRa(JD-TZ/24, Lon, Lat, TZ)
 	if timeangle < 0 {
 		timeangle += 360
 	}
@@ -1443,19 +1443,36 @@ func GetMoonRiseTime(JD, Lon, Lat, TZ, ZS, HEI float64) float64 {
 	if math.Abs(now-180) > 0.5 {
 		JD1 += (180 - now) * 4.0 / 60.0 / 24.0
 	}
-	hei := MoonHeight(JD1, Lon, Lat, TZ)
+	hei := HMoonHeight(JD1, Lon, Lat, TZ)
 	if !(hei < -10 && math.Abs(Lat) < 60) {
 		if hei > An {
 			return -1 //拱
 		}
-		if MoonHeight(JD1+12/24+6/15/24, Lon, Lat, TZ) < An {
+		reJde := JD1 + 12.0/24.0 + 6.0/15.0/24.0
+		mag := MoonTimeAngle(reJde, Lon, Lat, TZ)
+		if mag < 90 {
+			mag += 360
+		}
+		reJde += (360 - mag) * 4.0 / 60.0 / 24.0
+		if HMoonHeight(reJde, Lon, Lat, TZ) < An {
 			return -2 //沉
 		}
 	}
-	dec := MoonSeeDec(JD1, Lon, Lat, TZ)
-	SJ := (180 - ArcCos(-Tan(Lat)*Tan(dec))) / 15
-	JD1 += SJ/24.00 + SJ/33.00/15.00
-
+	dec := MoonApparentDec(JD1, Lon, Lat, TZ)
+	tmp := (Sin(An) - Sin(dec)*Sin(Lat)) / (Cos(dec) * Cos(Lat))
+	if math.Abs(tmp) <= 1 && Lat < 85 {
+		SJ := (180 - ArcCos(tmp)) / 15
+		JD1 += SJ/24.00 + SJ/33.00/15.00
+	} else {
+		i := 0
+		for MoonHeight(JD1, Lon, Lat, TZ) < An {
+			i++
+			JD1 += 15.0 / 60.0 / 24.0
+			if i > 48 {
+				break
+			}
+		}
+	}
 	for {
 		JD0 := JD1
 		stDegree := HMoonHeight(JD0, Lon, Lat, TZ) - An
@@ -1487,10 +1504,11 @@ func GetMoonDownTime(JD, Lon, Lat, TZ, ZS, HEI float64) float64 {
 	}
 	An = An - HeightDegreeByLat(HEI, Lat)
 	moonang := MoonTimeAngle(JD, Lon, Lat, TZ)
-	if moonheight < 0 { //月亮在地平线上或在落下与下中天之间
+	if moonheight < 0 {
 		tms = (360 - moonang) / 15
 		JD1 += (tms/24 + (tms/24.0*12.0)/15.0/24.0)
 	}
+	//月亮在地平线上或在落下与下中天之间
 	if moonheight > 0 && moonang < 180 {
 		tms = (-moonang) / 15
 		JD1 += (tms/24.0 + (tms/24.0*12.0)/15.0/24.0)
@@ -1505,18 +1523,34 @@ func GetMoonDownTime(JD, Lon, Lat, TZ, ZS, HEI float64) float64 {
 	if math.Abs(now-360) > 0.5 {
 		JD1 += (360 - now) * 4.0 / 60.0 / 24.0
 	}
-	hei := MoonHeight(JD1, Lon, Lat, TZ)
+	//JD1=月球中天时间
+	hei := HMoonHeight(JD1, Lon, Lat, TZ)
 	if !(hei > 10 && math.Abs(Lat) < 60) {
 		if hei < An {
 			return -2 //沉
 		}
-		if MoonHeight(JD1+12.0/24.0+6.0/15.0/24.0, Lon, Lat, TZ) > An {
+		reJde := JD1 + 12.0/24.0 + 6.0/15.0/24.0
+		sub := 180 - MoonTimeAngle(reJde, Lon, Lat, TZ)
+		reJde += sub * 4.0 / 60.0 / 24.0
+		if HMoonHeight(reJde, Lon, Lat, TZ) > An {
 			return -1 //拱
 		}
 	}
-	dec := MoonSeeDec(JD1, Lon, Lat, TZ)
-	SJ := (ArcCos(-Tan(Lat) * Tan(dec))) / 15.0
-	JD1 += SJ/24 + SJ/33.0/15.0
+	dec := MoonApparentDec(JD1, Lon, Lat, TZ)
+	tmp := (Sin(An) - Sin(dec)*Sin(Lat)) / (Cos(dec) * Cos(Lat))
+	if math.Abs(tmp) <= 1 && Lat < 85 {
+		SJ := (ArcCos(tmp)) / 15.0
+		JD1 += SJ/24 + SJ/33.0/15.0
+	} else {
+		i := 0
+		for MoonHeight(JD1, Lon, Lat, TZ) > An {
+			i++
+			JD1 += 15.0 / 60.0 / 24.0
+			if i > 48 {
+				break
+			}
+		}
+	}
 	for {
 		JD0 := JD1
 		stDegree := HMoonHeight(JD0, Lon, Lat, TZ) - An
@@ -1628,12 +1662,12 @@ func HMoonAway(JD float64) float64 { //'月地距离
 /*
  * @name 月球视黄经
  */
-func HMoonSeeLo(JD float64) float64 {
+func HMoonApparentLo(JD float64) float64 {
 	return HMoonTrueLo(JD) + HJZD(JD)
 }
 
 func HMoonTrueRaDec(JD float64) (float64, float64) {
-	MoonLo := HMoonSeeLo(JD)
+	MoonLo := HMoonApparentLo(JD)
 	MoonBo := HMoonTrueBo(JD)
 	tmp := Sin(MoonBo)*Cos(Sita(JD)) + Cos(MoonBo)*Sin(Sita(JD))*Sin(MoonLo)
 	res := ArcSin(tmp)
@@ -1653,7 +1687,7 @@ func HMoonTrueRaDec(JD float64) (float64, float64) {
  * 月球真赤纬
  */
 func HMoonTrueDec(JD float64) float64 {
-	MoonLo := HMoonSeeLo(JD)
+	MoonLo := HMoonApparentLo(JD)
 	MoonBo := HMoonTrueBo(JD)
 	tmp := Sin(MoonBo)*Cos(Sita(JD)) + Cos(MoonBo)*Sin(Sita(JD))*Sin(MoonLo)
 	res := ArcSin(tmp)
@@ -1664,7 +1698,7 @@ func HMoonTrueDec(JD float64) float64 {
  * 月球真赤经
  */
 func HMoonTrueRa(JD float64) float64 {
-	MoonLo := HMoonSeeLo(JD)
+	MoonLo := HMoonApparentLo(JD)
 	MoonBo := HMoonTrueBo(JD)
 	tmp := (Sin(MoonLo)*Cos(Sita(JD)) - Tan(MoonBo)*Sin(Sita(JD))) / Cos(MoonLo)
 	tmp = ArcTan(tmp)
@@ -1682,7 +1716,7 @@ func HMoonTrueRa(JD float64) float64 {
 *
 传入世界时
 */
-func HMoonSeeRaDec(JD, lon, lat, tz float64) (float64, float64) {
+func HMoonApparentRaDec(JD, lon, lat, tz float64) (float64, float64) {
 	jde := TD2UT(JD, true)
 	ra := HMoonTrueRa(jde - tz/24)
 	dec := HMoonTrueDec(jde - tz/24)
@@ -1691,7 +1725,7 @@ func HMoonSeeRaDec(JD, lon, lat, tz float64) (float64, float64) {
 	return nra, ndec
 }
 
-func HMoonSeeRa(JD, lon, lat, tz float64) float64 {
+func HMoonApparentRa(JD, lon, lat, tz float64) float64 {
 	jde := TD2UT(JD, true)
 	ra := HMoonTrueRa(jde - tz/24)
 	dec := HMoonTrueDec(jde - tz/24)
@@ -1699,7 +1733,7 @@ func HMoonSeeRa(JD, lon, lat, tz float64) float64 {
 	nra := ZhanXinRa(ra, dec, lat, lon, JD-tz/24, away, 0)
 	return nra
 }
-func HMoonSeeDec(JD, lon, lat, tz float64) float64 {
+func HMoonApparentDec(JD, lon, lat, tz float64) float64 {
 	jde := TD2UT(JD, true)
 	ra := HMoonTrueRa(jde - tz/24)
 	dec := HMoonTrueDec(jde - tz/24)

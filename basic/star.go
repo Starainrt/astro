@@ -2,6 +2,7 @@ package basic
 
 import (
 	. "github.com/starainrt/astro/tools"
+	"math"
 )
 
 // StarHeight 星体的高度角
@@ -11,7 +12,7 @@ func StarHeight(jde, ra, dec, lon, lat, timezone float64) float64 {
 	// 转换为世界时
 	utcJde := jde - timezone/24.0
 	// 计算视恒星时
-	st := Limit360(SeeStarTime(utcJde)*15 + lon)
+	st := Limit360(ApparentSiderealTime(utcJde)*15 + lon)
 	// 计算时角
 	H := Limit360(st - ra)
 	// 高度角、时角与天球座标三角转换公式
@@ -27,7 +28,7 @@ func StarAzimuth(jde, ra, dec, lon, lat, timezone float64) float64 {
 	// 转换为世界时
 	utcJde := jde - timezone/24.0
 	// 计算视恒星时
-	st := Limit360(SeeStarTime(utcJde)*15 + lon)
+	st := Limit360(ApparentSiderealTime(utcJde)*15 + lon)
 	// 计算时角
 	H := Limit360(st - ra)
 	// 三角转换公式
@@ -52,26 +53,26 @@ func StarHourAngle(jde, ra, lon, timezone float64) float64 {
 	// 转换为世界时
 	utcJde := jde - timezone/24.0
 	// 计算视恒星时
-	st := Limit360(SeeStarTime(utcJde)*15 + lon)
+	st := Limit360(ApparentSiderealTime(utcJde)*15 + lon)
 	// 计算时角
 	return Limit360(st - ra)
 }
 
-// TrueStarTime 不含章动下的恒星时
-func TrueStarTime(JD float64) float64 {
+// MeanSiderealTime 不含章动下的恒星时
+func MeanSiderealTime(JD float64) float64 {
 	T := (JD - 2451545) / 36525
 	return (Limit360(280.46061837+360.98564736629*(JD-2451545.0)+0.000387933*T*T-T*T*T/38710000) / 15)
 }
 
-// SeeStarTime 视恒星时，计算章动
-func SeeStarTime(JD float64) float64 {
-	tmp := TrueStarTime(JD)
+// ApparentSiderealTime 视恒星时，计算章动
+func ApparentSiderealTime(JD float64) float64 {
+	tmp := MeanSiderealTime(JD)
 	return tmp + HJZD(JD)*Cos(Sita(JD))/15
 }
 func StarAngle(RA, DEC, JD, Lon, Lat, TZ float64) float64 {
 	//JD=JD-8/24+TZ/24;
 	calcjd := JD - TZ/24
-	st := Limit360(SeeStarTime(calcjd)*15 + Lon)
+	st := Limit360(ApparentSiderealTime(calcjd)*15 + Lon)
 	H := Limit360(st - RA)
 	tmp2 := Sin(H) / (Cos(H)*Sin(Lat) - Tan(DEC)*Cos(Lat))
 	Angle := ArcTan(tmp2)
@@ -90,7 +91,70 @@ func StarAngle(RA, DEC, JD, Lon, Lat, TZ float64) float64 {
 	}
 }
 
-func StarRiseTime(jde, ra, dec, lon, lat, height, timezone float64, aero bool) (float64, error) {
+func StarRiseTime(jde, ra, dec, lon, lat, height, timezone float64, aero bool) float64 {
+	return StarRiseDownTime(jde, ra, dec, lon, lat, height, timezone, aero, true)
+}
 
-	return 0, nil
+func StarDownTime(jde, ra, dec, lon, lat, height, timezone float64, aero bool) float64 {
+	return StarRiseDownTime(jde, ra, dec, lon, lat, height, timezone, aero, false)
+}
+
+func StarRiseDownTime(jde, ra, dec, lon, lat, height, timezone float64, aero, isRise bool) float64 {
+	//jde 世界时，非力学时，当地时区 0时，无需转换力学时
+	//ra,dec 瞬时天球座标，非J2000等时间天球坐标
+	jde = math.Floor(jde) + 0.5
+	var An float64 = 0
+	if aero {
+		An = -0.566667
+	}
+	An = An - HeightDegreeByLat(height, lat)
+	sct := StarCulminationTime(jde, ra, lon, timezone)
+	tmp := (Sin(An) - Sin(dec)*Sin(lat)) / (Cos(dec) * Cos(lat))
+	if math.Abs(tmp) > 1 {
+		if StarHeight(sct, ra, dec, lon, lat, timezone) < 0 {
+			return -2 //极夜
+		} else {
+			return -1 //极昼
+		}
+	}
+	var JD1 float64
+	if isRise {
+		JD1 = sct - ArcCos(tmp)/15.0/24.0
+	} else {
+		JD1 = sct + ArcCos(tmp)/15.0/24.0
+	}
+	for {
+		JD0 := JD1
+		stDegree := StarHeight(JD0, ra, dec, lon, lat, timezone) - An
+		stDegreep := (StarHeight(JD0+0.000005, ra, dec, lon, lat, timezone) - StarHeight(JD0-0.000005, ra, dec, lon, lat, timezone)) / 0.00001
+		JD1 = JD0 - stDegree/stDegreep
+		if math.Abs(JD1-JD0) <= 0.00001 {
+			break
+		}
+	}
+	return JD1
+}
+
+func StarCulminationTime(jde, ra, lon, timezone float64) float64 {
+	//jde 世界时，非力学时，当地时区 0时，无需转换力学时
+	//ra,dec 瞬时天球座标，非J2000等时间天球坐标
+	jde = math.Floor(jde) + 0.5
+	JD1 := jde + Limit360(360-StarHourAngle(jde, ra, lon, timezone))/15.0/24.0*0.99726851851851851851
+	limitStarHA := func(jde, ra, lon, timezone float64) float64 {
+		ha := StarHourAngle(jde, ra, lon, timezone)
+		if ha < 180 {
+			ha += 360
+		}
+		return ha
+	}
+	for {
+		JD0 := JD1
+		stDegree := limitStarHA(JD0, ra, lon, timezone) - 360
+		stDegreep := (limitStarHA(JD0+0.000005, ra, lon, timezone) - SunHeight(JD0-0.000005, ra, lon, timezone)) / 0.00001
+		JD1 = JD0 - stDegree/stDegreep
+		if math.Abs(JD1-JD0) <= 0.00001 {
+			break
+		}
+	}
+	return JD1
 }

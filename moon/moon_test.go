@@ -52,3 +52,10 @@ func Test_MoonPhaseDate(t *testing.T) {
 		fmt.Println("上一朔月", moonPhase01)
 	}
 }
+
+func TestMoon(t *testing.T) {
+	now := time.Now()
+	fmt.Println(RiseTime(now, 115, 40, 0, true))
+	fmt.Println(CulminationTime(now, 115, 40))
+	fmt.Println(DownTime(now, 115, 40, 0, true))
+}

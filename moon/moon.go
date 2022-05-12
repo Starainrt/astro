@@ -26,44 +26,68 @@ func TrueBo(date time.Time) float64 {
 	return basic.HMoonTrueBo(basic.TD2UT(jde, true))
 }
 
-// SeeLo 月亮视黄经（地心）
+// ApparentLo 月亮视黄经（地心）
 // 传入UTC对应的儒略日时间
-func SeeLo(date time.Time) float64 {
+func ApparentLo(date time.Time) float64 {
 	jde := basic.Date2JDE(date.UTC())
-	return basic.HMoonSeeLo(basic.TD2UT(jde, true))
+	return basic.HMoonApparentLo(basic.TD2UT(jde, true))
 }
 
-// SeeRa 月亮视赤经（站心）
+// TrueRa 月亮视赤经（地心）
+// date, 时间
+// 返回地心坐标
+func TrueRa(date time.Time) float64 {
+	jde := basic.Date2JDE(date.UTC())
+	return basic.HMoonTrueRa(basic.TD2UT(jde, true))
+}
+
+// TrueDec 月亮视赤纬（地心）
+// date, 时间
+// 返回地心坐标
+func TrueDec(date time.Time) float64 {
+	jde := basic.Date2JDE(date.UTC())
+	return basic.HMoonTrueDec(basic.TD2UT(jde, true))
+}
+
+// TrueRaDec 月亮视赤纬赤纬（地心）
+// date, 时间
+// 返回地心坐标
+func TrueRaDec(date time.Time) (float64, float64) {
+	jde := basic.Date2JDE(date.UTC())
+	return basic.HMoonTrueRaDec(basic.TD2UT(jde, true))
+}
+
+// ApparentRa 月亮视赤经（站心）
 // date, 时间
 // lon, 经度
 // lat, 纬度
 // 返回站心坐标
-func SeeRa(date time.Time, lon, lat float64) float64 {
+func ApparentRa(date time.Time, lon, lat float64) float64 {
 	jde := basic.Date2JDE(date)
 	_, loc := date.Zone()
-	return basic.HMoonSeeRa(jde, lon, lat, float64(loc)/3600.0)
+	return basic.HMoonApparentRa(jde, lon, lat, float64(loc)/3600.0)
 }
 
-// SeeDec 月亮视赤纬（站心）
+// ApparentDec 月亮视赤纬（站心）
 // date, 时间
 // lon, 经度
 // lat, 纬度
 // 返回站心坐标
-func SeeDec(date time.Time, lon, lat float64) float64 {
+func ApparentDec(date time.Time, lon, lat float64) float64 {
 	jde := basic.Date2JDE(date)
 	_, loc := date.Zone()
-	return basic.HMoonSeeDec(jde, lon, lat, float64(loc)/3600.0)
+	return basic.HMoonApparentDec(jde, lon, lat, float64(loc)/3600.0)
 }
 
-// SeeRaDec 月亮视赤纬（站心）
+// ApparentRaDec 月亮视赤纬（站心）
 // date, 本地时间
 // lon, 经度
 // lat, 纬度
 // 返回站心坐标
-func SeeRaDec(date time.Time, lon, lat float64) (float64, float64) {
+func ApparentRaDec(date time.Time, lon, lat float64) (float64, float64) {
 	jde := basic.Date2JDE(date)
 	_, loc := date.Zone()
-	return basic.HMoonSeeRaDec(jde, lon, lat, float64(loc)/3600.0)
+	return basic.HMoonApparentRaDec(jde, lon, lat, float64(loc)/3600.0)
 }
 
 // HourAngle 月亮时角
@@ -214,7 +238,7 @@ func nextMoonPhase(date time.Time, typed int) time.Time {
 		diffCode = 270
 	}
 	jde := basic.TD2UT(basic.Date2JDE(date.UTC()), true)
-	cost := basic.HMoonSeeLo(jde) - basic.HSunSeeLo(jde) - float64(diffCode)
+	cost := basic.HMoonApparentLo(jde) - basic.HSunApparentLo(jde) - float64(diffCode)
 	for cost < 0 {
 		cost += 360
 	}
@@ -242,7 +266,7 @@ func lastMoonPhase(date time.Time, typed int) time.Time {
 		diffCode = 270
 	}
 	jde := basic.TD2UT(basic.Date2JDE(date.UTC()), true)
-	cost := basic.HMoonSeeLo(jde) - basic.HSunSeeLo(jde) - float64(diffCode)
+	cost := basic.HMoonApparentLo(jde) - basic.HSunApparentLo(jde) - float64(diffCode)
 	for cost < 0 {
 		cost += 360
 	}
