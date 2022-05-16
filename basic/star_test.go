@@ -20,3 +20,8 @@ func Test_Star(t *testing.T) {
 	fmt.Println("Sirius CulminationTime:", JDE2Date(StarCulminationTime(date, 101.529, 113.568, 8.0)))
 	fmt.Println("Sirius DownTime:", JDE2Date(StarDownTime(date, 101.529, -16.8, 113.568, 22.5, 0, 8.0, true)))
 }
+
+func TestZB(t *testing.T) {
+	jde := GetNowJDE()
+	fmt.Println(LoBoToRaDec(jde, 156, 0))
+}

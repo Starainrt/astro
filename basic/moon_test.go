@@ -2,6 +2,7 @@ package basic
 
 import (
 	"fmt"
+	"math"
 	"testing"
 	"time"
 )
@@ -44,4 +45,17 @@ func Test_MoonS(t *testing.T) {
 	fmt.Println(JDE2Date((b)))
 	fmt.Println(time.Now().UnixNano() - a)
 	//fmt.Printf("%.14f", GetMoonRiseTime(2451547, 115, 32, 8, 0))
+}
+
+func TestMoonCu(t *testing.T) {
+	jde := math.Floor(GetNowJDE() - 20.0/24.0)
+	n := MoonCulminationTime(jde, 115, 23, 8)
+	fmt.Println(JDE2Date(n))
+	fmt.Println(MoonTimeAngle(n, 115, 23, 8))
+	fmt.Println(MoonAngle(n, 115, 23, 8))
+	//fmt.Println(JDE2Date(jde))
+	//ra, dec := HMoonApparentRaDec(jde, 115, 23, 8)
+	//fmt.Println(tools.Format(ra/15, 1), tools.Format(dec, 0))
+	//fmt.Println(JDE2Date(GetMoonTZTime(jde, 115, 23, 8)))
+	//fmt.Println(JDE2Date(GetMoonDownTime(jde+1, 115, 23, 8, 1, 0)))
 }

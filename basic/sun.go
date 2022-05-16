@@ -838,18 +838,7 @@ func SunApparentLo(JD float64) float64 { //'太阳视黄经
 }
 
 func SunApparentRa(JD float64) float64 { // '太阳视赤经
-	T := (JD - 2451545) / 36525
-	sitas := Sita(JD) + 0.00256*Cos(125.04-1934.136*T)
-	SunApparentRa := ArcTan(Cos(sitas) * Sin(SunApparentLo(JD)) / Cos(SunApparentLo(JD)))
-	tmp := SunApparentLo(JD)
-	if tmp >= 90 && tmp < 180 {
-		SunApparentRa = 180 + SunApparentRa
-	} else if tmp >= 180 && tmp < 270 {
-		SunApparentRa = 180 + SunApparentRa
-	} else if tmp >= 270 && tmp <= 360 {
-		SunApparentRa = 360 + SunApparentRa
-	}
-	return SunApparentRa
+	return LoToRa(JD, SunApparentLo(JD), 0)
 }
 
 func SunTrueRa(JD float64) float64 { //'太阳真赤经
@@ -934,35 +923,11 @@ func EarthAway(JD float64) float64 {
 }
 
 func HSunApparentRaDec(JD float64) (float64, float64) {
-	T := (JD - 2451545) / 36525
-	sitas := Sita(JD) + 0.00256*Cos(125.04-1934.136*T)
-	sitas2 := EclipticObliquity(JD, false) + 0.00256*Cos(125.04-1934.136*T)
-	tmp := HSunApparentLo(JD)
-	HSunApparentRa := ArcTan(Cos(sitas) * Sin(tmp) / Cos(tmp))
-	HSunApparentDec := ArcSin(Sin(sitas2) * Sin(tmp))
-	if tmp >= 90 && tmp < 180 {
-		HSunApparentRa = 180 + HSunApparentRa
-	} else if tmp >= 180 && tmp < 270 {
-		HSunApparentRa = 180 + HSunApparentRa
-	} else if tmp >= 270 && tmp <= 360 {
-		HSunApparentRa = 360 + HSunApparentRa
-	}
-	return HSunApparentRa, HSunApparentDec
+	return LoBoToRaDec(JD, HSunApparentLo(JD), HSunTrueBo(JD))
 }
 
 func HSunApparentRa(JD float64) float64 { // '太阳视赤经
-	T := (JD - 2451545) / 36525
-	sitas := Sita(JD) + 0.00256*Cos(125.04-1934.136*T)
-	tmp := HSunApparentLo(JD)
-	HSunApparentRa := ArcTan(Cos(sitas) * Sin(tmp) / Cos(tmp))
-	if tmp >= 90 && tmp < 180 {
-		HSunApparentRa = 180 + HSunApparentRa
-	} else if tmp >= 180 && tmp < 270 {
-		HSunApparentRa = 180 + HSunApparentRa
-	} else if tmp >= 270 && tmp <= 360 {
-		HSunApparentRa = 360 + HSunApparentRa
-	}
-	return HSunApparentRa
+	return LoToRa(JD, HSunApparentLo(JD), HSunTrueBo(JD))
 }
 
 func HSunTrueRa(JD float64) float64 { //'太阳真赤经
@@ -1030,10 +995,10 @@ func GetOneYearMoon(year float64) map[int]float64 {
 	}
 	return moon
 }
-func GetOneYearJQ(year int) map[int]float64 {
+func GetOneYearJQ(year int) []float64 {
 	start := 270
 	var years int
-	jq := make(map[int]float64)
+	jq := make([]float64, 26)
 	for i := 1; i < 26; i++ {
 		angle := start + 15*(i-1)
 		if angle > 360 {
@@ -1047,6 +1012,7 @@ func GetOneYearJQ(year int) map[int]float64 {
 		jq[i] = GetJQTime(years, angle) + 8.0/24.0
 		//  echo DateCalc(jq[i])."<br />";
 	}
+	jq[0] = jq[1]
 	return jq
 }
 

@@ -124,10 +124,10 @@ func Zenith(date time.Time, lon, lat float64) float64 {
 //  date, 世界时（忽略此处时区）
 //  lon，经度，东正西负
 //  lat，纬度，北正南负
-func CulminationTime(date time.Time, lon, lat float64) float64 {
+func CulminationTime(date time.Time, lon, lat float64) time.Time {
 	jde := basic.Date2JDE(date)
 	_, loc := date.Zone()
-	return basic.GetMoonTZTime(jde, lon, lat, float64(loc)/3600.0)
+	return basic.JDE2DateByZone(basic.MoonCulminationTime(jde, lon, lat, float64(loc)/3600.0), date.Location(), true)
 }
 
 // RiseTime 月亮升起时间

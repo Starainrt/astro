@@ -1052,18 +1052,7 @@ func MoonTrueDec(JD float64) float64 {
  * 月球真赤经
  */
 func MoonTrueRa(JD float64) float64 {
-	MoonLo := MoonApparentLo(JD)
-	MoonBo := MoonTrueBo(JD)
-	tmp := (Sin(MoonLo)*Cos(Sita(JD)) - Tan(MoonBo)*Sin(Sita(JD))) / Cos(MoonLo)
-	tmp = ArcTan(tmp)
-	if MoonLo >= 90 && MoonLo < 180 {
-		tmp = 180 + tmp
-	} else if MoonLo >= 180 && MoonLo < 270 {
-		tmp = 180 + tmp
-	} else if MoonLo >= 270 && MoonLo <= 360 {
-		tmp = 360 + tmp
-	}
-	return tmp
+	return LoToRa(JD, MoonApparentLo(JD), MoonTrueBo(JD))
 }
 
 /**
@@ -1382,6 +1371,7 @@ func HMoonHeight(JD, Lon, Lat, TZ float64) float64 {
 	return ArcSin(tmp2)
 }
 
+// 废弃
 func GetMoonTZTime(JD, Lon, Lat, TZ float64) float64 { //实际中天时间{
 	JD = math.Floor(JD) + 0.5
 	ttm := MoonTimeAngle(JD, Lon, Lat, TZ)
@@ -1401,9 +1391,33 @@ func GetMoonTZTime(JD, Lon, Lat, TZ float64) float64 { //实际中天时间{
 	return JD1
 }
 
+func MoonCulminationTime(jde, lon, lat, timezone float64) float64 {
+	//jde 世界时，非力学时，当地时区 0时，无需转换力学时
+	//ra,dec 瞬时天球座标，非J2000等时间天球坐标
+	jde = math.Floor(jde) + 0.5
+	JD1 := jde + Limit360(360-MoonTimeAngle(jde, lon, lat, timezone))/15.0/24.0/0.9
+	limitHA := func(jde, lon, timezone float64) float64 {
+		ha := MoonTimeAngle(jde, lon, lat, timezone)
+		if ha < 180 {
+			ha += 360
+		}
+		return ha
+	}
+	for {
+		JD0 := JD1
+		stDegree := limitHA(JD0, lon, timezone) - 360
+		stDegreep := (limitHA(JD0+0.000005, lon, timezone) - limitHA(JD0-0.000005, lon, timezone)) / 0.00001
+		JD1 = JD0 - stDegree/stDegreep
+		if math.Abs(JD1-JD0) <= 0.00001 {
+			break
+		}
+	}
+	return JD1
+}
+
 func MoonTimeAngle(JD, Lon, Lat, TZ float64) float64 {
 	startime := Limit360(ApparentSiderealTime(JD-TZ/24)*15 + Lon)
-	timeangle := startime - HMoonApparentRa(JD-TZ/24, Lon, Lat, TZ)
+	timeangle := startime - HMoonApparentRa(JD, Lon, Lat, TZ)
 	if timeangle < 0 {
 		timeangle += 360
 	}
@@ -1667,20 +1681,7 @@ func HMoonApparentLo(JD float64) float64 {
 }
 
 func HMoonTrueRaDec(JD float64) (float64, float64) {
-	MoonLo := HMoonApparentLo(JD)
-	MoonBo := HMoonTrueBo(JD)
-	tmp := Sin(MoonBo)*Cos(Sita(JD)) + Cos(MoonBo)*Sin(Sita(JD))*Sin(MoonLo)
-	res := ArcSin(tmp)
-	tmp = (Sin(MoonLo)*Cos(Sita(JD)) - Tan(MoonBo)*Sin(Sita(JD))) / Cos(MoonLo)
-	tmp = ArcTan(tmp)
-	if MoonLo >= 90 && MoonLo < 180 {
-		tmp = 180 + tmp
-	} else if MoonLo >= 180 && MoonLo < 270 {
-		tmp = 180 + tmp
-	} else if MoonLo >= 270 && MoonLo <= 360 {
-		tmp = 360 + tmp
-	}
-	return tmp, res
+	return LoBoToRaDec(JD, HMoonApparentLo(JD), HMoonTrueBo(JD))
 }
 
 /*
@@ -1698,18 +1699,7 @@ func HMoonTrueDec(JD float64) float64 {
  * 月球真赤经
  */
 func HMoonTrueRa(JD float64) float64 {
-	MoonLo := HMoonApparentLo(JD)
-	MoonBo := HMoonTrueBo(JD)
-	tmp := (Sin(MoonLo)*Cos(Sita(JD)) - Tan(MoonBo)*Sin(Sita(JD))) / Cos(MoonLo)
-	tmp = ArcTan(tmp)
-	if MoonLo >= 90 && MoonLo < 180 {
-		tmp = 180 + tmp
-	} else if MoonLo >= 180 && MoonLo < 270 {
-		tmp = 180 + tmp
-	} else if MoonLo >= 270 && MoonLo <= 360 {
-		tmp = 360 + tmp
-	}
-	return tmp
+	return LoToRa(JD, HMoonApparentLo(JD), HMoonTrueBo(JD))
 }
 
 /**

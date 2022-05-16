@@ -104,8 +104,8 @@ func DeltaT(Date float64, IsJDE bool) (Result float64) { //传入年或儒略日
 		return
 	}
 	if Year < 2100 && Year >= 2010 {
-		//fmt.Println(Year)
-		Result = dt_cal(Year) //-3.2-(Year-2017)*0.029915;
+		var t = (Year - 2000.0)
+		Result = 62.92 + 0.32217*t + 0.005589*t*t
 		return
 	}
 	if Year >= 2100 && Year <= 2150 {

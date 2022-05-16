@@ -150,11 +150,23 @@ func StarCulminationTime(jde, ra, lon, timezone float64) float64 {
 	for {
 		JD0 := JD1
 		stDegree := limitStarHA(JD0, ra, lon, timezone) - 360
-		stDegreep := (limitStarHA(JD0+0.000005, ra, lon, timezone) - SunHeight(JD0-0.000005, ra, lon, timezone)) / 0.00001
+		stDegreep := (limitStarHA(JD0+0.000005, ra, lon, timezone) - limitStarHA(JD0-0.000005, ra, lon, timezone)) / 0.00001
 		JD1 = JD0 - stDegree/stDegreep
 		if math.Abs(JD1-JD0) <= 0.00001 {
 			break
 		}
 	}
 	return JD1
+}
+
+func StarAngularSeparation(ra1, dec1, ra2, dec2 float64) float64 {
+	//cos(d)=sinδ1 sinδ2 + cosδ1 cosδ2 cos(α1-α2)
+	d := Sin(dec1)*Sin(dec2) + Cos(dec1)*Cos(dec2)*Cos(ra1-ra2)
+	if math.Abs(d) >= 0.999999997 {
+		//d = √(Δα*cosδ)2+(Δδ)2
+		tmp1 := ((ra1 - ra2) * Cos((dec1+dec2)/2))
+		tmp2 := (dec1 - dec2)
+		return math.Sqrt(tmp1*tmp1 + tmp2*tmp2)
+	}
+	return ArcCos(d)
 }
