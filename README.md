@@ -96,7 +96,7 @@ import (
 )
 
 func main() {
-	// 以山西省西安市为例，设置西安市经纬度,设置地平高度为0米
+	// 以陕西省西安市为例，设置西安市经纬度,设置地平高度为0米
 	var lon, lat, height float64 = 108.93, 34.27, 0
 	cst := time.FixedZone("CST", 8*3600)
 	//指定2020年1月1日8时8分8秒
@@ -145,16 +145,16 @@ func main() {
 package main
 
 import (
-	"b612.me/astro/star"
 	"fmt"
 	"github.com/starainrt/astro/moon"
+	"github.com/starainrt/astro/star"
 	"github.com/starainrt/astro/sun"
 	"github.com/starainrt/astro/tools"
 	"time"
 )
 
 func main() {
-	// 以山西省西安市为例，设置西安市经纬度,设置地平高度为0米
+	// 以陕西省西安市为例，设置西安市经纬度,设置地平高度为0米
 	var lon, lat float64 = 108.93, 34.27
 	cst := time.FixedZone("CST", 8*3600)
 	//指定2020年1月1日8时8分8秒
@@ -256,7 +256,7 @@ import (
 )
 
 func main() {
-	// 以山西省西安市为例，设置西安市经纬度,设置地平高度为0米
+	// 以陕西省西安市为例，设置西安市经纬度,设置地平高度为0米
 	var lon, lat, height float64 = 108.93, 34.27, 0
 	cst := time.FixedZone("CST", 8*3600)
 	//指定2020年1月1日8时8分8秒
@@ -307,8 +307,8 @@ func main() {
 package main
 
 import (
-	"b612.me/astro/jupiter"
 	"fmt"
+	"github.com/starainrt/astro/jupiter"
 	"github.com/starainrt/astro/mars"
 	"github.com/starainrt/astro/neptune"
 	"github.com/starainrt/astro/saturn"
@@ -317,7 +317,7 @@ import (
 )
 
 func main() {
-	// 以山西省西安市为例，设置西安市经纬度,设置地平高度为0米
+	// 以陕西省西安市为例，设置西安市经纬度,设置地平高度为0米
 	var lon, lat, height float64 = 108.93, 34.27, 0
 	cst := time.FixedZone("CST", 8*3600)
 	//指定2020年1月1日8时8分8秒
