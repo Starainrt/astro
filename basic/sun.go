@@ -830,26 +830,15 @@ func SunTrueLo(JD float64) float64 { // '太阳真黄经
 	return SunTrueLo
 }
 
-func SunSeeLo(JD float64) float64 { //'太阳视黄经
+func SunApparentLo(JD float64) float64 { //'太阳视黄经
 
 	T := (JD - 2451545) / 36525
-	SunSeeLo := SunTrueLo(JD) - 0.00569 - 0.00478*Sin(125.04-1934.136*T)
-	return SunSeeLo
+	SunApparentLo := SunTrueLo(JD) - 0.00569 - 0.00478*Sin(125.04-1934.136*T)
+	return SunApparentLo
 }
 
-func SunSeeRa(JD float64) float64 { // '太阳视赤经
-	T := (JD - 2451545) / 36525
-	sitas := Sita(JD) + 0.00256*Cos(125.04-1934.136*T)
-	SunSeeRa := ArcTan(Cos(sitas) * Sin(SunSeeLo(JD)) / Cos(SunSeeLo(JD)))
-	tmp := SunSeeLo(JD)
-	if tmp >= 90 && tmp < 180 {
-		SunSeeRa = 180 + SunSeeRa
-	} else if tmp >= 180 && tmp < 270 {
-		SunSeeRa = 180 + SunSeeRa
-	} else if tmp >= 270 && tmp <= 360 {
-		SunSeeRa = 360 + SunSeeRa
-	}
-	return SunSeeRa
+func SunApparentRa(JD float64) float64 { // '太阳视赤经
+	return LoToRa(JD, SunApparentLo(JD), 0)
 }
 
 func SunTrueRa(JD float64) float64 { //'太阳真赤经
@@ -868,11 +857,11 @@ func SunTrueRa(JD float64) float64 { //'太阳真赤经
 	return SunTrueRa
 }
 
-func SunSeeDec(JD float64) float64 { // '太阳视赤纬
+func SunApparentDec(JD float64) float64 { // '太阳视赤纬
 	T := (JD - 2451545) / 36525
 	sitas := Sita(JD) + 0.00256*Cos(125.04-1934.136*T)
-	SunSeeDec := ArcSin(Sin(sitas) * Sin(SunSeeLo(JD)))
-	return SunSeeDec
+	SunApparentDec := ArcSin(Sin(sitas) * Sin(SunApparentLo(JD)))
+	return SunApparentDec
 }
 
 func SunTrueDec(JD float64) float64 { // '太阳真赤纬
@@ -882,7 +871,7 @@ func SunTrueDec(JD float64) float64 { // '太阳真赤纬
 }
 func SunTime(JD float64) float64 { //均时差
 
-	tm := (SunLo(JD) - 0.0057183 - (HSunSeeRa(JD)) + (HJZD(JD))*Cos(Sita(JD))) / 15
+	tm := (SunLo(JD) - 0.0057183 - (HSunApparentRa(JD)) + (HJZD(JD))*Cos(Sita(JD))) / 15
 	if tm > 23 {
 		tm = -24 + tm
 	}
@@ -908,7 +897,7 @@ func HSunTrueBo(JD float64) float64 {
 	return L
 }
 
-func HSunSeeLo(JD float64) float64 {
+func HSunApparentLo(JD float64) float64 {
 	L := HSunTrueLo(JD)
 	/*
 		t := (JD - 2451545) / 365250.0
@@ -933,36 +922,12 @@ func EarthAway(JD float64) float64 {
 	return planet.WherePlanet(0, 2, JD)
 }
 
-func HSunSeeRaDec(JD float64) (float64, float64) {
-	T := (JD - 2451545) / 36525
-	sitas := Sita(JD) + 0.00256*Cos(125.04-1934.136*T)
-	sitas2 := EclipticObliquity(JD, false) + 0.00256*Cos(125.04-1934.136*T)
-	tmp := HSunSeeLo(JD)
-	HSunSeeRa := ArcTan(Cos(sitas) * Sin(tmp) / Cos(tmp))
-	HSunSeeDec := ArcSin(Sin(sitas2) * Sin(tmp))
-	if tmp >= 90 && tmp < 180 {
-		HSunSeeRa = 180 + HSunSeeRa
-	} else if tmp >= 180 && tmp < 270 {
-		HSunSeeRa = 180 + HSunSeeRa
-	} else if tmp >= 270 && tmp <= 360 {
-		HSunSeeRa = 360 + HSunSeeRa
-	}
-	return HSunSeeRa, HSunSeeDec
+func HSunApparentRaDec(JD float64) (float64, float64) {
+	return LoBoToRaDec(JD, HSunApparentLo(JD), HSunTrueBo(JD))
 }
 
-func HSunSeeRa(JD float64) float64 { // '太阳视赤经
-	T := (JD - 2451545) / 36525
-	sitas := Sita(JD) + 0.00256*Cos(125.04-1934.136*T)
-	tmp := HSunSeeLo(JD)
-	HSunSeeRa := ArcTan(Cos(sitas) * Sin(tmp) / Cos(tmp))
-	if tmp >= 90 && tmp < 180 {
-		HSunSeeRa = 180 + HSunSeeRa
-	} else if tmp >= 180 && tmp < 270 {
-		HSunSeeRa = 180 + HSunSeeRa
-	} else if tmp >= 270 && tmp <= 360 {
-		HSunSeeRa = 360 + HSunSeeRa
-	}
-	return HSunSeeRa
+func HSunApparentRa(JD float64) float64 { // '太阳视赤经
+	return LoToRa(JD, HSunApparentLo(JD), HSunTrueBo(JD))
 }
 
 func HSunTrueRa(JD float64) float64 { //'太阳真赤经
@@ -980,11 +945,11 @@ func HSunTrueRa(JD float64) float64 { //'太阳真赤经
 	return HSunTrueRa
 }
 
-func HSunSeeDec(JD float64) float64 { // '太阳视赤纬
+func HSunApparentDec(JD float64) float64 { // '太阳视赤纬
 	T := (JD - 2451545) / 36525
 	sitas := EclipticObliquity(JD, false) + 0.00256*Cos(125.04-1934.136*T)
-	HSunSeeDec := ArcSin(Sin(sitas) * Sin(HSunSeeLo(JD)))
-	return HSunSeeDec
+	HSunApparentDec := ArcSin(Sin(sitas) * Sin(HSunApparentLo(JD)))
+	return HSunApparentDec
 }
 
 func HSunTrueDec(JD float64) float64 { // '太阳真赤纬
@@ -1030,10 +995,10 @@ func GetOneYearMoon(year float64) map[int]float64 {
 	}
 	return moon
 }
-func GetOneYearJQ(year int) map[int]float64 {
+func GetOneYearJQ(year int) []float64 {
 	start := 270
 	var years int
-	jq := make(map[int]float64)
+	jq := make([]float64, 26)
 	for i := 1; i < 26; i++ {
 		angle := start + 15*(i-1)
 		if angle > 360 {
@@ -1047,6 +1012,7 @@ func GetOneYearJQ(year int) map[int]float64 {
 		jq[i] = GetJQTime(years, angle) + 8.0/24.0
 		//  echo DateCalc(jq[i])."<br />";
 	}
+	jq[0] = jq[1]
 	return jq
 }
 
@@ -1078,7 +1044,7 @@ func GetJQTime(Year, Angle int) float64 { //节气时间
 			stDegree := JQLospec(JD0) - float64(Angle)
 			stDegreep := (JQLospec(JD0+0.000005) - JQLospec(JD0-0.000005)) / 0.00001
 			JD1 = JD0 - stDegree/stDegreep
-			if math.Floor(JD1-JD0) <= 0.000001 {
+			if math.Abs(JD1-JD0) <= 0.00001 {
 				break
 			}
 		}
@@ -1089,7 +1055,7 @@ func GetJQTime(Year, Angle int) float64 { //节气时间
 }
 
 func JQLospec(JD float64) float64 {
-	t := HSunSeeLo(JD)
+	t := HSunApparentLo(JD)
 	if t <= 12 {
 		t += 360
 	}
@@ -1097,7 +1063,7 @@ func JQLospec(JD float64) float64 {
 }
 
 func GetXC(jd float64) string { //十二次
-	tlo := HSunSeeLo(jd)
+	tlo := HSunApparentLo(jd)
 	if tlo >= 255 && tlo < 285 {
 		return "星纪"
 	} else if tlo >= 285 && tlo < 315 {
@@ -1156,7 +1122,7 @@ func GetWHTime(Year, Angle int) float64 {
 		stDegree := JQLospec(JD0) - float64(Angle)
 		stDegreep := (JQLospec(JD0+0.000005) - JQLospec(JD0-0.000005)) / 0.00001
 		JD1 = JD0 - stDegree/stDegreep
-		if math.Floor(JD1-JD0) <= 0.000001 {
+		if math.Abs(JD1-JD0) <= 0.00001 {
 			break
 		}
 	}
@@ -1179,34 +1145,35 @@ func GetBanTime(JD, Lon, Lat, TZ, An float64) float64 {
 	JD = math.Floor(JD) + 1.5
 	ntz := math.Round(Lon / 15)
 	tztime := GetSunTZTime(JD, Lon, ntz)
-	dec := HSunSeeDec(tztime)
-	tmp := -Tan((math.Abs(Lat)+An)*(Lat/math.Abs(Lat))) * Tan(dec)
-	if math.Abs(tmp) > 1 {
-		if SunHeight(tztime, Lon, Lat, ntz) < An {
-			return -2 //极夜
-		}
-		if SunHeight(tztime-0.5, Lon, Lat, ntz) > An {
-			return -1 //极昼
+	if SunHeight(tztime, Lon, Lat, ntz) < An {
+		return -2 //极夜
+	}
+	if SunHeight(tztime+0.5, Lon, Lat, ntz) > An {
+		return -1 //极昼
+	}
+	tmp := (Sin(An) - Sin(HSunApparentDec(tztime))*Sin(Lat)) / (Cos(HSunApparentDec(tztime)) * Cos(Lat))
+	var sundown float64
+	if math.Abs(tmp) <= 1 && Lat < 85 {
+		rzsc := ArcCos(tmp) / 15
+		sundown = tztime + rzsc/24.0 + 35.0/24.0/60.0
+	} else {
+		sundown = tztime
+		i := 0
+		for LowSunHeight(sundown, Lon, Lat, ntz) > An {
+			i++
+			sundown += 15.0 / 60.0 / 24.0
+			if i > 48 {
+				break
+			}
 		}
 	}
-	tmp = -Tan(Lat) * Tan(dec)
-	rzsc := ArcCos(tmp) / 15
-	sunrise := tztime + rzsc/24.0 + 35.0/24.0/60.0
-	i := 0
-	for LowSunHeight(sunrise, Lon, Lat, ntz) < An {
-		i++
-		sunrise -= 15 / 60 / 24
-		if i > 12 {
-			break
-		}
-	}
-	JD1 := sunrise - 5.00/24.00/60.00
+	JD1 := sundown - 5.00/24.00/60.00
 	for {
 		JD0 := JD1
 		stDegree := SunHeight(JD0, Lon, Lat, ntz) - An
 		stDegreep := (SunHeight(JD0+0.000005, Lon, Lat, ntz) - SunHeight(JD0-0.000005, Lon, Lat, ntz)) / 0.00001
 		JD1 = JD0 - stDegree/stDegreep
-		if math.Floor(JD1-JD0) < 0.000001 {
+		if math.Abs(JD1-JD0) < 0.00001 {
 			break
 		}
 	}
@@ -1217,25 +1184,26 @@ func GetAsaTime(JD, Lon, Lat, TZ, An float64) float64 {
 	JD = math.Floor(JD) + 1.5
 	ntz := math.Round(Lon / 15)
 	tztime := GetSunTZTime(JD, Lon, ntz)
-	dec := HSunSeeDec(tztime)
-	tmp := -Tan((math.Abs(Lat)+An)*(Lat/math.Abs(Lat))) * Tan(dec)
-	if math.Abs(tmp) > 1 {
-		if SunHeight(tztime, Lon, Lat, ntz) < An {
-			return -2 //极夜
-		}
-		if SunHeight(tztime-0.5, Lon, Lat, ntz) > An {
-			return -1 //极昼
-		}
+	if SunHeight(tztime, Lon, Lat, ntz) < An {
+		return -2 //极夜
 	}
-	tmp = -Tan(Lat) * Tan(dec)
-	rzsc := ArcCos(tmp) / 15
-	sunrise := tztime - rzsc/24 - 25.0/24.0/60.0
-	i := 0
-	for LowSunHeight(sunrise, Lon, Lat, ntz) > An {
-		i++
-		sunrise -= 15 / 60 / 24
-		if i > 12 {
-			break
+	if SunHeight(tztime-0.5, Lon, Lat, ntz) > An {
+		return -1 //极昼
+	}
+	tmp := (Sin(An) - Sin(HSunApparentDec(tztime))*Sin(Lat)) / (Cos(HSunApparentDec(tztime)) * Cos(Lat))
+	var sunrise float64
+	if math.Abs(tmp) <= 1 && Lat < 85 {
+		rzsc := ArcCos(tmp) / 15
+		sunrise = tztime - rzsc/24 - 25.0/24.0/60.0
+	} else {
+		sunrise = tztime
+		i := 0
+		for LowSunHeight(sunrise, Lon, Lat, ntz) > An {
+			i++
+			sunrise -= 15.0 / 60.0 / 24.0
+			if i > 48 {
+				break
+			}
 		}
 	}
 	JD1 := sunrise - 5.00/24.00/60.00
@@ -1244,7 +1212,7 @@ func GetAsaTime(JD, Lon, Lat, TZ, An float64) float64 {
 		stDegree := SunHeight(JD0, Lon, Lat, ntz) - An
 		stDegreep := (SunHeight(JD0+0.000005, Lon, Lat, ntz) - SunHeight(JD0-0.000005, Lon, Lat, ntz)) / 0.00001
 		JD1 = JD0 - stDegree/stDegreep
-		if math.Floor(JD1-JD0) < 0.000001 {
+		if math.Abs(JD1-JD0) < 0.00001 {
 			break
 		}
 	}
@@ -1255,8 +1223,8 @@ func GetAsaTime(JD, Lon, Lat, TZ, An float64) float64 {
  * 太阳时角
  */
 func SunTimeAngle(JD, Lon, Lat, TZ float64) float64 {
-	startime := Limit360(SeeStarTime(JD-TZ/24)*15 + Lon)
-	timeangle := startime - HSunSeeRa(TD2UT(JD-TZ/24, true))
+	startime := Limit360(ApparentSiderealTime(JD-TZ/24)*15 + Lon)
+	timeangle := startime - HSunApparentRa(TD2UT(JD-TZ/24, true))
 	if timeangle < 0 {
 		timeangle += 360
 	}
@@ -1266,65 +1234,89 @@ func SunTimeAngle(JD, Lon, Lat, TZ float64) float64 {
 /*
  * 精确计算，传入当日0时JDE
  */
-func GetSunRiseTime(JD, Lon, Lat, TZ, ZS float64) float64 {
+func GetSunRiseTime(JD, Lon, Lat, TZ, ZS, HEI float64) float64 {
 	var An float64
 	JD = math.Floor(JD) + 1.5
 	ntz := math.Round(Lon / 15)
 	if ZS != 0 {
 		An = -0.8333
 	}
+	An = An - HeightDegreeByLat(HEI, Lat)
 	tztime := GetSunTZTime(JD, Lon, ntz)
-	dec := HSunSeeDec(tztime)
-	tmp := -Tan(Lat) * Tan(dec)
-	if math.Abs(tmp) > 1 {
-		if SunHeight(tztime, Lon, Lat, ntz) < 0 {
-			return -2 //极夜
-		}
-		if SunHeight(tztime-0.5, Lon, Lat, ntz) > 0 {
-			return -1 //极昼
+	if SunHeight(tztime, Lon, Lat, ntz) < An {
+		return -2 //极夜
+	}
+	if SunHeight(tztime-0.5, Lon, Lat, ntz) > An {
+		return -1 //极昼
+	}
+	//(sin(ho)-sin(φ)*sin(δ2))/(cos(φ)*cos(δ2))
+	tmp := (Sin(An) - Sin(HSunApparentDec(tztime))*Sin(Lat)) / (Cos(HSunApparentDec(tztime)) * Cos(Lat))
+	var sunrise float64
+	if math.Abs(tmp) <= 1 && Lat < 85 {
+		rzsc := ArcCos(tmp) / 15
+		sunrise = tztime - rzsc/24 - 25.0/24.0/60.0
+	} else {
+		sunrise = tztime
+		i := 0
+		//TODO:使用二分法计算
+		for LowSunHeight(sunrise, Lon, Lat, ntz) > An {
+			i++
+			sunrise -= 15.0 / 60.0 / 24.0
+			if i > 48 {
+				break
+			}
 		}
 	}
-	rzsc := ArcCos(tmp) / 15
-	sunrise := tztime - rzsc/24 - 5.0/24.0/60.0
 	JD1 := sunrise
 	for {
 		JD0 := JD1
 		stDegree := SunHeight(JD0, Lon, Lat, ntz) - An
 		stDegreep := (SunHeight(JD0+0.000005, Lon, Lat, ntz) - SunHeight(JD0-0.000005, Lon, Lat, ntz)) / 0.00001
 		JD1 = JD0 - stDegree/stDegreep
-		if math.Floor(JD1-JD0) <= 0.000001 {
+		if math.Abs(JD1-JD0) <= 0.00001 {
 			break
 		}
 	}
 	return JD1 - ntz/24 + TZ/24
 }
-func GetSunDownTime(JD, Lon, Lat, TZ, ZS float64) float64 {
+func GetSunDownTime(JD, Lon, Lat, TZ, ZS, HEI float64) float64 {
 	var An float64
 	JD = math.Floor(JD) + 1.5
 	ntz := math.Round(Lon / 15)
 	if ZS != 0 {
 		An = -0.8333
 	}
+	An = An - HeightDegreeByLat(HEI, Lat)
 	tztime := GetSunTZTime(JD, Lon, ntz)
-	dec := HSunSeeDec(tztime)
-	tmp := -Tan(Lat) * Tan(dec)
-	if math.Abs(tmp) > 1 {
-		if SunHeight(tztime, Lon, Lat, ntz) < 0 {
-			return -2 //极夜
-		}
-		if SunHeight(tztime+0.5, Lon, Lat, ntz) > 0 {
-			return -1 //极昼
+	if SunHeight(tztime, Lon, Lat, ntz) < An {
+		return -2 //极夜
+	}
+	if SunHeight(tztime+0.5, Lon, Lat, ntz) > An {
+		return -1 //极昼
+	}
+	tmp := (Sin(An) - Sin(HSunApparentDec(tztime))*Sin(Lat)) / (Cos(HSunApparentDec(tztime)) * Cos(Lat))
+	var sundown float64
+	if math.Abs(tmp) <= 1 && Lat < 85 {
+		rzsc := ArcCos(tmp) / 15
+		sundown = tztime + rzsc/24.0 + 35.0/24.0/60.0
+	} else {
+		sundown = tztime
+		i := 0
+		for LowSunHeight(sundown, Lon, Lat, ntz) > An {
+			i++
+			sundown += 15.0 / 60.0 / 24.0
+			if i > 48 {
+				break
+			}
 		}
 	}
-	rzsc := ArcCos(tmp) / 15.0
-	sunrise := tztime + rzsc/24 - 5.0/24.0/60.0
-	JD1 := sunrise
+	JD1 := sundown
 	for {
 		JD0 := JD1
 		stDegree := SunHeight(JD0, Lon, Lat, ntz) - An
 		stDegreep := (SunHeight(JD0+0.000005, Lon, Lat, ntz) - SunHeight(JD0-0.000005, Lon, Lat, ntz)) / 0.00001
 		JD1 = JD0 - stDegree/stDegreep
-		if math.Floor(JD1-JD0) <= 0.000001 {
+		if math.Abs(JD1-JD0) <= 0.00001 {
 			break
 		}
 	}
@@ -1339,8 +1331,8 @@ func SunHeight(JD, Lon, Lat, TZ float64) float64 {
 	//truejd := JD - tmp/24
 	calcjd := JD - TZ/24.0
 	tjde := TD2UT(calcjd, true)
-	st := Limit360(SeeStarTime(calcjd)*15 + Lon)
-	ra, dec := HSunSeeRaDec(tjde)
+	st := Limit360(ApparentSiderealTime(calcjd)*15 + Lon)
+	ra, dec := HSunApparentRaDec(tjde)
 	H := Limit360(st - ra)
 	tmp2 := Sin(Lat)*Sin(dec) + Cos(dec)*Cos(Lat)*Cos(H)
 	return ArcSin(tmp2)
@@ -1349,9 +1341,9 @@ func LowSunHeight(JD, Lon, Lat, TZ float64) float64 {
 	//tmp := (TZ*15 - Lon) * 4 / 60
 	//truejd := JD - tmp/24
 	calcjd := JD - TZ/24
-	st := Limit360(SeeStarTime(calcjd)*15 + Lon)
-	H := Limit360(st - SunSeeRa(TD2UT(calcjd, true)))
-	dec := SunSeeDec(TD2UT(calcjd, true))
+	st := Limit360(ApparentSiderealTime(calcjd)*15 + Lon)
+	H := Limit360(st - SunApparentRa(TD2UT(calcjd, true)))
+	dec := SunApparentDec(TD2UT(calcjd, true))
 	tmp2 := Sin(Lat)*Sin(dec) + Cos(dec)*Cos(Lat)*Cos(H)
 	return ArcSin(tmp2)
 }
@@ -1359,23 +1351,20 @@ func SunAngle(JD, Lon, Lat, TZ float64) float64 {
 	//tmp := (TZ*15 - Lon) * 4 / 60
 	//truejd := JD - tmp/24
 	calcjd := JD - TZ/24
-	st := Limit360(SeeStarTime(calcjd)*15 + Lon)
-	H := Limit360(st - HSunSeeRa(TD2UT(calcjd, true)))
-	tmp2 := Sin(H) / (Cos(H)*Sin(Lat) - Tan(HSunSeeDec(TD2UT(calcjd, true)))*Cos(Lat))
+	st := Limit360(ApparentSiderealTime(calcjd)*15 + Lon)
+	H := Limit360(st - HSunApparentRa(TD2UT(calcjd, true)))
+	tmp2 := Sin(H) / (Cos(H)*Sin(Lat) - Tan(HSunApparentDec(TD2UT(calcjd, true)))*Cos(Lat))
 	Angle := ArcTan(tmp2)
 	if Angle < 0 {
 		if H/15 < 12 {
 			return Angle + 360
-		} else {
-			return Angle + 180
 		}
-	} else {
-		if H/15 < 12 {
-			return Angle + 180
-		} else {
-			return Angle
-		}
+		return Angle + 180
 	}
+	if H/15 < 12 {
+		return Angle + 180
+	}
+	return Angle
 }
 
 /*

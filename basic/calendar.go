@@ -104,8 +104,8 @@ func DeltaT(Date float64, IsJDE bool) (Result float64) { //传入年或儒略日
 		return
 	}
 	if Year < 2100 && Year >= 2010 {
-		//fmt.Println(Year)
-		Result = dt_cal(Year) //-3.2-(Year-2017)*0.029915;
+		var t = (Year - 2000.0)
+		Result = 62.92 + 0.32217*t + 0.005589*t*t
 		return
 	}
 	if Year >= 2100 && Year <= 2150 {
@@ -207,13 +207,13 @@ func JDE2DateByZone(JD float64, tz *time.Location, byZone bool) time.Time {
 	return time.Unix(dates.Unix()+int64(tms), int64((tms-math.Floor(tms))*1000000000))
 }
 
-func GetLunar(year, month, day int) (lmonth, lday int, leap bool, result string) {
+func GetLunar(year, month, day int, tz float64) (lmonth, lday int, leap bool, result string) {
 	jde := JDECalc(year, month, float64(day)) //计算当前JDE时间
 	if month == 11 || month == 12 {           //判断当前日期属于前一年周期还是后一年周期
 		//判断方法：当前日期与冬至日所在朔望月的关系
-		winterday := GetJQTime(year, 270) + 8.0/24.0                                        //冬至日日期（世界时，北京时间）
-		Fday := TD2UT(CalcMoonS(float64(year)+11.0/12.0+5.0/30.0/12.0, 0), true) + 8.0/24.0 //朔月（世界时，北京时间）
-		Yday := TD2UT(CalcMoonS(float64(year)+1.0, 0), true) + 8.0/24.0                     //下一朔月（世界时，北京时间）
+		winterday := GetJQTime(year, 270) + tz                                        //冬至日日期（世界时，北京时间）
+		Fday := TD2UT(CalcMoonS(float64(year)+11.0/12.0+5.0/30.0/12.0, 0), true) + tz //朔月（世界时，北京时间）
+		Yday := TD2UT(CalcMoonS(float64(year)+1.0, 0), true) + tz                     //下一朔月（世界时，北京时间）
 		if Fday-math.Floor(Fday) > 0.5 {
 			Fday = math.Floor(Fday) + 0.5
 		} else {
@@ -238,6 +238,9 @@ func GetLunar(year, month, day int) (lmonth, lday int, leap bool, result string)
 	winter1 := jieqi[1]                   //第一年冬至日
 	winter2 := jieqi[25]                  //第二年冬至日
 	for k, v := range moon {
+		if tz != 8.0/24 {
+			v = v - 8.0/24 + tz
+		}
 		if v-math.Floor(v) > 0.5 {
 			moon[k] = math.Floor(v) + 0.5
 		} else {
@@ -245,6 +248,9 @@ func GetLunar(year, month, day int) (lmonth, lday int, leap bool, result string)
 		}
 	} //置闰月为0点
 	for k, v := range jieqi {
+		if tz != 8.0/24 {
+			v = v - 8.0/24 + tz
+		}
 		if v-math.Floor(v) > 0.5 {
 			jieqi[k] = math.Floor(v) + 0.5
 		} else {
@@ -298,6 +304,9 @@ func GetLunar(year, month, day int) (lmonth, lday int, leap bool, result string)
 	if sleap {
 		lmonth--
 	}
+	if lmonth <= 0 {
+		lmonth += 12
+	}
 	lday = int(jde-moon[i-1]) + 1
 	strmonth := []string{"十", "一", "二", "三", "四", "五", "六", "七", "八", "九", "十", "冬", "腊"}
 	strday := []string{"初", "十", "廿", "三"}
@@ -319,7 +328,7 @@ func GetLunar(year, month, day int) (lmonth, lday int, leap bool, result string)
 	return
 }
 
-func GetSolar(year, month, day int, leap bool) float64 {
+func GetSolar(year, month, day int, leap bool, tz float64) float64 {
 	if month < 11 {
 		year--
 	}
@@ -328,6 +337,9 @@ func GetSolar(year, month, day int, leap bool) float64 {
 	winter1 := jieqi[1]                   //第一年冬至日
 	winter2 := jieqi[25]                  //第二年冬至日
 	for k, v := range moon {
+		if tz != 8.0/24 {
+			v = v - 8.0/24 + tz
+		}
 		if v-math.Floor(v) > 0.5 {
 			moon[k] = math.Floor(v) + 0.5
 		} else {
@@ -335,6 +347,9 @@ func GetSolar(year, month, day int, leap bool) float64 {
 		}
 	} //置闰月为0点
 	for k, v := range jieqi {
+		if tz != 8.0/24 {
+			v = v - 8.0/24 + tz
+		}
 		if v-math.Floor(v) > 0.5 {
 			jieqi[k] = math.Floor(v) + 0.5
 		} else {
@@ -354,12 +369,26 @@ func GetSolar(year, month, day int, leap bool) float64 {
 			mooncount++
 		}
 	}
+	leapmonth := 20
+	if mooncount == 13 { //存在闰月
+		j, i := 3, 1
+		for i = min; i <= max; i++ {
+			if !(moon[i] <= jieqi[j] && moon[i+1] > jieqi[j]) {
+				break
+			}
+			j += 2
+		}
+		leapmonth = i - min + 1
+	}
 	if leap {
 		month++
 	}
 	if month > 10 {
 		month -= 11
 	} else {
+		month++
+	}
+	if month >= leapmonth && !leap {
 		month++
 	}
 	jde := moon[min-1+month] + float64(day) - 1

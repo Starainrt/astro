@@ -34,28 +34,48 @@ const (
 )
 
 // Lunar 公历转农历
-// 传入 公历年月日
+// 传入 公历年月日，时区
 // 返回 农历月，日，是否闰月以及文字描述
-func Lunar(year, month, day int) (int, int, bool, string) {
-	return basic.GetLunar(year, month, day)
-}
-
-// ChineseLunar 公历转农历
-// 传入 公历年月日
-// 返回 农历月，日，是否闰月以及文字描述
-// 忽略时区，日期一律按北京时间计算
-func ChineseLunar(date time.Time) (int, int, bool, string) {
-	return basic.GetLunar(date.Year(), int(date.Month()), date.Day())
+// 按现行农历GB/T 33661-2017算法计算，推荐使用年限为[1929-3000]年
+// 古代由于定朔定气误差此处计算会与古时不符
+func Lunar(year, month, day int, timezone float64) (int, int, bool, string) {
+	return basic.GetLunar(year, month, day, timezone)
 }
 
 // Solar 农历转公历
+// 传入 农历年份，月，日，是否闰月，时区
+// 传出 公历时间
+// 农历年份用公历年份代替，但是岁首需要使用农历岁首
+// 例：计算己亥猪年腊月三十日对应的公历（即2020年1月24日）
+// 由于农历还未到鼠年，故应当传入Solar(2019,12,30,false)
+// 按现行农历GB/T 33661-2017算法计算，推荐使用年限为[1929-3000]年
+// 古代由于定朔定气误差此处计算会与古时不符
+func Solar(year, month, day int, leap bool, timezone float64) time.Time {
+	jde := basic.GetSolar(year, month, day, leap, timezone/24.0)
+	zone := time.FixedZone("CST", int(timezone*3600))
+	return basic.JDE2DateByZone(jde, zone, true)
+}
+
+// SolarToLunar 公历转农历
+// 传入 公历年月日
+// 返回 农历月，日，是否闰月以及文字描述
+// 忽略时区，日期一律按北京时间计算
+// 按现行农历GB/T 33661-2017算法计算，推荐使用年限为[1929-3000]年
+// 古代由于定朔定气误差此处计算会与古时不符
+func SolarToLunar(date time.Time) (int, int, bool, string) {
+	return basic.GetLunar(date.Year(), int(date.Month()), date.Day(), 8.0/24.0)
+}
+
+// LunarToSolar 农历转公历
 // 传入 农历年份，月，日，是否闰月
 // 传出 公历时间
 // 农历年份用公历年份代替，但是岁首需要使用农历岁首
 // 例：计算己亥猪年腊月三十日对应的公历（即2020年1月24日）
 // 由于农历还未到鼠年，故应当传入Solar(2019,12,30,false)
-func Solar(year, month, day int, leap bool) time.Time {
-	jde := basic.GetSolar(year, month, day, leap)
+// 按现行农历GB/T 33661-2017算法计算，推荐使用年限为[1929-3000]年
+// 古代由于定朔定气误差此处计算会与古时不符
+func LunarToSolar(year, month, day int, leap bool) time.Time {
+	jde := basic.GetSolar(year, month, day, leap, 8.0/24.0)
 	zone := time.FixedZone("CST", 8*3600)
 	return basic.JDE2DateByZone(jde, zone, true)
 }
