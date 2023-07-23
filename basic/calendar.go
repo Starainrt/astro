@@ -7,10 +7,12 @@ import (
 	"time"
 )
 
+var defDeltaTFn = DefaultDeltaT
+
 /*
- @name: 儒略日计算
- @dec: 计算给定时间的儒略日，1582年改力后为格里高利历，之前为儒略历
- @     请注意，传入的时间在天文计算中一般为力学时，应当注意和世界时的转化
+@name: 儒略日计算
+@dec: 计算给定时间的儒略日，1582年改力后为格里高利历，之前为儒略历
+@     请注意，传入的时间在天文计算中一般为力学时，应当注意和世界时的转化
 */
 func JDECalc(Year, Month int, Day float64) float64 {
 	if Month == 1 || Month == 2 {
@@ -29,7 +31,7 @@ func JDECalc(Year, Month int, Day float64) float64 {
 }
 
 /*
- @name: 获得当前儒略日时间：当地世界时，非格林尼治时间
+@name: 获得当前儒略日时间：当地世界时，非格林尼治时间
 */
 func GetNowJDE() (NowJDE float64) {
 	Time := float64(time.Now().Second())/3600.0/24.0 + float64(time.Now().Minute())/60.0/24.0 + float64(time.Now().Hour())/24.0
@@ -91,7 +93,36 @@ func dt_cal(y float64) float64 { //传入年， 返回世界时UT与原子时（
 	res := d[i+1] + d[i+2]*t1 + d[i+3]*t2 + d[i+4]*t3
 	return (res)
 }
-func DeltaT(Date float64, IsJDE bool) (Result float64) { //传入年或儒略日，传出为秒
+
+func DeltaT(date float64, isJDE bool) float64 {
+	return defDeltaTFn(date, isJDE)
+}
+
+func SetDeltaTFn(fn func(float64, bool) float64) {
+	if fn != nil {
+		defDeltaTFn = fn
+	}
+}
+
+func GetDeltaTFn() func(float64, bool) float64 {
+	return defDeltaTFn
+}
+
+func OldDefaultDeltaT(Date float64, IsJDE bool) (Result float64) { //传入年或儒略日，传出为秒
+	var Year float64
+	if IsJDE {
+		dates := JDE2Date(Date)
+		Year = float64(dates.Year()) + float64(dates.YearDay())/365.0
+	} else {
+		Year = Date
+	}
+	if Year < 2100 && Year >= 2010 {
+		return dt_cal(Year)
+	}
+	return DefaultDeltaT(Date, IsJDE)
+}
+
+func DefaultDeltaT(Date float64, IsJDE bool) (Result float64) { //传入年或儒略日，传出为秒
 	var Year float64
 	if IsJDE {
 		dates := JDE2Date(Date)
@@ -120,6 +151,7 @@ func DeltaT(Date float64, IsJDE bool) (Result float64) { //传入年或儒略日
 	}
 	return
 }
+
 func TD2UT(JDE float64, UT2TD bool) float64 { // true 世界时转力学时CC，false 力学时转世界时VV
 
 	Deltat := DeltaT(JDE, true)
@@ -235,8 +267,8 @@ func GetLunar(year, month, day int, tz float64) (lmonth, lday int, leap bool, re
 	}
 	jieqi := GetOneYearJQ(year)           //一年的节气
 	moon := GetOneYearMoon(float64(year)) //一年朔月日
-	winter1 := jieqi[1]                   //第一年冬至日
-	winter2 := jieqi[25]                  //第二年冬至日
+	winter1 := jieqi[1] - 8.0/24 + tz     //第一年冬至日
+	winter2 := jieqi[25] - 8.0/24 + tz    //第二年冬至日
 	for k, v := range moon {
 		if tz != 8.0/24 {
 			v = v - 8.0/24 + tz
@@ -334,8 +366,8 @@ func GetSolar(year, month, day int, leap bool, tz float64) float64 {
 	}
 	jieqi := GetOneYearJQ(year)           //一年的节气
 	moon := GetOneYearMoon(float64(year)) //一年朔月日
-	winter1 := jieqi[1]                   //第一年冬至日
-	winter2 := jieqi[25]                  //第二年冬至日
+	winter1 := jieqi[1] - 8.0/24 + tz     //第一年冬至日
+	winter2 := jieqi[25] - 8.0/24 + tz    //第二年冬至日
 	for k, v := range moon {
 		if tz != 8.0/24 {
 			v = v - 8.0/24 + tz

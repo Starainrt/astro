@@ -20,7 +20,7 @@ func Constellation(ra, dec float64, date time.Time) string {
 	return basic.WhichCst(ra, dec, jde)
 }
 
-//MeanSiderealTime UTC 平恒星时
+// MeanSiderealTime UTC 平恒星时
 func MeanSiderealTime(date time.Time) float64 {
 	return basic.MeanSiderealTime(basic.Date2JDE(date.UTC()))
 }
@@ -31,13 +31,14 @@ func ApparentSiderealTime(date time.Time) float64 {
 }
 
 // RiseTime 星星升起时间
-//  date, 世界时（忽略此处时区）
-//  ra，Date瞬时赤经
-//  dec，Date瞬时赤纬
-//  lon，经度，东正西负
-//  lat，纬度，北正南负
-//  height，高度
-//  aero,是否进行大气修正
+//
+//	date, 世界时（忽略此处时区）
+//	ra，Date瞬时赤经
+//	dec，Date瞬时赤纬
+//	lon，经度，东正西负
+//	lat，纬度，北正南负
+//	height，高度
+//	aero,是否进行大气修正
 func RiseTime(date time.Time, ra, dec, lon, lat, height float64, aero bool) (time.Time, error) {
 	var err error
 	if date.Hour() > 12 {
@@ -57,13 +58,14 @@ func RiseTime(date time.Time, ra, dec, lon, lat, height float64, aero bool) (tim
 }
 
 // DownTime 星星升起时间
-//  date, 世界时（忽略此处时区）
-//  ra，Date瞬时赤经
-//  dec，Date瞬时赤纬
-//  lon，经度，东正西负
-//  lat，纬度，北正南负
-//  height，高度
-//  aero,是否进行大气修正
+//
+//	date, 世界时（忽略此处时区）
+//	ra，Date瞬时赤经
+//	dec，Date瞬时赤纬
+//	lon，经度，东正西负
+//	lat，纬度，北正南负
+//	height，高度
+//	aero,是否进行大气修正
 func DownTime(date time.Time, ra, dec, lon, lat, height float64, aero bool) (time.Time, error) {
 	var err error
 	if date.Hour() > 12 {
@@ -106,7 +108,7 @@ func Zenith(date time.Time, ra, dec, lon, lat float64) float64 {
 	jde := basic.Date2JDE(date)
 	_, loc := date.Zone()
 	timezone := float64(loc) / 3600.0
-	return basic.StarAzimuth(jde, ra, dec, lon, lat, timezone)
+	return basic.StarHeight(jde, ra, dec, lon, lat, timezone)
 }
 
 // CulminationTime 恒星中天时间
@@ -127,7 +129,7 @@ func InitStarDatabase() error {
 	return basic.LoadStarData()
 }
 
-//通过恒星HR编号获取恒星参数
+// 通过恒星HR编号获取恒星参数
 func GetStarDataByHR(hr int) (basic.StarData, error) {
 	return basic.StarDataByHR(hr)
 }

@@ -39,7 +39,7 @@ const (
 // 按现行农历GB/T 33661-2017算法计算，推荐使用年限为[1929-3000]年
 // 古代由于定朔定气误差此处计算会与古时不符
 func Lunar(year, month, day int, timezone float64) (int, int, bool, string) {
-	return basic.GetLunar(year, month, day, timezone)
+	return basic.GetLunar(year, month, day, timezone/24.0)
 }
 
 // Solar 农历转公历
