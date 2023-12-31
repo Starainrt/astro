@@ -12,7 +12,7 @@ func TestStar(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	sirius, err := GetStarDataByHR(2491)
+	sirius, err := StarDataByHR(2491)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -106,7 +106,7 @@ func main() {
 	fmt.Println(sun.MorningTwilight(date, lon, lat, -6))
 	// 西安市2020年1月1日日出时间，计算大气影响
 	fmt.Println(sun.RiseTime(date, lon, lat, height, true))
-  // 西安市2020年1月1日太阳上中天时间
+    // 西安市2020年1月1日太阳上中天时间
 	fmt.Println(sun.CulminationTime(date, lon))
 	// 西安市2020年1月1日日落时间，计算大气影响
 	fmt.Println(sun.DownTime(date, lon, lat, height, true))
@@ -115,7 +115,7 @@ func main() {
 
 	// 西安市2020年1月1日月出时间，计算大气影响
 	fmt.Println(moon.RiseTime(date, lon, lat, height, true))
-  // 西安市2020年1月1日月亮上中天时间
+    // 西安市2020年1月1日月亮上中天时间
 	fmt.Println(moon.CulminationTime(date, lon, lat))
 	// 西安市2020年1月1日月落时间，计算大气影响
 	fmt.Println(moon.DownTime(date, lon, lat, height, true))
@@ -170,7 +170,7 @@ func main() {
 	fmt.Println(star.Constellation(ra, dec, date))
 	//此刻西安市的太阳方位角与高度角
 	fmt.Println("方位角：", sun.Azimuth(date, lon, lat), "高度角：", sun.Zenith(date, lon, lat))
-  //此刻日地距离，单位为天文单位（AU）
+    //此刻日地距离，单位为天文单位（AU）
 	fmt.Println(sun.EarthDistance(date))
 
 	//月亮此刻站心视赤经、视赤纬
@@ -180,7 +180,7 @@ func main() {
 	fmt.Println(star.Constellation(ra, dec, date))
 	//此刻西安市的月亮方位角与高度角
 	fmt.Println("方位角：", moon.Azimuth(date, lon, lat), "高度角：", moon.Zenith(date, lon, lat))
-  //此刻地月距离，单位为千米（AU）
+    //此刻地月距离，单位为千米（AU）
 	fmt.Println(moon.EarthDistance(date))
 }
 ```

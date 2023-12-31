@@ -91,9 +91,10 @@ func ApparentRaDec(date time.Time, lon, lat float64) (float64, float64) {
 }
 
 // HourAngle 月亮时角
-//  date, 世界时（忽略此处时区）
-//  lon，经度，东正西负
-//  lat，纬度，北正南负
+//
+//	date, 世界时（忽略此处时区）
+//	lon，经度，东正西负
+//	lat，纬度，北正南负
 func HourAngle(date time.Time, lon, lat float64) float64 {
 	jde := basic.Date2JDE(date)
 	_, loc := date.Zone()
@@ -101,9 +102,10 @@ func HourAngle(date time.Time, lon, lat float64) float64 {
 }
 
 // Azimuth 月亮方位角
-//  date, 世界时（忽略此处时区）
-//  lon，经度，东正西负
-//  lat，纬度，北正南负
+//
+//	date, 世界时（忽略此处时区）
+//	lon，经度，东正西负
+//	lat，纬度，北正南负
 func Azimuth(date time.Time, lon, lat float64) float64 {
 	jde := basic.Date2JDE(date)
 	_, loc := date.Zone()
@@ -111,9 +113,10 @@ func Azimuth(date time.Time, lon, lat float64) float64 {
 }
 
 // Zenith 月亮高度角
-//  date, 世界时（忽略此处时区）
-//  lon，经度，东正西负
-//  lat，纬度，北正南负
+//
+//	date, 世界时（忽略此处时区）
+//	lon，经度，东正西负
+//	lat，纬度，北正南负
 func Zenith(date time.Time, lon, lat float64) float64 {
 	jde := basic.Date2JDE(date)
 	_, loc := date.Zone()
@@ -121,21 +124,26 @@ func Zenith(date time.Time, lon, lat float64) float64 {
 }
 
 // CulminationTime 月亮中天时间
-//  date, 世界时（忽略此处时区）
-//  lon，经度，东正西负
-//  lat，纬度，北正南负
+//
+//	date, 世界时（忽略此处时区）
+//	lon，经度，东正西负
+//	lat，纬度，北正南负
 func CulminationTime(date time.Time, lon, lat float64) time.Time {
+	if date.Hour() > 12 {
+		date = date.Add(time.Hour * -12)
+	}
 	jde := basic.Date2JDE(date)
 	_, loc := date.Zone()
 	return basic.JDE2DateByZone(basic.MoonCulminationTime(jde, lon, lat, float64(loc)/3600.0), date.Location(), true)
 }
 
 // RiseTime 月亮升起时间
-//  date, 世界时（忽略此处时区）
-//  lon，经度，东正西负
-//  lat，纬度，北正南负
-//  height，高度
-//  aero,是否进行大气修正
+//
+//	date, 世界时（忽略此处时区）
+//	lon，经度，东正西负
+//	lat，纬度，北正南负
+//	height，高度
+//	aero,是否进行大气修正
 func RiseTime(date time.Time, lon, lat, height float64, aero bool) (time.Time, error) {
 	var err error
 	if date.Hour() > 12 {
@@ -162,11 +170,12 @@ func RiseTime(date time.Time, lon, lat, height float64, aero bool) (time.Time, e
 }
 
 // DownTime 月亮降下时间
-//  date, 世界时（忽略此处时区）
-//  lon，经度，东正西负
-//  lat，纬度，北正南负
-//  height，高度
-//  aero，大气修正
+//
+//	date, 世界时（忽略此处时区）
+//	lon，经度，东正西负
+//	lat，纬度，北正南负
+//	height，高度
+//	aero，大气修正
 func DownTime(date time.Time, lon, lat, height float64, aero bool) (time.Time, error) {
 	var err error
 	if date.Hour() > 12 {

@@ -20,6 +20,27 @@ func Test_ParseStar(t *testing.T) {
 	}
 
 }
+func TestGetStarByChniese(t *testing.T) {
+	err := LoadStarData()
+	if err != nil {
+		t.Fatal(err)
+	}
+	sirius, err := StarDataByChinese("天狼星")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if sirius.HIP != 32349 || sirius.HR != 2491 {
+		t.Fatal("cannot found star")
+	}
+	fmt.Printf("%+v\n", sirius)
+	sirius, err = StarDataByChinese("天狼")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if sirius.HIP != 32349 || sirius.HR != 2491 {
+		t.Fatal("cannot found star")
+	}
+}
 
 func TestGetRaDecByDate(t *testing.T) {
 	err := LoadStarData()
@@ -30,6 +51,7 @@ func TestGetRaDecByDate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	fmt.Printf("%+v\n", sirius)
 	fmt.Println(Format(sirius.Ra/15, 1), Format(sirius.Dec, 0))
 	now := GetNowJDE()
 	ra, dec := sirius.RaDecByJde(now)

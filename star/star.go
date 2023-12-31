@@ -57,7 +57,7 @@ func RiseTime(date time.Time, ra, dec, lon, lat, height float64, aero bool) (tim
 	return basic.JDE2DateByZone(riseJde, date.Location(), true), err
 }
 
-// DownTime 星星升起时间
+// DownTime 星星降落时间
 //
 //	date, 世界时（忽略此处时区）
 //	ra，Date瞬时赤经
@@ -130,6 +130,24 @@ func InitStarDatabase() error {
 }
 
 // 通过恒星HR编号获取恒星参数
-func GetStarDataByHR(hr int) (basic.StarData, error) {
+func StarDataByHR(hr int) (basic.StarData, error) {
 	return basic.StarDataByHR(hr)
+}
+
+// 通过中文名获取恒星参数
+func StarDataByName(name string) (basic.StarData, error) {
+	return basic.StarDataByChinese(name)
+}
+
+// 从亮到暗返回视星等小于3.00的恒星数据
+func TopBrightStars() ([]basic.StarData, error) {
+	var brightStars = make([]basic.StarData, 0, 170)
+	for _, star := range []int{2491, 2326, 5340, 5459, 7001, 1708, 1713, 2943, 472, 2061, 5267, 7557, 1457, 6134, 5056, 2990, 8728, 4853, 7924, 4730, 5460, 3982, 2618, 6527, 4763, 1790, 1791, 3685, 1903, 4731, 8425, 4905, 3207, 4301, 1017, 2693, 6879, 3307, 5191, 6553, 2088, 6217, 2421, 7790, 3485, 2294, 2891, 3748, 617, 7121, 424, 188, 1948, 337, 15, 2004, 5288, 6556, 5563, 8636, 936, 4534, 4819, 7796, 3634, 5793, 1852, 168, 6705, 3165, 3699, 603, 21, 5054, 6241, 5469, 5132, 5440, 5953, 4295, 99, 8308, 6580, 8775, 6378, 4554, 8162, 2827, 7949, 264, 8781, 3734, 911, 5231, 4357, 6175, 1865, 4662, 4621, 7194, 5685, 4057, 2095, 5984, 1956, 553, 4786, 5854, 5235, 403, 5571, 4216, 4798, 1577, 6508, 6859, 2773, 5506, 7525, 6056, 6132, 5531, 5028, 4199, 1899, 6603, 6148, 5776, 6536, 1666, 4656, 98, 6913, 3185, 6212, 6165, 4932, 39, 1829, 1203, 6461, 5897, 8502, 591, 8322, 1165, 7528, 2286, 2890, 7264, 6084, 5944, 5671, 1220, 2845, 4915, 8232, 2553, 915, 8650, 1231, 4757, 6510, 8414, 2473, 3873, 6746, 7235, 1605} {
+		info, err := basic.StarDataByHR(star)
+		if err != nil {
+			return nil, err
+		}
+		brightStars = append(brightStars, info)
+	}
+	return brightStars, nil
 }
