@@ -1,6 +1,7 @@
 package basic
 
 import (
+	"github.com/starainrt/astro/tools"
 	"fmt"
 	"math"
 	"testing"
@@ -21,7 +22,49 @@ func Test_MoonDown(t *testing.T) {
 		fmt.Println(i, GetMoonDownTime(jde, 115, float64(i), 8, 1, 0))
 	}
 }
+func Test_MoonDiff(t *testing.T) {
+	n := JDECalc(2000, 1, 1)
+	var maxRa, maxDec, maxLo, maxBo float64
+	for i := float64(0); i < 365.2422*3; i++ {
+		tLo := HMoonApparentLo(n + i)
+		tBo := HMoonTrueBo(n + i)
+		tRa, tDec := HMoonTrueRaDec(n + i)
+		fRa, fDec := MoonTrueRaDec(n + i)
+		fLo := MoonApparentLo(n + i)
+		fBo := MoonTrueBo(n + i)
+		tmp := tools.Limit360(math.Abs(tRa - fRa))
+		if tmp > 300 {
+			tmp = 360 - tmp
+		}
+		if tmp > maxRa {
+			maxRa = tmp
+		}
+		tmp = tools.Limit360(math.Abs(tDec - fDec))
+		if tmp > 300 {
+			tmp = 360 - tmp
+		}
+		if tmp > maxDec {
+			maxDec = tmp
+		}
 
+		tmp = tools.Limit360(math.Abs(tLo - fLo))
+		if tmp > 300 {
+			tmp = 360 - tmp
+		}
+		if tmp > maxLo {
+			maxLo = tmp
+		}
+
+		tmp = tools.Limit360(math.Abs(tBo - fBo))
+		if tmp > 300 {
+			tmp = 360 - tmp
+		}
+		if tmp > maxBo {
+			maxBo = tmp
+		}
+	}
+	fmt.Printf("%.15f %.15f %.15f %.15f\n", maxRa*3600, maxDec*3600, maxLo*3600, maxBo*3600)
+}
 func Test_MoonRise(t *testing.T) {
 	//2.459984692085961e+06 113.58880556 87.36833333 8 0 0
 	//2.459984692085961e+06 113.58880556 87.36833333 8 0 0

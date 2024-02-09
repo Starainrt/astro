@@ -34,10 +34,8 @@ func FloatRound(f float64, n int) float64 {
 }
 
 func Limit360(x float64) float64 {
-	for x > 360 {
-		x -= 360
-	}
-	for x < 0 {
+	x = math.Mod(x, 360)
+	if x < 0 {
 		x += 360
 	}
 	return x

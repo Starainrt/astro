@@ -3,6 +3,7 @@ package calendar
 import (
 	"fmt"
 	"testing"
+	"time"
 )
 
 type lunarSolar struct {
@@ -37,7 +38,7 @@ func Test_ChineseCalendar(t *testing.T) {
 	}
 	for _, v := range testData {
 		var lyear int = v.Year
-		lmonth, lday, leap, desp := Lunar(v.Year, v.Month, v.Day, 8.0)
+		lmonth, lday, leap, desp := SolarToLunar(time.Date(v.Year, time.Month(v.Month), v.Day, 0, 0, 0, 0, time.Local))
 		if lmonth > v.Month {
 			lyear--
 		}
@@ -46,7 +47,7 @@ func Test_ChineseCalendar(t *testing.T) {
 			t.Fatal(v, lyear, lmonth, lday, leap, desp)
 		}
 
-		date := Solar(v.Lyear, v.Lmonth, v.Lday, v.Leap, 8.0)
+		date := LunarToSolar(v.Lyear, v.Lmonth, v.Lday, v.Leap)
 		if date.Year() != v.Year || int(date.Month()) != v.Month || date.Day() != v.Day {
 			t.Fatal(v, date)
 		}

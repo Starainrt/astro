@@ -1055,9 +1055,15 @@ func MoonTrueRa(JD float64) float64 {
 	return LoToRa(JD, MoonApparentLo(JD), MoonTrueBo(JD))
 }
 
-/**
-  *
-  传入世界时
+func MoonTrueRaDec(JD float64) (float64, float64) {
+	return LoBoToRaDec(JD, MoonApparentLo(JD), MoonTrueBo(JD))
+}
+
+/*
+*
+
+	*
+	传入世界时
 */
 func MoonApparentRa(JD, lon, lat float64, tz int) float64 {
 	jde := TD2UT(JD, true)
@@ -1702,7 +1708,8 @@ func HMoonTrueRa(JD float64) float64 {
 	return LoToRa(JD, HMoonApparentLo(JD), HMoonTrueBo(JD))
 }
 
-/**
+/*
+*
 *
 传入世界时
 */

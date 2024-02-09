@@ -265,33 +265,33 @@ func GetLunar(year, month, day int, tz float64) (lmonth, lday int, leap bool, re
 	} else {
 		year--
 	}
-	jieqi := GetOneYearJQ(year)           //一年的节气
-	moon := GetOneYearMoon(float64(year)) //一年朔月日
-	winter1 := jieqi[1] - 8.0/24 + tz     //第一年冬至日
-	winter2 := jieqi[25] - 8.0/24 + tz    //第二年冬至日
-	for k, v := range moon {
+	jieqi := GetJieqiLoops(year, 25)        //一年的节气
+	moon := GetMoonLoops(float64(year), 17) //一年朔月日
+	winter1 := jieqi[0] - 8.0/24 + tz       //第一年冬至日
+	winter2 := jieqi[24] - 8.0/24 + tz      //第二年冬至日
+	for idx, v := range moon {
 		if tz != 8.0/24 {
 			v = v - 8.0/24 + tz
 		}
 		if v-math.Floor(v) > 0.5 {
-			moon[k] = math.Floor(v) + 0.5
+			moon[idx] = math.Floor(v) + 0.5
 		} else {
-			moon[k] = math.Floor(v) - 0.5
+			moon[idx] = math.Floor(v) - 0.5
 		}
 	} //置闰月为0点
-	for k, v := range jieqi {
+	for idx, v := range jieqi {
 		if tz != 8.0/24 {
 			v = v - 8.0/24 + tz
 		}
 		if v-math.Floor(v) > 0.5 {
-			jieqi[k] = math.Floor(v) + 0.5
+			jieqi[idx] = math.Floor(v) + 0.5
 		} else {
-			jieqi[k] = math.Floor(v) - 0.5
+			jieqi[idx] = math.Floor(v) - 0.5
 		}
 	} //置节气为0点
 	mooncount := 0           //年内朔望月计数
 	var min, max int = 20, 0 //最大最小计数
-	for i := 1; i < 16; i++ {
+	for i := 0; i < 15; i++ {
 		if moon[i] >= winter1 && moon[i] < winter2 {
 			if i <= min {
 				min = i
@@ -304,7 +304,7 @@ func GetLunar(year, month, day int, tz float64) (lmonth, lday int, leap bool, re
 	}
 	leapmonth := 20
 	if mooncount == 13 { //存在闰月
-		j, i := 3, 1
+		var j, i = 2, 0
 		for i = min; i <= max; i++ {
 			if !(moon[i] <= jieqi[j] && moon[i+1] > jieqi[j]) {
 				break
@@ -364,33 +364,33 @@ func GetSolar(year, month, day int, leap bool, tz float64) float64 {
 	if month < 11 {
 		year--
 	}
-	jieqi := GetOneYearJQ(year)           //一年的节气
-	moon := GetOneYearMoon(float64(year)) //一年朔月日
-	winter1 := jieqi[1] - 8.0/24 + tz     //第一年冬至日
-	winter2 := jieqi[25] - 8.0/24 + tz    //第二年冬至日
-	for k, v := range moon {
+	jieqi := GetJieqiLoops(year, 25)        //一年的节气
+	moon := GetMoonLoops(float64(year), 17) //一年朔月日
+	winter1 := jieqi[0] - 8.0/24 + tz       //第一年冬至日
+	winter2 := jieqi[24] - 8.0/24 + tz      //第二年冬至日
+	for idx, v := range moon {
 		if tz != 8.0/24 {
 			v = v - 8.0/24 + tz
 		}
 		if v-math.Floor(v) > 0.5 {
-			moon[k] = math.Floor(v) + 0.5
+			moon[idx] = math.Floor(v) + 0.5
 		} else {
-			moon[k] = math.Floor(v) - 0.5
+			moon[idx] = math.Floor(v) - 0.5
 		}
 	} //置闰月为0点
-	for k, v := range jieqi {
+	for idx, v := range jieqi {
 		if tz != 8.0/24 {
 			v = v - 8.0/24 + tz
 		}
 		if v-math.Floor(v) > 0.5 {
-			jieqi[k] = math.Floor(v) + 0.5
+			jieqi[idx] = math.Floor(v) + 0.5
 		} else {
-			jieqi[k] = math.Floor(v) - 0.5
+			jieqi[idx] = math.Floor(v) - 0.5
 		}
 	} //置节气为0点
 	mooncount := 0           //年内朔望月计数
 	var min, max int = 20, 0 //最大最小计数
-	for i := 1; i < 16; i++ {
+	for i := 0; i < 15; i++ {
 		if moon[i] >= winter1 && moon[i] < winter2 {
 			if i <= min {
 				min = i
@@ -403,7 +403,7 @@ func GetSolar(year, month, day int, leap bool, tz float64) float64 {
 	}
 	leapmonth := 20
 	if mooncount == 13 { //存在闰月
-		j, i := 3, 1
+		var j, i = 2, 0
 		for i = min; i <= max; i++ {
 			if !(moon[i] <= jieqi[j] && moon[i+1] > jieqi[j]) {
 				break
