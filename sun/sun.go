@@ -2,7 +2,6 @@ package sun
 
 import (
 	"errors"
-	"math"
 	"time"
 
 	"github.com/starainrt/astro/basic"
@@ -38,9 +37,11 @@ func RiseTime(date time.Time, lon, lat, height float64, aero bool) (time.Time, e
 	if date.Hour() > 12 {
 		date = date.Add(time.Hour * -12)
 	}
+	//忽略时区的字面量时间
 	jde := basic.Date2JDE(date)
 	_, loc := date.Zone()
 	timezone := float64(loc) / 3600.0
+	//risedate 时区修正后的时间，转换应当包括时区
 	riseJde := basic.GetSunRiseTime(jde, lon, lat, timezone, aeroFloat, height)
 	if riseJde == -2 {
 		err = ERR_SUN_NEVER_RISE
@@ -80,7 +81,7 @@ func DownTime(date time.Time, lon, lat, height float64, aero bool) (time.Time, e
 }
 
 // MorningTwilight 晨朦影
-// date，当地时区日期
+// date，当地时区日期，返回的时间时区与此参数中的时区一致
 // lon，经度，东正西负
 // lat，纬度，北正南负
 // angle，朦影角度：可选-6 -12 -18(民用、航海、天文)
@@ -99,11 +100,11 @@ func MorningTwilight(date time.Time, lon, lat, angle float64) (time.Time, error)
 	if calcJde == -1 {
 		err = ERR_TWILIGHT_NOT_EXISTS
 	}
-	return basic.JDE2Date(calcJde), err
+	return basic.JDE2DateByZone(calcJde, date.Location(), true), err
 }
 
 // EveningTwilight 昏朦影
-// date，当地时区日期
+// date，当地时区日期，返回的时间时区与此参数中的时区一致
 // lon，经度，东正西负
 // lat，纬度，北正南负
 // angle，朦影角度：可选-6 -12 -18(民用、航海、天文)
@@ -123,7 +124,7 @@ func EveningTwilight(date time.Time, lon, lat, angle float64) (time.Time, error)
 	if calcJde == -1 {
 		err = ERR_TWILIGHT_NOT_EXISTS
 	}
-	return basic.JDE2Date(calcJde), err
+	return basic.JDE2DateByZone(calcJde, date.Location(), true), err
 }
 
 // EclipticObliquity 黄赤交角
@@ -256,10 +257,7 @@ func Zenith(date time.Time, lon, lat float64) float64 {
 // CulminationTime 太阳中天时间
 // 返回给定经纬度、对应date时区date时刻的太阳中天日期
 func CulminationTime(date time.Time, lon float64) time.Time {
-	jde := basic.Date2JDE(date)
-	if jde-math.Floor(jde) > 0.5 {
-		jde++
-	}
+	jde := basic.Date2JDE(date.Add(time.Duration(-1*date.Hour())*time.Hour)) + 0.5
 	_, loc := date.Zone()
 	timezone := float64(loc) / 3600.0
 	calcJde := basic.GetSunTZTime(jde, lon, timezone) - timezone/24.00

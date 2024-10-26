@@ -197,10 +197,14 @@ func JDE2Date(JD float64) time.Time {
 	Days = math.Floor(Days)
 	tz, _ := time.LoadLocation("Local")
 	dates := time.Date(int(Years), time.Month(int(Months)), int(Days), 0, 0, 0, 0, tz)
-	dates = time.Unix(dates.Unix()+int64(tms), int64((tms-math.Floor(tms))*1000000000))
-	return dates
+	return time.Unix(dates.Unix()+int64(tms), int64((tms-math.Floor(tms))*1000000000))
 }
 
+// JDE2DateByZone JDE（儒略日）转日期
+// JD: 儒略日
+// tz: 目标时区
+// byZone: (true: 传入的儒略日视为目标时区当地时间的儒略日，false: 传入的儒略日视为UTC时间的儒略日)
+// 回参：转换后的日期，时区始终为目标时区
 func JDE2DateByZone(JD float64, tz *time.Location, byZone bool) time.Time {
 	JD = JD + 0.5
 	Z := float64(int(JD))
@@ -231,12 +235,12 @@ func JDE2DateByZone(JD float64, tz *time.Location, byZone bool) time.Time {
 	}
 	tms := (Days - math.Floor(Days)) * 24 * 3600
 	Days = math.Floor(Days)
+	var transTz = tz
 	if !byZone {
-		dates := time.Date(int(Years), time.Month(int(Months)), int(Days), 0, 0, 0, 0, time.UTC)
-		return time.Unix(dates.Unix()+int64(tms), int64((tms-math.Floor(tms))*1000000000)).In(tz)
+		transTz = time.UTC
 	}
-	dates := time.Date(int(Years), time.Month(int(Months)), int(Days), 0, 0, 0, 0, tz)
-	return time.Unix(dates.Unix()+int64(tms), int64((tms-math.Floor(tms))*1000000000))
+	return time.Date(int(Years), time.Month(int(Months)), int(Days), 0, 0, 0, 0, transTz).
+		Add(time.Duration(int64(1000000000 * tms))).In(tz)
 }
 
 func GetLunar(year, month, day int, tz float64) (lmonth, lday int, leap bool, result string) {
