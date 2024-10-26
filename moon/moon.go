@@ -209,11 +209,14 @@ func Phase(date time.Time) float64 {
 }
 
 // ShuoYue 朔月
+// 返回Date对应UTC世界时的月相大小
 func ShuoYue(year float64) time.Time {
 	jde := basic.TD2UT(basic.CalcMoonSH(year, 0), false)
 	return basic.JDE2DateByZone(jde, time.UTC, false)
 }
 
+// NextShuoYue 下次朔月时间
+// 返回date之后的下一个朔月时间（UTC时间）
 func NextShuoYue(date time.Time) time.Time {
 	return nextMoonPhase(date, 0)
 }
