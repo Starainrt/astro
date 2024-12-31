@@ -18,6 +18,7 @@ type lunarSolar struct {
 
 func Test_ChineseCalendar(t *testing.T) {
 	var testData = []lunarSolar{
+		{Lyear: 1995, Lmonth: 12, Lday: 12, Leap: false, Year: 1996, Month: 1, Day: 31},
 		{Lyear: 2034, Lmonth: 1, Lday: 1, Leap: false, Year: 2034, Month: 2, Day: 19},
 		{Lyear: 2033, Lmonth: 12, Lday: 30, Leap: false, Year: 2034, Month: 2, Day: 18},
 		{Lyear: 2033, Lmonth: 11, Lday: 27, Leap: true, Year: 2034, Month: 1, Day: 17},
@@ -37,19 +38,37 @@ func Test_ChineseCalendar(t *testing.T) {
 		{Lyear: 2021, Lmonth: 12, Lday: 29, Leap: false, Year: 2022, Month: 1, Day: 31},
 	}
 	for _, v := range testData {
-		var lyear int = v.Year
-		lmonth, lday, leap, desp := SolarToLunar(time.Date(v.Year, time.Month(v.Month), v.Day, 0, 0, 0, 0, time.Local))
-		if lmonth > v.Month {
-			lyear--
-		}
-		fmt.Println(lyear, desp, v.Year, v.Month, v.Day)
-		if lyear != v.Lyear || lmonth != v.Lmonth || lday != v.Lday || leap != v.Leap {
-			t.Fatal(v, lyear, lmonth, lday, leap, desp)
-		}
+		{
+			var lyear int = v.Year
+			lmonth, lday, leap, desp := SolarToLunar(time.Date(v.Year, time.Month(v.Month), v.Day, 0, 0, 0, 0, time.Local))
+			if lmonth > v.Month {
+				lyear--
+			}
+			fmt.Println(lyear, desp, v.Year, v.Month, v.Day)
+			if lyear != v.Lyear || lmonth != v.Lmonth || lday != v.Lday || leap != v.Leap {
+				t.Fatal(v, lyear, lmonth, lday, leap, desp)
+			}
 
-		date := LunarToSolar(v.Lyear, v.Lmonth, v.Lday, v.Leap)
-		if date.Year() != v.Year || int(date.Month()) != v.Month || date.Day() != v.Day {
-			t.Fatal(v, date)
+			date := LunarToSolar(v.Lyear, v.Lmonth, v.Lday, v.Leap)
+			if date.Year() != v.Year || int(date.Month()) != v.Month || date.Day() != v.Day {
+				t.Fatal(v, date)
+			}
+		}
+		{
+			var lyear int = v.Year
+			lmonth, lday, leap, desp := RapidSolarToLunar(time.Date(v.Year, time.Month(v.Month), v.Day, 0, 0, 0, 0, time.Local))
+			if lmonth > v.Month {
+				lyear--
+			}
+			fmt.Println(lyear, desp, v.Year, v.Month, v.Day)
+			if lyear != v.Lyear || lmonth != v.Lmonth || lday != v.Lday || leap != v.Leap {
+				t.Fatal(v, lyear, lmonth, lday, leap, desp)
+			}
+
+			date := RapidLunarToSolar(v.Lyear, v.Lmonth, v.Lday, v.Leap)
+			if date.Year() != v.Year || int(date.Month()) != v.Month || date.Day() != v.Day {
+				t.Fatal(v, date)
+			}
 		}
 	}
 }
