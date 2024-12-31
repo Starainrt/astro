@@ -143,7 +143,7 @@ recalc:
 	magic := int32(upper[idx])<<8 + int32(lower[idx])
 	springMonth := (magic&0x800000)>>23 + 1
 	springDay := (magic & 0x7FFFFF) >> 18
-	if springMonth == int32(month) && springDay == int32(day) {
+	if !useGoto && springMonth == int32(month) && springDay == int32(day) {
 		return 1, 1, false, "正月初一"
 	}
 	if !useGoto && (springMonth > int32(month) || (springMonth == int32(month) && springDay > int32(day))) {
