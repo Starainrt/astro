@@ -10,7 +10,9 @@ import (
 
 var (
 	ERR_MOON_NEVER_RISE = errors.New("ERROR:极夜，月亮在今日永远在地平线下！")
-	ERR_MOON_NEVER_DOWN = errors.New("ERROR:极昼，月亮在今日永远在地平线上！")
+	ERR_MOON_NEVER_SET  = errors.New("ERROR:极昼，月亮在今日永远在地平线上！")
+	// ERR_MOON_NEVER_DOWN deprecated: -- use ERR_MOON_NEVER_SET instead
+	ERR_MOON_NEVER_DOWN = ERR_MOON_NEVER_SET
 	ERR_NOT_TODAY       = errors.New("ERROR:月亮已在（昨日/明日）（升起/降下）")
 )
 
@@ -164,19 +166,30 @@ func RiseTime(date time.Time, lon, lat, height float64, aero bool) (time.Time, e
 		err = ERR_MOON_NEVER_RISE
 	}
 	if riseJde == -1 {
-		err = ERR_MOON_NEVER_DOWN
+		err = ERR_MOON_NEVER_SET
 	}
 	return basic.JDE2DateByZone(riseJde, date.Location(), true), err
 }
 
-// DownTime 月亮降下时间
+// deprecated: -- use SetTime instead
+// DownTime 落下时间
+// date，取日期，时区忽略
+// lon，经度，东正西负
+// lat，纬度，北正南负
+// height，高度
+// aero，true时进行大气修正
+func DownTime(date time.Time, lon, lat, height float64, aero bool) (time.Time, error) {
+	return SetTime(date, lon, lat, height, aero)
+}
+
+// SetTime 月亮降下时间
 //
 //	date, 世界时（忽略此处时区）
 //	lon，经度，东正西负
 //	lat，纬度，北正南负
 //	height，高度
 //	aero，大气修正
-func DownTime(date time.Time, lon, lat, height float64, aero bool) (time.Time, error) {
+func SetTime(date time.Time, lon, lat, height float64, aero bool) (time.Time, error) {
 	var err error
 	if date.Hour() > 12 {
 		date = date.Add(time.Hour * -12)
@@ -196,7 +209,7 @@ func DownTime(date time.Time, lon, lat, height float64, aero bool) (time.Time, e
 		err = ERR_MOON_NEVER_RISE
 	}
 	if downJde == -1 {
-		err = ERR_MOON_NEVER_DOWN
+		err = ERR_MOON_NEVER_SET
 	}
 	return basic.JDE2DateByZone(downJde, date.Location(), true), err
 }

@@ -4,13 +4,14 @@ import (
 	"github.com/starainrt/astro/tools"
 	"fmt"
 	"math"
+	"os"
 	"testing"
 	"time"
 )
 
 func Test_Jq(t *testing.T) {
 	data := GetJieqiLoops(2019, 24)
-	for i := 1; i < 25; i++ {
+	for i := 1; i < len(data); i++ {
 		fmt.Println(JDE2Date(data[i]))
 	}
 	//fmt.Println(JDE2Date(GetWHTime(2019, 10)))
@@ -144,7 +145,7 @@ func Test_SunRiseRound(t *testing.T) {
 func Test_SunDown(t *testing.T) {
 	jde := GetNowJDE()
 	for i := 10.0; i < 90.0; i += 0.3 {
-		fmt.Println(i, GetSunDownTime(jde, 115, float64(i), 8, 0, 0))
+		fmt.Println(i, GetSunSetTime(jde, 115, float64(i), 8, 0, 0))
 	}
 }
 
@@ -162,17 +163,20 @@ func TestJQDate(t *testing.T) {
 		return math.Floor(d) + 0.5
 	}
 	c := 0
+	var info string
 	for year := 1900; year <= 2600; year++ {
 		for pos := 0; pos < 360; pos += 15 {
-			n := newGetJQTime(year, pos)
-			o := GetJQTime(year, pos)
+			n := newGetJQTime(year, pos) + 8.0/24.000000
+			o := GetJQTime(year, pos) + 8.0/24.0000000
 			if trimDay(n) != trimDay(o) {
 				c++
-				fmt.Printf("\"%d%03d\":%.0f,", year, pos, trimDay(o)-trimDay(n))
+				fmt.Printf("\"%d%03d\"=>%v  %v\n", year, pos, JDE2Date(trimDay(o)), JDE2Date(trimDay(n)))
+				info += fmt.Sprintf("\"%d%03d\"=>%.0f,", year, pos, trimDay(o)-trimDay(n))
 			}
 		}
 	}
 	fmt.Println(c)
+	os.WriteFile("test.txt", []byte(info), 0644)
 }
 
 func newGetJQTime(Year, Angle int) float64 { //节气时间

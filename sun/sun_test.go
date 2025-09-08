@@ -2,6 +2,7 @@ package sun
 
 import (
 	"fmt"
+	"math"
 	"testing"
 	"time"
 )
@@ -22,8 +23,12 @@ func TestSun(t *testing.T) {
 	if d.Format("2006-01-02 15:04:05") != "2020-01-01 08:41:45" {
 		t.Fatal(d.Format("2006-01-02 15:04:05"))
 	}
+	bo := TrueBo(now)
+	if math.Abs(bo) > 2 {
+		t.Fatal(bo)
+	}
 	fmt.Println(CulminationTime(now, 115))
-	fmt.Println(DownTime(now, 115, 40, 0, true))
+	fmt.Println(SetTime(now, 115, 40, 0, true))
 	fmt.Println(MorningTwilight(now, 115, 40, -6))
 	fmt.Println(EveningTwilight(now, 115, 40, -6))
 }

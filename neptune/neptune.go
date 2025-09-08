@@ -10,7 +10,9 @@ import (
 
 var (
 	ERR_NEPTUNE_NEVER_RISE = errors.New("ERROR:极夜，海王星今日永远在地平线下！")
-	ERR_NEPTUNE_NEVER_DOWN = errors.New("ERROR:极昼，海王星今日永远在地平线上！")
+	ERR_NEPTUNE_NEVER_SET  = errors.New("ERROR:极昼，海王星今日永远在地平线上！")
+	// ERR_NEPTUNE_NEVER_DOWN deprecated: -- use ERR_NEPTUNE_NEVER_SET instead
+	ERR_NEPTUNE_NEVER_DOWN = ERR_NEPTUNE_NEVER_SET
 )
 
 // ApparentLo 视黄经
@@ -122,11 +124,12 @@ func RiseTime(date time.Time, lon, lat, height float64, aero bool) (time.Time, e
 		err = ERR_NEPTUNE_NEVER_RISE
 	}
 	if riseJde == -1 {
-		err = ERR_NEPTUNE_NEVER_DOWN
+		err = ERR_NEPTUNE_NEVER_SET
 	}
 	return basic.JDE2DateByZone(riseJde, date.Location(), true), err
 }
 
+// deprecated: -- use SetTime instead
 // DownTime 落下时间
 // date，取日期，时区忽略
 // lon，经度，东正西负
@@ -134,6 +137,16 @@ func RiseTime(date time.Time, lon, lat, height float64, aero bool) (time.Time, e
 // height，高度
 // aero，true时进行大气修正
 func DownTime(date time.Time, lon, lat, height float64, aero bool) (time.Time, error) {
+	return SetTime(date, lon, lat, height, aero)
+}
+
+// SetTime 落下时间
+// date，取日期，时区忽略
+// lon，经度，东正西负
+// lat，纬度，北正南负
+// height，高度
+// aero，true时进行大气修正
+func SetTime(date time.Time, lon, lat, height float64, aero bool) (time.Time, error) {
 	var err error
 	var aeroFloat float64
 	if aero {
@@ -150,7 +163,7 @@ func DownTime(date time.Time, lon, lat, height float64, aero bool) (time.Time, e
 		err = ERR_NEPTUNE_NEVER_RISE
 	}
 	if riseJde == -1 {
-		err = ERR_NEPTUNE_NEVER_DOWN
+		err = ERR_NEPTUNE_NEVER_SET
 	}
 	return basic.JDE2DateByZone(riseJde, date.Location(), true), err
 }
@@ -205,7 +218,7 @@ func LastRetrogradeToPrograde(date time.Time) time.Time {
 }
 
 // NextRetrogradeToPrograde 上次留（逆转瞬）
-//// 返回上次逆转瞬留的时间
+// // 返回上次逆转瞬留的时间
 func NextRetrogradeToPrograde(date time.Time) time.Time {
 	jde := basic.TD2UT(basic.Date2JDE(date.UTC()), true)
 	return basic.JDE2DateByZone(basic.NextNeptuneRetrogradeToPrograde(jde), date.Location(), false)

@@ -106,19 +106,19 @@ func main() {
 	fmt.Println(sun.MorningTwilight(date, lon, lat, -6))
 	// 西安市2020年1月1日日出时间，计算大气影响
 	fmt.Println(sun.RiseTime(date, lon, lat, height, true))
-    // 西安市2020年1月1日太阳上中天时间
+	// 西安市2020年1月1日太阳上中天时间
 	fmt.Println(sun.CulminationTime(date, lon))
 	// 西安市2020年1月1日日落时间，计算大气影响
-	fmt.Println(sun.DownTime(date, lon, lat, height, true))
+	fmt.Println(sun.SetTime(date, lon, lat, height, true))
 	// 西安市2020年1月1日民用昏朦影结束时间
 	fmt.Println(sun.EveningTwilight(date, lon, lat, -6))
 
 	// 西安市2020年1月1日月出时间，计算大气影响
 	fmt.Println(moon.RiseTime(date, lon, lat, height, true))
-    // 西安市2020年1月1日月亮上中天时间
+	// 西安市2020年1月1日月亮上中天时间
 	fmt.Println(moon.CulminationTime(date, lon, lat))
 	// 西安市2020年1月1日月落时间，计算大气影响
-	fmt.Println(moon.DownTime(date, lon, lat, height, true))
+	fmt.Println(moon.SetTime(date, lon, lat, height, true))
 }
 ```
 
@@ -275,7 +275,7 @@ func main() {
 	fmt.Println(venus.NextGreatestElongationWest(date))
 	//西安市今日金星升起，降落时间
 	fmt.Println(venus.RiseTime(date, lon, lat, height, true))
-	fmt.Println(venus.DownTime(date, lon, lat, height, true))
+	fmt.Println(venus.SetTime(date, lon, lat, height, true))
 	//金星当前视星等
 	fmt.Println(venus.ApparentMagnitude(date))
 	//金地距离
@@ -336,7 +336,7 @@ func main() {
 	fmt.Println(mars.NextWesternQuadrature(date))
 	//西安市今日火星升起，降落时间
 	fmt.Println(mars.RiseTime(date, lon, lat, height, true))
-	fmt.Println(mars.DownTime(date, lon, lat, height, true))
+	fmt.Println(mars.SetTime(date, lon, lat, height, true))
 	//火星当前视星等
 	fmt.Println(mars.ApparentMagnitude(date))
 	//地火距离

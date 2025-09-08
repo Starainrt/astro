@@ -22,5 +22,5 @@ func TestMercury(t *testing.T) {
 	if date.Unix() != 1642636481 {
 		t.Fatal(date.Unix())
 	}
-	fmt.Println(DownTime(date, 115, 40, 0, false))
+	fmt.Println(SetTime(date, 115, 40, 0, false))
 }

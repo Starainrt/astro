@@ -551,7 +551,7 @@ func GetSunRiseTime(JD, Lon, Lat, TZ, ZS, HEI float64) float64 {
 	}
 	return JD1 - ntz/24 + TZ/24
 }
-func GetSunDownTime(JD, Lon, Lat, TZ, ZS, HEI float64) float64 {
+func GetSunSetTime(JD, Lon, Lat, TZ, ZS, HEI float64) float64 {
 	var An float64
 	JD = math.Floor(JD) + 1.5
 	ntz := math.Round(Lon / 15)

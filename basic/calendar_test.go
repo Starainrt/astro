@@ -5,8 +5,12 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"testing"
 )
 
+func TestGenerateMagic(t *testing.T) {
+	generateMagicNumber()
+}
 func generateMagicNumber() {
 	//0月份 00000 日期 0000闰月 0000000000000 农历信息
 	var tz = 8.0000 / 24.000
@@ -14,6 +18,7 @@ func generateMagicNumber() {
 	spYear := make(map[int][]int)
 	var upper []uint16
 	var lower []uint16
+	var full []uint32
 	//var info uint32 = 0
 	for year := 1899; year <= 2401; year++ {
 		fmt.Println(year)
@@ -89,13 +94,16 @@ func generateMagicNumber() {
 	}
 	for year := 1900; year <= 2400; year++ {
 		fmt.Println(year)
-		up, low := magicNumberSpilt(magicNumber(yearMap[year], spYear[year]))
+		magic := magicNumber(yearMap[year], spYear[year])
+		up, low := magicNumberSpilt(magic)
 		upper = append(upper, up)
 		lower = append(lower, uint16(low))
+		full = append(full, uint32(magic))
 	}
 	res := make(map[string]interface{})
 	res["up"] = upper
 	res["low"] = lower
+	res["full"] = full
 	d, _ := json.Marshal(res)
 	os.WriteFile("test.json", d, 0644)
 }

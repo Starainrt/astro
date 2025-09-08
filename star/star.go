@@ -10,7 +10,9 @@ import (
 
 var (
 	ERR_STAR_NEVER_RISE = errors.New("ERROR:极夜，星星在今日永远在地平线下！")
-	ERR_STAR_NEVER_DOWN = errors.New("ERROR:极昼，星星在今日永远在地平线上！")
+	ERR_STAR_NEVER_SET  = errors.New("ERROR:极昼，星星在今日永远在地平线上！")
+	// ERR_STAR_NEVER_DOWN deprecated: -- use ERR_STAR_NEVER_SET instead
+	ERR_STAR_NEVER_DOWN = ERR_STAR_NEVER_SET
 )
 
 // Constellation
@@ -52,11 +54,12 @@ func RiseTime(date time.Time, ra, dec, lon, lat, height float64, aero bool) (tim
 		err = ERR_STAR_NEVER_RISE
 	}
 	if riseJde == -1 {
-		err = ERR_STAR_NEVER_DOWN
+		err = ERR_STAR_NEVER_SET
 	}
 	return basic.JDE2DateByZone(riseJde, date.Location(), true), err
 }
 
+// deprecated: -- use SetTime instead
 // DownTime 星星降落时间
 //
 //	date, 世界时（忽略此处时区）
@@ -67,6 +70,19 @@ func RiseTime(date time.Time, ra, dec, lon, lat, height float64, aero bool) (tim
 //	height，高度
 //	aero,是否进行大气修正
 func DownTime(date time.Time, ra, dec, lon, lat, height float64, aero bool) (time.Time, error) {
+	return SetTime(date, ra, dec, lon, lat, height, aero)
+}
+
+// SetTime 星星降落时间
+//
+//	date, 世界时（忽略此处时区）
+//	ra，Date瞬时赤经
+//	dec，Date瞬时赤纬
+//	lon，经度，东正西负
+//	lat，纬度，北正南负
+//	height，高度
+//	aero,是否进行大气修正
+func SetTime(date time.Time, ra, dec, lon, lat, height float64, aero bool) (time.Time, error) {
 	var err error
 	if date.Hour() > 12 {
 		date = date.Add(time.Hour * -12)
@@ -79,7 +95,7 @@ func DownTime(date time.Time, ra, dec, lon, lat, height float64, aero bool) (tim
 		err = ERR_STAR_NEVER_RISE
 	}
 	if riseJde == -1 {
-		err = ERR_STAR_NEVER_DOWN
+		err = ERR_STAR_NEVER_SET
 	}
 	return basic.JDE2DateByZone(riseJde, date.Location(), true), err
 }

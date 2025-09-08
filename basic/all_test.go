@@ -26,7 +26,7 @@ func show() {
 	fmt.Println("当前太阳星座：", WhichCst(ra, dec, jde))
 	fmt.Println("当前黄赤交角：", EclipticObliquity(jde-8.0/24.0, true))
 	fmt.Println("当前日出：", JDE2Date(GetSunRiseTime(jde, 115, 32, 8, 1, 10)))
-	fmt.Println("当前日落：", JDE2Date(GetSunDownTime(jde, 115, 32, 8, 1, 10)))
+	fmt.Println("当前日落：", JDE2Date(GetSunSetTime(jde, 115, 32, 8, 1, 10)))
 	fmt.Println("当前晨影 -6：", JDE2Date(GetAsaTime(jde, 115, 32, 8, -6)))
 	fmt.Println("当前晨影 -12：", JDE2Date(GetAsaTime(jde, 115, 32, 8, -12)))
 	fmt.Println("当前昏影 -6：", JDE2Date(GetBanTime(jde, 115, 32, 8, -6)))

@@ -22,5 +22,5 @@ func TestStar(t *testing.T) {
 	fmt.Println(tools.Format(ra/15, 1), tools.Format(dec, 0))
 	fmt.Println(RiseTime(now, ra, dec, 115, 40, 0, true))
 	fmt.Println(CulminationTime(now, ra, 115))
-	fmt.Println(DownTime(now, ra, dec, 115, 40, 0, true))
+	fmt.Println(SetTime(now, ra, dec, 115, 40, 0, true))
 }

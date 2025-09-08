@@ -8,8 +8,10 @@ import (
 )
 
 var (
-	ERR_SUN_NEVER_RISE      = errors.New("ERROR:极夜，太阳在今日永远在地平线下！")
-	ERR_SUN_NEVER_DOWN      = errors.New("ERROR:极昼，太阳在今日永远在地平线上！")
+	ERR_SUN_NEVER_RISE = errors.New("ERROR:极夜，太阳在今日永远在地平线下！")
+	ERR_SUN_NEVER_SET  = errors.New("ERROR:极昼，太阳在今日永远在地平线上！")
+	// ERR_SUN_NEVER_DOWN deprecated: -- use ERR_SUN_NEVER_RISE instead
+	ERR_SUN_NEVER_DOWN      = ERR_SUN_NEVER_SET
 	ERR_TWILIGHT_NOT_EXISTS = errors.New("ERROR:今日晨昏朦影不存在！")
 )
 
@@ -47,18 +49,29 @@ func RiseTime(date time.Time, lon, lat, height float64, aero bool) (time.Time, e
 		err = ERR_SUN_NEVER_RISE
 	}
 	if riseJde == -1 {
-		err = ERR_SUN_NEVER_DOWN
+		err = ERR_SUN_NEVER_SET
 	}
 	return basic.JDE2DateByZone(riseJde, date.Location(), true), err
 }
 
-// SunDownTime 太阳落下时间
+// deprecated: -- use SetTime instead
+// DownTime 太阳落下时间
 // date，当地时区日期，务必做时区修正
 // lon，经度，东正西负
 // lat，纬度，北正南负
 // height，高度
 // aero，true时进行大气修正
 func DownTime(date time.Time, lon, lat, height float64, aero bool) (time.Time, error) {
+	return SetTime(date, lon, lat, height, aero)
+}
+
+// SetTime 太阳落下时间
+// date，当地时区日期，务必做时区修正
+// lon，经度，东正西负
+// lat，纬度，北正南负
+// height，高度
+// aero，true时进行大气修正
+func SetTime(date time.Time, lon, lat, height float64, aero bool) (time.Time, error) {
 	var err error
 	var aeroFloat float64
 	if aero {
@@ -70,12 +83,12 @@ func DownTime(date time.Time, lon, lat, height float64, aero bool) (time.Time, e
 	jde := basic.Date2JDE(date)
 	_, loc := date.Zone()
 	timezone := float64(loc) / 3600.0
-	downJde := basic.GetSunDownTime(jde, lon, lat, timezone, aeroFloat, height)
+	downJde := basic.GetSunSetTime(jde, lon, lat, timezone, aeroFloat, height)
 	if downJde == -2 {
 		err = ERR_SUN_NEVER_RISE
 	}
 	if downJde == -1 {
-		err = ERR_SUN_NEVER_DOWN
+		err = ERR_SUN_NEVER_SET
 	}
 	return basic.JDE2DateByZone(downJde, date.Location(), true), err
 }
@@ -177,7 +190,7 @@ func TrueLo(date time.Time) float64 {
 func TrueBo(date time.Time) float64 {
 	//转换为UTC时间
 	jde := basic.Date2JDE(date.UTC())
-	return basic.HSunTrueLo(basic.TD2UT(jde, true))
+	return basic.HSunTrueBo(basic.TD2UT(jde, true))
 }
 
 // ApparentLo 太阳视黄经
