@@ -2,6 +2,7 @@ package sun
 
 import (
 	"errors"
+	"math"
 	"time"
 
 	"github.com/starainrt/astro/basic"
@@ -283,4 +284,28 @@ func EarthDistance(date time.Time) float64 {
 	jde := basic.Date2JDE(date.UTC())
 	jde = basic.TD2UT(jde, true)
 	return basic.EarthAway(jde)
+}
+
+// ApparentSolarTime 真太阳时
+// 返回给定经度lon的真太阳时
+func ApparentSolarTime(date time.Time, lon float64) time.Time {
+	//真太阳时=太阳时角+12小时
+	trueTime := (HourAngle(date, lon, 0) + 180) / 15
+	if trueTime > 24 {
+		trueTime -= 24
+	}
+	//真太阳时的分
+	minute := (trueTime - math.Floor(trueTime)) * 60
+	//真太阳时的秒
+	second := (minute - math.Floor(minute)) * 60
+	//当地经度下的本地时区
+	trueSunTime := date.In(time.FixedZone("LTZ", int(lon*3600.00/15.0)))
+	if trueSunTime.Hour()-int(trueTime) > 12 {
+		trueSunTime = trueSunTime.Add(time.Hour * 24)
+	} else if int(trueTime)-trueSunTime.Hour() > 12 {
+		trueSunTime = trueSunTime.Add(-time.Hour * 24)
+	}
+	return time.Date(trueSunTime.Year(), trueSunTime.Month(), trueSunTime.Day(),
+		int(trueTime), int(minute), int(second), int((second-math.Floor(second))*1000000000),
+		time.FixedZone("LTZ", int(lon*3600.00/15.0)))
 }

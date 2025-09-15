@@ -34,6 +34,6 @@ func show() {
 	fmt.Print("农历：")
 	fmt.Println(GetLunar(2019, 10, 23, 8.0/24.0))
 	fmt.Println("当前月出：", JDE2Date(GetMoonRiseTime(jde, 115, 32, 8, 1, 10)))
-	fmt.Println("当前月落：", JDE2Date(GetMoonDownTime(jde, 115, 32, 8, 1, 10)))
+	fmt.Println("当前月落：", JDE2Date(GetMoonSetTime(jde, 115, 32, 8, 1, 10)))
 	fmt.Println("月相：", MoonLight(jde-8.0/24.0))
 }

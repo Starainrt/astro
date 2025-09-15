@@ -132,3 +132,88 @@ func magicNumberSpilt(magic int32) (uint16, uint8) {
 	upper = uint16(magic >> 8)
 	return upper, lower
 }
+
+func TestGetJQTime(t *testing.T) {
+	originalFunc := func(Year, Angle int) float64 { //节气时间
+		var j int = 1
+		var Day int
+		var tp float64
+		if Angle%2 == 0 {
+			Day = 18
+		} else {
+			Day = 3
+		}
+		if Angle%10 != 0 {
+			tp = float64(Angle+15.0) / 30.0
+		} else {
+			tp = float64(Angle) / 30.0
+		}
+		Month := 3 + tp
+		if Month > 12 {
+			Month -= 12
+		}
+		JD1 := JDECalc(int(Year), int(Month), float64(Day))
+		if Angle == 0 {
+			Angle = 360
+		}
+		for i := 0; i < j; i++ {
+			for {
+				JD0 := JD1
+				stDegree := JQLospec(JD0, float64(Angle)) - float64(Angle)
+				stDegreep := (JQLospec(JD0+0.000005, float64(Angle)) - JQLospec(JD0-0.000005, float64(Angle))) / 0.00001
+				JD1 = JD0 - stDegree/stDegreep
+				if math.Abs(JD1-JD0) <= 0.00001 {
+					break
+				}
+			}
+			JD1 -= 0.001
+		}
+		JD1 += 0.001
+		return TD2UT(JD1, false)
+	}
+
+	// 测试数据：年份从1900-2200抽样，角度覆盖关键值
+	testCases := []struct {
+		year, angle int
+	}{
+		// 边界年份
+		{1900, 0}, {1900, 15}, {1900, 30}, {1900, 45}, {1900, 90},
+		{1900, 180}, {1900, 270}, {1900, 360},
+
+		// 中间年份抽样
+		{1950, 0}, {1950, 30}, {1950, 90}, {1950, 180}, {1950, 270},
+		{2000, 0}, {2000, 15}, {2000, 45}, {2000, 90}, {2000, 360},
+		{2023, 0}, {2023, 30}, {2023, 90}, {2023, 180}, {2023, 270},
+
+		// 未来年份抽样
+		{2100, 0}, {2100, 15}, {2100, 30}, {2100, 45}, {2100, 90},
+		{2100, 180}, {2100, 270}, {2100, 360},
+		{2200, 0}, {2200, 30}, {2200, 90}, {2200, 180}, {2200, 270},
+	}
+
+	// 执行测试
+	allPassed := true
+	for _, tc := range testCases {
+		originalResult := originalFunc(tc.year, tc.angle)
+		optimizedResult := GetJQTime(tc.year, tc.angle)
+
+		diff := math.Abs(originalResult - optimizedResult)
+
+		if diff > 1e-10 {
+			t.Errorf("测试失败: year=%d, angle=%d\n原始结果: %.15f\n优化结果: %.15f\n差异: %.15f",
+				tc.year, tc.angle, originalResult, optimizedResult, diff)
+			allPassed = false
+		} else {
+			t.Logf("测试通过: year=%d, angle=%d, 结果: %.15f",
+				tc.year, tc.angle, optimizedResult)
+		}
+	}
+
+	if allPassed {
+		t.Log("所有测试用例通过！优化函数与原始函数结果完全一致")
+	}
+}
+
+func TestJQ(t *testing.T) {
+	fmt.Println(GetJQTime(-721, 15))
+}

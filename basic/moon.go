@@ -1430,162 +1430,202 @@ func MoonTimeAngle(JD, Lon, Lat, TZ float64) float64 {
 	return timeangle
 }
 
-func GetMoonRiseTime(JD, Lon, Lat, TZ, ZS, HEI float64) float64 {
-	ntz := TZ
-	TZ = Lon / 15
-	var An, tms float64 = 0, 0
-	JDZ := math.Floor(JD) + 0.5
-	JD = math.Floor(JD) + 0.5 - ntz/24 + TZ/24.0 //求0时JDE
-	JD1 := JD
-	moonheight := MoonHeight(JD, Lon, Lat, TZ) //求此时月亮高度
-	if ZS != 0 {
-		An = -0.83333 //修正大气折射
-	}
-	An = An - HeightDegreeByLat(HEI, Lat)
-	moonang := MoonTimeAngle(JD, Lon, Lat, TZ)
-	if moonheight > 0 { //月亮在地平线上或在落下与下中天之间
-		if moonang > 180 {
-			tms = (180 + 360 - moonang) / 15
-		} else {
-			tms = (180 - moonang) / 15
-		}
-		JD1 += (tms/24 + (tms/24*12.0)/15.0/24.0)
+func GetMoonRiseTime(julianDay, longitude, latitude, timeZone, zenithShift, height float64) float64 {
+	originalTimeZone := timeZone
+	timeZone = longitude / 15
+	var moonAngle, timeToMeridian float64 = 0, 0
+	julianDayZero := math.Floor(julianDay) + 0.5
+	julianDay = math.Floor(julianDay) + 0.5 - originalTimeZone/24 + timeZone/24 // 求0时JDE
 
+	estimatedTime := julianDay
+	moonHeight := MoonHeight(julianDay, longitude, latitude, timeZone) // 求此时月亮高度
+
+	if zenithShift != 0 {
+		moonAngle = -0.83333 // 修正大气折射
 	}
-	if moonheight < 0 && moonang > 180 {
-		tms = (180 - moonang) / 15
-		JD1 += (tms/24 + (tms/24*12.0)/15.0/24.0)
-	} else if moonheight < 0 && moonang < 180 {
-		tms = (180 - moonang) / 15
-		JD1 += (tms/24 + (tms/24*12.0)/15.0/24.0)
-	}
-	now := MoonTimeAngle(JD1, Lon, Lat, TZ)
-	if math.Abs(now-180) > 0.5 {
-		JD1 += (180 - now) * 4.0 / 60.0 / 24.0
-	}
-	hei := HMoonHeight(JD1, Lon, Lat, TZ)
-	if !(hei < -10 && math.Abs(Lat) < 60) {
-		if hei > An {
-			return -1 //拱
+	moonAngle = moonAngle - HeightDegreeByLat(height, latitude)
+
+	moonAngleTime := MoonTimeAngle(julianDay, longitude, latitude, timeZone)
+
+	if moonHeight > 0 { // 月亮在地平线上或在落下与下中天之间
+		if moonAngleTime > 180 {
+			timeToMeridian = (180 + 360 - moonAngleTime) / 15
+		} else {
+			timeToMeridian = (180 - moonAngleTime) / 15
 		}
-		reJde := JD1 + 12.0/24.0 + 6.0/15.0/24.0
-		mag := MoonTimeAngle(reJde, Lon, Lat, TZ)
-		if mag < 90 {
-			mag += 360
+		estimatedTime += (timeToMeridian/24 + (timeToMeridian/24*12.0)/15.0/24.0)
+	}
+
+	if moonHeight < 0 && moonAngleTime > 180 {
+		timeToMeridian = (180 - moonAngleTime) / 15
+		estimatedTime += (timeToMeridian/24 + (timeToMeridian/24*12.0)/15.0/24.0)
+	} else if moonHeight < 0 && moonAngleTime < 180 {
+		timeToMeridian = (180 - moonAngleTime) / 15
+		estimatedTime += (timeToMeridian/24 + (timeToMeridian/24*12.0)/15.0/24.0)
+	}
+
+	currentAngle := MoonTimeAngle(estimatedTime, longitude, latitude, timeZone)
+	if math.Abs(currentAngle-180) > 0.5 {
+		estimatedTime += (180 - currentAngle) * 4.0 / 60.0 / 24.0
+	}
+
+	currentHeight := HMoonHeight(estimatedTime, longitude, latitude, timeZone)
+	if !(currentHeight < -10 && math.Abs(latitude) < 60) {
+		if currentHeight > moonAngle {
+			return -1 // 拱
 		}
-		reJde += (360 - mag) * 4.0 / 60.0 / 24.0
-		if HMoonHeight(reJde, Lon, Lat, TZ) < An {
-			return -2 //沉
+		checkTime := estimatedTime + 12.0/24.0 + 6.0/15.0/24.0
+		checkAngle := MoonTimeAngle(checkTime, longitude, latitude, timeZone)
+		if checkAngle < 90 {
+			checkAngle += 360
+		}
+		checkTime += (360 - checkAngle) * 4.0 / 60.0 / 24.0
+		if HMoonHeight(checkTime, longitude, latitude, timeZone) < moonAngle {
+			return -2 // 沉
 		}
 	}
-	dec := MoonApparentDec(JD1, Lon, Lat, TZ)
-	tmp := (Sin(An) - Sin(dec)*Sin(Lat)) / (Cos(dec) * Cos(Lat))
-	if math.Abs(tmp) <= 1 && Lat < 85 {
-		SJ := (180 - ArcCos(tmp)) / 15
-		JD1 += SJ/24.00 + SJ/33.00/15.00
+
+	moonDeclination := MoonApparentDec(estimatedTime, longitude, latitude, timeZone)
+	tmp := (Sin(moonAngle) - Sin(moonDeclination)*Sin(latitude)) / (Cos(moonDeclination) * Cos(latitude))
+
+	if math.Abs(tmp) <= 1 && latitude < 85 {
+		hourAngle := (180 - ArcCos(tmp)) / 15
+		estimatedTime += hourAngle/24.00 + hourAngle/33.00/15.00
 	} else {
 		i := 0
-		for MoonHeight(JD1, Lon, Lat, TZ) < An {
+		for MoonHeight(estimatedTime, longitude, latitude, timeZone) < moonAngle {
 			i++
-			JD1 += 15.0 / 60.0 / 24.0
+			estimatedTime += 15.0 / 60.0 / 24.0
 			if i > 48 {
 				break
 			}
 		}
 	}
-	for {
-		JD0 := JD1
-		stDegree := HMoonHeight(JD0, Lon, Lat, TZ) - An
-		stDegreep := (HMoonHeight(JD0+0.000005, Lon, Lat, TZ) - HMoonHeight(JD0-0.000005, Lon, Lat, TZ)) / 0.00001
-		JD1 = JD0 - stDegree/stDegreep
-		if math.Abs(JD1-JD0) <= 0.00002 {
-			break
-		}
-	}
-	JD1 = JD1 - TZ/24 + ntz/24
 
-	if JD1 > JDZ+1 || JD1 < JDZ {
-		return -3 //明日
+	// 使用牛顿迭代法求精确解
+	estimatedTime = moonRiseSetNewtonRaphsonIteration(estimatedTime, longitude, latitude, timeZone, moonAngle, HMoonHeight, 0.00002)
+
+	estimatedTime = estimatedTime - timeZone/24 + originalTimeZone/24
+
+	if estimatedTime > julianDayZero+1 || estimatedTime < julianDayZero {
+		return -3 // 明日
 	} else {
-		return JD1
+		return estimatedTime
 	}
 }
 
-func GetMoonDownTime(JD, Lon, Lat, TZ, ZS, HEI float64) float64 {
-	ntz := TZ
-	TZ = Lon / 15
-	var An, tms float64 = 0, 0
-	JDZ := math.Floor(JD) + 0.5
-	JD = math.Floor(JD) + 0.5 - ntz/24 + TZ/24 //求0时JDE
-	JD1 := JD
-	moonheight := MoonHeight(JD, Lon, Lat, TZ) //求此时月亮高度
-	if ZS != 0 {
-		An = -0.83333 //修正大气折射
+func GetMoonSetTime(julianDay, longitude, latitude, timeZone, zenithShift, height float64) float64 {
+	originalTimeZone := timeZone
+	timeZone = longitude / 15
+	var moonAngle, timeToMeridian float64 = 0, 0
+	julianDayZero := math.Floor(julianDay) + 0.5
+	julianDay = math.Floor(julianDay) + 0.5 - originalTimeZone/24 + timeZone/24 // 求0时JDE
+
+	estimatedTime := julianDay
+	moonHeight := MoonHeight(julianDay, longitude, latitude, timeZone) // 求此时月亮高度
+
+	if zenithShift != 0 {
+		moonAngle = -0.83333 // 修正大气折射
 	}
-	An = An - HeightDegreeByLat(HEI, Lat)
-	moonang := MoonTimeAngle(JD, Lon, Lat, TZ)
-	if moonheight < 0 {
-		tms = (360 - moonang) / 15
-		JD1 += (tms/24 + (tms/24.0*12.0)/15.0/24.0)
+	moonAngle = moonAngle - HeightDegreeByLat(height, latitude)
+
+	moonAngleTime := MoonTimeAngle(julianDay, longitude, latitude, timeZone)
+
+	if moonHeight < 0 {
+		timeToMeridian = (360 - moonAngleTime) / 15
+		estimatedTime += (timeToMeridian/24 + (timeToMeridian/24.0*12.0)/15.0/24.0)
 	}
-	//月亮在地平线上或在落下与下中天之间
-	if moonheight > 0 && moonang < 180 {
-		tms = (-moonang) / 15
-		JD1 += (tms/24.0 + (tms/24.0*12.0)/15.0/24.0)
-	} else if moonheight > 0 {
-		tms = (360 - moonang) / 15
-		JD1 += (tms/24.0 + (tms/24.0*12.0)/15.0/24.0)
+
+	// 月亮在地平线上或在落下与下中天之间
+	if moonHeight > 0 && moonAngleTime < 180 {
+		timeToMeridian = (-moonAngleTime) / 15
+		estimatedTime += (timeToMeridian/24.0 + (timeToMeridian/24.0*12.0)/15.0/24.0)
+	} else if moonHeight > 0 {
+		timeToMeridian = (360 - moonAngleTime) / 15
+		estimatedTime += (timeToMeridian/24.0 + (timeToMeridian/24.0*12.0)/15.0/24.0)
 	}
-	now := MoonTimeAngle(JD1, Lon, Lat, TZ)
-	if now < 180 {
-		now += 360
+
+	currentAngle := MoonTimeAngle(estimatedTime, longitude, latitude, timeZone)
+	if currentAngle < 180 {
+		currentAngle += 360
 	}
-	if math.Abs(now-360) > 0.5 {
-		JD1 += (360 - now) * 4.0 / 60.0 / 24.0
+	if math.Abs(currentAngle-360) > 0.5 {
+		estimatedTime += (360 - currentAngle) * 4.0 / 60.0 / 24.0
 	}
-	//JD1=月球中天时间
-	hei := HMoonHeight(JD1, Lon, Lat, TZ)
-	if !(hei > 10 && math.Abs(Lat) < 60) {
-		if hei < An {
-			return -2 //沉
+
+	// estimatedTime = 月球中天时间
+	currentHeight := HMoonHeight(estimatedTime, longitude, latitude, timeZone)
+	if !(currentHeight > 10 && math.Abs(latitude) < 60) {
+		if currentHeight < moonAngle {
+			return -2 // 沉
 		}
-		reJde := JD1 + 12.0/24.0 + 6.0/15.0/24.0
-		sub := 180 - MoonTimeAngle(reJde, Lon, Lat, TZ)
-		reJde += sub * 4.0 / 60.0 / 24.0
-		if HMoonHeight(reJde, Lon, Lat, TZ) > An {
-			return -1 //拱
+		checkTime := estimatedTime + 12.0/24.0 + 6.0/15.0/24.0
+		angleSubtraction := 180 - MoonTimeAngle(checkTime, longitude, latitude, timeZone)
+		checkTime += angleSubtraction * 4.0 / 60.0 / 24.0
+		if HMoonHeight(checkTime, longitude, latitude, timeZone) > moonAngle {
+			return -1 // 拱
 		}
 	}
-	dec := MoonApparentDec(JD1, Lon, Lat, TZ)
-	tmp := (Sin(An) - Sin(dec)*Sin(Lat)) / (Cos(dec) * Cos(Lat))
-	if math.Abs(tmp) <= 1 && Lat < 85 {
-		SJ := (ArcCos(tmp)) / 15.0
-		JD1 += SJ/24 + SJ/33.0/15.0
+
+	moonDeclination := MoonApparentDec(estimatedTime, longitude, latitude, timeZone)
+	tmp := (Sin(moonAngle) - Sin(moonDeclination)*Sin(latitude)) / (Cos(moonDeclination) * Cos(latitude))
+
+	if math.Abs(tmp) <= 1 && latitude < 85 {
+		hourAngle := (ArcCos(tmp)) / 15.0
+		estimatedTime += hourAngle/24 + hourAngle/33.0/15.0
 	} else {
 		i := 0
-		for MoonHeight(JD1, Lon, Lat, TZ) > An {
+		for MoonHeight(estimatedTime, longitude, latitude, timeZone) > moonAngle {
 			i++
-			JD1 += 15.0 / 60.0 / 24.0
+			estimatedTime += 15.0 / 60.0 / 24.0
 			if i > 48 {
 				break
 			}
 		}
 	}
+
+	// 使用牛顿迭代法求精确解
+	estimatedTime = moonRiseSetNewtonRaphsonIteration(estimatedTime, longitude, latitude, timeZone, moonAngle, HMoonHeight, 0.00002)
+
+	estimatedTime = estimatedTime - timeZone/24 + originalTimeZone/24
+
+	if estimatedTime > julianDayZero+1 || estimatedTime < julianDayZero {
+		return -3 // 明日
+	} else {
+		return estimatedTime
+	}
+}
+
+// heightFunction 高度函数类型定义，用于牛顿迭代法
+type heightFunction func(time, longitude, latitude, timeZone float64) float64
+
+// moonRiseSetNewtonRaphsonIteration 牛顿-拉夫逊迭代法求解天体高度方程
+func moonRiseSetNewtonRaphsonIteration(initialTime, longitude, latitude, timeZone, targetAngle float64,
+	heightFunc heightFunction, tolerance float64) float64 {
+	const derivativeStep = 0.000005
+
+	currentTime := initialTime
+
 	for {
-		JD0 := JD1
-		stDegree := HMoonHeight(JD0, Lon, Lat, TZ) - An
-		stDegreep := (HMoonHeight(JD0+0.000005, Lon, Lat, TZ) - HMoonHeight(JD0-0.000005, Lon, Lat, TZ)) / 0.00001
-		JD1 = JD0 - stDegree/stDegreep
-		if math.Abs(JD1-JD0) <= 0.00002 {
+		previousTime := currentTime
+
+		// 计算函数值：f(t) = height(t) - targetAngle
+		functionValue := heightFunc(previousTime, longitude, latitude, timeZone) - targetAngle
+
+		// 计算导数：f'(t) ≈ (f(t+h) - f(t-h)) / (2h)
+		derivative := (heightFunc(previousTime+derivativeStep, longitude, latitude, timeZone) -
+			heightFunc(previousTime-derivativeStep, longitude, latitude, timeZone)) / (2 * derivativeStep)
+
+		// 牛顿-拉夫逊公式：t_new = t_old - f(t) / f'(t)
+		currentTime = previousTime - functionValue/derivative
+
+		// 检查收敛
+		if math.Abs(currentTime-previousTime) <= tolerance {
 			break
 		}
 	}
-	JD1 = JD1 - TZ/24 + ntz/24
-	if JD1 > JDZ+1 || JD1 < JDZ {
-		return -3 //明日
-	} else {
-		return JD1
-	}
+
+	return currentTime
 }
 
 func GetMoonCir() [][][]float64 {

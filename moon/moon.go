@@ -1,6 +1,7 @@
 package moon
 
 import (
+	"github.com/starainrt/astro/tools"
 	"errors"
 	"math"
 	"time"
@@ -201,7 +202,7 @@ func SetTime(date time.Time, lon, lat, height float64, aero bool) (time.Time, er
 	if aero {
 		aeroFloat = 1
 	}
-	downJde := basic.GetMoonDownTime(jde, lon, lat, timezone, aeroFloat, height)
+	downJde := basic.GetMoonSetTime(jde, lon, lat, timezone, aeroFloat, height)
 	if downJde == -3 {
 		err = ERR_NOT_TODAY
 	}
@@ -212,6 +213,41 @@ func SetTime(date time.Time, lon, lat, height float64, aero bool) (time.Time, er
 		err = ERR_MOON_NEVER_SET
 	}
 	return basic.JDE2DateByZone(downJde, date.Location(), true), err
+}
+
+// SunMoonLoDiff 日月黄经差，新月时为0，满月时为180
+// 取值范围[0,360)
+func SunMoonLoDiff(date time.Time) float64 {
+	jde := basic.TD2UT(basic.Date2JDE(date.UTC()), true)
+	sunLo := basic.HSunApparentLo(jde)
+	moonLo := basic.HMoonApparentLo(jde)
+	return tools.Limit360(moonLo - sunLo)
+}
+
+// PhaseDesc 月相描述
+// 返回Date对应UTC世界时的月相描述
+// 取值范围：新月，上峨眉月，上弦月，盈凸月，满月，亏凸月，下弦月，下峨眉月，残月
+func PhaseDesc(date time.Time) string {
+	moonSunLoDiff := SunMoonLoDiff(date)
+	if moonSunLoDiff >= 0 && moonSunLoDiff <= 30 {
+		return "新月"
+	} else if moonSunLoDiff > 30 && moonSunLoDiff <= 75 {
+		return "上峨眉月"
+	} else if moonSunLoDiff > 75 && moonSunLoDiff <= 135 {
+		return "上弦月"
+	} else if moonSunLoDiff > 135 && moonSunLoDiff < 170 {
+		return "盈凸月"
+	} else if moonSunLoDiff >= 170 && moonSunLoDiff <= 190 {
+		return "满月"
+	} else if moonSunLoDiff > 190 && moonSunLoDiff < 225 {
+		return "亏凸月"
+	} else if moonSunLoDiff >= 225 && moonSunLoDiff < 285 {
+		return "下弦月"
+	} else if moonSunLoDiff >= 285 && moonSunLoDiff < 330 {
+		return "下峨眉月"
+	} else {
+		return "残月"
+	}
 }
 
 // Phase 月相

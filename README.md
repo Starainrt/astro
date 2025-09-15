@@ -1,5 +1,5 @@
 # astro
-用了多年的天文自用代码， 基本上按照《天文算法》一书中内容进行实现，行星算法为vsop87
+自用多年的天文算法， 基本上按照《天文算法》书中内容进行实现，行星算法为vsop87，月球算法为ELP2000
 
 ## 使用
 
@@ -10,17 +10,57 @@ go get github.com/starainrt/astro
 
 ### 历法与节气
 
-按现行农历GB/T 33661-2017算法计算，古代由于定朔定气误差此处计算结果会与古籍不符，推荐使用年份为[1929-6000]年
+> 2025年9月补：
 
+支持公农历互转，支持年份为[-103-3000]年
+其中，[-103,1912]年以《寿星天文历》为数据基础，按照[ytliu0教授]( https://ytliu0.github.io/ChineseCalendar/index_simp.html ) 网页所记录数据进行修正
+目前已经完成校对。
 
+[1913,3000]年,根据VSOP87进行定气、根据ELP2000进行定朔，按现行农历GB/T 33661-2017算法计算
+
+#### 注意事项
+1. 同一个公历可能对应多个农历日期，如果同一个历史时期存在多个政权（比如三国时期），每个政权可能使用不同的历法，导致同一公历日期对应不同的农历日期，本程序尽量提供了所有的结果。
+2. 同一个农历日期可能对应多个公历日期，不仅仅是多个政权的问题，历史上同一政权也可能因为历法改革导致同一农历日期对应多个公历日期，比如武则天改历，导致圣历三年存在两个腊月
+3. 由于使用儒略日进行计算，本程序中，对于公历的历法使用如下
+   1. 公历1582年10月15日之后使用格里高利历
+   2. 公历1582年10月4日之前使用儒略历
+   3. 公历8年之前使用逆推儒略历
+   4. 公历1582年10月4日的下一天为1582年10月15日
+   5. 本程序中，0年表示公元前1年，-1表示公元前2年，以此类推
+4. Go语言特别注意事项：
+   1. Go语言的time.Time，在公元1582年10月15日之前使用逆推格里高利历，而不是儒略历，当不使用time.Time的Add方法时，可以正常使用
+   2. 由于1的原因，**Go语言time.Time包在1582年10月15日之前，Weekday()是不符合本程序的（本程序使用儒略历）**，举例：1582年10月4日是星期四，而Go语言time包中，10月4日是星期一
+   3. 如果需要符合本程序的Weekday()，可以使用`int(calendar.Date2JDE(date)+1.5)%7`获得，其中0表示星期日，1表示星期一，以此类推，date应当为当日0时的time.Time
+   4. 如果需要在1582年前使用time.Time的Add或AddDate方法，需要特别注意其在部分年份是不准确的，比如700年，儒略历是闰年，而Go使用的逆推格里高利历700年不是闰年
 #### 历法
 
-公农历互转
+##### 公历转农历
+
+传入公历(time.Time)
+返回calendar.Time，内含多个农历日期
+可以从calendar.Time中获取农历的详细描述，年月日的干支，所属朝代、皇帝、年号等信息或整体结构化信息
+
+##### 农历转公历
+
+本程序支持两种方法，一是直接传入农历字符串：
+
+传入农历字符串，如"元丰六年十月十二"
+支持如下格式：
+1. 年号+年+月+日，如"元丰六年十月十二"，如果是闰月，月前加"闰"，日期格式为"初一"、"二十"、"廿九"等
+2. 年号+年+月+干支日，如"元嘉二十七年七月庚午"
+3. 年份+月+日，如"二零二五年正月初一"，如果是闰月，月前加"闰"，请在现代使用这个格式，注意，这里的年是农历年的公历映射，比如公历2025年1月28日是除夕，对应腊月二十九，这里应当传入"二零二四年腊月廿九"，因为从农历角度看，腊月二十九是农历2024年最后一天
+4. 年份+月+干支日，如"二零二五年正月戊戌日"
+5. 当然，也可以将日期改为阿拉伯数字，比如2025年1月1日，对应2025年正月初一
+6. **历史上，阿拉伯数字和汉字数字并不一一对应**，比如武则天改历，规定建子（现在的十一月）为正月，原先的正月称之为**一月**，其他月份不变，也就是月份变成了正月、十二月、一月、二月。
+在此场景下，正月和一月并不相同，代表两个日期，故在历史场景下，请使用汉字数字表示年份和月份
+
+第二种方法是传入年份(int)，月份(int)，日期(int)，是否闰月(bool)，此方法很简单，适用于现代农历
 
 ```golang
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/starainrt/astro/calendar"
 	"time"
@@ -28,12 +68,28 @@ import (
 
 func main() {
 	cst := time.FixedZone("CST", 8*3600)
-	//指定2020年1月1日8时8分8秒
-	date := time.Date(2020, 1, 1, 8, 8, 8, 8, cst)
+	//指定公元240年1月1日8时8分8秒
+	date := time.Date(240, 1, 1, 8, 8, 8, 8, cst)
 	//公历转农历: 公历2020年1月1日转农历
-	fmt.Println(calendar.SolarToLunar(date))
-	//农历转公历：农历2020年（鼠年）正月初一
-	fmt.Println(calendar.LunarToSolar(2020, 1, 1, false))
+	// 返回的Lunar是个包含农历公历信息的结构体
+	lunar, _ := calendar.SolarToLunar(date)
+	//包含农历的详细描述
+	fmt.Println(lunar.LunarDescWithEmperor())
+	//包含农历的结构化信息
+	info := lunar.LunarInfo()
+	data, _ := json.MarshalIndent(info, "", "  ")
+	fmt.Println(string(data))
+
+	//农历转公历：查看元丰六年十月十二日对应的公历日期和其他农历日期
+	solar, _ := calendar.LunarToSolar("元丰六年十月十二日")
+	for _, v := range solar {
+		fmt.Println(v.Time())
+		fmt.Println(v.LunarDescWithEmperor())
+	}
+
+	//农历转公历：适用于现代日期
+	modernDate, _ := calendar.LunarToSolarSingle(2025, 1, 1, false)
+	fmt.Println(modernDate.Time())
 }
 
 ```
@@ -41,8 +97,73 @@ func main() {
 输出结果
 
 ```
-12 7 false 腊月初七       //输出农历月份、日期、是否为闰月、汉字表述。
-2020-01-25 00:00:00 +0800 CST //输出本地时区0时公历时间。
+//三国时期，公历240年1月1日对应多个农历日期
+[魏明帝 景初三年腊月二十 蜀后主 延熙二年冬月十九 吴大帝 赤乌二年冬月二十]
+[
+  {
+    "solarDate": "0240-01-01T08:08:08.000000008+08:00",
+    "lunarYear": 239,
+    "lunarYearChn": "二三九",
+    "lunarMonth": 12,
+    "lunarDay": 20,
+    "isLeap": false,
+    "lunarMonthDayDesc": "腊月二十",
+    "ganzhiYear": "己未",
+    "ganzhiMonth": "丙子",
+    "ganzhiDay": "辛未",
+    "dynasty": "魏",
+    "emperor": "魏明帝",
+    "nianhao": "景初",
+    "yearOfNianhao": 3,
+    "eraDesc": "景初三年",
+    "lunarWithNianhaoDesc": "景初三年腊月二十",
+    "chineseZodiac": "羊"
+  },
+  {
+    "solarDate": "0240-01-01T08:08:08.000000008+08:00",
+    "lunarYear": 239,
+    "lunarYearChn": "二三九",
+    "lunarMonth": 11,
+    "lunarDay": 19,
+    "isLeap": false,
+    "lunarMonthDayDesc": "冬月十九",
+    "ganzhiYear": "己未",
+    "ganzhiMonth": "丙子",
+    "ganzhiDay": "辛未",
+    "dynasty": "",
+    "emperor": "蜀后主",
+    "nianhao": "延熙",
+    "yearOfNianhao": 2,
+    "eraDesc": "延熙二年",
+    "lunarWithNianhaoDesc": "延熙二年冬月十九",
+    "chineseZodiac": "羊"
+  },
+  {
+    "solarDate": "0240-01-01T08:08:08.000000008+08:00",
+    "lunarYear": 239,
+    "lunarYearChn": "二三九",
+    "lunarMonth": 11,
+    "lunarDay": 20,
+    "isLeap": false,
+    "lunarMonthDayDesc": "冬月二十",
+    "ganzhiYear": "己未",
+    "ganzhiMonth": "丙子",
+    "ganzhiDay": "辛未",
+    "dynasty": "吴",
+    "emperor": "吴大帝",
+    "nianhao": "赤乌",
+    "yearOfNianhao": 2,
+    "eraDesc": "赤乌二年",
+    "lunarWithNianhaoDesc": "赤乌二年冬月二十",
+    "chineseZodiac": "羊"
+  }
+]
+//宋神宗元丰六年十月十二日（张怀民起床啦）对应的公历日期
+1083-11-24 00:00:00 +0800 CST
+[宋神宗 元丰六年十月十二 辽道宗 大康九年十月十二]
+
+//现代农历2025年正月初一对应的公历日期
+2025-01-29 00:00:00 +0800 CST
 
 ```
 
@@ -218,6 +339,8 @@ func main() {
 	date := time.Date(2020, 1, 1, 8, 8, 8, 8, cst)
 	//月亮此刻被照亮的比例（月相）
 	fmt.Println(moon.Phase(date))
+	//月相具体描述
+	fmt.Println(moon.PhaseDesc(date))
 	//下次朔月时间
 	fmt.Println(moon.NextShuoYue(date))
 	//下次上弦月时间
@@ -233,6 +356,7 @@ func main() {
 
 ```
 0.3000437415436273 //被照亮30%
+上峨眉月 //月相描述
 2020-01-25 05:41:55.820311009 +0800 CST //下次朔月
 2020-01-03 12:45:20.809730887 +0800 CST //下次上弦
 2020-01-11 03:21:14.729664623 +0800 CST //下次满月
@@ -363,6 +487,40 @@ func main() {
 
 ```
 
+### 恒星
+
+1. 本程序自带9100颗恒星的数据库，已经自动计算自行
+
+```golang
+package main
+
+import (
+	"fmt"
+	"github.com/starainrt/astro/star"
+	"time"
+)
+
+func main() {
+	cst := time.FixedZone("CST", 8*3600)
+	//指定2020年1月1日8时8分8秒
+	date := time.Date(2020, 1, 1, 8, 8, 8, 8, cst)
+
+	//初始化恒星数据库
+	star.InitStarDatabase()
+	sirius, _ := star.StarDataByName("天狼")
+	//天狼星升起时间
+	riseDate, _ := star.RiseTime(date, sirius.Ra, sirius.Dec, 115, 40, 0, true)
+	fmt.Println(riseDate)
+	//天狼星降落时间
+	setDate, _ := star.SetTime(date, sirius.Ra, sirius.Dec, 115, 40, 0, true)
+	fmt.Println(setDate)
+}
+```
+
+```
+2019-12-31 19:21:56.993647813 +0800 CST //天狼星升起时间
+2020-01-01 05:29:53.535125255 +0800 CST  //天狼星降落时间
+```
 
 ## 已实现
 

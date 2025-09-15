@@ -288,48 +288,66 @@ func GetJieqiLoops(year, loop int) []float64 {
 	return jq
 }
 
-func GetJQTime(Year, Angle int) float64 { //节气时间
-	var j int = 1
-	var Day int
-	var tp float64
-	if Angle%2 == 0 {
-		Day = 18
+func GetJQTime(year, angle int) float64 {
+	// Calculate initial day based on angle parity
+	var initialDay float64
+	if angle%2 == 0 {
+		initialDay = 18
 	} else {
-		Day = 3
+		initialDay = 3
 	}
-	if Angle%10 != 0 {
-		tp = float64(Angle+15.0) / 30.0
+
+	// Calculate temporary factor for month offset
+	var tempFactor float64
+	if angle%10 != 0 {
+		tempFactor = float64(angle+15) / 30.0
 	} else {
-		tp = float64(Angle) / 30.0
+		tempFactor = float64(angle) / 30.0
 	}
-	Month := 3 + tp
-	if Month > 12 {
-		Month -= 12
+
+	// Calculate initial month, adjusting if超过 12
+	initialMonth := 3.0 + tempFactor
+	if initialMonth > 12.0 {
+		initialMonth -= 12.0
 	}
-	JD1 := JDECalc(int(Year), int(Month), float64(Day))
-	if Angle == 0 {
-		Angle = 360
+
+	// Calculate initial Julian date
+	initialJD := JDECalc(year, int(initialMonth), initialDay)
+
+	// Set target angle for iteration; if angle is 0, use 360
+	targetAngle := float64(angle)
+	if angle == 0 {
+		targetAngle = 360.0
 	}
-	for i := 0; i < j; i++ {
-		for {
-			JD0 := JD1
-			stDegree := JQLospec(JD0) - float64(Angle)
-			stDegreep := (JQLospec(JD0+0.000005) - JQLospec(JD0-0.000005)) / 0.00001
-			JD1 = JD0 - stDegree/stDegreep
-			if math.Abs(JD1-JD0) <= 0.00001 {
-				break
-			}
+
+	// Newton-Raphson iteration to find precise Julian date
+	currentJD := initialJD
+	for {
+		previousJD := currentJD
+		errorValue := JQLospec(previousJD, targetAngle) - targetAngle
+		derivative := (JQLospec(previousJD+0.000005, targetAngle) - JQLospec(previousJD-0.000005, targetAngle)) / 0.00001
+		currentJD = previousJD - errorValue/derivative
+
+		// Check for convergence
+		if math.Abs(currentJD-previousJD) <= 0.00001 {
+			break
 		}
-		JD1 -= 0.001
 	}
-	JD1 += 0.001
-	return TD2UT(JD1, false)
+
+	// Convert to UT and return
+	return TD2UT(currentJD, false)
 }
 
-func JQLospec(JD float64) float64 {
+func JQLospec(JD float64, target float64) float64 {
 	t := HSunApparentLo(JD)
-	if t <= 12 {
-		t += 360
+	if target >= 345 {
+		if t <= 12 {
+			t += 360
+		}
+	} else if target <= 15 {
+		if t >= 350 {
+			t -= 360
+		}
 	}
 	return t
 }
@@ -391,8 +409,8 @@ func GetWHTime(Year, Angle int) float64 {
 	}
 	for {
 		JD0 := JD1
-		stDegree := JQLospec(JD0) - float64(Angle)
-		stDegreep := (JQLospec(JD0+0.000005) - JQLospec(JD0-0.000005)) / 0.00001
+		stDegree := JQLospec(JD0, float64(Angle)) - float64(Angle)
+		stDegreep := (JQLospec(JD0+0.000005, float64(Angle)) - JQLospec(JD0-0.000005, float64(Angle))) / 0.00001
 		JD1 = JD0 - stDegree/stDegreep
 		if math.Abs(JD1-JD0) <= 0.00001 {
 			break
@@ -503,96 +521,133 @@ func SunTimeAngle(JD, Lon, Lat, TZ float64) float64 {
 	return timeangle
 }
 
-/*
- * 精确计算，传入当日0时JDE
- */
-func GetSunRiseTime(JD, Lon, Lat, TZ, ZS, HEI float64) float64 {
-	var An float64
-	JD = math.Floor(JD) + 1.5
-	ntz := math.Round(Lon / 15)
-	if ZS != 0 {
-		An = -0.8333
-	}
-	An = An - HeightDegreeByLat(HEI, Lat)
-	tztime := GetSunTZTime(JD, Lon, ntz)
-	if SunHeight(tztime, Lon, Lat, ntz) < An {
-		return -2 //极夜
-	}
-	if SunHeight(tztime-0.5, Lon, Lat, ntz) > An {
-		return -1 //极昼
-	}
-	//(sin(ho)-sin(φ)*sin(δ2))/(cos(φ)*cos(δ2))
-	tmp := (Sin(An) - Sin(HSunApparentDec(tztime))*Sin(Lat)) / (Cos(HSunApparentDec(tztime)) * Cos(Lat))
-	var sunrise float64
-	if math.Abs(tmp) <= 1 && Lat < 85 {
-		rzsc := ArcCos(tmp) / 15
-		sunrise = tztime - rzsc/24 - 25.0/24.0/60.0
-	} else {
-		sunrise = tztime
-		i := 0
-		//TODO:使用二分法计算
-		for LowSunHeight(sunrise, Lon, Lat, ntz) > An {
-			i++
-			sunrise -= 15.0 / 60.0 / 24.0
-			if i > 48 {
-				break
-			}
-		}
-	}
-	JD1 := sunrise
-	for {
-		JD0 := JD1
-		stDegree := SunHeight(JD0, Lon, Lat, ntz) - An
-		stDegreep := (SunHeight(JD0+0.000005, Lon, Lat, ntz) - SunHeight(JD0-0.000005, Lon, Lat, ntz)) / 0.00001
-		JD1 = JD0 - stDegree/stDegreep
-		if math.Abs(JD1-JD0) <= 0.00001 {
-			break
-		}
-	}
-	return JD1 - ntz/24 + TZ/24
+// GetSunRiseTime 精确计算日出时间，传入当日0时JDE
+func GetSunRiseTime(julianDay, longitude, latitude, timeZone, zenithShift, height float64) float64 {
+	return calculateSunRiseSetTime(julianDay, longitude, latitude, timeZone, zenithShift, height, true)
 }
-func GetSunSetTime(JD, Lon, Lat, TZ, ZS, HEI float64) float64 {
-	var An float64
-	JD = math.Floor(JD) + 1.5
-	ntz := math.Round(Lon / 15)
-	if ZS != 0 {
-		An = -0.8333
+
+// GetSunSetTime 精确计算日落时间，传入当日0时JDE
+func GetSunSetTime(julianDay, longitude, latitude, timeZone, zenithShift, height float64) float64 {
+	return calculateSunRiseSetTime(julianDay, longitude, latitude, timeZone, zenithShift, height, false)
+}
+
+// calculateSunRiseSetTime 统一的日出日落计算函数
+func calculateSunRiseSetTime(julianDay, longitude, latitude, timeZone, zenithShift, height float64, isSunrise bool) float64 {
+	var sunAngle float64
+	julianDay = math.Floor(julianDay) + 1.5
+	naturalTimeZone := math.Round(longitude / 15)
+
+	// 计算太阳高度角
+	if zenithShift != 0 {
+		sunAngle = -0.8333
 	}
-	An = An - HeightDegreeByLat(HEI, Lat)
-	tztime := GetSunTZTime(JD, Lon, ntz)
-	if SunHeight(tztime, Lon, Lat, ntz) < An {
-		return -2 //极夜
+	sunAngle = sunAngle - HeightDegreeByLat(height, latitude)
+
+	// 获取太阳上中天时间
+	solarNoonTime := GetSunTZTime(julianDay, longitude, naturalTimeZone)
+
+	// 检查极夜极昼条件
+	polarCondition := checkPolarConditions(solarNoonTime, longitude, latitude, naturalTimeZone, sunAngle, isSunrise)
+	if polarCondition != 0 {
+		return polarCondition
 	}
-	if SunHeight(tztime+0.5, Lon, Lat, ntz) > An {
-		return -1 //极昼
+
+	// 计算初始估算时间
+	initialTime := calculateInitialSunTime(solarNoonTime, longitude, latitude, naturalTimeZone, sunAngle, isSunrise)
+
+	// 牛顿-拉夫逊迭代求精确解
+	return sunRiseSetNewtonRaphsonIteration(initialTime, longitude, latitude, naturalTimeZone, sunAngle, timeZone)
+}
+
+// checkPolarConditions 检查极夜极昼条件
+func checkPolarConditions(solarNoonTime, longitude, latitude, naturalTimeZone, sunAngle float64, isSunrise bool) float64 {
+	if SunHeight(solarNoonTime, longitude, latitude, naturalTimeZone) < sunAngle {
+		return -2 // 极夜
 	}
-	tmp := (Sin(An) - Sin(HSunApparentDec(tztime))*Sin(Lat)) / (Cos(HSunApparentDec(tztime)) * Cos(Lat))
-	var sundown float64
-	if math.Abs(tmp) <= 1 && Lat < 85 {
-		rzsc := ArcCos(tmp) / 15
-		sundown = tztime + rzsc/24.0 + 35.0/24.0/60.0
-	} else {
-		sundown = tztime
-		i := 0
-		for LowSunHeight(sundown, Lon, Lat, ntz) > An {
-			i++
-			sundown += 15.0 / 60.0 / 24.0
-			if i > 48 {
-				break
-			}
+
+	checkTime := solarNoonTime + 0.5
+	if isSunrise {
+		checkTime = solarNoonTime - 0.5
+	}
+
+	if SunHeight(checkTime, longitude, latitude, naturalTimeZone) > sunAngle {
+		return -1 // 极昼
+	}
+
+	return 0 // 正常条件
+}
+
+// calculateInitialSunTime 计算日出日落的初始估算时间
+func calculateInitialSunTime(solarNoonTime, longitude, latitude, naturalTimeZone, sunAngle float64, isSunrise bool) float64 {
+	// 使用球面三角法计算: (sin(ho)-sin(φ)*sin(δ))/(cos(φ)*cos(δ))
+	apparentDeclination := HSunApparentDec(solarNoonTime)
+	cosHourAngle := (Sin(sunAngle) - Sin(apparentDeclination)*Sin(latitude)) / (Cos(apparentDeclination) * Cos(latitude))
+
+	if math.Abs(cosHourAngle) <= 1 && latitude < 85 {
+		// 使用解析解
+		hourAngle := ArcCos(cosHourAngle) / 15
+		timeOffset := 25.0 / 24.0 / 60.0 // 日出偏移
+		if !isSunrise {
+			timeOffset = 35.0 / 24.0 / 60.0 // 日落偏移
 		}
+
+		if isSunrise {
+			return solarNoonTime - hourAngle/24 - timeOffset
+		} else {
+			return solarNoonTime + hourAngle/24 + timeOffset
+		}
+	} else {
+		// 使用迭代逼近法（极地条件）
+		return iterativeApproach(solarNoonTime, longitude, latitude, naturalTimeZone, sunAngle, isSunrise)
 	}
-	JD1 := sundown
+}
+
+// iterativeApproach 迭代逼近法计算（用于极地等特殊条件）
+func iterativeApproach(solarNoonTime, longitude, latitude, naturalTimeZone, sunAngle float64, isSunrise bool) float64 {
+	estimatedTime := solarNoonTime
+	stepSize := 15.0 / 60.0 / 24.0 // 15分钟步长
+	if isSunrise {
+		stepSize = -stepSize
+	}
+
+	const maxIterations = 48
+	for i := 0; i < maxIterations && LowSunHeight(estimatedTime, longitude, latitude, naturalTimeZone) > sunAngle; i++ {
+		estimatedTime += stepSize
+	}
+
+	return estimatedTime
+}
+
+// sunRiseSetNewtonRaphsonIteration 牛顿-拉夫逊迭代法求精确解
+func sunRiseSetNewtonRaphsonIteration(initialTime, longitude, latitude, naturalTimeZone, sunAngle, timeZone float64) float64 {
+	const (
+		convergenceThreshold = 0.00001
+		derivativeStep       = 0.000005
+	)
+
+	currentTime := initialTime
+
 	for {
-		JD0 := JD1
-		stDegree := SunHeight(JD0, Lon, Lat, ntz) - An
-		stDegreep := (SunHeight(JD0+0.000005, Lon, Lat, ntz) - SunHeight(JD0-0.000005, Lon, Lat, ntz)) / 0.00001
-		JD1 = JD0 - stDegree/stDegreep
-		if math.Abs(JD1-JD0) <= 0.00001 {
+		previousTime := currentTime
+
+		// 计算函数值：f(t) = SunHeight(t) - targetAngle
+		functionValue := SunHeight(previousTime, longitude, latitude, naturalTimeZone) - sunAngle
+
+		// 计算导数：f'(t) ≈ (f(t+h) - f(t-h)) / (2h)
+		derivative := (SunHeight(previousTime+derivativeStep, longitude, latitude, naturalTimeZone) -
+			SunHeight(previousTime-derivativeStep, longitude, latitude, naturalTimeZone)) / (2 * derivativeStep)
+
+		// 牛顿-拉夫逊公式：t_new = t_old - f(t) / f'(t)
+		currentTime = previousTime - functionValue/derivative
+
+		// 检查收敛
+		if math.Abs(currentTime-previousTime) <= convergenceThreshold {
 			break
 		}
 	}
-	return JD1 - ntz/24 + TZ/24
+
+	// 转换为指定时区
+	return currentTime - naturalTimeZone/24 + timeZone/24
 }
 
 /*
@@ -643,9 +698,15 @@ func SunAngle(JD, Lon, Lat, TZ float64) float64 {
 * 干支
  */
 func GetGZ(year int) string {
-	tiangan := []string{"庚", "辛", "壬", "癸", "甲", "乙", "丙", "丁", "戊", "已"}
+	tiangan := []string{"庚", "辛", "壬", "癸", "甲", "乙", "丙", "丁", "戊", "己"}
 	dizhi := []string{"申", "酉", "戌", "亥", "子", "丑", "寅", "卯", "辰", "巳", "午", "未"}
 	t := year - (year / 10 * 10)
+	if t < 0 {
+		t += 10
+	}
 	d := year % 12
-	return tiangan[t] + dizhi[d] + "年"
+	if d < 0 {
+		d += 12
+	}
+	return tiangan[t] + dizhi[d]
 }
