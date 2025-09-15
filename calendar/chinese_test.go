@@ -61,7 +61,7 @@ func Test_ChineseCalendarModern(t *testing.T) {
 		/*
 			{
 				var lyear int = v.Year
-				lmonth, lday, leap, desp := RapidSolarToLunar(time.Date(v.Year, time.Month(v.Month), v.Day, 0, 0, 0, 0, time.Local))
+				lmonth, lday, leap, desp := RapidSolarToLunar(time.Date(v.Year, time.Month(v.Month), v.Day, 0, 0, 0, 0, getCst()))
 				if lmonth > v.Month {
 					lyear--
 				}
@@ -102,7 +102,7 @@ func Test_ChineseCalendarModern2(t *testing.T) {
 	}
 	for _, v := range testData {
 		{
-			res, err := SolarToLunar(time.Date(v.Year, time.Month(v.Month), v.Day, 0, 0, 0, 0, time.Local))
+			res, err := SolarToLunar(time.Date(v.Year, time.Month(v.Month), v.Day, 0, 0, 0, 0, getCst()))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -126,7 +126,7 @@ func Test_ChineseCalendarModern2(t *testing.T) {
 		/*
 			{
 				var lyear int = v.Year
-				lmonth, lday, leap, desp := RapidSolarToLunar(time.Date(v.Year, time.Month(v.Month), v.Day, 0, 0, 0, 0, time.Local))
+				lmonth, lday, leap, desp := RapidSolarToLunar(time.Date(v.Year, time.Month(v.Month), v.Day, 0, 0, 0, 0, getCst()))
 				if lmonth > v.Month {
 					lyear--
 				}
@@ -183,6 +183,7 @@ func Test_ChineseCalendarAncient(t *testing.T) {
 		{Lyear: 700, Lmonth: 2, Lday: 6, Leap: false, Year: 700, Month: 1, Day: 1, Desc: "圣历三年腊月初六", GanZhiYear: "庚子", GanZhiMonth: "丁丑", GanZhiDay: "丙戌"},
 		{Lyear: 700, Lmonth: 12, Lday: 6, Leap: false, Year: 701, Month: 1, Day: 19, Desc: "圣历三年腊月初六", GanZhiYear: "庚子", GanZhiMonth: "己丑", GanZhiDay: "庚戌"},
 		{Lyear: 700, Lmonth: 11, Lday: 1, Leap: false, Year: 700, Month: 12, Day: 15, Desc: "圣历三年冬月初一", GanZhiYear: "庚子", GanZhiMonth: "戊子", GanZhiDay: "乙亥"},
+		{Lyear: 1083, Lmonth: 10, Lday: 12, Leap: false, Year: 1083, Month: 11, Day: 24, Desc: "元丰六年十月十二", GanZhiYear: "癸亥", GanZhiMonth: "癸亥", GanZhiDay: "甲申"},
 		//格里高利历改革
 		{Lyear: 1582, Lmonth: 9, Lday: 18, Leap: false, Year: 1582, Month: 10, Day: 4, Desc: "万历十年九月十八", GanZhiYear: "壬午", GanZhiMonth: "庚戌", GanZhiDay: "癸酉"},
 		{Lyear: 1582, Lmonth: 9, Lday: 19, Leap: false, Year: 1582, Month: 10, Day: 15, Desc: "万历十年九月十九", GanZhiYear: "壬午", GanZhiMonth: "庚戌", GanZhiDay: "甲戌"},
@@ -191,7 +192,7 @@ func Test_ChineseCalendarAncient(t *testing.T) {
 	}
 	for _, v := range testData {
 		{
-			dates, err := SolarToLunar(time.Date(v.Year, time.Month(v.Month), v.Day, 0, 0, 0, 0, time.Local))
+			dates, err := SolarToLunar(time.Date(v.Year, time.Month(v.Month), v.Day, 0, 0, 0, 0, getCst()))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -240,11 +241,14 @@ func Test_ChineseCalendarAncient(t *testing.T) {
 }
 
 func TestGanZhiOfDay(t *testing.T) {
-	dates := time.Date(2020, 12, 31, 0, 0, 0, 0, time.Local)
+	dates := time.Date(1083, 11, 24, 0, 0, 0, 0, getCst())
+	fmt.Println(dates.Weekday())
+	jde := Date2JDE(dates)
+	fmt.Println(int(jde+1.5) % 7)
 	d, _ := SolarToLunar(dates)
-	fmt.Println(d.Lunars()[0].ShengXiao())
+	fmt.Println(d.LunarInfo())
 	//date, err := LunarToSolar("久视元年腊月辛亥")
-	date, err := LunarToSolar("万历十年九月甲戌")
+	date, err := LunarToSolar("2025年闰6月1日")
 	if err != nil {
 		t.Fatal(err)
 	}

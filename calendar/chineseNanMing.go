@@ -99,6 +99,7 @@ func innerSolarToLunarNanMing(date Time) Time {
 	if year > 1644 && year < 1654 {
 		lyear, lmonth, ganzhiMonth, lday, isLeap, ldesc := rapidLunarHan2Qing(year, month, day, 0, nanMingCals)
 		date.lunars = append(date.lunars, LunarTime{
+			solarDate:   date.solarTime,
 			year:        lyear,
 			month:       lmonth,
 			day:         lday,
@@ -112,6 +113,7 @@ func innerSolarToLunarNanMing(date Time) Time {
 	if year > 1646 && year < 1684 {
 		lyear, lmonth, ganzhiMonth, lday, isLeap, ldesc := rapidLunarHan2Qing(year, month, day, 0, nanMingCals)
 		date.lunars = append(date.lunars, LunarTime{
+			solarDate:   date.solarTime,
 			year:        lyear,
 			month:       lmonth,
 			day:         lday,

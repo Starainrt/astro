@@ -863,6 +863,7 @@ func innerSolarToLunarNanBeiChao(date Time) Time {
 	if year >= 384 && year <= 417 {
 		lyear, lmonth, ganzhiMonth, lday, isLeap, ldesc := rapidLunarHan2Qing(year, month, day, 0, houQinCals)
 		date.lunars = append(date.lunars, LunarTime{
+			solarDate:   date.solarTime,
 			year:        lyear,
 			month:       lmonth,
 			day:         lday,
@@ -876,6 +877,7 @@ func innerSolarToLunarNanBeiChao(date Time) Time {
 	if year >= 398 && year <= 589 {
 		lyear, lmonth, ganzhiMonth, lday, isLeap, ldesc := rapidLunarHan2Qing(year, month, day, 0, weiZhouSuiCals)
 		date.lunars = append(date.lunars, LunarTime{
+			solarDate:   date.solarTime,
 			year:        lyear,
 			month:       lmonth,
 			day:         lday,
@@ -889,6 +891,7 @@ func innerSolarToLunarNanBeiChao(date Time) Time {
 	if year >= 397 && year <= 439 {
 		lyear, lmonth, ganzhiMonth, lday, isLeap, ldesc := rapidLunarHan2Qing(year, month, day, 0, beiLiangCals)
 		date.lunars = append(date.lunars, LunarTime{
+			solarDate:   date.solarTime,
 			year:        lyear,
 			month:       lmonth,
 			day:         lday,
@@ -902,6 +905,7 @@ func innerSolarToLunarNanBeiChao(date Time) Time {
 	if year >= 534 && year <= 577 {
 		lyear, lmonth, ganzhiMonth, lday, isLeap, ldesc := rapidLunarHan2Qing(year, month, day, 0, dongWeiBeiQiCals)
 		date.lunars = append(date.lunars, LunarTime{
+			solarDate:   date.solarTime,
 			year:        lyear,
 			month:       lmonth,
 			day:         lday,

@@ -14,6 +14,10 @@ import (
 var tiangan = []string{"甲", "乙", "丙", "丁", "戊", "己", "庚", "辛", "壬", "癸"}
 var dizhi = []string{"子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥"}
 
+func getCst() *time.Location {
+	return time.FixedZone("CST", 8*3600)
+}
+
 const (
 	JQ_春分 = 15 * iota
 	JQ_清明
@@ -196,8 +200,8 @@ recalc:
 	if useGoto {
 		calcYear++
 	}
-	target := time.Date(calcYear, time.Month(month), day, 0, 0, 0, 0, time.Local)
-	spring := time.Date(year, time.Month(int(springMonth)), int(springDay), 0, 0, 0, 0, time.Local)
+	target := time.Date(calcYear, time.Month(month), day, 0, 0, 0, 0, getCst())
+	spring := time.Date(year, time.Month(int(springMonth)), int(springDay), 0, 0, 0, 0, getCst())
 	diffDay := int(target.Sub(spring).Hours() / 24)
 	lunarMonth := 1
 	totalDay := 0
@@ -252,7 +256,7 @@ func rapidSolarModern(year, month, day int, isLeap bool) time.Time {
 	magic := int32(upper[idx])<<8 + int32(lower[idx])
 	springMonth := (magic&0x800000)>>23 + 1
 	springDay := (magic & 0x7FFFFF) >> 18
-	spring := time.Date(year, time.Month(int(springMonth)), int(springDay), 0, 0, 0, 0, time.Local)
+	spring := time.Date(year, time.Month(int(springMonth)), int(springDay), 0, 0, 0, 0, getCst())
 	lunarMonth := 1
 	totalDay := 0
 	leap := false
@@ -483,7 +487,7 @@ func GanZhiOfYear(year int) string {
 
 // GanZhiOfDay
 func GanZhiOfDay(t time.Time) string {
-	jde := Date2JDE(time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.Local))
+	jde := Date2JDE(time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, getCst()))
 	diff := int(jde - 2451550.5)
 	if diff >= 0 {
 		return tiangan[diff%10] + dizhi[diff%12]
@@ -508,7 +512,7 @@ func commonGanZhiOfMonth(year, month int) string {
 }
 
 func ganZhiOfDayIndex(t time.Time) (int, int) {
-	jde := Date2JDE(time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.Local))
+	jde := Date2JDE(time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, getCst()))
 	diff := int(jde - 2451550.5)
 	if diff >= 0 {
 		return diff % 10, diff % 12

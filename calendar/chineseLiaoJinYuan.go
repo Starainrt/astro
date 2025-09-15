@@ -393,6 +393,7 @@ func innerSolarToLunarLiaoJinYuan(date Time) Time {
 	if year >= 947 && year <= 1279 {
 		lyear, lmonth, ganzhiMonth, lday, isLeap, ldesc := rapidLunarHan2Qing(year, month, day, 0, liaoJinYuanCals)
 		date.lunars = append(date.lunars, LunarTime{
+			solarDate:   date.Solar(),
 			year:        lyear,
 			month:       lmonth,
 			day:         lday,

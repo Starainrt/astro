@@ -42,7 +42,7 @@ recalc:
 	if useGoto {
 		calcYear++
 	}
-	target := time.Date(calcYear, time.Month(month), day, 0, 0, 0, 0, time.Local)
+	target := time.Date(calcYear, time.Month(month), day, 0, 0, 0, 0, getCst())
 	diffDay := int(target.Sub(springDate).Hours() / 24)
 	//go语言在； 1582年10月4日前，使用的是逆推格里高利历，与实际使用的儒略历有所不同，主要体现在百年闰年计算上！
 	//儒略历修正
