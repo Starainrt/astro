@@ -43,11 +43,8 @@ func Test_ChineseCalendarModern(t *testing.T) {
 	}
 	for _, v := range testData {
 		{
-			var lyear int = v.Year
-			_, lmonth, lday, leap, desp := Lunar(v.Year, v.Month, v.Day, 8.0)
-			if lmonth > v.Month {
-				lyear--
-			}
+			lyear, lmonth, lday, leap, desp := Lunar(v.Year, v.Month, v.Day, 8.0)
+
 			fmt.Println(lyear, desp, v.Year, v.Month, v.Day)
 			if lyear != v.Lyear || lmonth != v.Lmonth || lday != v.Lday || leap != v.Leap {
 				t.Fatal(v, lyear, lmonth, lday, leap, desp)
@@ -241,12 +238,12 @@ func Test_ChineseCalendarAncient(t *testing.T) {
 }
 
 func TestGanZhiOfDay(t *testing.T) {
-	dates := time.Date(1083, 11, 24, 0, 0, 0, 0, getCst())
+	dates := time.Date(2025, 1, 24, 0, 0, 0, 0, getCst())
 	fmt.Println(dates.Weekday())
 	jde := Date2JDE(dates)
 	fmt.Println(int(jde+1.5) % 7)
-	d, _ := SolarToLunar(dates)
-	fmt.Println(d.LunarInfo())
+	y, _, _, _, desc := Lunar(dates.Year(), int(dates.Month()), dates.Day(), 8.0)
+	fmt.Println(y, desc)
 	//date, err := LunarToSolar("久视元年腊月辛亥")
 	date, err := LunarToSolar("2025年闰6月1日")
 	if err != nil {

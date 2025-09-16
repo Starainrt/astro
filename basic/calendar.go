@@ -336,10 +336,11 @@ func Date2JDE(date time.Time) float64 {
 	return JDECalc(date.Year(), int(date.Month()), day)
 }
 
-func GetLunar(year, month, day int, tz float64) (adjustedYear, lmonth, lday int, leap bool, result string) {
+func GetLunar(year, month, day int, tz float64) (lyear, lmonth, lday int, leap bool, result string) {
 	julianDayEpoch := JDECalc(year, month, float64(day))
 	// 确定农历年份
-	adjustedYear = year
+	lyear = year
+	adjustedYear := year
 	if month == 11 || month == 12 {
 		winterSolsticeDay := GetJQTime(year, 270) + tz
 		firstNewMoonDay := TD2UT(CalcMoonS(float64(year)+11.0/12.0+5.0/30.0/12.0, 0), true) + tz
@@ -434,7 +435,9 @@ func GetLunar(year, month, day int, tz float64) (adjustedYear, lmonth, lday int,
 
 	// 生成农历日期字符串
 	result = formatLunarDateString(lmonth, lday, leap)
-
+	if lmonth >= 10 && month < 3 {
+		lyear--
+	}
 	return
 }
 
