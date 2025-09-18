@@ -103,7 +103,7 @@ func JupiterApparentLo(JD float64) float64 {
 	lo = Limit360(lo)
 	//lo-=GXCLo(lo,bo,JD)/3600;
 	//bo+=GXCBo(lo,bo,JD);
-	lo += HJZD(JD)
+	lo += Nutation2000Bi(JD)
 	return lo
 }
 
@@ -117,7 +117,7 @@ func JupiterApparentBo(JD float64) float64 {
 	bo = bo * 180 / math.Pi
 	//lo+=GXCLo(lo,bo,JD);
 	//bo+=GXCBo(lo,bo,JD)/3600;
-	//lo+=HJZD(JD);
+	//lo+=Nutation2000Bi(JD);
 	return bo
 }
 
@@ -132,7 +132,7 @@ func JupiterApparentLoBo(JD float64) (float64, float64) {
 	lo = Limit360(lo)
 	//lo-=GXCLo(lo,bo,JD)/3600;
 	//bo+=GXCBo(lo,bo,JD);
-	lo += HJZD(JD)
+	lo += Nutation2000Bi(JD)
 	return lo, bo
 }
 

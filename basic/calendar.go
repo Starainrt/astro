@@ -9,6 +9,12 @@ import (
 
 var defDeltaTFn = DefaultDeltaTv2
 
+// Date2JDE 日期转儒略日
+func Date2JDE(date time.Time) float64 {
+	day := float64(date.Day()) + float64(date.Hour())/24.0 + float64(date.Minute())/24.0/60.0 + float64(date.Second())/24.0/3600.0 + float64(date.Nanosecond())/1000000000.0/3600.0/24.0
+	return JDECalc(date.Year(), int(date.Month()), day)
+}
+
 /*
 @name: 儒略日计算
 @dec: 计算给定时间的儒略日，1582年改力后为格里高利历，之前为儒略历
@@ -39,61 +45,6 @@ func GetNowJDE() (NowJDE float64) {
 	return
 }
 
-func dt_ext(y, jsd float64) float64 { // 二次曲线外推，用于数值外插
-	dy := (y - 1820) / 100.00
-	return -20 + jsd*dy*dy
-}
-func dt_cal(y float64) float64 { //传入年， 返回世界时UT与原子时（力学时 TD）之差, ΔT = TD - UT
-	dt_at := []float64{
-		-4000, 108371.7, -13036.80, 392.000, 0.0000,
-		-500, 17201.0, -627.82, 16.170, -0.3413,
-		-150, 12200.6, -346.41, 5.403, -0.1593,
-		150, 9113.8, -328.13, -1.647, 0.0377,
-		500, 5707.5, -391.41, 0.915, 0.3145,
-		900, 2203.4, -283.45, 13.034, -0.1778,
-		1300, 490.1, -57.35, 2.085, -0.0072,
-		1600, 120.0, -9.81, -1.532, 0.1403,
-		1700, 10.2, -0.91, 0.510, -0.0370,
-		1800, 13.4, -0.72, 0.202, -0.0193,
-		1830, 7.8, -1.81, 0.416, -0.0247,
-		1860, 8.3, -0.13, -0.406, 0.0292,
-		1880, -5.4, 0.32, -0.183, 0.0173,
-		1900, -2.3, 2.06, 0.169, -0.0135,
-		1920, 21.2, 1.69, -0.304, 0.0167,
-		1940, 24.2, 1.22, -0.064, 0.0031,
-		1960, 33.2, 0.51, 0.231, -0.0109,
-		1980, 51.0, 1.29, -0.026, 0.0032,
-		2000, 63.87, 0.1, 0, 0,
-		2005, 64.7, 0.4, 0, 0, //一次项记为x,则 10x=0.4秒/年*(2015-2005),解得x=0.4
-		2015, 69,
-	}
-	y0 := dt_at[len(dt_at)-2] //表中最后一年
-	t0 := dt_at[len(dt_at)-1] //表中最后一年的 deltatT
-	if y >= y0 {
-		jsd := float64(31) // sjd是y1年之后的加速度估计
-		// 瑞士星历表jsd=31, NASA网站jsd=32, skmap的jsd=29
-		if y > y0+100.00 {
-			return dt_ext(y, jsd)
-		}
-		v := dt_ext(y, jsd)        //二次曲线外推
-		dv := dt_ext(y0, jsd) - t0 // ye年的二次外推与te的差
-		return (v - dv*(y0+100.00-y)/100.00)
-	}
-	d := dt_at
-	var i int
-	for i = 0; i < len(d); i += 5 {
-		if float64(y) < d[i+5] {
-			break
-			// 判断年所在的区间
-		}
-	}
-	t1 := (y - d[i]) / (d[i+5] - d[i]) * 10.00 //////// 三次插值， 保证精确性
-	t2 := t1 * t1
-	t3 := t2 * t1
-	res := d[i+1] + d[i+2]*t1 + d[i+3]*t2 + d[i+4]*t3
-	return (res)
-}
-
 func DeltaT(date float64, isJDE bool) float64 {
 	return defDeltaTFn(date, isJDE)
 }
@@ -106,50 +57,6 @@ func SetDeltaTFn(fn func(float64, bool) float64) {
 
 func GetDeltaTFn() func(float64, bool) float64 {
 	return defDeltaTFn
-}
-
-func OldDefaultDeltaT(Date float64, IsJDE bool) (Result float64) { //传入年或儒略日，传出为秒
-	var Year float64
-	if IsJDE {
-		dates := JDE2Date(Date)
-		Year = float64(dates.Year()) + float64(dates.YearDay())/365.0
-	} else {
-		Year = Date
-	}
-	if Year < 2100 && Year >= 2010 {
-		return dt_cal(Year)
-	}
-	return DefaultDeltaT(Date, IsJDE)
-}
-
-func DefaultDeltaT(Date float64, IsJDE bool) (Result float64) { //传入年或儒略日，传出为秒
-	var Year float64
-	if IsJDE {
-		dates := JDE2Date(Date)
-		Year = float64(dates.Year()) + float64(dates.YearDay())/365.0
-	} else {
-		Year = Date
-	}
-	if Year < 2010 {
-		Result = dt_cal(Year)
-		return
-	}
-	if Year < 2100 && Year >= 2010 {
-		var t = (Year - 2000.0)
-		Result = 62.92 + 0.32217*t + 0.005589*t*t
-		return
-	}
-	if Year >= 2100 && Year <= 2150 {
-		Result = -20 + 32*(((Year-1820.0)/100.0)*((Year-1820.0)/100.0)) - 0.5628*(2150-Year)
-		return
-	}
-	if Year > 2150 {
-		//tmp=(Year-1820)/100;
-		//Result= -20 + 32 * tmp*tmp;
-		Result = dt_cal(Year)
-		return
-	}
-	return
 }
 
 func DefaultDeltaTv2(date float64, isJd bool) float64 { //传入年或儒略日，传出为秒
@@ -240,7 +147,6 @@ func DeltaTv2(jd float64) float64 {
 }
 
 func TD2UT(JDE float64, UT2TD bool) float64 { // true 世界时转力学时CC，false 力学时转世界时VV
-
 	Deltat := DeltaT(JDE, true)
 	if UT2TD {
 		return JDE + Deltat/3600/24
@@ -249,9 +155,6 @@ func TD2UT(JDE float64, UT2TD bool) float64 { // true 世界时转力学时CC，
 	}
 }
 
-/*
- * @name: JDE转日期，输出为数组
- */
 func JDE2Date(JD float64) time.Time {
 	JD = JD + 0.5
 	Z := float64(int(JD))
@@ -328,12 +231,6 @@ func JDE2DateByZone(JD float64, tz *time.Location, byZone bool) time.Time {
 	}
 	return time.Date(int(Years), time.Month(int(Months)), int(Days), 0, 0, 0, 0, transTz).
 		Add(time.Duration(int64(1000000000 * tms))).In(tz)
-}
-
-// Date2JDE 日期转儒略日
-func Date2JDE(date time.Time) float64 {
-	day := float64(date.Day()) + float64(date.Hour())/24.0 + float64(date.Minute())/24.0/60.0 + float64(date.Second())/24.0/3600.0 + float64(date.Nanosecond())/1000000000.0/3600.0/24.0
-	return JDECalc(date.Year(), int(date.Month()), day)
 }
 
 func GetLunar(year, month, day int, tz float64) (lyear, lmonth, lday int, leap bool, result string) {

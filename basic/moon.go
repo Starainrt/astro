@@ -1034,7 +1034,7 @@ func MoonAway(JD float64) float64 { //'月地距离
  * @name 月球视黄经
  */
 func MoonApparentLo(JD float64) float64 {
-	return MoonTrueLo(JD) + HJZD(JD)
+	return MoonTrueLo(JD) + Nutation2000Bi(JD)
 }
 
 /*
@@ -1083,12 +1083,12 @@ func MoonApparentDec(JD, lon, lat, tz float64) float64 {
 	return ndec
 }
 
-func MoonLight(JD float64) float64 {
+func MoonPhase(JD float64) float64 {
 	MoonBo := HMoonTrueBo(JD)
 	SunLo := HSunApparentLo(JD)
 	MoonLo := HMoonApparentLo(JD)
 	tmp := Cos(MoonBo) * Cos(SunLo-MoonLo)
-	R := RDJL(JD) * 149597870.691
+	R := Distance(JD) * 149597870.691
 	i := R * Sin(ArcCos(tmp)) / (HMoonAway(JD) - R*tmp)
 	i = ArcTan(i)
 	if i < 0 {
@@ -1723,7 +1723,7 @@ func HMoonAway(JD float64) float64 { //'月地距离
  * @name 月球视黄经
  */
 func HMoonApparentLo(JD float64) float64 {
-	return HMoonTrueLo(JD) + HJZD(JD)
+	return HMoonTrueLo(JD) + Nutation2000Bi(JD)
 }
 
 func HMoonTrueRaDec(JD float64) (float64, float64) {

@@ -7,68 +7,7 @@ import (
 	. "github.com/starainrt/astro/tools"
 )
 
-/*
-黄赤交角、nutation==true时，计算交角章动
-*/
-func EclipticObliquity(jde float64, nutation bool) float64 {
-	U := (jde - 2451545) / 3652500.000
-	sita := 23.000 + 26.000/60.000 + 21.448/3600.000 - ((4680.93*U - 1.55*U*U + 1999.25*U*U*U - 51.38*U*U*U*U - 249.67*U*U*U*U*U - 39.05*U*U*U*U*U*U + 7.12*U*U*U*U*U*U*U + 27.87*U*U*U*U*U*U*U*U + 5.79*U*U*U*U*U*U*U*U*U + 2.45*U*U*U*U*U*U*U*U*U*U) / 3600)
-	if nutation {
-		return sita + JJZD(jde)
-	} else {
-		return sita
-	}
-}
-
-func Sita(JD float64) float64 {
-	return EclipticObliquity(JD, true)
-}
-
-/*
- * @name 黄经章动
- */
-func HJZD(jd float64) float64 { // '黄经章动
-	t := (jd - 2451545) / 36525.000
-	d := 297.8502042 + 445267.1115168*t - 0.0016300*t*t + t*t*t/545868 - t*t*t*t/113065000
-	m := SunM(jd)
-	n := MoonM(jd)
-	f := MoonLonX(jd)
-	o := 125.04452 - 1934.136261*t + 0.0020708*t*t + t*t*t/450000
-	tp := [][]float64{{0, 0, 0, 0, 1, -171996, -174.2 * t}, {-2, 0, 0, 2, 2, -13187, -1.6 * t}, {0, 0, 0, 2, 2, -2274, -0.2 * t}, {0, 0, 0, 0, 2, 2062, 0.2 * t}, {0, 1, 0, 0, 0, 1426, -3.4 * t}, {0, 0, 1, 0, 0, 712, 0.1 * t}, {-2, 1, 0, 2, 2, -517, 1.2 * t}, {0, 0, 0, 2, 1, -386, -0.4 * t}, {0, 0, 1, 2, 2, -301, 0}, {-2, -1, 0, 2, 2, 217, -0.5 * t}, {-2, 0, 1, 0, 0, -158, 0}, {-2, 0, 0, 2, 1, 129, 0.1 * t}, {0, 0, -1, 2, 2, 123, 0}, {2, 0, 0, 0, 0, 63, 0}, {0, 0, 1, 0, 1, 63, 0.1 * t}, {2, 0, -1, 2, 2, -59, 0}, {0, 0, -1, 0, 1, -58, -0.1 * t}, {0, 0, 1, 2, 1, -51, 0}, {-2, 0, 2, 0, 0, 48, 0}, {0, 0, -2, 2, 1, 46, 0}, {2, 0, 0, 2, 2, -38, 0}, {0, 0, 2, 2, 2, -31, 0}, {0, 0, 2, 0, 0, 29, 0}, {-2, 0, 1, 2, 2, 29, 0}, {0, 0, 0, 2, 0, 26, 0}, {-2, 0, 0, 2, 0, -22, 0}, {0, 0, -1, 2, 1, 21, 0}, {0, 2, 0, 0, 0, 17, -0.1 * t}, {2, 0, -1, 0, 1, 16, 0}, {-2, 2, 0, 2, 2, -16, 0.1 * t}, {0, 1, 0, 0, 1, -15, 0}, {-2, 0, 1, 0, 1, -13, 0}, {0, -1, 0, 0, 1, -12, 0}, {0, 0, 2, -2, 0, 11, 0}, {2, 0, -1, 2, 1, -10, 0}, {2, 0, 1, 2, 2, -8, 0}, {0, 1, 0, 2, 2, 7, 0}, {-2, 1, 1, 0, 0, -7, 0}, {0, -1, 0, 2, 2, -7, 0}, {2, 0, 0, 2, 1, -7, 0}, {2, 0, 1, 0, 0, 6, 0}, {-2, 0, 2, 2, 2, 6, 0}, {-2, 0, 1, 2, 1, 6, 0}, {2, 0, -2, 0, 1, -6, 0}, {2, 0, 0, 0, 1, -6, 0}, {0, -1, 1, 0, 0, 5, 0}, {-2, -1, 0, 2, 1, -5, 0}, {-2, 0, 0, 0, 1, -5, 0}, {0, 0, 2, 2, 1, -5, 0}, {-2, 0, 2, 0, 1, 4, 0}, {-2, 1, 0, 2, 1, 4, 0}, {0, 0, 1, -2, 0, 4, 0}, {-1, 0, 1, 0, 0, -4, 0}, {-2, 1, 0, 0, 0, -4, 0}, {1, 0, 0, 0, 0, -4, 0}, {0, 0, 1, 2, 0, 3, 0}, {0, 0, -2, 2, 2, -3, 0}, {-1, -1, 1, 0, 0, -3, 0}, {0, 1, 1, 0, 0, -3, 0}, {0, -1, 1, 2, 2, -3, 0}, {2, -1, -1, 2, 2, -3, 0}, {0, 0, 3, 2, 2, -3, 0}, {2, -1, 0, 2, 2, -3, 0}}
-	var s float64
-	for i := 0; i < len(tp); i++ {
-		s += (tp[i][5] + tp[i][6]) * Sin(d*tp[i][0]+m*tp[i][1]+n*tp[i][2]+f*tp[i][3]+o*tp[i][4])
-	}
-	//P=-17.20*Sin(o)-1.32*Sin(2*280.4665 + 36000.7698*t)-0.23*Sin(2*218.3165 + 481267.8813*t )+0.21*Sin(2*o);
-	//return P/3600;
-	return (s / 10000) / 3600
-}
-
-/*
- * 交角章动
- */
-func JJZD(jd float64) float64 { //交角章动
-	t := (jd - 2451545) / 36525
-	//d = 297.85036 +455267.111480*t - 0.0019142*t*t+ t*t*t/189474;
-	//m = 357.52772 + 35999.050340*t - 0.0001603*t*t- t*t*t/300000;
-	//n= 134.96298 + 477198.867398*t + 0.0086972*t*t + t*t*t/56250;
-	//f = 93.27191 + 483202.017538*t - 0.0036825*t*t + t*t*t/327270;
-	d := 297.8502042 + 445267.1115168*t - 0.0016300*t*t + t*t*t/545868 - t*t*t*t/113065000
-	m := SunM(jd)
-	n := MoonM(jd)
-	f := MoonLonX(jd)
-	o := 125.04452 - 1934.136261*t + 0.0020708*t*t + t*t*t/450000
-	tp := [][]float64{{0, 0, 0, 0, 1, 92025, 8.9 * t}, {-2, 0, 0, 2, 2, 5736, -3.1 * t}, {0, 0, 0, 2, 2, 977, -0.5 * t}, {0, 0, 0, 0, 2, -895, 0.5 * t}, {0, 1, 0, 0, 0, 54, -0.1 * t}, {0, 0, 1, 0, 0, -7, 0}, {-2, 1, 0, 2, 2, 224, -0.6 * t}, {0, 0, 0, 2, 1, 200, 0}, {0, 0, 1, 2, 2, 129, -0.1 * t}, {-2, -1, 0, 2, 2, -95, 0.3 * t}, {-2, 0, 0, 2, 1, -70, 0}, {0, 0, -1, 2, 2, -53, 0}, {2, 0, 0, 0, 0, 63, 0}, {0, 0, 1, 0, 1, -33, 0}, {2, 0, -1, 2, 2, 26, 0}, {0, 0, -1, 0, 1, 32, 0}, {0, 0, 1, 2, 1, 27, 0}, {0, 0, -2, 2, 1, -24, 0}, {2, 0, 0, 2, 2, 16, 0}, {0, 0, 2, 2, 2, 13, 0}, {-2, 0, 1, 2, 2, -12, 0}, {0, 0, -1, 2, 1, -10, 0}, {2, 0, -1, 0, 1, -8, 0}, {-2, 2, 0, 2, 2, 7, 0}, {0, 1, 0, 0, 1, 9, 0}, {-2, 0, 1, 0, 1, 7, 0}, {0, -1, 0, 0, 1, 6, 0}, {2, 0, -1, 2, 1, 5, 0}, {2, 0, 1, 2, 2, 3, 0}, {0, 1, 0, 2, 2, -3, 0}, {0, -1, 0, 2, 2, 3, 0}, {2, 0, 0, 2, 1, 3, 0}, {-2, 0, 2, 2, 2, -3, 0}, {-2, 0, 1, 2, 1, -3, 0}, {2, 0, -2, 0, 1, 3, 0}, {2, 0, 0, 0, 1, 3, 0}, {-2, -1, 0, 2, 1, 3, 0}, {-2, 0, 0, 0, 1, 3, 0}, {0, 0, 2, 2, 1, 3, 0}}
-	var s float64 = 0
-	for i := 0; i < len(tp); i++ {
-		s += (tp[i][5] + tp[i][6]) * Cos(d*tp[i][0]+m*tp[i][1]+n*tp[i][2]+f*tp[i][3]+o*tp[i][4])
-	}
-	return s / 10000 / 3600
-}
-
-/*
-@name 太阳几何黄经
-*/
+// SunLo 太阳几何黄经
 func SunLo(jd float64) float64 {
 	T := (jd - 2451545) / 365250
 	SunLo := 280.4664567 + 360007.6982779*T + 0.03032028*T*T + T*T*T/49931 - T*T*T*T/15299 - T*T*T*T*T/1988000
@@ -94,12 +33,14 @@ func EarthPI(JD float64) float64 { //近日點經度
 	T := (JD - 2451545) / 36525
 	return 102.93735 + 1.71953*T + 000046*T*T
 }
+
 func SunMidFun(JD float64) float64 { //'太阳中间方程
 	T := (JD - 2451545) / 36525
 	M := SunM(JD)
 	SunMidFun := (1.9146-0.004817*T-0.000014*T*T)*Sin(M) + (0.019993-0.000101*T)*Sin(2*M) + 0.00029*Sin(3*M)
 	return SunMidFun
 }
+
 func SunTrueLo(JD float64) float64 { // '太阳真黄经
 	SunTrueLo := SunLo(JD) + SunMidFun(JD)
 	return SunTrueLo
@@ -121,19 +62,18 @@ func SunApparentRaDec(JD float64) (float64, float64) {
 }
 
 func SunTrueRa(JD float64) float64 { //'太阳真赤经
-
 	sitas := Sita(JD)
-	SunTrueRa := ArcTan(Cos(sitas) * Sin(SunTrueLo(JD)) / Cos(SunTrueLo(JD)))
+	sunTrueRa := ArcTan(Cos(sitas) * Sin(SunTrueLo(JD)) / Cos(SunTrueLo(JD)))
 	//Select Case SunTrueLo(JD)
 	tmp := SunTrueLo(JD)
 	if tmp >= 90 && tmp < 180 {
-		SunTrueRa = 180 + SunTrueRa
+		sunTrueRa = 180 + sunTrueRa
 	} else if tmp >= 180 && tmp < 270 {
-		SunTrueRa = 180 + SunTrueRa
+		sunTrueRa = 180 + sunTrueRa
 	} else if tmp >= 270 && tmp <= 360 {
-		SunTrueRa = 360 + SunTrueRa
+		sunTrueRa = 360 + sunTrueRa
 	}
-	return SunTrueRa
+	return sunTrueRa
 }
 
 func SunApparentDec(JD float64) float64 { // '太阳视赤纬
@@ -148,9 +88,9 @@ func SunTrueDec(JD float64) float64 { // '太阳真赤纬
 	SunTrueDec := ArcSin(Sin(sitas) * Sin(SunTrueLo(JD)))
 	return SunTrueDec
 }
-func SunTime(JD float64) float64 { //均时差
 
-	tm := (SunLo(JD) - 0.0057183 - (HSunApparentRa(JD)) + (HJZD(JD))*Cos(Sita(JD))) / 15
+func SunTime(JD float64) float64 { //均时差
+	tm := (SunLo(JD) - 0.0057183 - (HSunApparentRa(JD)) + (Nutation2000Bi(JD))*Cos(Sita(JD))) / 15
 	if tm > 23 {
 		tm = -24 + tm
 	}
@@ -158,7 +98,6 @@ func SunTime(JD float64) float64 { //均时差
 }
 
 func SunSC(Lo, JD float64) float64 { //黄道上的岁差，仅黄纬=0时
-
 	t := (JD - 2451545) / 36525
 	//n := 47.0029/3600*t - 0.03302/3600*t*t + 0.000060/3600*t*t*t
 	//m := 174.876384/3600 - 869.8089/3600*t + 0.03536/3600*t*t
@@ -166,6 +105,7 @@ func SunSC(Lo, JD float64) float64 { //黄道上的岁差，仅黄纬=0时
 	return Lo + pk
 }
 
+// 高精度，使用VSOP87
 func HSunTrueLo(JD float64) float64 {
 	L := planet.WherePlanet(0, 0, JD)
 	return L
@@ -178,15 +118,7 @@ func HSunTrueBo(JD float64) float64 {
 
 func HSunApparentLo(JD float64) float64 {
 	L := HSunTrueLo(JD)
-	/*
-		t := (JD - 2451545) / 365250.0
-		R := planet.WherePlanet(-1, 2, JD)
-		t2 := t * t
-		t3 := t2 * t //千年数的各次方
-		R += (-0.0020 + 0.0044*t + 0.0213*t2 - 0.0250*t3)
-		L = L + HJZD(JD) - 20.4898/R/3600.00
-	*/
-	L = L + HJZD(JD) + SunLoGXC(JD)
+	L = L + Nutation2000Bi(JD) + SunLoGXC(JD)
 	return L
 }
 
@@ -209,35 +141,25 @@ func HSunApparentRa(JD float64) float64 { // '太阳视赤经
 	return LoToRa(JD, HSunApparentLo(JD), HSunTrueBo(JD))
 }
 
-func HSunTrueRa(JD float64) float64 { //'太阳真赤经
+func HSunTrueRa(JD float64) float64 {
 	tmp := HSunTrueLo(JD)
 	sitas := Sita(JD)
-	HSunTrueRa := ArcTan(Cos(sitas) * Sin(tmp) / Cos(tmp))
-	//Select Case SunTrueLo(JD)
-	if tmp >= 90 && tmp < 180 {
-		HSunTrueRa = 180 + HSunTrueRa
-	} else if tmp >= 180 && tmp < 270 {
-		HSunTrueRa = 180 + HSunTrueRa
-	} else if tmp >= 270 && tmp <= 360 {
-		HSunTrueRa = 360 + HSunTrueRa
-	}
-	return HSunTrueRa
+
+	numerator := Cos(sitas) * Sin(tmp)
+	denominator := Cos(tmp)
+
+	return ArcTan2(numerator, denominator)
 }
 
 func HSunApparentDec(JD float64) float64 { // '太阳视赤纬
-	T := (JD - 2451545) / 36525
-	sitas := EclipticObliquity(JD, false) + 0.00256*Cos(125.04-1934.136*T)
-	HSunApparentDec := ArcSin(Sin(sitas) * Sin(HSunApparentLo(JD)))
-	return HSunApparentDec
+	return ArcSin(Sin(EclipticObliquity(JD, true)) * Sin(HSunApparentLo(JD)))
 }
 
 func HSunTrueDec(JD float64) float64 { // '太阳真赤纬
-	sitas := EclipticObliquity(JD, false)
-	HSunTrueDec := ArcSin(Sin(sitas) * Sin(HSunTrueLo(JD)))
-	return HSunTrueDec
+	return ArcSin(Sin(EclipticObliquity(JD, false)) * Sin(HSunTrueLo(JD)))
 }
 
-func RDJL(jd float64) float64 { //ri di ju li
+func Distance(jd float64) float64 { //ri di ju li
 	f := SunMidFun(jd)
 	m := SunM(jd)
 	e := Earthe(jd)
@@ -270,7 +192,6 @@ func GetMoonLoops(year float64, loop int) []float64 {
 		moon[j] = newMoon
 		tmp = moon[j]
 		i++
-		// echo DateCalc(moon[i])."<br />";
 	}
 	return moon
 }
@@ -419,10 +340,8 @@ func GetWHTime(Year, Angle int) float64 {
 	return TD2UT(JD1, false)
 }
 
-/*
- * 太阳中天时刻，通过均时差计算
- */
-func GetSunTZTime(JD, Lon, TZ float64) float64 { //实际中天时间
+// 太阳中天时刻，通过均时差计算
+func CulminationTime(JD, Lon, TZ float64) float64 { //实际中天时间
 	JD = math.Floor(JD)
 	tmp := (TZ*15 - Lon) * 4 / 60
 	return JD + tmp/24.0 - SunTime(JD)/24.0
@@ -431,23 +350,23 @@ func GetSunTZTime(JD, Lon, TZ float64) float64 { //实际中天时间
 /*
  * 昏朦影传入 当天0时时刻
  */
-func GetBanTime(JD, Lon, Lat, TZ, An float64) float64 {
+func EveningTwilight(JD, Lon, Lat, TZ, An float64) float64 {
 	JD = math.Floor(JD) + 1.5
 	ntz := math.Round(Lon / 15)
-	tztime := GetSunTZTime(JD, Lon, ntz)
-	if SunHeight(tztime, Lon, Lat, ntz) < An {
+	culminationTime := CulminationTime(JD, Lon, ntz)
+	if SunHeight(culminationTime, Lon, Lat, ntz) < An {
 		return -2 //极夜
 	}
-	if SunHeight(tztime+0.5, Lon, Lat, ntz) > An {
+	if SunHeight(culminationTime+0.5, Lon, Lat, ntz) > An {
 		return -1 //极昼
 	}
-	tmp := (Sin(An) - Sin(HSunApparentDec(tztime))*Sin(Lat)) / (Cos(HSunApparentDec(tztime)) * Cos(Lat))
+	tmp := (Sin(An) - Sin(HSunApparentDec(culminationTime))*Sin(Lat)) / (Cos(HSunApparentDec(culminationTime)) * Cos(Lat))
 	var sundown float64
 	if math.Abs(tmp) <= 1 && Lat < 85 {
 		rzsc := ArcCos(tmp) / 15
-		sundown = tztime + rzsc/24.0 + 35.0/24.0/60.0
+		sundown = culminationTime + rzsc/24.0 + 35.0/24.0/60.0
 	} else {
-		sundown = tztime
+		sundown = culminationTime
 		i := 0
 		for LowSunHeight(sundown, Lon, Lat, ntz) > An {
 			i++
@@ -470,42 +389,51 @@ func GetBanTime(JD, Lon, Lat, TZ, An float64) float64 {
 	return JD1 - ntz/24 + TZ/24
 }
 
-func GetAsaTime(JD, Lon, Lat, TZ, An float64) float64 {
+func MorningTwilight(JD, Lon, Lat, TZ, An float64) float64 {
+	// 调整到中午12点
 	JD = math.Floor(JD) + 1.5
+
+	// 计算时区
 	ntz := math.Round(Lon / 15)
-	tztime := GetSunTZTime(JD, Lon, ntz)
-	if SunHeight(tztime, Lon, Lat, ntz) < An {
-		return -2 //极夜
+
+	// 计算太阳上中天时间
+	culminationTime := CulminationTime(JD, Lon, ntz)
+
+	// 检查极夜和极昼条件
+	if SunHeight(culminationTime, Lon, Lat, ntz) < An {
+		return -2 // 极夜
 	}
-	if SunHeight(tztime-0.5, Lon, Lat, ntz) > An {
-		return -1 //极昼
+	if SunHeight(culminationTime-0.5, Lon, Lat, ntz) > An {
+		return -1 // 极昼
 	}
-	tmp := (Sin(An) - Sin(HSunApparentDec(tztime))*Sin(Lat)) / (Cos(HSunApparentDec(tztime)) * Cos(Lat))
+
+	// 计算日出时间
+	sunDec := HSunApparentDec(culminationTime)
+	tmp := (Sin(An) - Sin(sunDec)*Sin(Lat)) / (Cos(sunDec) * Cos(Lat))
+
 	var sunrise float64
 	if math.Abs(tmp) <= 1 && Lat < 85 {
-		rzsc := ArcCos(tmp) / 15
-		sunrise = tztime - rzsc/24 - 25.0/24.0/60.0
+		hourAngle := ArcCos(tmp) / 15
+		sunrise = culminationTime - hourAngle/24 - 25.0/(24.0*60.0)
 	} else {
-		sunrise = tztime
-		i := 0
-		for LowSunHeight(sunrise, Lon, Lat, ntz) > An {
-			i++
-			sunrise -= 15.0 / 60.0 / 24.0
-			if i > 48 {
-				break
-			}
+		sunrise = culminationTime
+		for i := 0; i < 48 && LowSunHeight(sunrise, Lon, Lat, ntz) > An; i++ {
+			sunrise -= 15.0 / (60.0 * 24.0) // 每次减少15分钟
 		}
 	}
-	JD1 := sunrise - 5.00/24.00/60.00
+
+	JD1 := sunrise - 5.0/(24.0*60.0)
 	for {
 		JD0 := JD1
-		stDegree := SunHeight(JD0, Lon, Lat, ntz) - An
-		stDegreep := (SunHeight(JD0+0.000005, Lon, Lat, ntz) - SunHeight(JD0-0.000005, Lon, Lat, ntz)) / 0.00001
-		JD1 = JD0 - stDegree/stDegreep
+		heightDiff := SunHeight(JD0, Lon, Lat, ntz) - An
+		heightDerivative := (SunHeight(JD0+0.000005, Lon, Lat, ntz) - SunHeight(JD0-0.000005, Lon, Lat, ntz)) / 0.00001
+		JD1 = JD0 - heightDiff/heightDerivative
+
 		if math.Abs(JD1-JD0) < 0.00001 {
 			break
 		}
 	}
+
 	return JD1 - ntz/24 + TZ/24
 }
 
@@ -544,7 +472,7 @@ func calculateSunRiseSetTime(julianDay, longitude, latitude, timeZone, zenithShi
 	sunAngle = sunAngle - HeightDegreeByLat(height, latitude)
 
 	// 获取太阳上中天时间
-	solarNoonTime := GetSunTZTime(julianDay, longitude, naturalTimeZone)
+	solarNoonTime := CulminationTime(julianDay, longitude, naturalTimeZone)
 
 	// 检查极夜极昼条件
 	polarCondition := checkPolarConditions(solarNoonTime, longitude, latitude, naturalTimeZone, sunAngle, isSunrise)

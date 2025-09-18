@@ -61,27 +61,6 @@ func DecToBo(jde, ra, dec float64) float64 {
 }
 
 /*
- * 赤道坐标岁差变换st end 为JDE时刻
- */
-func ZuoBiaoSuiCha(ra, dec, st, end float64) (float64, float64) {
-	t := (end - st) / 36525.0
-	l := (2306.2181*t + 0.30188*t*t + 0.017998*t*t*t) / 3600
-	z := (2306.2181*t + 1.09468*t*t + 0.018203*t*t*t) / 3600
-	o := (2004.3109*t - 0.42665*t*t + 0.041833*t*t*t) / 3600
-	A := Cos(dec) * Sin(ra+l)
-	B := Cos(o)*Cos(dec)*Cos(ra+l) - Sin(o)*Sin(dec)
-	C := Sin(o)*Cos(dec)*Cos(ra+l) + Cos(o)*Sin(dec)
-	ras := math.Atan2(A, B)
-	ras = ras * 180 / math.Pi
-	if ras < 0 {
-		ras += 360
-	}
-	ra = ras + z
-	dec = ArcSin(C)
-	return ra, dec
-}
-
-/*
  * 地心坐标转站心坐标，参数分别为，地心赤经赤纬 纬度经度，jde，离地心位置au
  */
 func pcosi(lat, h float64) float64 {

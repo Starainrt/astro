@@ -96,7 +96,7 @@ func MercuryApparentLo(JD float64) float64 {
 	lo = Limit360(lo)
 	//lo-=GXCLo(lo,bo,JD)/3600;
 	//bo+=GXCBo(lo,bo,JD);
-	lo += HJZD(JD)
+	lo += Nutation2000Bi(JD)
 	return lo
 }
 
@@ -110,7 +110,7 @@ func MercuryApparentBo(JD float64) float64 {
 	bo = bo * 180 / math.Pi
 	//lo+=GXCLo(lo,bo,JD);
 	//bo+=GXCBo(lo,bo,JD)/3600;
-	//lo+=HJZD(JD);
+	//lo+=Nutation2000Bi(JD);
 	return bo
 }
 
@@ -122,7 +122,7 @@ func MercuryApparentLoBo(JD float64) (float64, float64) {
 	bo := math.Atan2(z, math.Sqrt(x*x+y*y))
 	lo = lo * 180 / math.Pi
 	bo = bo * 180 / math.Pi
-	lo = Limit360(lo) + HJZD(JD)
+	lo = Limit360(lo) + Nutation2000Bi(JD)
 	//lo-=GXCLo(lo,bo,JD)/3600;
 	//bo+=GXCBo(lo,bo,JD);
 	return lo, bo

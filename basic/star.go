@@ -21,7 +21,7 @@ func StarHeight(jde, ra, dec, lon, lat, timezone float64) float64 {
 	return ArcSin(sinHeight)
 }
 
-//StarAzimuth 星体的方位角
+// StarAzimuth 星体的方位角
 // 传入 jde时间、瞬时赤经、瞬时赤纬、经度、纬度、时区，jde时间应为时区时间
 // 返回方位角，单位为度，正北为0，度数顺时针增加，取值范围[0-360)
 func StarAzimuth(jde, ra, dec, lon, lat, timezone float64) float64 {
@@ -46,7 +46,7 @@ func StarAzimuth(jde, ra, dec, lon, lat, timezone float64) float64 {
 	return Azimuth
 }
 
-//StarHourAngle 星体的时角
+// StarHourAngle 星体的时角
 // 传入 jde时间、瞬时赤经、瞬时赤纬、经度、时区，jde时间应为时区时间
 // 返回时角
 func StarHourAngle(jde, ra, lon, timezone float64) float64 {
@@ -58,17 +58,69 @@ func StarHourAngle(jde, ra, lon, timezone float64) float64 {
 	return Limit360(st - ra)
 }
 
-// MeanSiderealTime 不含章动下的恒星时
+// MeanSiderealTime 平恒星时
 func MeanSiderealTime(JD float64) float64 {
-	T := (JD - 2451545) / 36525
-	return (Limit360(280.46061837+360.98564736629*(JD-2451545.0)+0.000387933*T*T-T*T*T/38710000) / 15)
+	return MeanSiderealTime2006(JD)
 }
 
 // ApparentSiderealTime 视恒星时，计算章动
 func ApparentSiderealTime(JD float64) float64 {
-	tmp := MeanSiderealTime(JD)
-	return tmp + HJZD(JD)*Cos(Sita(JD))/15
+	return ApparentSiderealTime2006(JD)
 }
+
+// MeanSiderealTime1982 不含章动下的恒星时
+func MeanSiderealTime1982(JD float64) float64 {
+	T := (JD - 2451545) / 36525
+	return (Limit360(280.46061837+360.98564736629*(JD-2451545.0)+0.000387933*T*T-T*T*T/38710000) / 15)
+}
+
+// ApparentSiderealTime1982 视恒星时，计算章动
+func ApparentSiderealTime1982(JD float64) float64 {
+	tmp := MeanSiderealTime1982(JD)
+	return tmp + Nutation2000Bi(JD)*Cos(Sita(JD))/15
+}
+
+// EarthRotationAngle 计算地球自转角 (ERA)
+// jd_ut1: UT1 时间的儒略日
+// 返回值: 地球自转角 (弧度)
+func EarthRotationAngle(jd_ut1 float64) float64 {
+	t := jd_ut1 - 2451545.0
+	frac := math.Mod(jd_ut1, 1.0)
+
+	era := math.Mod(math.Pi*2*(0.7790572732640+0.00273781191135448*t+frac), math.Pi*2)
+	if era < 0 {
+		era += math.Pi * 2
+	}
+
+	return era
+}
+
+// MeanSiderealTime2006 计算格林尼治平恒星时 (GMST)
+// jd_ut1: UT1 时间的儒略日
+// jd_tt: TT 时间的儒略日
+// 返回值: 格林尼治平恒星时 (弧度)
+func MeanSiderealTime2006(jd_ut1 float64) float64 {
+	jd_tt := TD2UT(jd_ut1, true)
+	t := (jd_tt - 2451545.0) / 36525.0
+	era := EarthRotationAngle(jd_ut1)
+
+	// 公式 2.12
+	gmst := math.Mod(era+(0.014506+4612.15739966*t+1.39667721*t*t+
+		-0.00009344*t*t*t+0.00001882*t*t*t*t)/60/60*math.Pi/180, math.Pi*2)
+
+	if gmst < 0 {
+		gmst += math.Pi * 2
+	}
+
+	return gmst * deg / 15
+}
+
+// ApparentSiderealTime2006 视恒星时，计算章动
+func ApparentSiderealTime2006(JD float64) float64 {
+	tmp := MeanSiderealTime2006(JD)
+	return tmp + Nutation2000Bi(JD)*Cos(Sita(JD))/15
+}
+
 func StarAngle(RA, DEC, JD, Lon, Lat, TZ float64) float64 {
 	//JD=JD-8/24+TZ/24;
 	calcjd := JD - TZ/24

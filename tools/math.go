@@ -28,6 +28,15 @@ func ArcTan(x float64) float64 {
 	return (math.Atan(x) / math.Pi * 180.00000)
 }
 
+// ArcTan2 计算两个变量的反正切并转换为角度，处理所有象限
+func ArcTan2(y, x float64) float64 {
+	angle := math.Atan2(y, x) * 180.0 / math.Pi
+	if angle < 0 {
+		angle += 360.0
+	}
+	return angle
+}
+
 func FloatRound(f float64, n int) float64 {
 	p := math.Pow10(n)
 	return math.Floor(f*p+0.5) / p

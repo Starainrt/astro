@@ -156,7 +156,7 @@ func IsXZ(ra, dec, jde float64) string {
 	if ra >= 360 {
 		nra -= 360
 	}
-	nra, ndec = ZuoBiaoSuiCha(nra, dec, jde, 2451545.0)
+	nra, ndec = Precess(nra, dec, jde, 2451545.0)
 	if ra >= 360 && nra < 270 {
 		nra += 360
 	}

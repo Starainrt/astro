@@ -254,7 +254,7 @@ func PhaseDesc(date time.Time) string {
 // 返回Date对应UTC世界时的月相大小
 func Phase(date time.Time) float64 {
 	jde := basic.Date2JDE(date.UTC())
-	return basic.MoonLight(basic.TD2UT(jde, true))
+	return basic.MoonPhase(basic.TD2UT(jde, true))
 }
 
 // ShuoYue 朔月

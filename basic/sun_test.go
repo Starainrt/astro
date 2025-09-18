@@ -22,12 +22,12 @@ func Test_Jq(t *testing.T) {
 
 func TestZD(t *testing.T) {
 	jde := 2452982.9872345612
-	zd := HJZD(jde)
+	zd := Nutation2000Bi(jde)
 	fmt.Println(zd)
 	if zd != -0.003746747950462434 {
 		t.Fatal("not equal")
 	}
-	zd = JJZD(jde)
+	zd = Nutation1980s(jde)
 	fmt.Println(zd)
 	if zd != 0.001513453926274198 {
 		t.Fatal("not equal")
@@ -121,10 +121,10 @@ func Test_SunRise(t *testing.T) {
 func Test_SunTwilightMo(t *testing.T) {
 	cst := time.FixedZone("cst", 8*3600)
 	jde := Date2JDE(time.Date(2023, 10, 3, 15, 59, 0, 0, cst))
-	fmt.Println(GetAsaTime(jde, 113.58880556, 87.66833333, 8, -6))
+	fmt.Println(MorningTwilight(jde, 113.58880556, 87.66833333, 8, -6))
 
 	for i := 10.0; i < 90.0; i += 0.3 {
-		fmt.Println(i, GetAsaTime(jde, 125.45506654, float64(i), 8, -6))
+		fmt.Println(i, MorningTwilight(jde, 125.45506654, float64(i), 8, -6))
 	}
 }
 
@@ -132,7 +132,7 @@ func Test_SunTwilightEv(t *testing.T) {
 	cst := time.FixedZone("cst", 8*3600)
 	jde := Date2JDE(time.Date(2023, 10, 3, 15, 59, 0, 0, cst))
 	for i := 10.0; i < 90.0; i += 0.3 {
-		fmt.Println(i, GetBanTime(jde, 115, float64(i), 8, -18))
+		fmt.Println(i, EveningTwilight(jde, 115, float64(i), 8, -18))
 	}
 }
 

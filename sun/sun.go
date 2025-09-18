@@ -107,7 +107,7 @@ func MorningTwilight(date time.Time, lon, lat, angle float64) (time.Time, error)
 	jde := basic.Date2JDE(date)
 	_, loc := date.Zone()
 	timezone := float64(loc) / 3600.0
-	calcJde := basic.GetAsaTime(jde, lon, lat, timezone, angle)
+	calcJde := basic.MorningTwilight(jde, lon, lat, timezone, angle)
 	if calcJde == -2 {
 		err = ERR_TWILIGHT_NOT_EXISTS
 	}
@@ -131,7 +131,7 @@ func EveningTwilight(date time.Time, lon, lat, angle float64) (time.Time, error)
 	_, loc := date.Zone()
 	timezone := float64(loc) / 3600.0
 	//不需要进行力学时转换，会在GetBanTime中转换
-	calcJde := basic.GetBanTime(jde, lon, lat, timezone, angle)
+	calcJde := basic.EveningTwilight(jde, lon, lat, timezone, angle)
 	if calcJde == -2 {
 		err = ERR_TWILIGHT_NOT_EXISTS
 	}
@@ -152,22 +152,40 @@ func EclipticObliquity(date time.Time, nutation bool) float64 {
 	return basic.EclipticObliquity(jde, nutation)
 }
 
-// EclipticNutation 黄经章动
+// EclipticNutation 黄经章动(2000b)
 // 返回date对应UTC世界时的黄经章动
 func EclipticNutation(date time.Time) float64 {
 	//转换为UTC时间
 	jde := basic.Date2JDE(date.UTC())
 	//进行力学时转换与章动计算
-	return basic.HJZD(basic.TD2UT(jde, true))
+	return basic.Nutation2000Bi(basic.TD2UT(jde, true))
 }
 
-// AxialtiltNutation 交角章动
+// EclipticNutation1980 黄经章动(iau 1980)
+// 返回date对应UTC世界时的黄经章动
+func EclipticNutation1980(date time.Time) float64 {
+	//转换为UTC时间
+	jde := basic.Date2JDE(date.UTC())
+	//进行力学时转换与章动计算
+	return basic.Nutation2000Bi(basic.TD2UT(jde, true))
+}
+
+// AxialtiltNutation 交角章动(2000b)
 // 返回date对应UTC世界时的交角章动
 func AxialtiltNutation(date time.Time) float64 {
 	//转换为UTC时间
 	jde := basic.Date2JDE(date.UTC())
 	//进行力学时转换与章动计算
-	return basic.JJZD(basic.TD2UT(jde, true))
+	return basic.Nutation2000Bs(basic.TD2UT(jde, true))
+}
+
+// AxialtiltNutation1980 交角章动(1980)
+// 返回date对应UTC世界时的交角章动
+func AxialtiltNutation1980(date time.Time) float64 {
+	//转换为UTC时间
+	jde := basic.Date2JDE(date.UTC())
+	//进行力学时转换与章动计算
+	return basic.Nutation1980s(basic.TD2UT(jde, true))
 }
 
 // GeometricLo 太阳几何黄经
@@ -274,7 +292,7 @@ func CulminationTime(date time.Time, lon float64) time.Time {
 	jde := basic.Date2JDE(date.Add(time.Duration(-1*date.Hour())*time.Hour)) + 0.5
 	_, loc := date.Zone()
 	timezone := float64(loc) / 3600.0
-	calcJde := basic.GetSunTZTime(jde, lon, timezone) - timezone/24.00
+	calcJde := basic.CulminationTime(jde, lon, timezone) - timezone/24.00
 	return basic.JDE2DateByZone(calcJde, date.Location(), false)
 }
 

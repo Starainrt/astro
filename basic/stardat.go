@@ -9344,7 +9344,7 @@ func StarDataByHR(hr int) (StarData, error) {
 func (s InnerStarData) RaDecByJde(jde float64) (float64, float64) {
 	//计算自行
 	year := ((jde - 2451545.0) / 365.2422)
-	return ZuoBiaoSuiCha(s.Ra+(year*s.PmRA/3600), s.Dec+(year*s.PmDec/3600), 2451545.0, jde)
+	return Precess(s.Ra+(year*s.PmRA/3600), s.Dec+(year*s.PmDec/3600), 2451545.0, jde)
 }
 
 func (s StarData) RaDecByDate(date time.Time) (float64, float64) {
