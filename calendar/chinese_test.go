@@ -111,7 +111,7 @@ func Test_ChineseCalendarModern2(t *testing.T) {
 				t.Fatal(v, lunar.year, lunar.month, lunar.day, lunar.leap)
 			}
 
-			date, err := LunarToSolarSingle(v.Lyear, v.Lmonth, v.Lday, v.Leap)
+			date, err := LunarToSolarByYMD(v.Lyear, v.Lmonth, v.Lday, v.Leap)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -253,6 +253,7 @@ func TestGanZhiOfDay(t *testing.T) {
 		fmt.Println(v.solarTime)
 		fmt.Println(v.LunarDescWithDynastyAndEmperor())
 	}
+	fmt.Println(SolarToLunarByYMD(700, 2, 29))
 }
 
 /*

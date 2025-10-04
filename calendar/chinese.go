@@ -78,8 +78,19 @@ func SolarToLunar(date time.Time) (Time, error) {
 	return innerSolarToLunar(date)
 }
 
+// SolarToLunarByYMD 公历转农历
+// 传入 公历年月日
+// 返回 包含农历信息的Time结构体
+// 支持年份：[-103,3000]
+// [-103,1912] 按照古代历法提供的农历信息
+// (1912,3000]按现行农历GB/T 33661-2017算法计算
+func SolarToLunarByYMD(year, month, day int) (Time, error) {
+	return innerSolarToLunarByYMD(year, month, day)
+}
+
 func innerSolarToLunar(date time.Time) (Time, error) {
-	if date.Year() < -103 || date.Year() > 3000 {
+	date = date.In(getCst())
+	if date.Year() < -103 || date.Year() > 9999 {
 		return Time{}, fmt.Errorf("日期超出范围")
 	}
 	if date.Year() <= 1912 {
@@ -94,6 +105,30 @@ func innerSolarToLunar(date time.Time) (Time, error) {
 	}
 	y, m, d, l, desc := basic.GetLunar(date.Year(), int(date.Month()), date.Day(), 8.0/24.0)
 	return transformModenLunar2Time(date, y, m, d, l, desc), nil
+}
+
+func innerSolarToLunarByYMD(year, month, day int) (Time, error) {
+	if year < -103 || year > 9999 {
+		return Time{}, fmt.Errorf("日期超出范围")
+	}
+	if month < 1 || month > 12 {
+		return Time{}, fmt.Errorf("月份超出范围")
+	}
+	if day < 1 || day > 31 {
+		return Time{}, fmt.Errorf("日期超出范围")
+	}
+	if year <= 1912 {
+		return innerSolarToLunarHanQingByYMD(year, month, day, time.Time{}), nil
+	}
+	if year < 2400 {
+		y, m, d, l, desc := rapidLunarModern(year, month, day)
+		if desc == "无法获取农历信息" {
+			return Time{}, fmt.Errorf("无法获取农历信息")
+		}
+		return transformModenLunar2Time(time.Date(year, time.Month(month), day, 0, 0, 0, 0, getCst()), y, m, d, l, desc), nil
+	}
+	y, m, d, l, desc := basic.GetLunar(year, month, day, 8.0/24.0)
+	return transformModenLunar2Time(time.Date(year, time.Month(month), day, 0, 0, 0, 0, getCst()), y, m, d, l, desc), nil
 }
 
 func transformModenLunar2Time(date time.Time, year, month, day int, leap bool, desc string) Time {
@@ -141,13 +176,24 @@ func LunarToSolar(desc string) ([]Time, error) {
 }
 
 // LunarToSolarSingle 农历转公历
+// Deprecated: 推荐使用LunarToSolarByYMD
 // 传入 农历年月日，是否闰月
 // 传出 包含公里农历信息的Time结构体
 // 支持年份：[-103,3000]
 // [-103,1912] 按照古代历法提供的农历信息,注意，这里农历月份代表的是以当时的历法推定的农历月与正月的距离，正月为1，二月为2，依次类推，闰月显示所闰月
 // (1912,3000]按现行农历GB/T 33661-2017算法计算
 func LunarToSolarSingle(year, month, day int, leap bool) (Time, error) {
-	if year < -103 || year > 3000 {
+	return LunarToSolarByYMD(year, month, day, leap)
+}
+
+// LunarToSolarByYMD 农历转公历
+// 传入 农历年月日，是否闰月
+// 传出 包含公里农历信息的Time结构体
+// 支持年份：[-103,3000]
+// [-103,1912] 按照古代历法提供的农历信息,注意，这里农历月份代表的是以当时的历法推定的农历月与正月的距离，正月为1，二月为2，依次类推，闰月显示所闰月
+// (1912,3000]按现行农历GB/T 33661-2017算法计算
+func LunarToSolarByYMD(year, month, day int, leap bool) (Time, error) {
+	if year < -103 || year > 9999 {
 		return Time{}, fmt.Errorf("年份超出范围")
 	}
 	if year <= 1912 {

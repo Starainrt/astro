@@ -48,6 +48,9 @@ recalc:
 	//儒略历修正
 	if springDate.Year()%100 == 0 && springDate.Year()%400 != 0 && springDate.Year() < 1582 && (target.Month() >= 3 || (target.Year() > springDate.Year())) {
 		diffDay++
+		if target.Month() == 3 && target.Day() == 1 && month == 2 && day == 29 {
+			diffDay--
+		}
 	}
 	//儒略历转格里高历修正
 	if calcYear == 1582 && ((month == 10 && day >= 15) || month > 10) {
@@ -268,10 +271,21 @@ func formatLunarDateString(lunarMonth, lunarDay int, isLeap bool, diff int) stri
 }
 
 func innerSolarToLunarHanQing(date time.Time) Time {
-	year := date.Year()
-	month := int(date.Month())
-	day := date.Day()
+	return innerSolarToLunarHanQingByYMD(0, 0, 0, date)
+}
+
+func innerSolarToLunarHanQingByYMD(year, month, day int, hmi time.Time) Time {
+	loc := getCst()
+	if !hmi.IsZero() {
+		loc = hmi.Location()
+	}
+	if !hmi.IsZero() && year == 0 && month == 0 && day == 0 {
+		year = hmi.Year()
+		month = int(hmi.Month())
+		day = hmi.Day()
+	}
 	yeardiff := yearDiff(year, month, day)
+	date := time.Date(year, time.Month(month), day, hmi.Hour(), hmi.Minute(), hmi.Second(), hmi.Nanosecond(), loc)
 	lyear, lmonth, ganzhiMonth, lday, isLeap, ldesc := rapidLunarHan2Qing(year, month, day, yeardiff, nil)
 	var eras []EraDesc
 	if lyear >= -103 && lyear <= 220 {
