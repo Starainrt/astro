@@ -5,10 +5,6 @@ import (
 	"testing"
 )
 
-func Test_LoBo(t *testing.T) {
-	fmt.Printf("%.9f", dt_cal(2020.5))
-}
-
 func Test_LoBoRaDec(t *testing.T) {
 	jde := 2451545.0
 	lo, bo := RaDecToLoBo(jde, 10, 50)

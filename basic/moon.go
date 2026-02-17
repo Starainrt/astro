@@ -1435,19 +1435,20 @@ func GetMoonRiseTime(julianDay, longitude, latitude, timeZone, zenithShift, heig
 	timeZone = longitude / 15
 	var moonAngle, timeToMeridian float64 = 0, 0
 	julianDayZero := math.Floor(julianDay) + 0.5
-	julianDay = math.Floor(julianDay) + 0.5 - originalTimeZone/24 + timeZone/24 // 求0时JDE
-
+	//julianDay = math.Floor(julianDay) + 0.5 - originalTimeZone/24 + timeZone/24 // 求0时JDE
+	//fix:这里时间分界线应当以传入的时区为准，不应当使用当地时区，否则在0时的判断会出错
+	julianDay = math.Floor(julianDay) + 0.5
 	estimatedTime := julianDay
-	moonHeight := MoonHeight(julianDay, longitude, latitude, timeZone) // 求此时月亮高度
+	moonHeight := MoonHeight(julianDay, longitude, latitude, originalTimeZone) // 求此时月亮高度
 
 	if zenithShift != 0 {
 		moonAngle = -0.83333 // 修正大气折射
 	}
 	moonAngle = moonAngle - HeightDegreeByLat(height, latitude)
 
-	moonAngleTime := MoonTimeAngle(julianDay, longitude, latitude, timeZone)
+	moonAngleTime := MoonTimeAngle(julianDay, longitude, latitude, originalTimeZone)
 
-	if moonHeight > 0 { // 月亮在地平线上或在落下与下中天之间
+	if moonHeight-moonAngle > 0 { // 月亮在地平线上或在落下与下中天之间
 		if moonAngleTime > 180 {
 			timeToMeridian = (180 + 360 - moonAngleTime) / 15
 		} else {
@@ -1456,10 +1457,10 @@ func GetMoonRiseTime(julianDay, longitude, latitude, timeZone, zenithShift, heig
 		estimatedTime += (timeToMeridian/24 + (timeToMeridian/24*12.0)/15.0/24.0)
 	}
 
-	if moonHeight < 0 && moonAngleTime > 180 {
+	if moonHeight-moonAngle < 0 && moonAngleTime > 180 {
 		timeToMeridian = (180 - moonAngleTime) / 15
 		estimatedTime += (timeToMeridian/24 + (timeToMeridian/24*12.0)/15.0/24.0)
-	} else if moonHeight < 0 && moonAngleTime < 180 {
+	} else if moonHeight-moonAngle < 0 && moonAngleTime < 180 {
 		timeToMeridian = (180 - moonAngleTime) / 15
 		estimatedTime += (timeToMeridian/24 + (timeToMeridian/24*12.0)/15.0/24.0)
 	}
@@ -1519,28 +1520,29 @@ func GetMoonSetTime(julianDay, longitude, latitude, timeZone, zenithShift, heigh
 	timeZone = longitude / 15
 	var moonAngle, timeToMeridian float64 = 0, 0
 	julianDayZero := math.Floor(julianDay) + 0.5
-	julianDay = math.Floor(julianDay) + 0.5 - originalTimeZone/24 + timeZone/24 // 求0时JDE
-
+	//julianDay = math.Floor(julianDay) + 0.5 - originalTimeZone/24 + timeZone/24 // 求0时JDE
+	//fix:这里时间分界线应当以传入的时区为准，不应当使用当地时区，否则在0时的判断会出错
+	julianDay = math.Floor(julianDay) + 0.5
 	estimatedTime := julianDay
-	moonHeight := MoonHeight(julianDay, longitude, latitude, timeZone) // 求此时月亮高度
+	moonHeight := MoonHeight(julianDay, longitude, latitude, originalTimeZone) // 求此时月亮高度
 
 	if zenithShift != 0 {
 		moonAngle = -0.83333 // 修正大气折射
 	}
 	moonAngle = moonAngle - HeightDegreeByLat(height, latitude)
 
-	moonAngleTime := MoonTimeAngle(julianDay, longitude, latitude, timeZone)
+	moonAngleTime := MoonTimeAngle(julianDay, longitude, latitude, originalTimeZone)
 
-	if moonHeight < 0 {
+	if moonHeight-moonAngle < 0 {
 		timeToMeridian = (360 - moonAngleTime) / 15
 		estimatedTime += (timeToMeridian/24 + (timeToMeridian/24.0*12.0)/15.0/24.0)
 	}
 
 	// 月亮在地平线上或在落下与下中天之间
-	if moonHeight > 0 && moonAngleTime < 180 {
+	if moonHeight-moonAngle > 0 && moonAngleTime < 180 {
 		timeToMeridian = (-moonAngleTime) / 15
 		estimatedTime += (timeToMeridian/24.0 + (timeToMeridian/24.0*12.0)/15.0/24.0)
-	} else if moonHeight > 0 {
+	} else if moonHeight-moonAngle > 0 {
 		timeToMeridian = (360 - moonAngleTime) / 15
 		estimatedTime += (timeToMeridian/24.0 + (timeToMeridian/24.0*12.0)/15.0/24.0)
 	}

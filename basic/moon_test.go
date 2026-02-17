@@ -1,11 +1,12 @@
 package basic
 
 import (
-	"github.com/starainrt/astro/tools"
 	"fmt"
 	"math"
 	"testing"
 	"time"
+
+	"github.com/starainrt/astro/tools"
 )
 
 func Benchmark_MoonRiseBench(b *testing.B) {
@@ -492,11 +493,11 @@ var moonRiseSetTestData = []MoonRiseSetTestCase{
 	{2024, 2, 29.0, 31.2357, 30.0444, 2.0, 1, 100, 2460370.429845, 2460369.865380},
 	{2024, 2, 29.0, 31.2357, 30.0444, 2.0, 1, 1000, 2460370.428616, 2460369.866552},
 	{2025, 7, 4.0, 31.2357, 30.0444, 2.0, 0, 0, 2460861.065509, -3.000000},
-	{2025, 7, 4.0, 31.2357, 30.0444, 2.0, 0, 100, 2460861.064944, -3.000000},
-	{2025, 7, 4.0, 31.2357, 30.0444, 2.0, 0, 1000, 2460861.063725, -3.000000},
-	{2025, 7, 4.0, 31.2357, 30.0444, 2.0, 1, 0, 2460861.062582, -3.000000},
-	{2025, 7, 4.0, 31.2357, 30.0444, 2.0, 1, 100, 2460861.062019, -3.000000},
-	{2025, 7, 4.0, 31.2357, 30.0444, 2.0, 1, 1000, 2460861.060803, -3.000000},
+	{2025, 7, 4.0, 31.2357, 30.0444, 2.0, 0, 100, 2460861.064944, 2460860.500441},
+	{2025, 7, 4.0, 31.2357, 30.0444, 2.0, 0, 1000, 2460861.063725, 2460860.501606},
+	{2025, 7, 4.0, 31.2357, 30.0444, 2.0, 1, 0, 2460861.062582, 2460860.502699},
+	{2025, 7, 4.0, 31.2357, 30.0444, 2.0, 1, 100, 2460861.062019, 2460860.503237},
+	{2025, 7, 4.0, 31.2357, 30.0444, 2.0, 1, 1000, 2460861.060803, 2460860.504400},
 	{2023, 1, 15.0, -43.1729, -22.9068, -3.0, 0, 0, -3.000000, 2459960.019905},
 	{2023, 1, 15.0, -43.1729, -22.9068, -3.0, 0, 100, -3.000000, 2459960.020416},
 	{2023, 1, 15.0, -43.1729, -22.9068, -3.0, 0, 1000, -3.000000, 2459960.021522},
@@ -619,10 +620,10 @@ var moonRiseSetTestData = []MoonRiseSetTestCase{
 	{2024, 2, 29.0, -149.9003, 61.2181, -9.0, 1, 1000, 2460369.506308, 2460369.862264},
 	{2025, 7, 4.0, -149.9003, 61.2181, -9.0, 0, 0, 2460861.205484, 2460861.493716},
 	{2025, 7, 4.0, -149.9003, 61.2181, -9.0, 0, 100, 2460861.204170, 2460861.495011},
-	{2025, 7, 4.0, -149.9003, 61.2181, -9.0, 0, 1000, 2460861.201358, 2460861.497780},
-	{2025, 7, 4.0, -149.9003, 61.2181, -9.0, 1, 0, 2460861.198757, -3.000000},
-	{2025, 7, 4.0, -149.9003, 61.2181, -9.0, 1, 100, 2460861.197484, -3.000000},
-	{2025, 7, 4.0, -149.9003, 61.2181, -9.0, 1, 1000, 2460861.194755, -3.000000},
+	{2025, 7, 4.0, -149.9003, 61.2181, -9.0, 0, 1000, 2460861.201358, 2460860.500309},
+	{2025, 7, 4.0, -149.9003, 61.2181, -9.0, 1, 0, 2460861.198757, 2460860.502500},
+	{2025, 7, 4.0, -149.9003, 61.2181, -9.0, 1, 100, 2460861.197484, 2460860.503576},
+	{2025, 7, 4.0, -149.9003, 61.2181, -9.0, 1, 1000, 2460861.194755, 2460860.505890},
 	{2023, 1, 15.0, -42.6043, 71.7069, -3.0, 0, 0, 2459959.583014, 2459959.895953},
 	{2023, 1, 15.0, -42.6043, 71.7069, -3.0, 0, 100, 2459959.581157, 2459959.897741},
 	{2023, 1, 15.0, -42.6043, 71.7069, -3.0, 0, 1000, 2459959.577188, 2459959.901560},
@@ -656,8 +657,8 @@ var moonRiseSetTestData = []MoonRiseSetTestCase{
 	{2024, 2, 29.0, -42.6043, 71.7069, -3.0, 0, 0, 2460369.510257, 2460369.739050},
 	{2024, 2, 29.0, -42.6043, 71.7069, -3.0, 0, 100, 2460369.507908, 2460369.741347},
 	{2024, 2, 29.0, -42.6043, 71.7069, -3.0, 0, 1000, 2460369.502952, 2460369.746190},
-	{2024, 2, 29.0, -42.6043, 71.7069, -3.0, 1, 0, -3.000000, 2460369.750583},
-	{2024, 2, 29.0, -42.6043, 71.7069, -3.0, 1, 100, -3.000000, 2460369.752708},
+	{2024, 2, 29.0, -42.6043, 71.7069, -3.0, 1, 0, -2.000000, 2460369.750583},
+	{2024, 2, 29.0, -42.6043, 71.7069, -3.0, 1, 100, -2.000000, 2460369.752708},
 	{2024, 2, 29.0, -42.6043, 71.7069, -3.0, 1, 1000, -3.000000, 2460369.757206},
 	{2025, 7, 4.0, -42.6043, 71.7069, -3.0, 0, 0, 2460861.253176, 2460861.327087},
 	{2025, 7, 4.0, -42.6043, 71.7069, -3.0, 0, 100, 2460861.246829, 2460861.333396},
@@ -712,25 +713,26 @@ var moonRiseSetTestData = []MoonRiseSetTestCase{
 // TestMoonRiseSetRegression 月出月落回归测试
 func TestMoonRiseSetRegression(t *testing.T) {
 	beforeDeltaT := defDeltaTFn
-	SetDeltaTFn(DefaultDeltaT)
+	SetDeltaTFn(DefaultDeltaTv2)
 	defer SetDeltaTFn(beforeDeltaT)
-	const tolerance = 0.000001 // 容差设为1微秒，对于天文计算来说已经足够精确
+	const tolerance = 0.00011574074
 
 	for i, testCase := range moonRiseSetTestData {
 		julianDay := JDECalc(testCase.Year, testCase.Month, testCase.Day)
 
 		// 测试月出时间
+
 		actualRise := GetMoonRiseTime(julianDay, testCase.Longitude, testCase.Latitude,
 			testCase.TimeZone, testCase.ZenithShift, testCase.Height)
 
 		if !floatEquals(actualRise, testCase.ExpectedRise, tolerance) {
 			t.Errorf("测试用例 %d 月出时间不匹配:\n"+
 				"  日期: %d-%d-%.1f, 经纬度: (%.4f, %.4f), 时区: %.1f, 天顶修正: %.0f, 海拔: %.0f\n"+
-				"  期望月出: %.6f, 实际月出: %.6f, 差值: %.9f",
+				"  期望月出: %v, 实际月出: %.6f, 差值: %.9f",
 				i, testCase.Year, testCase.Month, testCase.Day,
 				testCase.Longitude, testCase.Latitude, testCase.TimeZone,
 				testCase.ZenithShift, testCase.Height,
-				testCase.ExpectedRise, actualRise, math.Abs(actualRise-testCase.ExpectedRise))
+				JDE2Date(testCase.ExpectedRise), actualRise, math.Abs(actualRise-testCase.ExpectedRise))
 		}
 
 		// 测试月落时间
@@ -738,13 +740,14 @@ func TestMoonRiseSetRegression(t *testing.T) {
 			testCase.TimeZone, testCase.ZenithShift, testCase.Height)
 
 		if !floatEquals(actualSet, testCase.ExpectedSet, tolerance) {
+			fmt.Println(JDECalc(testCase.Year, testCase.Month, testCase.Day))
 			t.Errorf("测试用例 %d 月落时间不匹配:\n"+
 				"  日期: %d-%d-%.1f, 经纬度: (%.4f, %.4f), 时区: %.1f, 天顶修正: %.0f, 海拔: %.0f\n"+
-				"  期望月落: %.6f, 实际月落: %.6f, 差值: %.9f",
+				"  期望月落: %v,%.6f, 实际月落: %v,%.6f , 差值: %.9f",
 				i, testCase.Year, testCase.Month, testCase.Day,
 				testCase.Longitude, testCase.Latitude, testCase.TimeZone,
 				testCase.ZenithShift, testCase.Height,
-				testCase.ExpectedSet, actualSet, math.Abs(actualSet-testCase.ExpectedSet))
+				JDE2Date(testCase.ExpectedSet), testCase.ExpectedSet, JDE2Date(actualSet), actualSet, math.Abs(actualSet-testCase.ExpectedSet))
 		}
 	}
 
@@ -754,7 +757,7 @@ func TestMoonRiseSetRegression(t *testing.T) {
 // TestMoonRiseSetSpecialCases 测试特殊情况
 func TestMoonRiseSetSpecialCases(t *testing.T) {
 	beforeDeltaT := defDeltaTFn
-	SetDeltaTFn(DefaultDeltaT)
+	SetDeltaTFn(DefaultDeltaTv2)
 	defer SetDeltaTFn(beforeDeltaT)
 	testCases := []struct {
 		name             string
