@@ -240,13 +240,15 @@ func GetLunar(year, month, day int, tz float64) (lyear, lmonth, lday int, leap b
 	adjustedYear := year
 	if month == 11 || month == 12 {
 		winterSolsticeDay := GetJQTime(year, 270) + tz
-		firstNewMoonDay := TD2UT(CalcMoonS(float64(year)+11.0/12.0+5.0/30.0/12.0, 0), true) + tz
-		nextNewMoonDay := TD2UT(CalcMoonS(float64(year)+1.0, 0), true) + tz
+		//firstNewMoonDay := TD2UT(CalcMoonS(float64(year)+11.0/12.0+5.0/30.0/12.0, 0), true) + tz
+		//nextNewMoonDay := TD2UT(CalcMoonS(float64(year)+1.0, 0), true) + tz
+		firstNewMoonDay := TD2UT(CalcMoonSHByJDE(winterSolsticeDay-16, 0), false) + tz
+		nextNewMoonDay := TD2UT(CalcMoonSHByJDE(firstNewMoonDay+28, 0), false) + tz
 
 		firstNewMoonDay = normalizeTimePoint(firstNewMoonDay)
 		nextNewMoonDay = normalizeTimePoint(nextNewMoonDay)
 
-		if winterSolsticeDay >= firstNewMoonDay && winterSolsticeDay < nextNewMoonDay && julianDayEpoch <= firstNewMoonDay {
+		if winterSolsticeDay >= firstNewMoonDay && winterSolsticeDay < nextNewMoonDay && julianDayEpoch < firstNewMoonDay {
 			adjustedYear--
 		}
 		if winterSolsticeDay >= nextNewMoonDay && julianDayEpoch < nextNewMoonDay {
@@ -261,8 +263,8 @@ func GetLunar(year, month, day int, tz float64) (lyear, lmonth, lday int, leap b
 	newMoonDays := GetMoonLoops(float64(adjustedYear), 17)
 
 	// 计算冬至日期
-	winterSolsticeFirst := solarTerms[0] - 8.0/24 + tz
-	winterSolsticeSecond := solarTerms[24] - 8.0/24 + tz
+	winterSolsticeFirst := normalizeTimePoint(solarTerms[0] - 8.0/24 + tz)
+	winterSolsticeSecond := normalizeTimePoint(solarTerms[24] - 8.0/24 + tz)
 
 	// 规范化时间点
 	normalizeTimeArray(newMoonDays, tz)
@@ -271,8 +273,9 @@ func GetLunar(year, month, day int, tz float64) (lyear, lmonth, lday int, leap b
 	// 计算朔望月范围
 	minMoonIndex, maxMoonIndex := 20, 0
 	moonCount := 0
-	for i := 0; i < 15; i++ {
-		if newMoonDays[i] >= winterSolsticeFirst && newMoonDays[i] < winterSolsticeSecond {
+	for i := 0; i < len(newMoonDays)-1; i++ {
+		if (newMoonDays[i] <= winterSolsticeFirst && newMoonDays[i+1] > winterSolsticeFirst) ||
+			(newMoonDays[i] > winterSolsticeFirst && newMoonDays[i] < winterSolsticeSecond && newMoonDays[i+1] <= winterSolsticeSecond) {
 			if i <= minMoonIndex {
 				minMoonIndex = i
 			}
@@ -285,27 +288,27 @@ func GetLunar(year, month, day int, tz float64) (lyear, lmonth, lday int, leap b
 
 	// 确定闰月位置
 	leapMonthPos := 20
-	if moonCount == 13 {
-		solarTermIndex, i := 2, 0
+	if moonCount >= 13 {
+		solarTermIndex, i := 0, 0
 		for i = minMoonIndex; i <= maxMoonIndex; i++ {
 			if !(newMoonDays[i] <= solarTerms[solarTermIndex] && newMoonDays[i+1] > solarTerms[solarTermIndex]) {
 				break
 			}
 			solarTermIndex += 2
 		}
-		leapMonthPos = i - minMoonIndex + 1
+		leapMonthPos = i - minMoonIndex
 	}
 
 	// 找到当前月相索引
 	currentMoonIndex := 0
-	for currentMoonIndex = minMoonIndex - 1; currentMoonIndex <= maxMoonIndex; currentMoonIndex++ {
+	for currentMoonIndex = minMoonIndex; currentMoonIndex <= maxMoonIndex; currentMoonIndex++ {
 		if newMoonDays[currentMoonIndex] > julianDayEpoch {
 			break
 		}
 	}
 
 	// 计算农历月份
-	lmonth = currentMoonIndex - minMoonIndex
+	lmonth = currentMoonIndex - minMoonIndex - 1
 	shouldAdjustLeap := false
 	leap = false
 
@@ -349,8 +352,8 @@ func GetSolar(year, month, day int, leap bool, tz float64) float64 {
 	newMoonDays := GetMoonLoops(float64(adjustedYear), 17)
 
 	// 计算冬至日期
-	winterSolsticeFirst := solarTerms[0] - 8.0/24 + tz
-	winterSolsticeSecond := solarTerms[24] - 8.0/24 + tz
+	winterSolsticeFirst := normalizeTimePoint(solarTerms[0] - 8.0/24 + tz)
+	winterSolsticeSecond := normalizeTimePoint(solarTerms[24] - 8.0/24 + tz)
 
 	// 规范化时间点
 	normalizeTimeArray(newMoonDays, tz)
@@ -360,7 +363,8 @@ func GetSolar(year, month, day int, leap bool, tz float64) float64 {
 	minMoonIndex, maxMoonIndex := 20, 0
 	moonCount := 0
 	for i := 0; i < 15; i++ {
-		if newMoonDays[i] >= winterSolsticeFirst && newMoonDays[i] < winterSolsticeSecond {
+		if (newMoonDays[i] <= winterSolsticeFirst && newMoonDays[i+1] > winterSolsticeFirst) ||
+			(newMoonDays[i] > winterSolsticeFirst && newMoonDays[i] < winterSolsticeSecond && newMoonDays[i+1] <= winterSolsticeSecond) {
 			if i <= minMoonIndex {
 				minMoonIndex = i
 			}
@@ -373,32 +377,32 @@ func GetSolar(year, month, day int, leap bool, tz float64) float64 {
 
 	// 确定闰月位置
 	leapMonthPos := 20
-	if moonCount == 13 {
-		solarTermIndex, i := 2, 0
+	if moonCount >= 13 {
+		solarTermIndex, i := 0, 0
 		for i = minMoonIndex; i <= maxMoonIndex; i++ {
 			if !(newMoonDays[i] <= solarTerms[solarTermIndex] && newMoonDays[i+1] > solarTerms[solarTermIndex]) {
 				break
 			}
 			solarTermIndex += 2
 		}
-		leapMonthPos = i - minMoonIndex + 1
+		leapMonthPos = i - minMoonIndex
 	}
-
-	// 计算实际月份索引
 	actualMonth := month
-	if leap {
-		actualMonth++
-	}
 	if actualMonth > 10 {
 		actualMonth -= 11
 	} else {
 		actualMonth++
 	}
+	// 计算实际月份索引
+	if leap {
+		actualMonth++
+	}
+
 	if actualMonth >= leapMonthPos && !leap {
 		actualMonth++
 	}
 
-	return newMoonDays[minMoonIndex-1+actualMonth] + float64(day) - 1
+	return newMoonDays[minMoonIndex+actualMonth] + float64(day) - 1
 }
 
 func normalizeTimeArray(timeArray []float64, tz float64) {

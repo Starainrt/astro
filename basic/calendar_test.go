@@ -217,3 +217,33 @@ func TestGetJQTime(t *testing.T) {
 func TestJQ(t *testing.T) {
 	fmt.Println(GetJQTime(-721, 15))
 }
+
+func TestCal6402(t *testing.T) {
+	var year = 6402
+	var tz = 8.00 / 24.00
+	winterSolsticeDay := GetJQTime(year, 270) + tz
+	firstNewMoonDay := TD2UT(CalcMoonSHByJDE(winterSolsticeDay-15, 0), false) + tz
+	nextNewMoonDay := TD2UT(CalcMoonSHByJDE(firstNewMoonDay+28, 0), false) + tz
+	fmt.Println(JDE2Date(firstNewMoonDay))
+	fmt.Println(JDE2Date(nextNewMoonDay))
+	fmt.Println(HSunTrueLo(TD2UT(nextNewMoonDay, false)))
+	fmt.Println(HMoonTrueLo(TD2UT(nextNewMoonDay, false)))
+	firstNewMoonDay = normalizeTimePoint(firstNewMoonDay)
+	nextNewMoonDay = normalizeTimePoint(nextNewMoonDay)
+	fmt.Println(JDE2Date(winterSolsticeDay))
+	//fmt.Println(JDE2Date(GetSolar(1984, 10, 2, true, 8.0/24.0)))
+	fmt.Println(GetLunar(6402, 11, 24, 8.0/24.0))
+	fmt.Println(GetLunar(6402, 12, 24, 8.0/24.0))
+	for i := 1; i <= 12; i++ {
+		fmt.Print("6403", i, "24 ---- ")
+		fmt.Println(GetLunar(6403, i, 24, 8.0/24.0))
+	}
+	fmt.Println("-------")
+	for _, v := range GetMoonLoops(float64(2132), 17) {
+		fmt.Println(JDE2Date(v))
+	}
+	fmt.Println("-------")
+	for _, v := range GetJieqiLoops(2132, 25) {
+		fmt.Println(JDE2Date(v))
+	}
+}

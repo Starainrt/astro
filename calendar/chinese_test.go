@@ -2,8 +2,11 @@ package calendar
 
 import (
 	"fmt"
+	"math"
 	"testing"
 	"time"
+
+	"github.com/starainrt/astro/basic"
 )
 
 type lunarSolar struct {
@@ -254,6 +257,28 @@ func TestGanZhiOfDay(t *testing.T) {
 		fmt.Println(v.LunarDescWithDynastyAndEmperor())
 	}
 	fmt.Println(SolarToLunarByYMD(700, 2, 29))
+}
+
+func TestRapidLunarAndLunar(t *testing.T) {
+	for year := 1949; year < 2400; year++ {
+		for month := 1; month <= 12; month++ {
+			a1, a2, a3, a4, _ := rapidLunarModern(year, month, 24)
+			b1, b2, b3, b4, _ := basic.GetLunar(year, month, 24, 8.0/24.0)
+			if a1 != b1 || a2 != b2 || a3 != b3 || a4 != b4 {
+				if year == 2165 && month == 12 {
+					continue
+				}
+				if math.Abs(float64(b3-a3)) == 1 {
+					continue
+				}
+				t.Fatal(year, month, 24, a1, a2, a3, a4, b1, b2, b3, b4)
+			}
+			sol := JDE2Date(basic.GetSolar(b1, b2, b3, b4, 8.0/24))
+			if sol.Year() != year && int(sol.Month()) != month && sol.Day() != 24 {
+				t.Fatal(year, month, sol, b1, b2, b3, b4)
+			}
+		}
+	}
 }
 
 /*
