@@ -1,7 +1,6 @@
 package calendar
 
 import (
-	"fmt"
 	"math"
 	"testing"
 	"time"
@@ -47,8 +46,6 @@ func Test_ChineseCalendarModern(t *testing.T) {
 	for _, v := range testData {
 		{
 			lyear, lmonth, lday, leap, desp := Lunar(v.Year, v.Month, v.Day, 8.0)
-
-			fmt.Println(lyear, desp, v.Year, v.Month, v.Day)
 			if lyear != v.Lyear || lmonth != v.Lmonth || lday != v.Lday || leap != v.Leap {
 				t.Fatal(v, lyear, lmonth, lday, leap, desp)
 			}
@@ -240,25 +237,6 @@ func Test_ChineseCalendarAncient(t *testing.T) {
 	}
 }
 
-func TestGanZhiOfDay(t *testing.T) {
-	dates := time.Date(2025, 1, 24, 0, 0, 0, 0, getCst())
-	fmt.Println(dates.Weekday())
-	jde := Date2JDE(dates)
-	fmt.Println(int(jde+1.5) % 7)
-	y, _, _, _, desc := Lunar(dates.Year(), int(dates.Month()), dates.Day(), 8.0)
-	fmt.Println(y, desc)
-	//date, err := LunarToSolar("久视元年腊月辛亥")
-	date, err := LunarToSolar("2025年闰6月1日")
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, v := range date {
-		fmt.Println(v.solarTime)
-		fmt.Println(v.LunarDescWithDynastyAndEmperor())
-	}
-	fmt.Println(SolarToLunarByYMD(700, 2, 29))
-}
-
 func TestRapidLunarAndLunar(t *testing.T) {
 	for year := 1949; year < 2400; year++ {
 		for month := 1; month <= 12; month++ {
@@ -277,6 +255,73 @@ func TestRapidLunarAndLunar(t *testing.T) {
 			if sol.Year() != year && int(sol.Month()) != month && sol.Day() != 24 {
 				t.Fatal(year, month, sol, b1, b2, b3, b4)
 			}
+		}
+	}
+}
+
+func TestLunarToSolarReturnsErrorWhenNoTextCandidate(t *testing.T) {
+	testCases := []string{
+		"不存在元年正月初一",
+		"元丰六年十三月初一",
+		"元丰六年十月甲丑日",
+	}
+	for _, tc := range testCases {
+		res, err := LunarToSolar(tc)
+		if err == nil {
+			t.Fatalf("expected error for %q, got nil", tc)
+		}
+		if len(res) != 0 {
+			t.Fatalf("expected empty result for %q, got %v", tc, res)
+		}
+	}
+}
+
+func TestHistoricalEraRegression(t *testing.T) {
+	compareRanges := func(name string, got, want [][]int) {
+		t.Helper()
+		if len(got) != len(want) {
+			t.Fatalf("%s range count mismatch: got=%v want=%v", name, got, want)
+		}
+		for i := range got {
+			if len(got[i]) != len(want[i]) || got[i][0] != want[i][0] || got[i][1] != want[i][1] {
+				t.Fatalf("%s range mismatch: got=%v want=%v", name, got, want)
+			}
+		}
+	}
+
+	compareRanges("祥兴", nianHaoMap()["祥兴"], [][]int{{1278, 1279}})
+	compareRanges("金天兴", liaoJinYuanEraMap()["天兴"], [][]int{{1232, 1234}})
+	compareRanges("贞祐", liaoJinYuanEraMap()["贞祐"], [][]int{{1213, 1217}})
+	compareRanges("贞佑 alias", liaoJinYuanEraMap()["贞佑"], [][]int{{1213, 1217}})
+	for alias, canonical := range map[string]string{
+		"延佑": "延祐",
+		"德佑": "德祐",
+		"宝佑": "宝祐",
+		"淳佑": "淳祐",
+		"元佑": "元祐",
+		"嘉佑": "嘉祐",
+		"皇佑": "皇祐",
+		"景佑": "景祐",
+		"乾佑": "乾祐",
+		"天佑": "天祐",
+	} {
+		compareRanges(alias+" alias", nianHaoMap()[alias], nianHaoMap()[canonical])
+	}
+
+	for _, tc := range []string{
+		"祥兴元年正月初一",
+		"贞祐元年正月初一",
+		"贞佑元年正月初一",
+		"嘉佑元年正月初一",
+		"元佑元年正月初一",
+		"天佑元年正月初一",
+	} {
+		res, err := LunarToSolar(tc)
+		if err != nil {
+			t.Fatalf("LunarToSolar(%q) error: %v", tc, err)
+		}
+		if len(res) == 0 {
+			t.Fatalf("LunarToSolar(%q) returned no candidates", tc)
 		}
 	}
 }

@@ -15,7 +15,7 @@ func EclipticObliquity(jde float64, nutation bool) float64 {
 	return eps
 }
 
-func Sita(JD float64) float64 {
+func TrueObliquity(JD float64) float64 {
 	return EclipticObliquity(JD, true)
 }
 

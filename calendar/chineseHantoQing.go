@@ -402,6 +402,12 @@ func innerParseLunar(lunar string) ([]time.Time, error) {
 	if tmp, err := innerLunar2SolarHanQing(date, nanMingEraMap, nanMingCals); err == nil {
 		data = append(data, tmp...)
 	}
+	if len(data) == 0 {
+		if err == ERR_NIANHAO_NOT_FOUND {
+			return nil, err
+		}
+		return nil, fmt.Errorf("未找到对应日期")
+	}
 	return data, nil
 }
 

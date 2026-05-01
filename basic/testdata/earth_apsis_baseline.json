@@ -1,0 +1,3 @@
+[
+{"kind":"perihelion","year":2025,"time_utc":"2025-01-04T13:28:16.153846153Z","distance_au":0.983327377482234},{"kind":"aphelion","year":2025,"time_utc":"2025-07-03T19:54:54.444444444Z","distance_au":1.016643751054188},{"kind":"perihelion","year":2026,"time_utc":"2026-01-03T17:15:46.5Z","distance_au":0.983302049214910},{"kind":"aphelion","year":2026,"time_utc":"2026-07-06T17:30:50.943396226Z","distance_au":1.016643976042960},{"kind":"perihelion","year":2027,"time_utc":"2027-01-03T02:32:54.23076923Z","distance_au":0.983333475440122},{"kind":"aphelion","year":2027,"time_utc":"2027-07-05T05:05:55.324675324Z","distance_au":1.016728898384409}
+]

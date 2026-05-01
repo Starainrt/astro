@@ -1,0 +1,327 @@
+[
+  {
+    "utc": "1998-01-08T12:00:00Z",
+    "phenomena": {
+      "callisto": {
+        "transit": false,
+        "occultation": true,
+        "eclipse": false,
+        "shadow_transit": false
+      },
+      "europa": {
+        "transit": false,
+        "occultation": false,
+        "eclipse": false,
+        "shadow_transit": false
+      },
+      "ganymede": {
+        "transit": false,
+        "occultation": false,
+        "eclipse": false,
+        "shadow_transit": false
+      },
+      "io": {
+        "transit": false,
+        "occultation": false,
+        "eclipse": false,
+        "shadow_transit": false
+      }
+    }
+  },
+  {
+    "utc": "1999-01-01T02:00:00Z",
+    "phenomena": {
+      "callisto": {
+        "transit": false,
+        "occultation": false,
+        "eclipse": false,
+        "shadow_transit": false
+      },
+      "europa": {
+        "transit": false,
+        "occultation": false,
+        "eclipse": false,
+        "shadow_transit": false
+      },
+      "ganymede": {
+        "transit": false,
+        "occultation": false,
+        "eclipse": false,
+        "shadow_transit": false
+      },
+      "io": {
+        "transit": true,
+        "occultation": false,
+        "eclipse": false,
+        "shadow_transit": true,
+        "shadow_x_arcsec": 17.228193145273753,
+        "shadow_y_arcsec": 3.256241312014926
+      }
+    }
+  },
+  {
+    "utc": "2000-01-01T06:00:00Z",
+    "phenomena": {
+      "callisto": {
+        "transit": false,
+        "occultation": false,
+        "eclipse": false,
+        "shadow_transit": false
+      },
+      "europa": {
+        "transit": false,
+        "occultation": false,
+        "eclipse": false,
+        "shadow_transit": false
+      },
+      "ganymede": {
+        "transit": true,
+        "occultation": false,
+        "eclipse": false,
+        "shadow_transit": false
+      },
+      "io": {
+        "transit": false,
+        "occultation": false,
+        "eclipse": false,
+        "shadow_transit": false
+      }
+    }
+  },
+  {
+    "utc": "2000-01-01T11:00:00Z",
+    "phenomena": {
+      "callisto": {
+        "transit": false,
+        "occultation": false,
+        "eclipse": false,
+        "shadow_transit": false
+      },
+      "europa": {
+        "transit": true,
+        "occultation": false,
+        "eclipse": false,
+        "shadow_transit": false
+      },
+      "ganymede": {
+        "transit": false,
+        "occultation": false,
+        "eclipse": false,
+        "shadow_transit": true,
+        "shadow_x_arcsec": 3.158460096080454,
+        "shadow_y_arcsec": -16.417707231374926
+      },
+      "io": {
+        "transit": false,
+        "occultation": false,
+        "eclipse": false,
+        "shadow_transit": false
+      }
+    }
+  },
+  {
+    "utc": "2000-01-01T14:00:00Z",
+    "phenomena": {
+      "callisto": {
+        "transit": false,
+        "occultation": false,
+        "eclipse": false,
+        "shadow_transit": false
+      },
+      "europa": {
+        "transit": false,
+        "occultation": false,
+        "eclipse": false,
+        "shadow_transit": true,
+        "shadow_x_arcsec": -5.755686876706326,
+        "shadow_y_arcsec": -12.656123592995895
+      },
+      "ganymede": {
+        "transit": false,
+        "occultation": false,
+        "eclipse": false,
+        "shadow_transit": false
+      },
+      "io": {
+        "transit": false,
+        "occultation": true,
+        "eclipse": true,
+        "shadow_transit": false
+      }
+    }
+  },
+  {
+    "utc": "2000-01-01T15:00:00Z",
+    "phenomena": {
+      "callisto": {
+        "transit": false,
+        "occultation": false,
+        "eclipse": false,
+        "shadow_transit": false
+      },
+      "europa": {
+        "transit": false,
+        "occultation": false,
+        "eclipse": false,
+        "shadow_transit": false
+      },
+      "ganymede": {
+        "transit": false,
+        "occultation": false,
+        "eclipse": false,
+        "shadow_transit": false
+      },
+      "io": {
+        "transit": false,
+        "occultation": false,
+        "eclipse": true,
+        "shadow_transit": false
+      }
+    }
+  },
+  {
+    "utc": "2000-01-02T00:00:00Z",
+    "phenomena": {
+      "callisto": {
+        "transit": false,
+        "occultation": false,
+        "eclipse": false,
+        "shadow_transit": false
+      },
+      "europa": {
+        "transit": false,
+        "occultation": false,
+        "eclipse": false,
+        "shadow_transit": false
+      },
+      "ganymede": {
+        "transit": false,
+        "occultation": false,
+        "eclipse": false,
+        "shadow_transit": false
+      },
+      "io": {
+        "transit": false,
+        "occultation": false,
+        "eclipse": false,
+        "shadow_transit": false
+      }
+    }
+  },
+  {
+    "utc": "2000-01-03T05:00:00Z",
+    "phenomena": {
+      "callisto": {
+        "transit": false,
+        "occultation": false,
+        "eclipse": false,
+        "shadow_transit": false
+      },
+      "europa": {
+        "transit": false,
+        "occultation": true,
+        "eclipse": false,
+        "shadow_transit": false
+      },
+      "ganymede": {
+        "transit": false,
+        "occultation": false,
+        "eclipse": false,
+        "shadow_transit": false
+      },
+      "io": {
+        "transit": false,
+        "occultation": false,
+        "eclipse": false,
+        "shadow_transit": false
+      }
+    }
+  },
+  {
+    "utc": "2000-01-03T08:00:00Z",
+    "phenomena": {
+      "callisto": {
+        "transit": false,
+        "occultation": false,
+        "eclipse": false,
+        "shadow_transit": false
+      },
+      "europa": {
+        "transit": false,
+        "occultation": false,
+        "eclipse": true,
+        "shadow_transit": false
+      },
+      "ganymede": {
+        "transit": false,
+        "occultation": false,
+        "eclipse": false,
+        "shadow_transit": false
+      },
+      "io": {
+        "transit": false,
+        "occultation": true,
+        "eclipse": false,
+        "shadow_transit": false
+      }
+    }
+  },
+  {
+    "utc": "2000-01-04T20:00:00Z",
+    "phenomena": {
+      "callisto": {
+        "transit": false,
+        "occultation": false,
+        "eclipse": false,
+        "shadow_transit": false
+      },
+      "europa": {
+        "transit": false,
+        "occultation": false,
+        "eclipse": false,
+        "shadow_transit": false
+      },
+      "ganymede": {
+        "transit": false,
+        "occultation": true,
+        "eclipse": false,
+        "shadow_transit": false
+      },
+      "io": {
+        "transit": false,
+        "occultation": false,
+        "eclipse": false,
+        "shadow_transit": false
+      }
+    }
+  },
+  {
+    "utc": "2000-01-05T01:00:00Z",
+    "phenomena": {
+      "callisto": {
+        "transit": false,
+        "occultation": false,
+        "eclipse": false,
+        "shadow_transit": false
+      },
+      "europa": {
+        "transit": true,
+        "occultation": false,
+        "eclipse": false,
+        "shadow_transit": false
+      },
+      "ganymede": {
+        "transit": false,
+        "occultation": false,
+        "eclipse": true,
+        "shadow_transit": false
+      },
+      "io": {
+        "transit": false,
+        "occultation": false,
+        "eclipse": false,
+        "shadow_transit": false
+      }
+    }
+  }
+]

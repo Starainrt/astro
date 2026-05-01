@@ -1,0 +1,254 @@
+[
+  {
+    "body": "mercury",
+    "input_utc": "2026-01-01T00:00:00Z",
+    "sub_earth_longitude": 225.697756,
+    "sub_earth_latitude": -3.967219,
+    "sub_solar_longitude": 251.497771,
+    "sub_solar_latitude": -0.019207,
+    "north_pole_position_angle": 5.9769
+  },
+  {
+    "body": "mercury",
+    "input_utc": "2026-05-01T00:00:00Z",
+    "sub_earth_longitude": 124.897918,
+    "sub_earth_latitude": -0.786143,
+    "sub_solar_longitude": 167.872961,
+    "sub_solar_latitude": -0.024387,
+    "north_pole_position_angle": 332.3226
+  },
+  {
+    "body": "mercury",
+    "input_utc": "2026-08-29T00:00:00Z",
+    "sub_earth_longitude": 10.418536,
+    "sub_earth_latitude": 4.972923,
+    "sub_solar_longitude": 7.061818,
+    "sub_solar_latitude": 0.025429,
+    "north_pole_position_angle": 24.0853
+  },
+  {
+    "body": "mercury",
+    "input_utc": "2026-12-27T00:00:00Z",
+    "sub_earth_longitude": 272.208368,
+    "sub_earth_latitude": -3.497411,
+    "sub_solar_longitude": 278.871213,
+    "sub_solar_latitude": -0.028489,
+    "north_pole_position_angle": 4.2651
+  },
+  {
+    "body": "venus",
+    "input_utc": "2026-01-01T00:00:00Z",
+    "sub_earth_longitude": 323.929524,
+    "sub_earth_latitude": 0.952488,
+    "sub_solar_longitude": 322.094700,
+    "sub_solar_latitude": 1.671543,
+    "north_pole_position_angle": 357.1704
+  },
+  {
+    "body": "venus",
+    "input_utc": "2026-05-01T00:00:00Z",
+    "sub_earth_longitude": 290.776321,
+    "sub_earth_latitude": -1.875079,
+    "sub_solar_longitude": 331.376010,
+    "sub_solar_latitude": -2.045484,
+    "north_pole_position_angle": 350.0710
+  },
+  {
+    "body": "venus",
+    "input_utc": "2026-08-29T00:00:00Z",
+    "sub_earth_longitude": 240.943833,
+    "sub_earth_latitude": 4.229755,
+    "sub_solar_longitude": 341.859112,
+    "sub_solar_latitude": 2.362077,
+    "north_pole_position_angle": 22.0524
+  },
+  {
+    "body": "venus",
+    "input_utc": "2026-12-27T00:00:00Z",
+    "sub_earth_longitude": 86.565396,
+    "sub_earth_latitude": -2.142947,
+    "sub_solar_longitude": 351.768230,
+    "sub_solar_latitude": -2.556780,
+    "north_pole_position_angle": 16.1296
+  },
+  {
+    "body": "mars",
+    "input_utc": "2026-01-01T00:00:00Z",
+    "sub_earth_longitude": 198.991842,
+    "sub_earth_latitude": -7.909951,
+    "sub_solar_longitude": 197.400563,
+    "sub_solar_latitude": -7.975673,
+    "north_pole_position_angle": 19.8565
+  },
+  {
+    "body": "mars",
+    "input_utc": "2026-05-01T00:00:00Z",
+    "sub_earth_longitude": 88.881294,
+    "sub_earth_latitude": -23.795887,
+    "sub_solar_longitude": 107.852232,
+    "sub_solar_latitude": -25.401230,
+    "north_pole_position_angle": 326.3309
+  },
+  {
+    "body": "mars",
+    "input_utc": "2026-08-29T00:00:00Z",
+    "sub_earth_longitude": 355.453113,
+    "sub_earth_latitude": 7.749485,
+    "sub_solar_longitude": 24.791034,
+    "sub_solar_latitude": -7.066503,
+    "north_pole_position_angle": 339.4322
+  },
+  {
+    "body": "mars",
+    "input_utc": "2026-12-27T00:00:00Z",
+    "sub_earth_longitude": 286.237089,
+    "sub_earth_latitude": 23.019274,
+    "sub_solar_longitude": 320.147262,
+    "sub_solar_latitude": 16.485079,
+    "north_pole_position_angle": 15.4492
+  },
+  {
+    "body": "jupiter",
+    "input_utc": "2026-01-01T00:00:00Z",
+    "sub_earth_longitude": 336.671764,
+    "sub_earth_latitude": 1.577203,
+    "sub_solar_longitude": 338.694890,
+    "sub_solar_latitude": 1.688250,
+    "north_pole_position_angle": 10.5045
+  },
+  {
+    "body": "jupiter",
+    "input_utc": "2026-05-01T00:00:00Z",
+    "sub_earth_longitude": 36.892892,
+    "sub_earth_latitude": 1.476465,
+    "sub_solar_longitude": 26.640134,
+    "sub_solar_latitude": 1.126741,
+    "north_pole_position_angle": 9.4686
+  },
+  {
+    "body": "jupiter",
+    "input_utc": "2026-08-29T00:00:00Z",
+    "sub_earth_longitude": 73.707500,
+    "sub_earth_latitude": 0.479669,
+    "sub_solar_longitude": 77.918420,
+    "sub_solar_latitude": 0.541724,
+    "north_pole_position_angle": 18.5445
+  },
+  {
+    "body": "jupiter",
+    "input_utc": "2026-12-27T00:00:00Z",
+    "sub_earth_longitude": 132.208191,
+    "sub_earth_latitude": -0.533428,
+    "sub_solar_longitude": 140.493333,
+    "sub_solar_latitude": -0.049816,
+    "north_pole_position_angle": 22.1647
+  },
+  {
+    "body": "saturn",
+    "input_utc": "2026-01-01T00:00:00Z",
+    "sub_earth_longitude": 331.775376,
+    "sub_earth_latitude": -1.170209,
+    "sub_solar_longitude": 326.665212,
+    "sub_solar_latitude": -4.393408,
+    "north_pole_position_angle": 4.4386
+  },
+  {
+    "body": "saturn",
+    "input_utc": "2026-05-01T00:00:00Z",
+    "sub_earth_longitude": 52.672072,
+    "sub_earth_latitude": -8.557726,
+    "sub_solar_longitude": 55.443815,
+    "sub_solar_latitude": -6.593786,
+    "north_pole_position_angle": 3.4340
+  },
+  {
+    "body": "saturn",
+    "input_utc": "2026-08-29T00:00:00Z",
+    "sub_earth_longitude": 151.429031,
+    "sub_earth_latitude": -10.557512,
+    "sub_solar_longitude": 154.964754,
+    "sub_solar_latitude": -8.777931,
+    "north_pole_position_angle": 3.0123
+  },
+  {
+    "body": "saturn",
+    "input_utc": "2026-12-27T00:00:00Z",
+    "sub_earth_longitude": 248.737095,
+    "sub_earth_latitude": -7.679758,
+    "sub_solar_longitude": 243.327315,
+    "sub_solar_latitude": -10.933621,
+    "north_pole_position_angle": 3.5041
+  },
+  {
+    "body": "uranus",
+    "input_utc": "2026-01-01T00:00:00Z",
+    "sub_earth_longitude": 3.751235,
+    "sub_earth_latitude": 69.516010,
+    "sub_solar_longitude": 5.874451,
+    "sub_solar_latitude": 71.263746,
+    "north_pole_position_angle": 278.1487
+  },
+  {
+    "body": "uranus",
+    "input_utc": "2026-05-01T00:00:00Z",
+    "sub_earth_longitude": 20.797689,
+    "sub_earth_latitude": 71.583403,
+    "sub_solar_longitude": 22.039069,
+    "sub_solar_latitude": 72.461183,
+    "north_pole_position_angle": 281.4271
+  },
+  {
+    "body": "uranus",
+    "input_utc": "2026-08-29T00:00:00Z",
+    "sub_earth_longitude": 51.475874,
+    "sub_earth_latitude": 76.143173,
+    "sub_solar_longitude": 46.135582,
+    "sub_solar_latitude": 73.642042,
+    "north_pole_position_angle": 291.6319
+  },
+  {
+    "body": "uranus",
+    "input_utc": "2026-12-27T00:00:00Z",
+    "sub_earth_longitude": 67.484149,
+    "sub_earth_latitude": 73.467462,
+    "sub_solar_longitude": 70.052208,
+    "sub_solar_latitude": 74.802148,
+    "north_pole_position_angle": 285.0672
+  },
+  {
+    "body": "neptune",
+    "input_utc": "2026-01-01T00:00:00Z",
+    "sub_earth_longitude": 292.675059,
+    "sub_earth_latitude": -20.796430,
+    "sub_solar_longitude": 290.824234,
+    "sub_solar_latitude": -20.155602,
+    "north_pole_position_angle": 317.4069
+  },
+  {
+    "body": "neptune",
+    "input_utc": "2026-05-01T00:00:00Z",
+    "sub_earth_longitude": 63.769943,
+    "sub_earth_latitude": -19.504130,
+    "sub_solar_longitude": 64.947973,
+    "sub_solar_latitude": -19.888391,
+    "north_pole_position_angle": 316.1161
+  },
+  {
+    "body": "neptune",
+    "input_utc": "2026-08-29T00:00:00Z",
+    "sub_earth_longitude": 205.406305,
+    "sub_earth_latitude": -19.249962,
+    "sub_solar_longitude": 206.292621,
+    "sub_solar_latitude": -19.618276,
+    "north_pole_position_angle": 315.9786
+  },
+  {
+    "body": "neptune",
+    "input_utc": "2026-12-27T00:00:00Z",
+    "sub_earth_longitude": 341.290449,
+    "sub_earth_latitude": -20.016317,
+    "sub_solar_longitude": 339.423315,
+    "sub_solar_latitude": -19.345358,
+    "north_pole_position_angle": 316.6532
+  }
+]

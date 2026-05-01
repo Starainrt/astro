@@ -10,7 +10,7 @@ import (
  * 坐标变换，黄道转赤道
  */
 func LoToRa(jde, lo, bo float64) float64 {
-	ra := math.Atan2(Sin(lo)*Cos(Sita(jde))-Tan(bo)*Sin(Sita(jde)), Cos(lo))
+	ra := math.Atan2(Sin(lo)*Cos(TrueObliquity(jde))-Tan(bo)*Sin(TrueObliquity(jde)), Cos(lo))
 	ra = ra * 180 / math.Pi
 	if ra < 0 {
 		ra += 360
@@ -19,13 +19,13 @@ func LoToRa(jde, lo, bo float64) float64 {
 }
 
 func BoToDec(jde, lo, bo float64) float64 {
-	dec := ArcSin(Sin(bo)*Cos(Sita(jde)) + Cos(bo)*Sin(Sita(jde))*Sin(lo))
+	dec := ArcSin(Sin(bo)*Cos(TrueObliquity(jde)) + Cos(bo)*Sin(TrueObliquity(jde))*Sin(lo))
 	return dec
 }
 
 func LoBoToRaDec(jde, lo, bo float64) (float64, float64) {
-	dec := ArcSin(Sin(bo)*Cos(Sita(jde)) + Cos(bo)*Sin(Sita(jde))*Sin(lo))
-	ra := math.Atan2(Sin(lo)*Cos(Sita(jde))-Tan(bo)*Sin(Sita(jde)), Cos(lo))
+	dec := ArcSin(Sin(bo)*Cos(TrueObliquity(jde)) + Cos(bo)*Sin(TrueObliquity(jde))*Sin(lo))
+	ra := math.Atan2(Sin(lo)*Cos(TrueObliquity(jde))-Tan(bo)*Sin(TrueObliquity(jde)), Cos(lo))
 	ra = ra * 180 / math.Pi
 	if ra < 0 {
 		ra += 360
@@ -36,9 +36,9 @@ func LoBoToRaDec(jde, lo, bo float64) (float64, float64) {
 func RaDecToLoBo(jde, ra, dec float64) (float64, float64) {
 	//tan(λ) = (sin(α)*cos(ε) + tan(δ)*sin(ε)) / cos(α)
 	//sin(β)=sin(δ)*cos(ε)-cos(δ)*sin(ε)*sin(α)
-	sita := Sita(jde)
-	sinBo := Sin(dec)*Cos(sita) - Cos(dec)*Sin(sita)*Sin(ra)
-	lo := math.Atan2((Sin(ra)*Cos(sita) + Tan(dec)*Sin(sita)), Cos(ra))
+	eps := TrueObliquity(jde)
+	sinBo := Sin(dec)*Cos(eps) - Cos(dec)*Sin(eps)*Sin(ra)
+	lo := math.Atan2((Sin(ra)*Cos(eps) + Tan(dec)*Sin(eps)), Cos(ra))
 	lo = Limit360(lo * 180 / math.Pi)
 	return lo, ArcSin(sinBo)
 }
@@ -46,8 +46,8 @@ func RaDecToLoBo(jde, ra, dec float64) (float64, float64) {
 func RaToLo(jde, ra, dec float64) float64 {
 	//tan(λ) = (sin(α)*cos(ε) + tan(δ)*sin(ε)) / cos(α)
 	//sin(β)=sin(δ)*cos(ε)-cos(δ)*sin(ε)*sin(α)
-	sita := Sita(jde)
-	lo := math.Atan2((Sin(ra)*Cos(sita) + Tan(dec)*Sin(sita)), Cos(ra))
+	eps := TrueObliquity(jde)
+	lo := math.Atan2((Sin(ra)*Cos(eps) + Tan(dec)*Sin(eps)), Cos(ra))
 	lo = Limit360(lo * 180 / math.Pi)
 	return lo
 }
@@ -55,8 +55,8 @@ func RaToLo(jde, ra, dec float64) float64 {
 func DecToBo(jde, ra, dec float64) float64 {
 	//tan(λ) = (sin(α)*cos(ε) + tan(δ)*sin(ε)) / cos(α)
 	//sin(β)=sin(δ)*cos(ε)-cos(δ)*sin(ε)*sin(α)
-	sita := Sita(jde)
-	sinBo := Sin(dec)*Cos(sita) - Cos(dec)*Sin(sita)*Sin(ra)
+	eps := TrueObliquity(jde)
+	sinBo := Sin(dec)*Cos(eps) - Cos(dec)*Sin(eps)*Sin(ra)
 	return ArcSin(sinBo)
 }
 
@@ -80,7 +80,7 @@ func psini(lat, h float64) float64 {
 	return psin
 }
 
-func ZhanXinRaDec(ra, dec, lat, lon, jd, au, h float64) (float64, float64) {
+func TopocentricRaDec(ra, dec, lat, lon, jd, au, h float64) (float64, float64) {
 	sinpi := Sin(0.0024427777777) / au
 	pcosi := pcosi(lat, h)
 	psini := psini(lat, h)
@@ -91,14 +91,14 @@ func ZhanXinRaDec(ra, dec, lat, lon, jd, au, h float64) (float64, float64) {
 	return ra + nra, ndec
 }
 
-func ZhanXinRa(ra, dec, lat, lon, jd, au, h float64) float64 { //jd为格林尼治标准时
+func TopocentricRa(ra, dec, lat, lon, jd, au, h float64) float64 { //jd为格林尼治标准时
 	sinpi := Sin(0.0024427777777) / au
 	pcosi := pcosi(lat, h)
 	tH := Limit360(TD2UT(ApparentSiderealTime(jd), false)*15 + lon - ra)
 	nra := math.Atan2(-pcosi*sinpi*Sin(tH), (Cos(dec)-pcosi*sinpi*Cos(tH))) * 180 / math.Pi
 	return ra + nra
 }
-func ZhanXinDec(ra, dec, lat, lon, jd, au, h float64) float64 { //jd为格林尼治标准时
+func TopocentricDec(ra, dec, lat, lon, jd, au, h float64) float64 { //jd为格林尼治标准时
 
 	sinpi := Sin(0.0024427777777) / au
 	pcosi := pcosi(lat, h)
@@ -110,26 +110,26 @@ func ZhanXinDec(ra, dec, lat, lon, jd, au, h float64) float64 { //jd为格林尼
 	return ndec
 }
 
-func ZhanXinLo(lo, bo, lat, lon, jd, au, h float64) float64 { //jd为格林尼治标准时
-	C := pcosi(lat, h)
-	S := psini(lat, h)
+func TopocentricLo(lo, bo, lat, lon, jd, au, h float64) float64 { //jd为格林尼治标准时
+	c := pcosi(lat, h)
+	s := psini(lat, h)
 	sinpi := Sin(0.0024427777777) / au
 	ra := LoToRa(jd, lo, bo)
 	tH := Limit360(TD2UT(ApparentSiderealTime(jd), false)*15 + lon - ra)
-	N := Cos(lo)*Cos(bo) - C*sinpi*Cos(tH)
-	nlo := math.Atan2(Sin(lo)*Cos(bo)-sinpi*(S*Sin(Sita(jd))+C*Cos(Sita(jd))*Sin(tH)), N) * 180 / math.Pi
+	n := Cos(lo)*Cos(bo) - c*sinpi*Cos(tH)
+	nlo := math.Atan2(Sin(lo)*Cos(bo)-sinpi*(s*Sin(TrueObliquity(jd))+c*Cos(TrueObliquity(jd))*Sin(tH)), n) * 180 / math.Pi
 	return nlo
 }
 
-func ZhanXinBo(lo, bo, lat, lon, jd, au, h float64) float64 { //jd为格林尼治标准时
-	C := pcosi(lat, h)
-	S := psini(lat, h)
+func TopocentricBo(lo, bo, lat, lon, jd, au, h float64) float64 { //jd为格林尼治标准时
+	c := pcosi(lat, h)
+	s := psini(lat, h)
 	sinpi := Sin(0.0024427777777) / au
 	ra := LoToRa(jd, lo, bo)
 	tH := Limit360(TD2UT(ApparentSiderealTime(jd), false)*15 + lon - ra)
-	N := Cos(lo)*Cos(bo) - C*sinpi*Cos(tH)
-	nlo := math.Atan2(Sin(lo)*Cos(bo)-sinpi*(S*Sin(Sita(jd))+C*Cos(Sita(jd))*Sin(tH)), N) * 180 / math.Pi
-	nbo := math.Atan2(Cos(nlo)*(Sin(bo)-sinpi*(S*Cos(Sita(jd))-C*Sin(Sita(jd))*Sin(tH))), N) * 180 / math.Pi
+	n := Cos(lo)*Cos(bo) - c*sinpi*Cos(tH)
+	nlo := math.Atan2(Sin(lo)*Cos(bo)-sinpi*(s*Sin(TrueObliquity(jd))+c*Cos(TrueObliquity(jd))*Sin(tH)), n) * 180 / math.Pi
+	nbo := math.Atan2(Cos(nlo)*(Sin(bo)-sinpi*(s*Cos(TrueObliquity(jd))-c*Sin(TrueObliquity(jd))*Sin(tH))), n) * 180 / math.Pi
 	return nbo
 }
 

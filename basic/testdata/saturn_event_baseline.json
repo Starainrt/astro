@@ -1,0 +1,1732 @@
+{
+  "samples": [
+    {
+      "input_utc": "1990-07-21T08:12:34.567Z",
+      "tt_jd_bits": 4702511652843456479,
+      "events": {
+        "LastSaturnConjunction": 4702511233082792944,
+        "LastSaturnEasternQuadrature": 4702511022491988859,
+        "LastSaturnOpposition": 4702511638661393809,
+        "LastSaturnProgradeToRetrograde": 4702511486901651187,
+        "LastSaturnRetrogradeToPrograde": 4702510980431886126,
+        "LastSaturnWesternQuadrature": 4702511444359710829,
+        "NextSaturnConjunction": 4702512041494948610,
+        "NextSaturnEasternQuadrature": 4702511831665392809,
+        "NextSaturnOpposition": 4702512448855444019,
+        "NextSaturnProgradeToRetrograde": 4702512297376030372,
+        "NextSaturnRetrogradeToPrograde": 4702512599370498948,
+        "NextSaturnWesternQuadrature": 4702512254003815742
+      }
+    },
+    {
+      "input_utc": "1991-03-11T13:19:53.567Z",
+      "tt_jd_bits": 4702512153665475149,
+      "events": {
+        "LastSaturnConjunction": 4702512041494948610,
+        "LastSaturnEasternQuadrature": 4702511831665392809,
+        "LastSaturnOpposition": 4702511638661393809,
+        "LastSaturnProgradeToRetrograde": 4702511486901651187,
+        "LastSaturnRetrogradeToPrograde": 4702510980431886126,
+        "LastSaturnWesternQuadrature": 4702511444359710829,
+        "NextSaturnConjunction": 4702512850183452154,
+        "NextSaturnEasternQuadrature": 4702512640866981777,
+        "NextSaturnOpposition": 4702512448855444019,
+        "NextSaturnProgradeToRetrograde": 4702512297376030372,
+        "NextSaturnRetrogradeToPrograde": 4702512599370498948,
+        "NextSaturnWesternQuadrature": 4702512254003815742
+      }
+    },
+    {
+      "input_utc": "1991-10-30T18:27:12.567Z",
+      "tt_jd_bits": 4702512654487468964,
+      "events": {
+        "LastSaturnConjunction": 4702512041494948610,
+        "LastSaturnEasternQuadrature": 4702512640866981777,
+        "LastSaturnOpposition": 4702512448855444019,
+        "LastSaturnProgradeToRetrograde": 4702512297376030372,
+        "LastSaturnRetrogradeToPrograde": 4702511789774874251,
+        "LastSaturnWesternQuadrature": 4702512254003815742,
+        "NextSaturnConjunction": 4702512850183452154,
+        "NextSaturnEasternQuadrature": 4702513450206896866,
+        "NextSaturnOpposition": 4702513259308966362,
+        "NextSaturnProgradeToRetrograde": 4702513108332057865,
+        "NextSaturnRetrogradeToPrograde": 4702513409104977535,
+        "NextSaturnWesternQuadrature": 4702513064123991319
+      }
+    },
+    {
+      "input_utc": "1992-06-19T23:34:31.567Z",
+      "tt_jd_bits": 4702513155309462779,
+      "events": {
+        "LastSaturnConjunction": 4702512850183452154,
+        "LastSaturnEasternQuadrature": 4702512640866981777,
+        "LastSaturnOpposition": 4702512448855444019,
+        "LastSaturnProgradeToRetrograde": 4702512297376030372,
+        "LastSaturnRetrogradeToPrograde": 4702511789774874251,
+        "LastSaturnWesternQuadrature": 4702513064123991319,
+        "NextSaturnConjunction": 4702513659304091564,
+        "NextSaturnEasternQuadrature": 4702513450206896866,
+        "NextSaturnOpposition": 4702513259308966362,
+        "NextSaturnProgradeToRetrograde": 4702513919871905081,
+        "NextSaturnRetrogradeToPrograde": 4702513409104977535,
+        "NextSaturnWesternQuadrature": 4702513874832582692
+      }
+    },
+    {
+      "input_utc": "1993-02-08T04:41:50.567Z",
+      "tt_jd_bits": 4702513656131481449,
+      "events": {
+        "LastSaturnConjunction": 4702512850183452154,
+        "LastSaturnEasternQuadrature": 4702513450206896866,
+        "LastSaturnOpposition": 4702513259308966362,
+        "LastSaturnProgradeToRetrograde": 4702513108332057865,
+        "LastSaturnRetrogradeToPrograde": 4702512599370498948,
+        "LastSaturnWesternQuadrature": 4702513064123991319,
+        "NextSaturnConjunction": 4702513659304091564,
+        "NextSaturnEasternQuadrature": 4702514259798424414,
+        "NextSaturnOpposition": 4702514070085320670,
+        "NextSaturnProgradeToRetrograde": 4702513919871905081,
+        "NextSaturnRetrogradeToPrograde": 4702514219285403133,
+        "NextSaturnWesternQuadrature": 4702513874832582692
+      }
+    },
+    {
+      "input_utc": "1993-09-29T09:49:09.567Z",
+      "tt_jd_bits": 4702514156953500118,
+      "events": {
+        "LastSaturnConjunction": 4702513659304091564,
+        "LastSaturnEasternQuadrature": 4702513450206896866,
+        "LastSaturnOpposition": 4702514070085320670,
+        "LastSaturnProgradeToRetrograde": 4702513919871905081,
+        "LastSaturnRetrogradeToPrograde": 4702513409104977535,
+        "LastSaturnWesternQuadrature": 4702513874832582692,
+        "NextSaturnConjunction": 4702514468983755566,
+        "NextSaturnEasternQuadrature": 4702514259798424414,
+        "NextSaturnOpposition": 4702514881266851077,
+        "NextSaturnProgradeToRetrograde": 4702514731950976395,
+        "NextSaturnRetrogradeToPrograde": 4702515029843825661,
+        "NextSaturnWesternQuadrature": 4702514686189458967
+      }
+    },
+    {
+      "input_utc": "1994-05-20T14:56:28.567Z",
+      "tt_jd_bits": 4702514657775493933,
+      "events": {
+        "LastSaturnConjunction": 4702514468983755566,
+        "LastSaturnEasternQuadrature": 4702514259798424414,
+        "LastSaturnOpposition": 4702514070085320670,
+        "LastSaturnProgradeToRetrograde": 4702513919871905081,
+        "LastSaturnRetrogradeToPrograde": 4702513409104977535,
+        "LastSaturnWesternQuadrature": 4702513874832582692,
+        "NextSaturnConjunction": 4702515279344838126,
+        "NextSaturnEasternQuadrature": 4702515069774975916,
+        "NextSaturnOpposition": 4702514881266851077,
+        "NextSaturnProgradeToRetrograde": 4702514731950976395,
+        "NextSaturnRetrogradeToPrograde": 4702515029843825661,
+        "NextSaturnWesternQuadrature": 4702514686189458967
+      }
+    },
+    {
+      "input_utc": "1995-01-08T20:03:47.567Z",
+      "tt_jd_bits": 4702515158597512604,
+      "events": {
+        "LastSaturnConjunction": 4702514468983755566,
+        "LastSaturnEasternQuadrature": 4702515069774975916,
+        "LastSaturnOpposition": 4702514881266851077,
+        "LastSaturnProgradeToRetrograde": 4702514731950976395,
+        "LastSaturnRetrogradeToPrograde": 4702514219285403133,
+        "LastSaturnWesternQuadrature": 4702514686189458967,
+        "NextSaturnConjunction": 4702515279344838126,
+        "NextSaturnEasternQuadrature": 4702515880214401232,
+        "NextSaturnOpposition": 4702515692894797145,
+        "NextSaturnProgradeToRetrograde": 4702515544354604724,
+        "NextSaturnRetrogradeToPrograde": 4702515840919644219,
+        "NextSaturnWesternQuadrature": 4702515498244631040
+      }
+    },
+    {
+      "input_utc": "1995-08-30T01:11:06.567Z",
+      "tt_jd_bits": 4702515659419506419,
+      "events": {
+        "LastSaturnConjunction": 4702515279344838126,
+        "LastSaturnEasternQuadrature": 4702515069774975916,
+        "LastSaturnOpposition": 4702514881266851077,
+        "LastSaturnProgradeToRetrograde": 4702514731950976395,
+        "LastSaturnRetrogradeToPrograde": 4702514219285403133,
+        "LastSaturnWesternQuadrature": 4702515498244631040,
+        "NextSaturnConjunction": 4702516090514302280,
+        "NextSaturnEasternQuadrature": 4702515880214401232,
+        "NextSaturnOpposition": 4702515692894797145,
+        "NextSaturnProgradeToRetrograde": 4702516357268988032,
+        "NextSaturnRetrogradeToPrograde": 4702515840919644219,
+        "NextSaturnWesternQuadrature": 4702516311055589949
+      }
+    },
+    {
+      "input_utc": "1996-04-17T09:18:25.567Z",
+      "tt_jd_bits": 4702516156214993249,
+      "events": {
+        "LastSaturnConjunction": 4702516090514302280,
+        "LastSaturnEasternQuadrature": 4702515880214401232,
+        "LastSaturnOpposition": 4702515692894797145,
+        "LastSaturnProgradeToRetrograde": 4702515544354604724,
+        "LastSaturnRetrogradeToPrograde": 4702515029843825661,
+        "LastSaturnWesternQuadrature": 4702515498244631040,
+        "NextSaturnConjunction": 4702516902555110575,
+        "NextSaturnEasternQuadrature": 4702516691190328426,
+        "NextSaturnOpposition": 4702516504989033232,
+        "NextSaturnProgradeToRetrograde": 4702516357268988032,
+        "NextSaturnRetrogradeToPrograde": 4702516652440690413,
+        "NextSaturnWesternQuadrature": 4702516311055589949
+      }
+    },
+    {
+      "input_utc": "1996-12-06T13:15:44.567Z",
+      "tt_jd_bits": 4702516656932595497,
+      "events": {
+        "LastSaturnConjunction": 4702516090514302280,
+        "LastSaturnEasternQuadrature": 4702515880214401232,
+        "LastSaturnOpposition": 4702516504989033232,
+        "LastSaturnProgradeToRetrograde": 4702516357268988032,
+        "LastSaturnRetrogradeToPrograde": 4702515840919644219,
+        "LastSaturnWesternQuadrature": 4702516311055589949,
+        "NextSaturnConjunction": 4702516902555110575,
+        "NextSaturnEasternQuadrature": 4702516691190328426,
+        "NextSaturnOpposition": 4702517317565580108,
+        "NextSaturnProgradeToRetrograde": 4702517170653618533,
+        "NextSaturnRetrogradeToPrograde": 4702517464207764355,
+        "NextSaturnWesternQuadrature": 4702517124594031913
+      }
+    },
+    {
+      "input_utc": "1997-07-27T18:23:03.567Z",
+      "tt_jd_bits": 4702517157754614167,
+      "events": {
+        "LastSaturnConjunction": 4702516902555110575,
+        "LastSaturnEasternQuadrature": 4702516691190328426,
+        "LastSaturnOpposition": 4702516504989033232,
+        "LastSaturnProgradeToRetrograde": 4702516357268988032,
+        "LastSaturnRetrogradeToPrograde": 4702515840919644219,
+        "LastSaturnWesternQuadrature": 4702517124594031913,
+        "NextSaturnConjunction": 4702517715498557159,
+        "NextSaturnEasternQuadrature": 4702517502797422987,
+        "NextSaturnOpposition": 4702517317565580108,
+        "NextSaturnProgradeToRetrograde": 4702517170653618533,
+        "NextSaturnRetrogradeToPrograde": 4702517464207764355,
+        "NextSaturnWesternQuadrature": 4702517938784304524
+      }
+    },
+    {
+      "input_utc": "1998-03-17T23:26:34.567Z",
+      "tt_jd_bits": 4702517658570941011,
+      "events": {
+        "LastSaturnConjunction": 4702516902555110575,
+        "LastSaturnEasternQuadrature": 4702517502797422987,
+        "LastSaturnOpposition": 4702517317565580108,
+        "LastSaturnProgradeToRetrograde": 4702517170653618533,
+        "LastSaturnRetrogradeToPrograde": 4702516652440690413,
+        "LastSaturnWesternQuadrature": 4702517124594031913,
+        "NextSaturnConjunction": 4702517715498557159,
+        "NextSaturnEasternQuadrature": 4702518315061435169,
+        "NextSaturnOpposition": 4702518130601807739,
+        "NextSaturnProgradeToRetrograde": 4702517984360352187,
+        "NextSaturnRetrogradeToPrograde": 4702518276343086805,
+        "NextSaturnWesternQuadrature": 4702517938784304524
+      }
+    },
+    {
+      "input_utc": "1998-11-06T04:33:53.567Z",
+      "tt_jd_bits": 4702518159392934826,
+      "events": {
+        "LastSaturnConjunction": 4702517715498557159,
+        "LastSaturnEasternQuadrature": 4702517502797422987,
+        "LastSaturnOpposition": 4702518130601807739,
+        "LastSaturnProgradeToRetrograde": 4702517984360352187,
+        "LastSaturnRetrogradeToPrograde": 4702517464207764355,
+        "LastSaturnWesternQuadrature": 4702517938784304524,
+        "NextSaturnConjunction": 4702518529339946910,
+        "NextSaturnEasternQuadrature": 4702518315061435169,
+        "NextSaturnOpposition": 4702518944055986604,
+        "NextSaturnProgradeToRetrograde": 4702518798260476232,
+        "NextSaturnRetrogradeToPrograde": 4702519088991987938,
+        "NextSaturnWesternQuadrature": 4702518753554309388
+      }
+    },
+    {
+      "input_utc": "1999-06-27T09:41:12.567Z",
+      "tt_jd_bits": 4702518660214953496,
+      "events": {
+        "LastSaturnConjunction": 4702518529339946910,
+        "LastSaturnEasternQuadrature": 4702518315061435169,
+        "LastSaturnOpposition": 4702518130601807739,
+        "LastSaturnProgradeToRetrograde": 4702517984360352187,
+        "LastSaturnRetrogradeToPrograde": 4702517464207764355,
+        "LastSaturnWesternQuadrature": 4702517938784304524,
+        "NextSaturnConjunction": 4702519344013384972,
+        "NextSaturnEasternQuadrature": 4702519127967766962,
+        "NextSaturnOpposition": 4702518944055986604,
+        "NextSaturnProgradeToRetrograde": 4702518798260476232,
+        "NextSaturnRetrogradeToPrograde": 4702519088991987938,
+        "NextSaturnWesternQuadrature": 4702518753554309388
+      }
+    },
+    {
+      "input_utc": "2000-02-15T14:48:31.567Z",
+      "tt_jd_bits": 4702519161036947311,
+      "events": {
+        "LastSaturnConjunction": 4702518529339946910,
+        "LastSaturnEasternQuadrature": 4702519127967766962,
+        "LastSaturnOpposition": 4702518944055986604,
+        "LastSaturnProgradeToRetrograde": 4702518798260476232,
+        "LastSaturnRetrogradeToPrograde": 4702518276343086805,
+        "LastSaturnWesternQuadrature": 4702518753554309388,
+        "NextSaturnConjunction": 4702519344013384972,
+        "NextSaturnEasternQuadrature": 4702519941514944556,
+        "NextSaturnOpposition": 4702519757846311291,
+        "NextSaturnProgradeToRetrograde": 4702519612466348139,
+        "NextSaturnRetrogradeToPrograde": 4702519901997069936,
+        "NextSaturnWesternQuadrature": 4702519568739573999
+      }
+    },
+    {
+      "input_utc": "2000-10-05T19:55:50.567Z",
+      "tt_jd_bits": 4702519661858941126,
+      "events": {
+        "LastSaturnConjunction": 4702519344013384972,
+        "LastSaturnEasternQuadrature": 4702519127967766962,
+        "LastSaturnOpposition": 4702518944055986604,
+        "LastSaturnProgradeToRetrograde": 4702518798260476232,
+        "LastSaturnRetrogradeToPrograde": 4702518276343086805,
+        "LastSaturnWesternQuadrature": 4702519568739573999,
+        "NextSaturnConjunction": 4702520159413398001,
+        "NextSaturnEasternQuadrature": 4702519941514944556,
+        "NextSaturnOpposition": 4702519757846311291,
+        "NextSaturnProgradeToRetrograde": 4702520426998993459,
+        "NextSaturnRetrogradeToPrograde": 4702519901997069936,
+        "NextSaturnWesternQuadrature": 4702520384150800632
+      }
+    },
+    {
+      "input_utc": "2001-05-27T01:03:09.567Z",
+      "tt_jd_bits": 4702520162680934941,
+      "events": {
+        "LastSaturnConjunction": 4702520159413398001,
+        "LastSaturnEasternQuadrature": 4702519941514944556,
+        "LastSaturnOpposition": 4702519757846311291,
+        "LastSaturnProgradeToRetrograde": 4702519612466348139,
+        "LastSaturnRetrogradeToPrograde": 4702519088991987938,
+        "LastSaturnWesternQuadrature": 4702519568739573999,
+        "NextSaturnConjunction": 4702520975353282020,
+        "NextSaturnEasternQuadrature": 4702520755639236101,
+        "NextSaturnOpposition": 4702520571879460411,
+        "NextSaturnProgradeToRetrograde": 4702520426998993459,
+        "NextSaturnRetrogradeToPrograde": 4702520715408265837,
+        "NextSaturnWesternQuadrature": 4702520384150800632
+      }
+    },
+    {
+      "input_utc": "2002-01-13T09:10:28.567Z",
+      "tt_jd_bits": 4702520659476396916,
+      "events": {
+        "LastSaturnConjunction": 4702520159413398001,
+        "LastSaturnEasternQuadrature": 4702519941514944556,
+        "LastSaturnOpposition": 4702520571879460411,
+        "LastSaturnProgradeToRetrograde": 4702520426998993459,
+        "LastSaturnRetrogradeToPrograde": 4702519901997069936,
+        "LastSaturnWesternQuadrature": 4702520384150800632,
+        "NextSaturnConjunction": 4702520975353282020,
+        "NextSaturnEasternQuadrature": 4702520755639236101,
+        "NextSaturnOpposition": 4702521386065820580,
+        "NextSaturnProgradeToRetrograde": 4702521241794412535,
+        "NextSaturnRetrogradeToPrograde": 4702521529307767291,
+        "NextSaturnWesternQuadrature": 4702521199621414941
+      }
+    },
+    {
+      "input_utc": "2002-09-03T14:17:47.567Z",
+      "tt_jd_bits": 4702521160298390730,
+      "events": {
+        "LastSaturnConjunction": 4702520975353282020,
+        "LastSaturnEasternQuadrature": 4702520755639236101,
+        "LastSaturnOpposition": 4702520571879460411,
+        "LastSaturnProgradeToRetrograde": 4702520426998993459,
+        "LastSaturnRetrogradeToPrograde": 4702519901997069936,
+        "LastSaturnWesternQuadrature": 4702520384150800632,
+        "NextSaturnConjunction": 4702521791599429614,
+        "NextSaturnEasternQuadrature": 4702521570227971154,
+        "NextSaturnOpposition": 4702521386065820580,
+        "NextSaturnProgradeToRetrograde": 4702521241794412535,
+        "NextSaturnRetrogradeToPrograde": 4702521529307767291,
+        "NextSaturnWesternQuadrature": 4702521199621414941
+      }
+    },
+    {
+      "input_utc": "2003-04-24T18:15:06.567Z",
+      "tt_jd_bits": 4702521661015992979,
+      "events": {
+        "LastSaturnConjunction": 4702520975353282020,
+        "LastSaturnEasternQuadrature": 4702521570227971154,
+        "LastSaturnOpposition": 4702521386065820580,
+        "LastSaturnProgradeToRetrograde": 4702521241794412535,
+        "LastSaturnRetrogradeToPrograde": 4702520715408265837,
+        "LastSaturnWesternQuadrature": 4702521199621414941,
+        "NextSaturnConjunction": 4702521791599429614,
+        "NextSaturnEasternQuadrature": 4702522385163074005,
+        "NextSaturnOpposition": 4702522200274601109,
+        "NextSaturnProgradeToRetrograde": 4702522056669865252,
+        "NextSaturnRetrogradeToPrograde": 4702522343647510198,
+        "NextSaturnWesternQuadrature": 4702522014939175063
+      }
+    },
+    {
+      "input_utc": "2003-12-13T23:22:25.567Z",
+      "tt_jd_bits": 4702522161837986794,
+      "events": {
+        "LastSaturnConjunction": 4702521791599429614,
+        "LastSaturnEasternQuadrature": 4702521570227971154,
+        "LastSaturnOpposition": 4702521386065820580,
+        "LastSaturnProgradeToRetrograde": 4702521241794412535,
+        "LastSaturnRetrogradeToPrograde": 4702520715408265837,
+        "LastSaturnWesternQuadrature": 4702522014939175063,
+        "NextSaturnConjunction": 4702522607909441859,
+        "NextSaturnEasternQuadrature": 4702522385163074005,
+        "NextSaturnOpposition": 4702522200274601109,
+        "NextSaturnProgradeToRetrograde": 4702522871515625573,
+        "NextSaturnRetrogradeToPrograde": 4702522343647510198,
+        "NextSaturnWesternQuadrature": 4702522829887029833
+      }
+    },
+    {
+      "input_utc": "2004-08-03T04:29:44.567Z",
+      "tt_jd_bits": 4702522662659980609,
+      "events": {
+        "LastSaturnConjunction": 4702522607909441859,
+        "LastSaturnEasternQuadrature": 4702522385163074005,
+        "LastSaturnOpposition": 4702522200274601109,
+        "LastSaturnProgradeToRetrograde": 4702522056669865252,
+        "LastSaturnRetrogradeToPrograde": 4702521529307767291,
+        "LastSaturnWesternQuadrature": 4702522014939175063,
+        "NextSaturnConjunction": 4702523423987350056,
+        "NextSaturnEasternQuadrature": 4702523200254415846,
+        "NextSaturnOpposition": 4702523014362488570,
+        "NextSaturnProgradeToRetrograde": 4702522871515625573,
+        "NextSaturnRetrogradeToPrograde": 4702523158325250300,
+        "NextSaturnWesternQuadrature": 4702522829887029833
+      }
+    },
+    {
+      "input_utc": "2005-03-24T09:37:03.567Z",
+      "tt_jd_bits": 4702523163481974424,
+      "events": {
+        "LastSaturnConjunction": 4702522607909441859,
+        "LastSaturnEasternQuadrature": 4702522385163074005,
+        "LastSaturnOpposition": 4702523014362488570,
+        "LastSaturnProgradeToRetrograde": 4702522871515625573,
+        "LastSaturnRetrogradeToPrograde": 4702522343647510198,
+        "LastSaturnWesternQuadrature": 4702522829887029833,
+        "NextSaturnConjunction": 4702523423987350056,
+        "NextSaturnEasternQuadrature": 4702523200254415846,
+        "NextSaturnOpposition": 4702523828232651837,
+        "NextSaturnProgradeToRetrograde": 4702523686106565171,
+        "NextSaturnRetrogradeToPrograde": 4702523973299200260,
+        "NextSaturnWesternQuadrature": 4702523644313278477
+      }
+    },
+    {
+      "input_utc": "2005-11-12T14:40:34.567Z",
+      "tt_jd_bits": 4702523664298301268,
+      "events": {
+        "LastSaturnConjunction": 4702523423987350056,
+        "LastSaturnEasternQuadrature": 4702523200254415846,
+        "LastSaturnOpposition": 4702523014362488570,
+        "LastSaturnProgradeToRetrograde": 4702522871515625573,
+        "LastSaturnRetrogradeToPrograde": 4702522343647510198,
+        "LastSaturnWesternQuadrature": 4702523644313278477,
+        "NextSaturnConjunction": 4702524239574022456,
+        "NextSaturnEasternQuadrature": 4702524015309278842,
+        "NextSaturnOpposition": 4702523828232651837,
+        "NextSaturnProgradeToRetrograde": 4702523686106565171,
+        "NextSaturnRetrogradeToPrograde": 4702523973299200260,
+        "NextSaturnWesternQuadrature": 4702524458086677406
+      }
+    },
+    {
+      "input_utc": "2006-07-03T19:47:53.567Z",
+      "tt_jd_bits": 4702524165120319938,
+      "events": {
+        "LastSaturnConjunction": 4702523423987350056,
+        "LastSaturnEasternQuadrature": 4702524015309278842,
+        "LastSaturnOpposition": 4702523828232651837,
+        "LastSaturnProgradeToRetrograde": 4702523686106565171,
+        "LastSaturnRetrogradeToPrograde": 4702523158325250300,
+        "LastSaturnWesternQuadrature": 4702523644313278477,
+        "NextSaturnConjunction": 4702524239574022456,
+        "NextSaturnEasternQuadrature": 4702524830148248405,
+        "NextSaturnOpposition": 4702524641761758598,
+        "NextSaturnProgradeToRetrograde": 4702524500152179354,
+        "NextSaturnRetrogradeToPrograde": 4702524788384307362,
+        "NextSaturnWesternQuadrature": 4702524458086677406
+      }
+    },
+    {
+      "input_utc": "2007-02-22T00:55:12.567Z",
+      "tt_jd_bits": 4702524665942313752,
+      "events": {
+        "LastSaturnConjunction": 4702524239574022456,
+        "LastSaturnEasternQuadrature": 4702524015309278842,
+        "LastSaturnOpposition": 4702524641761758598,
+        "LastSaturnProgradeToRetrograde": 4702524500152179354,
+        "LastSaturnRetrogradeToPrograde": 4702523973299200260,
+        "LastSaturnWesternQuadrature": 4702524458086677406,
+        "NextSaturnConjunction": 4702525054505625979,
+        "NextSaturnEasternQuadrature": 4702524830148248405,
+        "NextSaturnOpposition": 4702525454861402803,
+        "NextSaturnProgradeToRetrograde": 4702525313344270331,
+        "NextSaturnRetrogradeToPrograde": 4702525603357160342,
+        "NextSaturnWesternQuadrature": 4702525271124495246
+      }
+    },
+    {
+      "input_utc": "2007-10-11T09:02:31.567Z",
+      "tt_jd_bits": 4702525162737775727,
+      "events": {
+        "LastSaturnConjunction": 4702525054505625979,
+        "LastSaturnEasternQuadrature": 4702524830148248405,
+        "LastSaturnOpposition": 4702524641761758598,
+        "LastSaturnProgradeToRetrograde": 4702524500152179354,
+        "LastSaturnRetrogradeToPrograde": 4702523973299200260,
+        "LastSaturnWesternQuadrature": 4702524458086677406,
+        "NextSaturnConjunction": 4702525868627525718,
+        "NextSaturnEasternQuadrature": 4702525644611344881,
+        "NextSaturnOpposition": 4702525454861402803,
+        "NextSaturnProgradeToRetrograde": 4702525313344270331,
+        "NextSaturnRetrogradeToPrograde": 4702525603357160342,
+        "NextSaturnWesternQuadrature": 4702525271124495246
+      }
+    },
+    {
+      "input_utc": "2008-05-31T14:09:50.567Z",
+      "tt_jd_bits": 4702525663559769542,
+      "events": {
+        "LastSaturnConjunction": 4702525054505625979,
+        "LastSaturnEasternQuadrature": 4702525644611344881,
+        "LastSaturnOpposition": 4702525454861402803,
+        "LastSaturnProgradeToRetrograde": 4702525313344270331,
+        "LastSaturnRetrogradeToPrograde": 4702524788384307362,
+        "LastSaturnWesternQuadrature": 4702525271124495246,
+        "NextSaturnConjunction": 4702525868627525718,
+        "NextSaturnEasternQuadrature": 4702526458575492781,
+        "NextSaturnOpposition": 4702526267512949842,
+        "NextSaturnProgradeToRetrograde": 4702526125761325730,
+        "NextSaturnRetrogradeToPrograde": 4702526417756242433,
+        "NextSaturnWesternQuadrature": 4702526083406059771
+      }
+    },
+    {
+      "input_utc": "2009-01-19T19:17:09.567Z",
+      "tt_jd_bits": 4702526164381788212,
+      "events": {
+        "LastSaturnConjunction": 4702525868627525718,
+        "LastSaturnEasternQuadrature": 4702525644611344881,
+        "LastSaturnOpposition": 4702525454861402803,
+        "LastSaturnProgradeToRetrograde": 4702525313344270331,
+        "LastSaturnRetrogradeToPrograde": 4702524788384307362,
+        "LastSaturnWesternQuadrature": 4702526083406059771,
+        "NextSaturnConjunction": 4702526681841755466,
+        "NextSaturnEasternQuadrature": 4702526458575492781,
+        "NextSaturnOpposition": 4702526267512949842,
+        "NextSaturnProgradeToRetrograde": 4702526937433151703,
+        "NextSaturnRetrogradeToPrograde": 4702526417756242433,
+        "NextSaturnWesternQuadrature": 4702526894942957106
+      }
+    },
+    {
+      "input_utc": "2009-09-09T23:14:28.567Z",
+      "tt_jd_bits": 4702526665099390461,
+      "events": {
+        "LastSaturnConjunction": 4702525868627525718,
+        "LastSaturnEasternQuadrature": 4702526458575492781,
+        "LastSaturnOpposition": 4702526267512949842,
+        "LastSaturnProgradeToRetrograde": 4702526125761325730,
+        "LastSaturnRetrogradeToPrograde": 4702525603357160342,
+        "LastSaturnWesternQuadrature": 4702526083406059771,
+        "NextSaturnConjunction": 4702526681841755466,
+        "NextSaturnEasternQuadrature": 4702527271945710040,
+        "NextSaturnOpposition": 4702527079685467252,
+        "NextSaturnProgradeToRetrograde": 4702526937433151703,
+        "NextSaturnRetrogradeToPrograde": 4702527231412739836,
+        "NextSaturnWesternQuadrature": 4702526894942957106
+      }
+    },
+    {
+      "input_utc": "2010-05-01T04:21:47.567Z",
+      "tt_jd_bits": 4702527165921384275,
+      "events": {
+        "LastSaturnConjunction": 4702526681841755466,
+        "LastSaturnEasternQuadrature": 4702526458575492781,
+        "LastSaturnOpposition": 4702527079685467252,
+        "LastSaturnProgradeToRetrograde": 4702526937433151703,
+        "LastSaturnRetrogradeToPrograde": 4702526417756242433,
+        "LastSaturnWesternQuadrature": 4702526894942957106,
+        "NextSaturnConjunction": 4702527494156827710,
+        "NextSaturnEasternQuadrature": 4702527271945710040,
+        "NextSaturnOpposition": 4702527891373369463,
+        "NextSaturnProgradeToRetrograde": 4702527748232351837,
+        "NextSaturnRetrogradeToPrograde": 4702528044263380835,
+        "NextSaturnWesternQuadrature": 4702527705800755548
+      }
+    },
+    {
+      "input_utc": "2010-12-20T09:29:06.567Z",
+      "tt_jd_bits": 4702527666743378090,
+      "events": {
+        "LastSaturnConjunction": 4702527494156827710,
+        "LastSaturnEasternQuadrature": 4702527271945710040,
+        "LastSaturnOpposition": 4702527079685467252,
+        "LastSaturnProgradeToRetrograde": 4702526937433151703,
+        "LastSaturnRetrogradeToPrograde": 4702526417756242433,
+        "LastSaturnWesternQuadrature": 4702526894942957106,
+        "NextSaturnConjunction": 4702528305594173683,
+        "NextSaturnEasternQuadrature": 4702528084677652442,
+        "NextSaturnOpposition": 4702527891373369463,
+        "NextSaturnProgradeToRetrograde": 4702527748232351837,
+        "NextSaturnRetrogradeToPrograde": 4702528044263380835,
+        "NextSaturnWesternQuadrature": 4702527705800755548
+      }
+    },
+    {
+      "input_utc": "2011-08-10T14:36:25.567Z",
+      "tt_jd_bits": 4702528167565371905,
+      "events": {
+        "LastSaturnConjunction": 4702527494156827710,
+        "LastSaturnEasternQuadrature": 4702528084677652442,
+        "LastSaturnOpposition": 4702527891373369463,
+        "LastSaturnProgradeToRetrograde": 4702527748232351837,
+        "LastSaturnRetrogradeToPrograde": 4702527231412739836,
+        "LastSaturnWesternQuadrature": 4702527705800755548,
+        "NextSaturnConjunction": 4702528305594173683,
+        "NextSaturnEasternQuadrature": 4702528896780200653,
+        "NextSaturnOpposition": 4702528702630088030,
+        "NextSaturnProgradeToRetrograde": 4702528558209625118,
+        "NextSaturnRetrogradeToPrograde": 4702528856420954672,
+        "NextSaturnWesternQuadrature": 4702528516055847069
+      }
+    },
+    {
+      "input_utc": "2012-03-30T19:43:44.567Z",
+      "tt_jd_bits": 4702528668387365720,
+      "events": {
+        "LastSaturnConjunction": 4702528305594173683,
+        "LastSaturnEasternQuadrature": 4702528084677652442,
+        "LastSaturnOpposition": 4702527891373369463,
+        "LastSaturnProgradeToRetrograde": 4702527748232351837,
+        "LastSaturnRetrogradeToPrograde": 4702527231412739836,
+        "LastSaturnWesternQuadrature": 4702528516055847069,
+        "NextSaturnConjunction": 4702529116208277733,
+        "NextSaturnEasternQuadrature": 4702528896780200653,
+        "NextSaturnOpposition": 4702528702630088030,
+        "NextSaturnProgradeToRetrograde": 4702529367654705558,
+        "NextSaturnRetrogradeToPrograde": 4702528856420954672,
+        "NextSaturnWesternQuadrature": 4702529325791513149
+      }
+    },
+    {
+      "input_utc": "2012-11-19T00:51:03.567Z",
+      "tt_jd_bits": 4702529169209384390,
+      "events": {
+        "LastSaturnConjunction": 4702529116208277733,
+        "LastSaturnEasternQuadrature": 4702528896780200653,
+        "LastSaturnOpposition": 4702528702630088030,
+        "LastSaturnProgradeToRetrograde": 4702528558209625118,
+        "LastSaturnRetrogradeToPrograde": 4702528044263380835,
+        "LastSaturnWesternQuadrature": 4702528516055847069,
+        "NextSaturnConjunction": 4702529926120454308,
+        "NextSaturnEasternQuadrature": 4702529708247629997,
+        "NextSaturnOpposition": 4702529513484573452,
+        "NextSaturnProgradeToRetrograde": 4702529367654705558,
+        "NextSaturnRetrogradeToPrograde": 4702529667729494355,
+        "NextSaturnWesternQuadrature": 4702529325791513149
+      }
+    },
+    {
+      "input_utc": "2013-07-08T08:54:34.567Z",
+      "tt_jd_bits": 4702529665999179394,
+      "events": {
+        "LastSaturnConjunction": 4702529116208277733,
+        "LastSaturnEasternQuadrature": 4702528896780200653,
+        "LastSaturnOpposition": 4702529513484573452,
+        "LastSaturnProgradeToRetrograde": 4702529367654705558,
+        "LastSaturnRetrogradeToPrograde": 4702528856420954672,
+        "LastSaturnWesternQuadrature": 4702529325791513149,
+        "NextSaturnConjunction": 4702529926120454308,
+        "NextSaturnEasternQuadrature": 4702529708247629997,
+        "NextSaturnOpposition": 4702530323982760500,
+        "NextSaturnProgradeToRetrograde": 4702530176692127823,
+        "NextSaturnRetrogradeToPrograde": 4702530478328992558,
+        "NextSaturnWesternQuadrature": 4702530135136550619
+      }
+    },
+    {
+      "input_utc": "2014-02-26T14:01:53.567Z",
+      "tt_jd_bits": 4702530166821173209,
+      "events": {
+        "LastSaturnConjunction": 4702529926120454308,
+        "LastSaturnEasternQuadrature": 4702529708247629997,
+        "LastSaturnOpposition": 4702529513484573452,
+        "LastSaturnProgradeToRetrograde": 4702529367654705558,
+        "LastSaturnRetrogradeToPrograde": 4702528856420954672,
+        "LastSaturnWesternQuadrature": 4702530135136550619,
+        "NextSaturnConjunction": 4702530735437837349,
+        "NextSaturnEasternQuadrature": 4702530519108914773,
+        "NextSaturnOpposition": 4702530323982760500,
+        "NextSaturnProgradeToRetrograde": 4702530176692127823,
+        "NextSaturnRetrogradeToPrograde": 4702530478328992558,
+        "NextSaturnWesternQuadrature": 4702530944199797384
+      }
+    },
+    {
+      "input_utc": "2014-10-17T19:09:12.567Z",
+      "tt_jd_bits": 4702530667643167024,
+      "events": {
+        "LastSaturnConjunction": 4702529926120454308,
+        "LastSaturnEasternQuadrature": 4702530519108914773,
+        "LastSaturnOpposition": 4702530323982760500,
+        "LastSaturnProgradeToRetrograde": 4702530176692127823,
+        "LastSaturnRetrogradeToPrograde": 4702529667729494355,
+        "LastSaturnWesternQuadrature": 4702530135136550619,
+        "NextSaturnConjunction": 4702530735437837349,
+        "NextSaturnEasternQuadrature": 4702531329470735470,
+        "NextSaturnOpposition": 4702531134220786238,
+        "NextSaturnProgradeToRetrograde": 4702530985713567669,
+        "NextSaturnRetrogradeToPrograde": 4702531288318210370,
+        "NextSaturnWesternQuadrature": 4702530944199797384
+      }
+    },
+    {
+      "input_utc": "2015-06-08T00:16:31.567Z",
+      "tt_jd_bits": 4702531168465160838,
+      "events": {
+        "LastSaturnConjunction": 4702530735437837349,
+        "LastSaturnEasternQuadrature": 4702530519108914773,
+        "LastSaturnOpposition": 4702531134220786238,
+        "LastSaturnProgradeToRetrograde": 4702530985713567669,
+        "LastSaturnRetrogradeToPrograde": 4702530478328992558,
+        "LastSaturnWesternQuadrature": 4702530944199797384,
+        "NextSaturnConjunction": 4702531544272141628,
+        "NextSaturnEasternQuadrature": 4702531329470735470,
+        "NextSaturnOpposition": 4702531944272999444,
+        "NextSaturnProgradeToRetrograde": 4702531794499681937,
+        "NextSaturnRetrogradeToPrograde": 4702532097752850912,
+        "NextSaturnWesternQuadrature": 4702531753096641217
+      }
+    },
+    {
+      "input_utc": "2016-01-27T04:13:50.567Z",
+      "tt_jd_bits": 4702531669182787943,
+      "events": {
+        "LastSaturnConjunction": 4702531544272141628,
+        "LastSaturnEasternQuadrature": 4702531329470735470,
+        "LastSaturnOpposition": 4702531134220786238,
+        "LastSaturnProgradeToRetrograde": 4702530985713567669,
+        "LastSaturnRetrogradeToPrograde": 4702530478328992558,
+        "LastSaturnWesternQuadrature": 4702530944199797384,
+        "NextSaturnConjunction": 4702532352763083220,
+        "NextSaturnEasternQuadrature": 4702532139402670559,
+        "NextSaturnOpposition": 4702531944272999444,
+        "NextSaturnProgradeToRetrograde": 4702531794499685784,
+        "NextSaturnRetrogradeToPrograde": 4702532097752861213,
+        "NextSaturnWesternQuadrature": 4702531753096641217
+      }
+    },
+    {
+      "input_utc": "2016-09-16T09:21:09.567Z",
+      "tt_jd_bits": 4702532170004781758,
+      "events": {
+        "LastSaturnConjunction": 4702531544272141628,
+        "LastSaturnEasternQuadrature": 4702532139402670559,
+        "LastSaturnOpposition": 4702531944272999444,
+        "LastSaturnProgradeToRetrograde": 4702531794499685784,
+        "LastSaturnRetrogradeToPrograde": 4702531288318210370,
+        "LastSaturnWesternQuadrature": 4702531753096641217,
+        "NextSaturnConjunction": 4702532352763083220,
+        "NextSaturnEasternQuadrature": 4702532948968895633,
+        "NextSaturnOpposition": 4702532754203267510,
+        "NextSaturnProgradeToRetrograde": 4702532603436252583,
+        "NextSaturnRetrogradeToPrograde": 4702532907108926670,
+        "NextSaturnWesternQuadrature": 4702532561958337847
+      }
+    },
+    {
+      "input_utc": "2017-05-07T14:28:28.567Z",
+      "tt_jd_bits": 4702532670826800428,
+      "events": {
+        "LastSaturnConjunction": 4702532352763083220,
+        "LastSaturnEasternQuadrature": 4702532139402670559,
+        "LastSaturnOpposition": 4702531944272999444,
+        "LastSaturnProgradeToRetrograde": 4702531794499685784,
+        "LastSaturnRetrogradeToPrograde": 4702531288318210370,
+        "LastSaturnWesternQuadrature": 4702532561958337847,
+        "NextSaturnConjunction": 4702533161047956808,
+        "NextSaturnEasternQuadrature": 4702532948968895633,
+        "NextSaturnOpposition": 4702532754203267510,
+        "NextSaturnProgradeToRetrograde": 4702533412701146435,
+        "NextSaturnRetrogradeToPrograde": 4702532907108926670,
+        "NextSaturnWesternQuadrature": 4702533370886424384
+      }
+    },
+    {
+      "input_utc": "2017-12-26T19:35:47.567Z",
+      "tt_jd_bits": 4702533171648794243,
+      "events": {
+        "LastSaturnConjunction": 4702533161047956808,
+        "LastSaturnEasternQuadrature": 4702532948968895633,
+        "LastSaturnOpposition": 4702532754203267510,
+        "LastSaturnProgradeToRetrograde": 4702532603436252583,
+        "LastSaturnRetrogradeToPrograde": 4702532097752861213,
+        "LastSaturnWesternQuadrature": 4702532561958337847,
+        "NextSaturnConjunction": 4702533969278801572,
+        "NextSaturnEasternQuadrature": 4702533758289953150,
+        "NextSaturnOpposition": 4702533564088068444,
+        "NextSaturnProgradeToRetrograde": 4702533412701157296,
+        "NextSaturnRetrogradeToPrograde": 4702533716288971367,
+        "NextSaturnWesternQuadrature": 4702533370886424384
+      }
+    },
+    {
+      "input_utc": "2018-08-17T00:43:06.567Z",
+      "tt_jd_bits": 4702533672470788057,
+      "events": {
+        "LastSaturnConjunction": 4702533161047956808,
+        "LastSaturnEasternQuadrature": 4702532948968895633,
+        "LastSaturnOpposition": 4702533564088068444,
+        "LastSaturnProgradeToRetrograde": 4702533412701157296,
+        "LastSaturnRetrogradeToPrograde": 4702532907108926670,
+        "LastSaturnWesternQuadrature": 4702533370886424384,
+        "NextSaturnConjunction": 4702533969278801572,
+        "NextSaturnEasternQuadrature": 4702533758289953150,
+        "NextSaturnOpposition": 4702534374016366289,
+        "NextSaturnProgradeToRetrograde": 4702534222381858419,
+        "NextSaturnRetrogradeToPrograde": 4702534525513585065,
+        "NextSaturnWesternQuadrature": 4702534179997054367
+      }
+    },
+    {
+      "input_utc": "2019-04-05T08:50:25.567Z",
+      "tt_jd_bits": 4702534169266250032,
+      "events": {
+        "LastSaturnConjunction": 4702533969278801572,
+        "LastSaturnEasternQuadrature": 4702533758289953150,
+        "LastSaturnOpposition": 4702533564088068444,
+        "LastSaturnProgradeToRetrograde": 4702533412701157296,
+        "LastSaturnRetrogradeToPrograde": 4702532907108926670,
+        "LastSaturnWesternQuadrature": 4702533370886424384,
+        "NextSaturnConjunction": 4702534777577067293,
+        "NextSaturnEasternQuadrature": 4702534567468495655,
+        "NextSaturnOpposition": 4702534374016366289,
+        "NextSaturnProgradeToRetrograde": 4702534222381858419,
+        "NextSaturnRetrogradeToPrograde": 4702534525513585065,
+        "NextSaturnWesternQuadrature": 4702534179997054367
+      }
+    },
+    {
+      "input_utc": "2019-11-24T13:57:44.567Z",
+      "tt_jd_bits": 4702534670088243847,
+      "events": {
+        "LastSaturnConjunction": 4702533969278801572,
+        "LastSaturnEasternQuadrature": 4702534567468495655,
+        "LastSaturnOpposition": 4702534374016366289,
+        "LastSaturnProgradeToRetrograde": 4702534222381858419,
+        "LastSaturnRetrogradeToPrograde": 4702533716288971367,
+        "LastSaturnWesternQuadrature": 4702534179997054367,
+        "NextSaturnConjunction": 4702534777577067293,
+        "NextSaturnEasternQuadrature": 4702535376608603608,
+        "NextSaturnOpposition": 4702535184095696741,
+        "NextSaturnProgradeToRetrograde": 4702535032607147237,
+        "NextSaturnRetrogradeToPrograde": 4702535334812545609,
+        "NextSaturnWesternQuadrature": 4702534989438764923
+      }
+    },
+    {
+      "input_utc": "2020-07-14T19:05:03.567Z",
+      "tt_jd_bits": 4702535170910237662,
+      "events": {
+        "LastSaturnConjunction": 4702534777577067293,
+        "LastSaturnEasternQuadrature": 4702534567468495655,
+        "LastSaturnOpposition": 4702534374016366289,
+        "LastSaturnProgradeToRetrograde": 4702534222381858419,
+        "LastSaturnRetrogradeToPrograde": 4702533716288971367,
+        "LastSaturnWesternQuadrature": 4702534989438764923,
+        "NextSaturnConjunction": 4702535586083203483,
+        "NextSaturnEasternQuadrature": 4702535376608603608,
+        "NextSaturnOpposition": 4702535184095696741,
+        "NextSaturnProgradeToRetrograde": 4702535843143547952,
+        "NextSaturnRetrogradeToPrograde": 4702535334812545609,
+        "NextSaturnWesternQuadrature": 4702535799310727939
+      }
+    },
+    {
+      "input_utc": "1990-09-02T08:12:34.567Z",
+      "tt_jd_bits": 4702511745185253343,
+      "events": {
+        "LastSaturnConjunction": 4702511233082792944,
+        "LastSaturnEasternQuadrature": 4702511022491988859,
+        "LastSaturnOpposition": 4702511638661393809,
+        "LastSaturnProgradeToRetrograde": 4702511486901651187,
+        "LastSaturnRetrogradeToPrograde": 4702510980431886126,
+        "LastSaturnWesternQuadrature": 4702511444359710829,
+        "NextSaturnConjunction": 4702512041494948610,
+        "NextSaturnEasternQuadrature": 4702511831665392809,
+        "NextSaturnOpposition": 4702512448855444019,
+        "NextSaturnProgradeToRetrograde": 4702512297376030372,
+        "NextSaturnRetrogradeToPrograde": 4702512599370498948,
+        "NextSaturnWesternQuadrature": 4702512254003815742
+      }
+    },
+    {
+      "input_utc": "1991-02-06T14:24:03.567Z",
+      "tt_jd_bits": 4702512082894207034,
+      "events": {
+        "LastSaturnConjunction": 4702512041494948610,
+        "LastSaturnEasternQuadrature": 4702511831665392809,
+        "LastSaturnOpposition": 4702511638661393809,
+        "LastSaturnProgradeToRetrograde": 4702511486901651187,
+        "LastSaturnRetrogradeToPrograde": 4702510980431886126,
+        "LastSaturnWesternQuadrature": 4702511444359710829,
+        "NextSaturnConjunction": 4702512850183452154,
+        "NextSaturnEasternQuadrature": 4702512640866981777,
+        "NextSaturnOpposition": 4702512448855444019,
+        "NextSaturnProgradeToRetrograde": 4702512297376030372,
+        "NextSaturnRetrogradeToPrograde": 4702512599370498948,
+        "NextSaturnWesternQuadrature": 4702512254003815742
+      }
+    },
+    {
+      "input_utc": "1991-07-13T20:35:32.567Z",
+      "tt_jd_bits": 4702512420603135870,
+      "events": {
+        "LastSaturnConjunction": 4702512041494948610,
+        "LastSaturnEasternQuadrature": 4702511831665392809,
+        "LastSaturnOpposition": 4702511638661393809,
+        "LastSaturnProgradeToRetrograde": 4702511486901651187,
+        "LastSaturnRetrogradeToPrograde": 4702510980431886126,
+        "LastSaturnWesternQuadrature": 4702512254003815742,
+        "NextSaturnConjunction": 4702512850183452154,
+        "NextSaturnEasternQuadrature": 4702512640866981777,
+        "NextSaturnOpposition": 4702512448855444019,
+        "NextSaturnProgradeToRetrograde": 4702513108332057865,
+        "NextSaturnRetrogradeToPrograde": 4702512599370498948,
+        "NextSaturnWesternQuadrature": 4702513064123991319
+      }
+    },
+    {
+      "input_utc": "1991-12-18T02:47:01.567Z",
+      "tt_jd_bits": 4702512758312064706,
+      "events": {
+        "LastSaturnConjunction": 4702512041494948610,
+        "LastSaturnEasternQuadrature": 4702512640866981777,
+        "LastSaturnOpposition": 4702512448855444019,
+        "LastSaturnProgradeToRetrograde": 4702512297376030372,
+        "LastSaturnRetrogradeToPrograde": 4702511789774874251,
+        "LastSaturnWesternQuadrature": 4702512254003815742,
+        "NextSaturnConjunction": 4702512850183452154,
+        "NextSaturnEasternQuadrature": 4702513450206896866,
+        "NextSaturnOpposition": 4702513259308966362,
+        "NextSaturnProgradeToRetrograde": 4702513108332057865,
+        "NextSaturnRetrogradeToPrograde": 4702513409104977535,
+        "NextSaturnWesternQuadrature": 4702513064123991319
+      }
+    },
+    {
+      "input_utc": "1992-05-23T08:58:30.567Z",
+      "tt_jd_bits": 4702513096020993542,
+      "events": {
+        "LastSaturnConjunction": 4702512850183452154,
+        "LastSaturnEasternQuadrature": 4702512640866981777,
+        "LastSaturnOpposition": 4702512448855444019,
+        "LastSaturnProgradeToRetrograde": 4702512297376030372,
+        "LastSaturnRetrogradeToPrograde": 4702511789774874251,
+        "LastSaturnWesternQuadrature": 4702513064123991319,
+        "NextSaturnConjunction": 4702513659304091564,
+        "NextSaturnEasternQuadrature": 4702513450206896866,
+        "NextSaturnOpposition": 4702513259308966362,
+        "NextSaturnProgradeToRetrograde": 4702513108332057865,
+        "NextSaturnRetrogradeToPrograde": 4702513409104977535,
+        "NextSaturnWesternQuadrature": 4702513874832582692
+      }
+    },
+    {
+      "input_utc": "1992-10-27T15:09:59.567Z",
+      "tt_jd_bits": 4702513433729947233,
+      "events": {
+        "LastSaturnConjunction": 4702512850183452154,
+        "LastSaturnEasternQuadrature": 4702512640866981777,
+        "LastSaturnOpposition": 4702513259308966362,
+        "LastSaturnProgradeToRetrograde": 4702513108332057865,
+        "LastSaturnRetrogradeToPrograde": 4702512599370498948,
+        "LastSaturnWesternQuadrature": 4702513064123991319,
+        "NextSaturnConjunction": 4702513659304091564,
+        "NextSaturnEasternQuadrature": 4702513450206896866,
+        "NextSaturnOpposition": 4702514070085320670,
+        "NextSaturnProgradeToRetrograde": 4702513919871905081,
+        "NextSaturnRetrogradeToPrograde": 4702514219285403133,
+        "NextSaturnWesternQuadrature": 4702513874832582692
+      }
+    },
+    {
+      "input_utc": "1993-04-02T21:21:28.567Z",
+      "tt_jd_bits": 4702513771438876069,
+      "events": {
+        "LastSaturnConjunction": 4702513659304091564,
+        "LastSaturnEasternQuadrature": 4702513450206896866,
+        "LastSaturnOpposition": 4702513259308966362,
+        "LastSaturnProgradeToRetrograde": 4702513108332057865,
+        "LastSaturnRetrogradeToPrograde": 4702512599370498948,
+        "LastSaturnWesternQuadrature": 4702513064123991319,
+        "NextSaturnConjunction": 4702514468983755566,
+        "NextSaturnEasternQuadrature": 4702514259798424414,
+        "NextSaturnOpposition": 4702514070085320670,
+        "NextSaturnProgradeToRetrograde": 4702513919871905081,
+        "NextSaturnRetrogradeToPrograde": 4702514219285403133,
+        "NextSaturnWesternQuadrature": 4702513874832582692
+      }
+    },
+    {
+      "input_utc": "1993-09-05T09:32:57.567Z",
+      "tt_jd_bits": 4702514105389733375,
+      "events": {
+        "LastSaturnConjunction": 4702513659304091564,
+        "LastSaturnEasternQuadrature": 4702513450206896866,
+        "LastSaturnOpposition": 4702514070085320670,
+        "LastSaturnProgradeToRetrograde": 4702513919871905081,
+        "LastSaturnRetrogradeToPrograde": 4702513409104977535,
+        "LastSaturnWesternQuadrature": 4702513874832582692,
+        "NextSaturnConjunction": 4702514468983755566,
+        "NextSaturnEasternQuadrature": 4702514259798424414,
+        "NextSaturnOpposition": 4702514881266851077,
+        "NextSaturnProgradeToRetrograde": 4702514731950976395,
+        "NextSaturnRetrogradeToPrograde": 4702515029843825661,
+        "NextSaturnWesternQuadrature": 4702514686189458967
+      }
+    },
+    {
+      "input_utc": "1994-02-09T15:44:26.567Z",
+      "tt_jd_bits": 4702514443098662211,
+      "events": {
+        "LastSaturnConjunction": 4702513659304091564,
+        "LastSaturnEasternQuadrature": 4702514259798424414,
+        "LastSaturnOpposition": 4702514070085320670,
+        "LastSaturnProgradeToRetrograde": 4702513919871905081,
+        "LastSaturnRetrogradeToPrograde": 4702513409104977535,
+        "LastSaturnWesternQuadrature": 4702513874832582692,
+        "NextSaturnConjunction": 4702514468983755566,
+        "NextSaturnEasternQuadrature": 4702515069774975916,
+        "NextSaturnOpposition": 4702514881266851077,
+        "NextSaturnProgradeToRetrograde": 4702514731950976395,
+        "NextSaturnRetrogradeToPrograde": 4702515029843825661,
+        "NextSaturnWesternQuadrature": 4702514686189458967
+      }
+    },
+    {
+      "input_utc": "1994-07-16T20:16:55.567Z",
+      "tt_jd_bits": 4702514780659976402,
+      "events": {
+        "LastSaturnConjunction": 4702514468983755566,
+        "LastSaturnEasternQuadrature": 4702514259798424414,
+        "LastSaturnOpposition": 4702514070085320670,
+        "LastSaturnProgradeToRetrograde": 4702513919871905081,
+        "LastSaturnRetrogradeToPrograde": 4702513409104977535,
+        "LastSaturnWesternQuadrature": 4702514686189458967,
+        "NextSaturnConjunction": 4702515279344838126,
+        "NextSaturnEasternQuadrature": 4702515069774975916,
+        "NextSaturnOpposition": 4702514881266851077,
+        "NextSaturnProgradeToRetrograde": 4702515544354604724,
+        "NextSaturnRetrogradeToPrograde": 4702515029843825661,
+        "NextSaturnWesternQuadrature": 4702515498244631040
+      }
+    },
+    {
+      "input_utc": "1994-12-21T02:28:24.567Z",
+      "tt_jd_bits": 4702515118368905238,
+      "events": {
+        "LastSaturnConjunction": 4702514468983755566,
+        "LastSaturnEasternQuadrature": 4702515069774975916,
+        "LastSaturnOpposition": 4702514881266851077,
+        "LastSaturnProgradeToRetrograde": 4702514731950976395,
+        "LastSaturnRetrogradeToPrograde": 4702514219285403133,
+        "LastSaturnWesternQuadrature": 4702514686189458967,
+        "NextSaturnConjunction": 4702515279344838126,
+        "NextSaturnEasternQuadrature": 4702515880214401232,
+        "NextSaturnOpposition": 4702515692894797145,
+        "NextSaturnProgradeToRetrograde": 4702515544354604724,
+        "NextSaturnRetrogradeToPrograde": 4702515840919644219,
+        "NextSaturnWesternQuadrature": 4702515498244631040
+      }
+    },
+    {
+      "input_utc": "1995-05-27T08:39:53.567Z",
+      "tt_jd_bits": 4702515456077834074,
+      "events": {
+        "LastSaturnConjunction": 4702515279344838126,
+        "LastSaturnEasternQuadrature": 4702515069774975916,
+        "LastSaturnOpposition": 4702514881266851077,
+        "LastSaturnProgradeToRetrograde": 4702514731950976395,
+        "LastSaturnRetrogradeToPrograde": 4702514219285403133,
+        "LastSaturnWesternQuadrature": 4702514686189458967,
+        "NextSaturnConjunction": 4702516090514302280,
+        "NextSaturnEasternQuadrature": 4702515880214401232,
+        "NextSaturnOpposition": 4702515692894797145,
+        "NextSaturnProgradeToRetrograde": 4702515544354604724,
+        "NextSaturnRetrogradeToPrograde": 4702515840919644219,
+        "NextSaturnWesternQuadrature": 4702515498244631040
+      }
+    },
+    {
+      "input_utc": "1995-10-31T14:51:22.567Z",
+      "tt_jd_bits": 4702515793786762910,
+      "events": {
+        "LastSaturnConjunction": 4702515279344838126,
+        "LastSaturnEasternQuadrature": 4702515069774975916,
+        "LastSaturnOpposition": 4702515692894797145,
+        "LastSaturnProgradeToRetrograde": 4702515544354604724,
+        "LastSaturnRetrogradeToPrograde": 4702515029843825661,
+        "LastSaturnWesternQuadrature": 4702515498244631040,
+        "NextSaturnConjunction": 4702516090514302280,
+        "NextSaturnEasternQuadrature": 4702515880214401232,
+        "NextSaturnOpposition": 4702516504989033232,
+        "NextSaturnProgradeToRetrograde": 4702516357268988032,
+        "NextSaturnRetrogradeToPrograde": 4702516652440690413,
+        "NextSaturnWesternQuadrature": 4702516311055589949
+      }
+    },
+    {
+      "input_utc": "1996-04-05T21:02:51.567Z",
+      "tt_jd_bits": 4702516131495716601,
+      "events": {
+        "LastSaturnConjunction": 4702516090514302280,
+        "LastSaturnEasternQuadrature": 4702515880214401232,
+        "LastSaturnOpposition": 4702515692894797145,
+        "LastSaturnProgradeToRetrograde": 4702515544354604724,
+        "LastSaturnRetrogradeToPrograde": 4702515029843825661,
+        "LastSaturnWesternQuadrature": 4702515498244631040,
+        "NextSaturnConjunction": 4702516902555110575,
+        "NextSaturnEasternQuadrature": 4702516691190328426,
+        "NextSaturnOpposition": 4702516504989033232,
+        "NextSaturnProgradeToRetrograde": 4702516357268988032,
+        "NextSaturnRetrogradeToPrograde": 4702516652440690413,
+        "NextSaturnWesternQuadrature": 4702516311055589949
+      }
+    },
+    {
+      "input_utc": "1996-09-08T09:07:34.567Z",
+      "tt_jd_bits": 4702516465436457868,
+      "events": {
+        "LastSaturnConjunction": 4702516090514302280,
+        "LastSaturnEasternQuadrature": 4702515880214401232,
+        "LastSaturnOpposition": 4702515692894797145,
+        "LastSaturnProgradeToRetrograde": 4702515544354604724,
+        "LastSaturnRetrogradeToPrograde": 4702515029843825661,
+        "LastSaturnWesternQuadrature": 4702516311055589949,
+        "NextSaturnConjunction": 4702516902555110575,
+        "NextSaturnEasternQuadrature": 4702516691190328426,
+        "NextSaturnOpposition": 4702516504989033232,
+        "NextSaturnProgradeToRetrograde": 4702517170653618533,
+        "NextSaturnRetrogradeToPrograde": 4702516652440690413,
+        "NextSaturnWesternQuadrature": 4702517124594031913
+      }
+    },
+    {
+      "input_utc": "1997-02-12T15:19:03.567Z",
+      "tt_jd_bits": 4702516803145386704,
+      "events": {
+        "LastSaturnConjunction": 4702516090514302280,
+        "LastSaturnEasternQuadrature": 4702516691190328426,
+        "LastSaturnOpposition": 4702516504989033232,
+        "LastSaturnProgradeToRetrograde": 4702516357268988032,
+        "LastSaturnRetrogradeToPrograde": 4702515840919644219,
+        "LastSaturnWesternQuadrature": 4702516311055589949,
+        "NextSaturnConjunction": 4702516902555110575,
+        "NextSaturnEasternQuadrature": 4702517502797422987,
+        "NextSaturnOpposition": 4702517317565580108,
+        "NextSaturnProgradeToRetrograde": 4702517170653618533,
+        "NextSaturnRetrogradeToPrograde": 4702517464207764355,
+        "NextSaturnWesternQuadrature": 4702517124594031913
+      }
+    },
+    {
+      "input_utc": "1997-07-19T21:30:32.567Z",
+      "tt_jd_bits": 4702517140854340395,
+      "events": {
+        "LastSaturnConjunction": 4702516902555110575,
+        "LastSaturnEasternQuadrature": 4702516691190328426,
+        "LastSaturnOpposition": 4702516504989033232,
+        "LastSaturnProgradeToRetrograde": 4702516357268988032,
+        "LastSaturnRetrogradeToPrograde": 4702515840919644219,
+        "LastSaturnWesternQuadrature": 4702517124594031913,
+        "NextSaturnConjunction": 4702517715498557159,
+        "NextSaturnEasternQuadrature": 4702517502797422987,
+        "NextSaturnOpposition": 4702517317565580108,
+        "NextSaturnProgradeToRetrograde": 4702517170653618533,
+        "NextSaturnRetrogradeToPrograde": 4702517464207764355,
+        "NextSaturnWesternQuadrature": 4702517938784304524
+      }
+    },
+    {
+      "input_utc": "1997-12-24T03:42:01.567Z",
+      "tt_jd_bits": 4702517478563269231,
+      "events": {
+        "LastSaturnConjunction": 4702516902555110575,
+        "LastSaturnEasternQuadrature": 4702516691190328426,
+        "LastSaturnOpposition": 4702517317565580108,
+        "LastSaturnProgradeToRetrograde": 4702517170653618533,
+        "LastSaturnRetrogradeToPrograde": 4702516652440690413,
+        "LastSaturnWesternQuadrature": 4702517124594031913,
+        "NextSaturnConjunction": 4702517715498557159,
+        "NextSaturnEasternQuadrature": 4702517502797422987,
+        "NextSaturnOpposition": 4702518130601807739,
+        "NextSaturnProgradeToRetrograde": 4702517984360352187,
+        "NextSaturnRetrogradeToPrograde": 4702518276343086805,
+        "NextSaturnWesternQuadrature": 4702517938784304524
+      }
+    },
+    {
+      "input_utc": "1998-05-30T08:14:30.567Z",
+      "tt_jd_bits": 4702517816124558566,
+      "events": {
+        "LastSaturnConjunction": 4702517715498557159,
+        "LastSaturnEasternQuadrature": 4702517502797422987,
+        "LastSaturnOpposition": 4702517317565580108,
+        "LastSaturnProgradeToRetrograde": 4702517170653618533,
+        "LastSaturnRetrogradeToPrograde": 4702516652440690413,
+        "LastSaturnWesternQuadrature": 4702517124594031913,
+        "NextSaturnConjunction": 4702518529339946910,
+        "NextSaturnEasternQuadrature": 4702518315061435169,
+        "NextSaturnOpposition": 4702518130601807739,
+        "NextSaturnProgradeToRetrograde": 4702517984360352187,
+        "NextSaturnRetrogradeToPrograde": 4702518276343086805,
+        "NextSaturnWesternQuadrature": 4702517938784304524
+      }
+    },
+    {
+      "input_utc": "1998-11-03T14:25:59.567Z",
+      "tt_jd_bits": 4702518153833487402,
+      "events": {
+        "LastSaturnConjunction": 4702517715498557159,
+        "LastSaturnEasternQuadrature": 4702517502797422987,
+        "LastSaturnOpposition": 4702518130601807739,
+        "LastSaturnProgradeToRetrograde": 4702517984360352187,
+        "LastSaturnRetrogradeToPrograde": 4702517464207764355,
+        "LastSaturnWesternQuadrature": 4702517938784304524,
+        "NextSaturnConjunction": 4702518529339946910,
+        "NextSaturnEasternQuadrature": 4702518315061435169,
+        "NextSaturnOpposition": 4702518944055986604,
+        "NextSaturnProgradeToRetrograde": 4702518798260476232,
+        "NextSaturnRetrogradeToPrograde": 4702519088991987938,
+        "NextSaturnWesternQuadrature": 4702518753554309388
+      }
+    },
+    {
+      "input_utc": "1999-04-09T20:37:28.567Z",
+      "tt_jd_bits": 4702518491542441093,
+      "events": {
+        "LastSaturnConjunction": 4702517715498557159,
+        "LastSaturnEasternQuadrature": 4702518315061435169,
+        "LastSaturnOpposition": 4702518130601807739,
+        "LastSaturnProgradeToRetrograde": 4702517984360352187,
+        "LastSaturnRetrogradeToPrograde": 4702517464207764355,
+        "LastSaturnWesternQuadrature": 4702517938784304524,
+        "NextSaturnConjunction": 4702518529339946910,
+        "NextSaturnEasternQuadrature": 4702519127967766962,
+        "NextSaturnOpposition": 4702518944055986604,
+        "NextSaturnProgradeToRetrograde": 4702518798260476232,
+        "NextSaturnRetrogradeToPrograde": 4702519088991987938,
+        "NextSaturnWesternQuadrature": 4702518753554309388
+      }
+    },
+    {
+      "input_utc": "1999-09-12T08:48:57.567Z",
+      "tt_jd_bits": 4702518825493273544,
+      "events": {
+        "LastSaturnConjunction": 4702518529339946910,
+        "LastSaturnEasternQuadrature": 4702518315061435169,
+        "LastSaturnOpposition": 4702518130601807739,
+        "LastSaturnProgradeToRetrograde": 4702517984360352187,
+        "LastSaturnRetrogradeToPrograde": 4702517464207764355,
+        "LastSaturnWesternQuadrature": 4702518753554309388,
+        "NextSaturnConjunction": 4702519344013384972,
+        "NextSaturnEasternQuadrature": 4702519127967766962,
+        "NextSaturnOpposition": 4702518944055986604,
+        "NextSaturnProgradeToRetrograde": 4702519612466348139,
+        "NextSaturnRetrogradeToPrograde": 4702519088991987938,
+        "NextSaturnWesternQuadrature": 4702519568739573999
+      }
+    },
+    {
+      "input_utc": "2000-02-16T15:00:26.567Z",
+      "tt_jd_bits": 4702519163202202380,
+      "events": {
+        "LastSaturnConjunction": 4702518529339946910,
+        "LastSaturnEasternQuadrature": 4702519127967766962,
+        "LastSaturnOpposition": 4702518944055986604,
+        "LastSaturnProgradeToRetrograde": 4702518798260476232,
+        "LastSaturnRetrogradeToPrograde": 4702518276343086805,
+        "LastSaturnWesternQuadrature": 4702518753554309388,
+        "NextSaturnConjunction": 4702519344013384972,
+        "NextSaturnEasternQuadrature": 4702519941514944556,
+        "NextSaturnOpposition": 4702519757846311291,
+        "NextSaturnProgradeToRetrograde": 4702519612466348139,
+        "NextSaturnRetrogradeToPrograde": 4702519901997069936,
+        "NextSaturnWesternQuadrature": 4702519568739573999
+      }
+    },
+    {
+      "input_utc": "2000-07-22T21:11:55.567Z",
+      "tt_jd_bits": 4702519500911131216,
+      "events": {
+        "LastSaturnConjunction": 4702519344013384972,
+        "LastSaturnEasternQuadrature": 4702519127967766962,
+        "LastSaturnOpposition": 4702518944055986604,
+        "LastSaturnProgradeToRetrograde": 4702518798260476232,
+        "LastSaturnRetrogradeToPrograde": 4702518276343086805,
+        "LastSaturnWesternQuadrature": 4702518753554309388,
+        "NextSaturnConjunction": 4702520159413398001,
+        "NextSaturnEasternQuadrature": 4702519941514944556,
+        "NextSaturnOpposition": 4702519757846311291,
+        "NextSaturnProgradeToRetrograde": 4702519612466348139,
+        "NextSaturnRetrogradeToPrograde": 4702519901997069936,
+        "NextSaturnWesternQuadrature": 4702519568739573999
+      }
+    },
+    {
+      "input_utc": "2000-12-27T03:23:24.567Z",
+      "tt_jd_bits": 4702519838620060052,
+      "events": {
+        "LastSaturnConjunction": 4702519344013384972,
+        "LastSaturnEasternQuadrature": 4702519127967766962,
+        "LastSaturnOpposition": 4702519757846311291,
+        "LastSaturnProgradeToRetrograde": 4702519612466348139,
+        "LastSaturnRetrogradeToPrograde": 4702519088991987938,
+        "LastSaturnWesternQuadrature": 4702519568739573999,
+        "NextSaturnConjunction": 4702520159413398001,
+        "NextSaturnEasternQuadrature": 4702519941514944556,
+        "NextSaturnOpposition": 4702520571879460411,
+        "NextSaturnProgradeToRetrograde": 4702520426998993459,
+        "NextSaturnRetrogradeToPrograde": 4702520715408265837,
+        "NextSaturnWesternQuadrature": 4702520384150800632
+      }
+    },
+    {
+      "input_utc": "2001-06-02T09:34:53.567Z",
+      "tt_jd_bits": 4702520176328988888,
+      "events": {
+        "LastSaturnConjunction": 4702520159413398001,
+        "LastSaturnEasternQuadrature": 4702519941514944556,
+        "LastSaturnOpposition": 4702519757846311291,
+        "LastSaturnProgradeToRetrograde": 4702519612466348139,
+        "LastSaturnRetrogradeToPrograde": 4702519088991987938,
+        "LastSaturnWesternQuadrature": 4702519568739573999,
+        "NextSaturnConjunction": 4702520975353282020,
+        "NextSaturnEasternQuadrature": 4702520755639236101,
+        "NextSaturnOpposition": 4702520571879460411,
+        "NextSaturnProgradeToRetrograde": 4702520426998993459,
+        "NextSaturnRetrogradeToPrograde": 4702520715408265837,
+        "NextSaturnWesternQuadrature": 4702520384150800632
+      }
+    },
+    {
+      "input_utc": "2001-11-06T15:46:22.567Z",
+      "tt_jd_bits": 4702520514037917724,
+      "events": {
+        "LastSaturnConjunction": 4702520159413398001,
+        "LastSaturnEasternQuadrature": 4702519941514944556,
+        "LastSaturnOpposition": 4702519757846311291,
+        "LastSaturnProgradeToRetrograde": 4702519612466348139,
+        "LastSaturnRetrogradeToPrograde": 4702519088991987938,
+        "LastSaturnWesternQuadrature": 4702520384150800632,
+        "NextSaturnConjunction": 4702520975353282020,
+        "NextSaturnEasternQuadrature": 4702520755639236101,
+        "NextSaturnOpposition": 4702520571879460411,
+        "NextSaturnProgradeToRetrograde": 4702521241794412535,
+        "NextSaturnRetrogradeToPrograde": 4702520715408265837,
+        "NextSaturnWesternQuadrature": 4702521199621414941
+      }
+    },
+    {
+      "input_utc": "2002-04-12T20:18:51.567Z",
+      "tt_jd_bits": 4702520851599207059,
+      "events": {
+        "LastSaturnConjunction": 4702520159413398001,
+        "LastSaturnEasternQuadrature": 4702520755639236101,
+        "LastSaturnOpposition": 4702520571879460411,
+        "LastSaturnProgradeToRetrograde": 4702520426998993459,
+        "LastSaturnRetrogradeToPrograde": 4702519901997069936,
+        "LastSaturnWesternQuadrature": 4702520384150800632,
+        "NextSaturnConjunction": 4702520975353282020,
+        "NextSaturnEasternQuadrature": 4702521570227971154,
+        "NextSaturnOpposition": 4702521386065820580,
+        "NextSaturnProgradeToRetrograde": 4702521241794412535,
+        "NextSaturnRetrogradeToPrograde": 4702521529307767291,
+        "NextSaturnWesternQuadrature": 4702521199621414941
+      }
+    },
+    {
+      "input_utc": "2002-09-15T08:23:34.567Z",
+      "tt_jd_bits": 4702521185539948326,
+      "events": {
+        "LastSaturnConjunction": 4702520975353282020,
+        "LastSaturnEasternQuadrature": 4702520755639236101,
+        "LastSaturnOpposition": 4702520571879460411,
+        "LastSaturnProgradeToRetrograde": 4702520426998993459,
+        "LastSaturnRetrogradeToPrograde": 4702519901997069936,
+        "LastSaturnWesternQuadrature": 4702520384150800632,
+        "NextSaturnConjunction": 4702521791599429614,
+        "NextSaturnEasternQuadrature": 4702521570227971154,
+        "NextSaturnOpposition": 4702521386065820580,
+        "NextSaturnProgradeToRetrograde": 4702521241794412535,
+        "NextSaturnRetrogradeToPrograde": 4702521529307767291,
+        "NextSaturnWesternQuadrature": 4702521199621414941
+      }
+    },
+    {
+      "input_utc": "2003-02-19T14:35:03.567Z",
+      "tt_jd_bits": 4702521523248877162,
+      "events": {
+        "LastSaturnConjunction": 4702520975353282020,
+        "LastSaturnEasternQuadrature": 4702520755639236101,
+        "LastSaturnOpposition": 4702521386065820580,
+        "LastSaturnProgradeToRetrograde": 4702521241794412535,
+        "LastSaturnRetrogradeToPrograde": 4702520715408265837,
+        "LastSaturnWesternQuadrature": 4702521199621414941,
+        "NextSaturnConjunction": 4702521791599429614,
+        "NextSaturnEasternQuadrature": 4702521570227971154,
+        "NextSaturnOpposition": 4702522200274601109,
+        "NextSaturnProgradeToRetrograde": 4702522056669865252,
+        "NextSaturnRetrogradeToPrograde": 4702522343647510198,
+        "NextSaturnWesternQuadrature": 4702522014939175063
+      }
+    },
+    {
+      "input_utc": "2003-07-26T20:46:32.567Z",
+      "tt_jd_bits": 4702521860957805998,
+      "events": {
+        "LastSaturnConjunction": 4702521791599429614,
+        "LastSaturnEasternQuadrature": 4702521570227971154,
+        "LastSaturnOpposition": 4702521386065820580,
+        "LastSaturnProgradeToRetrograde": 4702521241794412535,
+        "LastSaturnRetrogradeToPrograde": 4702520715408265837,
+        "LastSaturnWesternQuadrature": 4702521199621414941,
+        "NextSaturnConjunction": 4702522607909441859,
+        "NextSaturnEasternQuadrature": 4702522385163074005,
+        "NextSaturnOpposition": 4702522200274601109,
+        "NextSaturnProgradeToRetrograde": 4702522056669865252,
+        "NextSaturnRetrogradeToPrograde": 4702522343647510198,
+        "NextSaturnWesternQuadrature": 4702522014939175063
+      }
+    },
+    {
+      "input_utc": "2003-12-31T02:58:01.567Z",
+      "tt_jd_bits": 4702522198666734834,
+      "events": {
+        "LastSaturnConjunction": 4702521791599429614,
+        "LastSaturnEasternQuadrature": 4702521570227971154,
+        "LastSaturnOpposition": 4702521386065820580,
+        "LastSaturnProgradeToRetrograde": 4702521241794412535,
+        "LastSaturnRetrogradeToPrograde": 4702520715408265837,
+        "LastSaturnWesternQuadrature": 4702522014939175063,
+        "NextSaturnConjunction": 4702522607909441859,
+        "NextSaturnEasternQuadrature": 4702522385163074005,
+        "NextSaturnOpposition": 4702522200274601109,
+        "NextSaturnProgradeToRetrograde": 4702522871515625573,
+        "NextSaturnRetrogradeToPrograde": 4702522343647510198,
+        "NextSaturnWesternQuadrature": 4702522829887029833
+      }
+    },
+    {
+      "input_utc": "2004-06-05T09:09:30.567Z",
+      "tt_jd_bits": 4702522536375663670,
+      "events": {
+        "LastSaturnConjunction": 4702521791599429614,
+        "LastSaturnEasternQuadrature": 4702522385163074005,
+        "LastSaturnOpposition": 4702522200274601109,
+        "LastSaturnProgradeToRetrograde": 4702522056669865252,
+        "LastSaturnRetrogradeToPrograde": 4702521529307767291,
+        "LastSaturnWesternQuadrature": 4702522014939175063,
+        "NextSaturnConjunction": 4702522607909441859,
+        "NextSaturnEasternQuadrature": 4702523200254415846,
+        "NextSaturnOpposition": 4702523014362488570,
+        "NextSaturnProgradeToRetrograde": 4702522871515625573,
+        "NextSaturnRetrogradeToPrograde": 4702523158325250300,
+        "NextSaturnWesternQuadrature": 4702522829887029833
+      }
+    },
+    {
+      "input_utc": "2004-11-09T15:20:59.567Z",
+      "tt_jd_bits": 4702522874084592506,
+      "events": {
+        "LastSaturnConjunction": 4702522607909441859,
+        "LastSaturnEasternQuadrature": 4702522385163074005,
+        "LastSaturnOpposition": 4702522200274601109,
+        "LastSaturnProgradeToRetrograde": 4702522056669865252,
+        "LastSaturnRetrogradeToPrograde": 4702521529307767291,
+        "LastSaturnWesternQuadrature": 4702522829887029833,
+        "NextSaturnConjunction": 4702523423987350056,
+        "NextSaturnEasternQuadrature": 4702523200254415846,
+        "NextSaturnOpposition": 4702523014362488570,
+        "NextSaturnProgradeToRetrograde": 4702523686106565171,
+        "NextSaturnRetrogradeToPrograde": 4702523158325250300,
+        "NextSaturnWesternQuadrature": 4702523644313278477
+      }
+    },
+    {
+      "input_utc": "2005-04-15T21:32:28.567Z",
+      "tt_jd_bits": 4702523211793521341,
+      "events": {
+        "LastSaturnConjunction": 4702522607909441859,
+        "LastSaturnEasternQuadrature": 4702523200254415846,
+        "LastSaturnOpposition": 4702523014362488570,
+        "LastSaturnProgradeToRetrograde": 4702522871515625573,
+        "LastSaturnRetrogradeToPrograde": 4702522343647510198,
+        "LastSaturnWesternQuadrature": 4702522829887029833,
+        "NextSaturnConjunction": 4702523423987350056,
+        "NextSaturnEasternQuadrature": 4702524015309278842,
+        "NextSaturnOpposition": 4702523828232651837,
+        "NextSaturnProgradeToRetrograde": 4702523686106565171,
+        "NextSaturnRetrogradeToPrograde": 4702523973299200260,
+        "NextSaturnWesternQuadrature": 4702523644313278477
+      }
+    },
+    {
+      "input_utc": "2005-09-18T09:43:57.567Z",
+      "tt_jd_bits": 4702523545744353793,
+      "events": {
+        "LastSaturnConjunction": 4702523423987350056,
+        "LastSaturnEasternQuadrature": 4702523200254415846,
+        "LastSaturnOpposition": 4702523014362488570,
+        "LastSaturnProgradeToRetrograde": 4702522871515625573,
+        "LastSaturnRetrogradeToPrograde": 4702522343647510198,
+        "LastSaturnWesternQuadrature": 4702522829887029833,
+        "NextSaturnConjunction": 4702524239574022456,
+        "NextSaturnEasternQuadrature": 4702524015309278842,
+        "NextSaturnOpposition": 4702523828232651837,
+        "NextSaturnProgradeToRetrograde": 4702523686106565171,
+        "NextSaturnRetrogradeToPrograde": 4702523973299200260,
+        "NextSaturnWesternQuadrature": 4702523644313278477
+      }
+    },
+    {
+      "input_utc": "2006-02-22T14:16:26.567Z",
+      "tt_jd_bits": 4702523883305667983,
+      "events": {
+        "LastSaturnConjunction": 4702523423987350056,
+        "LastSaturnEasternQuadrature": 4702523200254415846,
+        "LastSaturnOpposition": 4702523828232651837,
+        "LastSaturnProgradeToRetrograde": 4702523686106565171,
+        "LastSaturnRetrogradeToPrograde": 4702523158325250300,
+        "LastSaturnWesternQuadrature": 4702523644313278477,
+        "NextSaturnConjunction": 4702524239574022456,
+        "NextSaturnEasternQuadrature": 4702524015309278842,
+        "NextSaturnOpposition": 4702524641761758598,
+        "NextSaturnProgradeToRetrograde": 4702524500152179354,
+        "NextSaturnRetrogradeToPrograde": 4702524788384307362,
+        "NextSaturnWesternQuadrature": 4702524458086677406
+      }
+    },
+    {
+      "input_utc": "2006-07-29T20:27:55.567Z",
+      "tt_jd_bits": 4702524221014596819,
+      "events": {
+        "LastSaturnConjunction": 4702523423987350056,
+        "LastSaturnEasternQuadrature": 4702524015309278842,
+        "LastSaturnOpposition": 4702523828232651837,
+        "LastSaturnProgradeToRetrograde": 4702523686106565171,
+        "LastSaturnRetrogradeToPrograde": 4702523158325250300,
+        "LastSaturnWesternQuadrature": 4702523644313278477,
+        "NextSaturnConjunction": 4702524239574022456,
+        "NextSaturnEasternQuadrature": 4702524830148248405,
+        "NextSaturnOpposition": 4702524641761758598,
+        "NextSaturnProgradeToRetrograde": 4702524500152179354,
+        "NextSaturnRetrogradeToPrograde": 4702524788384307362,
+        "NextSaturnWesternQuadrature": 4702524458086677406
+      }
+    },
+    {
+      "input_utc": "2007-01-03T02:39:24.567Z",
+      "tt_jd_bits": 4702524558723525655,
+      "events": {
+        "LastSaturnConjunction": 4702524239574022456,
+        "LastSaturnEasternQuadrature": 4702524015309278842,
+        "LastSaturnOpposition": 4702523828232651837,
+        "LastSaturnProgradeToRetrograde": 4702523686106565171,
+        "LastSaturnRetrogradeToPrograde": 4702523158325250300,
+        "LastSaturnWesternQuadrature": 4702524458086677406,
+        "NextSaturnConjunction": 4702525054505625979,
+        "NextSaturnEasternQuadrature": 4702524830148248405,
+        "NextSaturnOpposition": 4702524641761758598,
+        "NextSaturnProgradeToRetrograde": 4702525313344270331,
+        "NextSaturnRetrogradeToPrograde": 4702524788384307362,
+        "NextSaturnWesternQuadrature": 4702525271124495246
+      }
+    },
+    {
+      "input_utc": "2007-06-09T08:50:53.567Z",
+      "tt_jd_bits": 4702524896432454491,
+      "events": {
+        "LastSaturnConjunction": 4702524239574022456,
+        "LastSaturnEasternQuadrature": 4702524830148248405,
+        "LastSaturnOpposition": 4702524641761758598,
+        "LastSaturnProgradeToRetrograde": 4702524500152179354,
+        "LastSaturnRetrogradeToPrograde": 4702523973299200260,
+        "LastSaturnWesternQuadrature": 4702524458086677406,
+        "NextSaturnConjunction": 4702525054505625979,
+        "NextSaturnEasternQuadrature": 4702525644611344881,
+        "NextSaturnOpposition": 4702525454861402803,
+        "NextSaturnProgradeToRetrograde": 4702525313344270331,
+        "NextSaturnRetrogradeToPrograde": 4702525603357160342,
+        "NextSaturnWesternQuadrature": 4702525271124495246
+      }
+    },
+    {
+      "input_utc": "2007-11-13T15:02:22.567Z",
+      "tt_jd_bits": 4702525234141383327,
+      "events": {
+        "LastSaturnConjunction": 4702525054505625979,
+        "LastSaturnEasternQuadrature": 4702524830148248405,
+        "LastSaturnOpposition": 4702524641761758598,
+        "LastSaturnProgradeToRetrograde": 4702524500152179354,
+        "LastSaturnRetrogradeToPrograde": 4702523973299200260,
+        "LastSaturnWesternQuadrature": 4702524458086677406,
+        "NextSaturnConjunction": 4702525868627525718,
+        "NextSaturnEasternQuadrature": 4702525644611344881,
+        "NextSaturnOpposition": 4702525454861402803,
+        "NextSaturnProgradeToRetrograde": 4702525313344270331,
+        "NextSaturnRetrogradeToPrograde": 4702525603357160342,
+        "NextSaturnWesternQuadrature": 4702525271124495246
+      }
+    },
+    {
+      "input_utc": "2008-04-18T21:13:51.567Z",
+      "tt_jd_bits": 4702525571850312163,
+      "events": {
+        "LastSaturnConjunction": 4702525054505625979,
+        "LastSaturnEasternQuadrature": 4702524830148248405,
+        "LastSaturnOpposition": 4702525454861402803,
+        "LastSaturnProgradeToRetrograde": 4702525313344270331,
+        "LastSaturnRetrogradeToPrograde": 4702524788384307362,
+        "LastSaturnWesternQuadrature": 4702525271124495246,
+        "NextSaturnConjunction": 4702525868627525718,
+        "NextSaturnEasternQuadrature": 4702525644611344881,
+        "NextSaturnOpposition": 4702526267512949842,
+        "NextSaturnProgradeToRetrograde": 4702526125761325730,
+        "NextSaturnRetrogradeToPrograde": 4702526417756242433,
+        "NextSaturnWesternQuadrature": 4702526083406059771
+      }
+    },
+    {
+      "input_utc": "2008-09-21T09:18:34.567Z",
+      "tt_jd_bits": 4702525905791053430,
+      "events": {
+        "LastSaturnConjunction": 4702525868627525718,
+        "LastSaturnEasternQuadrature": 4702525644611344881,
+        "LastSaturnOpposition": 4702525454861402803,
+        "LastSaturnProgradeToRetrograde": 4702525313344270331,
+        "LastSaturnRetrogradeToPrograde": 4702524788384307362,
+        "LastSaturnWesternQuadrature": 4702525271124495246,
+        "NextSaturnConjunction": 4702526681841755466,
+        "NextSaturnEasternQuadrature": 4702526458575492781,
+        "NextSaturnOpposition": 4702526267512949842,
+        "NextSaturnProgradeToRetrograde": 4702526125761325730,
+        "NextSaturnRetrogradeToPrograde": 4702526417756242433,
+        "NextSaturnWesternQuadrature": 4702526083406059771
+      }
+    },
+    {
+      "input_utc": "2009-02-25T15:30:03.567Z",
+      "tt_jd_bits": 4702526243500007121,
+      "events": {
+        "LastSaturnConjunction": 4702525868627525718,
+        "LastSaturnEasternQuadrature": 4702525644611344881,
+        "LastSaturnOpposition": 4702525454861402803,
+        "LastSaturnProgradeToRetrograde": 4702525313344270331,
+        "LastSaturnRetrogradeToPrograde": 4702524788384307362,
+        "LastSaturnWesternQuadrature": 4702526083406059771,
+        "NextSaturnConjunction": 4702526681841755466,
+        "NextSaturnEasternQuadrature": 4702526458575492781,
+        "NextSaturnOpposition": 4702526267512949842,
+        "NextSaturnProgradeToRetrograde": 4702526937433151703,
+        "NextSaturnRetrogradeToPrograde": 4702526417756242433,
+        "NextSaturnWesternQuadrature": 4702526894942957106
+      }
+    },
+    {
+      "input_utc": "2009-08-01T21:41:32.567Z",
+      "tt_jd_bits": 4702526581208935957,
+      "events": {
+        "LastSaturnConjunction": 4702525868627525718,
+        "LastSaturnEasternQuadrature": 4702526458575492781,
+        "LastSaturnOpposition": 4702526267512949842,
+        "LastSaturnProgradeToRetrograde": 4702526125761325730,
+        "LastSaturnRetrogradeToPrograde": 4702525603357160342,
+        "LastSaturnWesternQuadrature": 4702526083406059771,
+        "NextSaturnConjunction": 4702526681841755466,
+        "NextSaturnEasternQuadrature": 4702527271945710040,
+        "NextSaturnOpposition": 4702527079685467252,
+        "NextSaturnProgradeToRetrograde": 4702526937433151703,
+        "NextSaturnRetrogradeToPrograde": 4702527231412739836,
+        "NextSaturnWesternQuadrature": 4702526894942957106
+      }
+    },
+    {
+      "input_utc": "2010-01-06T02:14:01.567Z",
+      "tt_jd_bits": 4702526918770225292,
+      "events": {
+        "LastSaturnConjunction": 4702526681841755466,
+        "LastSaturnEasternQuadrature": 4702526458575492781,
+        "LastSaturnOpposition": 4702526267512949842,
+        "LastSaturnProgradeToRetrograde": 4702526125761325730,
+        "LastSaturnRetrogradeToPrograde": 4702525603357160342,
+        "LastSaturnWesternQuadrature": 4702526894942957106,
+        "NextSaturnConjunction": 4702527494156827710,
+        "NextSaturnEasternQuadrature": 4702527271945710040,
+        "NextSaturnOpposition": 4702527079685467252,
+        "NextSaturnProgradeToRetrograde": 4702526937433151703,
+        "NextSaturnRetrogradeToPrograde": 4702527231412739836,
+        "NextSaturnWesternQuadrature": 4702527705800755548
+      }
+    },
+    {
+      "input_utc": "2010-06-12T08:25:30.567Z",
+      "tt_jd_bits": 4702527256479154128,
+      "events": {
+        "LastSaturnConjunction": 4702526681841755466,
+        "LastSaturnEasternQuadrature": 4702526458575492781,
+        "LastSaturnOpposition": 4702527079685467252,
+        "LastSaturnProgradeToRetrograde": 4702526937433151703,
+        "LastSaturnRetrogradeToPrograde": 4702526417756242433,
+        "LastSaturnWesternQuadrature": 4702526894942957106,
+        "NextSaturnConjunction": 4702527494156827710,
+        "NextSaturnEasternQuadrature": 4702527271945710040,
+        "NextSaturnOpposition": 4702527891373369463,
+        "NextSaturnProgradeToRetrograde": 4702527748232351837,
+        "NextSaturnRetrogradeToPrograde": 4702528044263380835,
+        "NextSaturnWesternQuadrature": 4702527705800755548
+      }
+    },
+    {
+      "input_utc": "2010-11-16T14:36:59.567Z",
+      "tt_jd_bits": 4702527594188082964,
+      "events": {
+        "LastSaturnConjunction": 4702527494156827710,
+        "LastSaturnEasternQuadrature": 4702527271945710040,
+        "LastSaturnOpposition": 4702527079685467252,
+        "LastSaturnProgradeToRetrograde": 4702526937433151703,
+        "LastSaturnRetrogradeToPrograde": 4702526417756242433,
+        "LastSaturnWesternQuadrature": 4702526894942957106,
+        "NextSaturnConjunction": 4702528305594173683,
+        "NextSaturnEasternQuadrature": 4702528084677652442,
+        "NextSaturnOpposition": 4702527891373369463,
+        "NextSaturnProgradeToRetrograde": 4702527748232351837,
+        "NextSaturnRetrogradeToPrograde": 4702528044263380835,
+        "NextSaturnWesternQuadrature": 4702527705800755548
+      }
+    }
+  ]
+}

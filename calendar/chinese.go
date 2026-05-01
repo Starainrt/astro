@@ -45,7 +45,7 @@ const (
 	JQ_惊蛰
 )
 
-// Lunar 公历转农历
+// Lunar 公历转农历 / solar to lunar calendar.
 // 传入 公历年月日，时区
 // 返回 农历月，日，是否闰月以及文字描述
 // 按现行农历GB/T 33661-2017算法计算，推荐使用年限为[1929-3000]年
@@ -54,7 +54,7 @@ func Lunar(year, month, day int, timezone float64) (int, int, int, bool, string)
 	return basic.GetLunar(year, month, day, timezone/24.0)
 }
 
-// Solar 农历转公历
+// Solar 农历转公历 / lunar to solar calendar.
 // 传入 农历年份，月，日，是否闰月，时区
 // 传出 公历时间
 // 农历年份用公历年份代替，但是岁首需要使用农历岁首
@@ -68,7 +68,7 @@ func Solar(year, month, day int, leap bool, timezone float64) time.Time {
 	return basic.JDE2DateByZone(jde, zone, true)
 }
 
-// SolarToLunar 公历转农历
+// SolarToLunar 公历转农历 / solar to lunar calendar.
 // 传入 公历年月日
 // 返回 包含农历信息的Time结构体
 // 支持年份：[-103,3000]
@@ -78,7 +78,7 @@ func SolarToLunar(date time.Time) (Time, error) {
 	return innerSolarToLunar(date)
 }
 
-// SolarToLunarByYMD 公历转农历
+// SolarToLunarByYMD 公历转农历（按年月日） / solar to lunar calendar by year, month, and day.
 // 传入 公历年月日
 // 返回 包含农历信息的Time结构体
 // 支持年份：[-103,3000]
@@ -92,6 +92,9 @@ func innerSolarToLunar(date time.Time) (Time, error) {
 	date = date.In(getCst())
 	if date.Year() < -103 || date.Year() > 9999 {
 		return Time{}, fmt.Errorf("日期超出范围")
+	}
+	if err := basic.ValidateCivilDate(date.Year(), int(date.Month()), float64(date.Day())); err != nil {
+		return Time{}, fmt.Errorf("公历日期不存在")
 	}
 	if date.Year() <= 1912 {
 		return innerSolarToLunarHanQing(date), nil
@@ -116,6 +119,9 @@ func innerSolarToLunarByYMD(year, month, day int) (Time, error) {
 	}
 	if day < 1 || day > 31 {
 		return Time{}, fmt.Errorf("日期超出范围")
+	}
+	if err := basic.ValidateCivilDate(year, month, float64(day)); err != nil {
+		return Time{}, fmt.Errorf("公历日期不存在")
 	}
 	if year <= 1912 {
 		return innerSolarToLunarHanQingByYMD(year, month, day, time.Time{}), nil
@@ -150,7 +156,7 @@ func transformModenLunar2Time(date time.Time, year, month, day int, leap bool, d
 	}
 }
 
-// LunarToSolar 农历转公历
+// LunarToSolar 农历转公历 / lunar to solar calendar.
 // 传入 农历描述，如"二零二零年正月初一","元丰六年十月十二","元嘉二十七年七月庚午日"
 // 传出 包含公里农历信息的Time结构体切片
 // 传入参数支持如下结构
@@ -175,7 +181,8 @@ func LunarToSolar(desc string) ([]Time, error) {
 	return results, nil
 }
 
-// LunarToSolarSingle 农历转公历
+// LunarToSolarSingle 农历转公历（单一结果） / lunar to solar calendar, single result.
+//
 // Deprecated: 推荐使用LunarToSolarByYMD
 // 传入 农历年月日，是否闰月
 // 传出 包含公里农历信息的Time结构体
@@ -186,7 +193,7 @@ func LunarToSolarSingle(year, month, day int, leap bool) (Time, error) {
 	return LunarToSolarByYMD(year, month, day, leap)
 }
 
-// LunarToSolarByYMD 农历转公历
+// LunarToSolarByYMD 农历转公历（按年月日） / lunar to solar calendar by year, month, and day.
 // 传入 农历年月日，是否闰月
 // 传出 包含公里农历信息的Time结构体
 // 支持年份：[-103,3000]
@@ -208,16 +215,20 @@ func LunarToSolarByYMD(year, month, day int, leap bool) (Time, error) {
 	return SolarToLunar(date)
 }
 
-// JieQi 返回传入年份、节气对应的北京时间节气时间
+// JieQi 节气时刻（北京时间） / solar term instant in Beijing time.
+//
+// 返回传入年份、节气对应的北京时间节气时间。
 func JieQi(year, term int) time.Time {
 	calcJde := basic.GetJQTime(year, term)
 	zone := time.FixedZone("CST", 8*3600)
 	return basic.JDE2DateByZone(calcJde, zone, false)
 }
 
-// WuHou 返回传入年份、物候对应的北京时间物候时间
+// WuHou 物候时刻（北京时间） / pentad instant in Beijing time.
+//
+// 返回传入年份、物候对应的北京时间物候时间。
 func WuHou(year, term int) time.Time {
-	calcJde := basic.GetWHTime(year, term)
+	calcJde := basic.GetWuHouTime(year, term)
 	zone := time.FixedZone("CST", 8*3600)
 	return basic.JDE2DateByZone(calcJde, zone, false)
 }
@@ -526,12 +537,12 @@ func transfer(msg string, direct bool) int {
 	return result
 }
 
-// GanZhiOfYear 返回传入年份对应的干支
+// GanZhiOfYear 年干支 / sexagenary year name.
 func GanZhiOfYear(year int) string {
-	return basic.GetGZ(year)
+	return basic.GetGanZhi(year)
 }
 
-// GanZhiOfDay
+// GanZhiOfDay 日干支 / sexagenary day name.
 func GanZhiOfDay(t time.Time) string {
 	jde := Date2JDE(time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, getCst()))
 	diff := int(jde - 2451550.5)

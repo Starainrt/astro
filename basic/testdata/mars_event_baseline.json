@@ -1,0 +1,1732 @@
+{
+  "samples": [
+    {
+      "input_utc": "1992-08-17T09:21:45.678Z",
+      "tt_jd_bits": 4702513280739287797,
+      "events": {
+        "LastMarsConjunction": 4702512672991061109,
+        "LastMarsEasternQuadrature": 4702512146017136351,
+        "LastMarsOpposition": 4702511930972129169,
+        "LastMarsProgradeToRetrograde": 4702511848566905624,
+        "LastMarsRetrogradeToPrograde": 4702510163804814255,
+        "LastMarsWesternQuadrature": 4702511701091855740,
+        "NextMarsConjunction": 4702514347420774406,
+        "NextMarsEasternQuadrature": 4702513793695761911,
+        "NextMarsOpposition": 4702513589022081913,
+        "NextMarsProgradeToRetrograde": 4702513504713609102,
+        "NextMarsRetrogradeToPrograde": 4702513671731163748,
+        "NextMarsWesternQuadrature": 4702513385284770883
+      }
+    },
+    {
+      "input_utc": "1993-06-24T13:31:02.678Z",
+      "tt_jd_bits": 4702513948978460576,
+      "events": {
+        "LastMarsConjunction": 4702512672991061109,
+        "LastMarsEasternQuadrature": 4702513793695761911,
+        "LastMarsOpposition": 4702513589022081913,
+        "LastMarsProgradeToRetrograde": 4702513504713645965,
+        "LastMarsRetrogradeToPrograde": 4702512005746656870,
+        "LastMarsWesternQuadrature": 4702513385284770883,
+        "NextMarsConjunction": 4702514347420774406,
+        "NextMarsEasternQuadrature": 4702515436148833352,
+        "NextMarsOpposition": 4702515232188471705,
+        "NextMarsProgradeToRetrograde": 4702515148308195069,
+        "NextMarsRetrogradeToPrograde": 4702515321508642044,
+        "NextMarsWesternQuadrature": 4702515034746663848
+      }
+    },
+    {
+      "input_utc": "1994-05-01T17:40:19.678Z",
+      "tt_jd_bits": 4702514617217658211,
+      "events": {
+        "LastMarsConjunction": 4702514347420774406,
+        "LastMarsEasternQuadrature": 4702513793695761911,
+        "LastMarsOpposition": 4702513589022081913,
+        "LastMarsProgradeToRetrograde": 4702513504713645965,
+        "LastMarsRetrogradeToPrograde": 4702512005746656870,
+        "LastMarsWesternQuadrature": 4702513385284770883,
+        "NextMarsConjunction": 4702516062146475025,
+        "NextMarsEasternQuadrature": 4702515436148833352,
+        "NextMarsOpposition": 4702515232188471705,
+        "NextMarsProgradeToRetrograde": 4702515148308195069,
+        "NextMarsRetrogradeToPrograde": 4702515321508642044,
+        "NextMarsWesternQuadrature": 4702515034746663848
+      }
+    },
+    {
+      "input_utc": "1995-03-08T21:49:36.678Z",
+      "tt_jd_bits": 4702515285456855846,
+      "events": {
+        "LastMarsConjunction": 4702514347420774406,
+        "LastMarsEasternQuadrature": 4702513793695761911,
+        "LastMarsOpposition": 4702515232188471705,
+        "LastMarsProgradeToRetrograde": 4702515148308195069,
+        "LastMarsRetrogradeToPrograde": 4702513671731162645,
+        "LastMarsWesternQuadrature": 4702515034746663848,
+        "NextMarsConjunction": 4702516062146475025,
+        "NextMarsEasternQuadrature": 4702515436148833352,
+        "NextMarsOpposition": 4702516873348048143,
+        "NextMarsProgradeToRetrograde": 4702516965530186729,
+        "NextMarsRetrogradeToPrograde": 4702516965530200658,
+        "NextMarsWesternQuadrature": 4702516673165460030
+      }
+    },
+    {
+      "input_utc": "1996-01-14T01:58:53.678Z",
+      "tt_jd_bits": 4702515953696053480,
+      "events": {
+        "LastMarsConjunction": 4702514347420774406,
+        "LastMarsEasternQuadrature": 4702515436148833352,
+        "LastMarsOpposition": 4702515232188471705,
+        "LastMarsProgradeToRetrograde": 4702515148308195069,
+        "LastMarsRetrogradeToPrograde": 4702513671731162645,
+        "LastMarsWesternQuadrature": 4702515034746663848,
+        "NextMarsConjunction": 4702516062146475025,
+        "NextMarsEasternQuadrature": 4702517083255863228,
+        "NextMarsOpposition": 4702516873348048143,
+        "NextMarsProgradeToRetrograde": 4702516965530186729,
+        "NextMarsRetrogradeToPrograde": 4702516965530200658,
+        "NextMarsWesternQuadrature": 4702516673165460030
+      }
+    },
+    {
+      "input_utc": "1996-11-20T06:08:10.678Z",
+      "tt_jd_bits": 4702516621935226260,
+      "events": {
+        "LastMarsConjunction": 4702516062146475025,
+        "LastMarsEasternQuadrature": 4702515436148833352,
+        "LastMarsOpposition": 4702515232188471705,
+        "LastMarsProgradeToRetrograde": 4702515148308195069,
+        "LastMarsRetrogradeToPrograde": 4702513671731162645,
+        "LastMarsWesternQuadrature": 4702515034746663848,
+        "NextMarsConjunction": 4702517778500177165,
+        "NextMarsEasternQuadrature": 4702517083255863228,
+        "NextMarsOpposition": 4702516873348048143,
+        "NextMarsProgradeToRetrograde": 4702516965530186729,
+        "NextMarsRetrogradeToPrograde": 4702516965530200658,
+        "NextMarsWesternQuadrature": 4702516673165460030
+      }
+    },
+    {
+      "input_utc": "1997-09-27T10:17:27.678Z",
+      "tt_jd_bits": 4702517290174423894,
+      "events": {
+        "LastMarsConjunction": 4702516062146475025,
+        "LastMarsEasternQuadrature": 4702517083255863228,
+        "LastMarsOpposition": 4702516873348048143,
+        "LastMarsProgradeToRetrograde": 4702515148308195069,
+        "LastMarsRetrogradeToPrograde": 4702515321508642044,
+        "LastMarsWesternQuadrature": 4702516673165460030,
+        "NextMarsConjunction": 4702517778500177165,
+        "NextMarsEasternQuadrature": 4702518749267113224,
+        "NextMarsOpposition": 4702518523484696384,
+        "NextMarsProgradeToRetrograde": 4702518443319413718,
+        "NextMarsRetrogradeToPrograde": 4702518612758689391,
+        "NextMarsWesternQuadrature": 4702518311829558718
+      }
+    },
+    {
+      "input_utc": "1998-08-04T14:26:44.678Z",
+      "tt_jd_bits": 4702517958413596674,
+      "events": {
+        "LastMarsConjunction": 4702517778500177165,
+        "LastMarsEasternQuadrature": 4702517083255863228,
+        "LastMarsOpposition": 4702516873348048143,
+        "LastMarsProgradeToRetrograde": 4702515148308195069,
+        "LastMarsRetrogradeToPrograde": 4702515321508642044,
+        "LastMarsWesternQuadrature": 4702516673165460030,
+        "NextMarsConjunction": 4702519455332226831,
+        "NextMarsEasternQuadrature": 4702518749267113224,
+        "NextMarsOpposition": 4702518523484696384,
+        "NextMarsProgradeToRetrograde": 4702518443319413718,
+        "NextMarsRetrogradeToPrograde": 4702518612758689391,
+        "NextMarsWesternQuadrature": 4702518311829558718
+      }
+    },
+    {
+      "input_utc": "1999-06-10T10:36:01.678Z",
+      "tt_jd_bits": 4702518623789482777,
+      "events": {
+        "LastMarsConjunction": 4702517778500177165,
+        "LastMarsEasternQuadrature": 4702517083255863228,
+        "LastMarsOpposition": 4702518523484696384,
+        "LastMarsProgradeToRetrograde": 4702518443319413718,
+        "LastMarsRetrogradeToPrograde": 4702516965530200658,
+        "LastMarsWesternQuadrature": 4702518311829558718,
+        "NextMarsConjunction": 4702519455332226831,
+        "NextMarsEasternQuadrature": 4702518749267113224,
+        "NextMarsOpposition": 4702520200681939265,
+        "NextMarsProgradeToRetrograde": 4702520129599844994,
+        "NextMarsRetrogradeToPrograde": 4702520278429951356,
+        "NextMarsWesternQuadrature": 4702519961901889358
+      }
+    },
+    {
+      "input_utc": "2000-04-16T14:45:18.678Z",
+      "tt_jd_bits": 4702519292028655557,
+      "events": {
+        "LastMarsConjunction": 4702517778500177165,
+        "LastMarsEasternQuadrature": 4702518749267113224,
+        "LastMarsOpposition": 4702518523484696384,
+        "LastMarsProgradeToRetrograde": 4702518443319413718,
+        "LastMarsRetrogradeToPrograde": 4702516965530200658,
+        "LastMarsWesternQuadrature": 4702518311829558718,
+        "NextMarsConjunction": 4702519455332226831,
+        "NextMarsEasternQuadrature": 4702520463914907054,
+        "NextMarsOpposition": 4702520200681939265,
+        "NextMarsProgradeToRetrograde": 4702520129599844994,
+        "NextMarsRetrogradeToPrograde": 4702520278429951356,
+        "NextMarsWesternQuadrature": 4702519961901889358
+      }
+    },
+    {
+      "input_utc": "2001-02-21T17:24:35.678Z",
+      "tt_jd_bits": 4702519960133610608,
+      "events": {
+        "LastMarsConjunction": 4702519455332226831,
+        "LastMarsEasternQuadrature": 4702518749267113224,
+        "LastMarsOpposition": 4702518523484696384,
+        "LastMarsProgradeToRetrograde": 4702518443319413718,
+        "LastMarsRetrogradeToPrograde": 4702516965530200658,
+        "LastMarsWesternQuadrature": 4702518311829558718,
+        "NextMarsConjunction": 4702521109471672966,
+        "NextMarsEasternQuadrature": 4702520463914907054,
+        "NextMarsOpposition": 4702520200681939265,
+        "NextMarsProgradeToRetrograde": 4702520129599872540,
+        "NextMarsRetrogradeToPrograde": 4702520278429909334,
+        "NextMarsWesternQuadrature": 4702519961901889358
+      }
+    },
+    {
+      "input_utc": "2001-12-29T21:33:52.678Z",
+      "tt_jd_bits": 4702520628372783388,
+      "events": {
+        "LastMarsConjunction": 4702519455332226831,
+        "LastMarsEasternQuadrature": 4702520463914907054,
+        "LastMarsOpposition": 4702520200681939265,
+        "LastMarsProgradeToRetrograde": 4702520129599844994,
+        "LastMarsRetrogradeToPrograde": 4702518612758689391,
+        "LastMarsWesternQuadrature": 4702519961901889358,
+        "NextMarsConjunction": 4702521109471672966,
+        "NextMarsEasternQuadrature": 4702522196782468985,
+        "NextMarsOpposition": 4702521931573042479,
+        "NextMarsProgradeToRetrograde": 4702634249608255825,
+        "NextMarsRetrogradeToPrograde": 4702521999943121632,
+        "NextMarsWesternQuadrature": 4702521646667862913
+      }
+    },
+    {
+      "input_utc": "2002-11-06T01:39:45.678Z",
+      "tt_jd_bits": 4702521296606885720,
+      "events": {
+        "LastMarsConjunction": 4702521109471672966,
+        "LastMarsEasternQuadrature": 4702520463914907054,
+        "LastMarsOpposition": 4702520200681939265,
+        "LastMarsProgradeToRetrograde": 4702520129599844994,
+        "LastMarsRetrogradeToPrograde": 4702518612758689391,
+        "LastMarsWesternQuadrature": 4702519961901889358,
+        "NextMarsConjunction": 4702522755753602095,
+        "NextMarsEasternQuadrature": 4702522196782468985,
+        "NextMarsOpposition": 4702521931573042479,
+        "NextMarsProgradeToRetrograde": 4702634249608255825,
+        "NextMarsRetrogradeToPrograde": 4702521999943121632,
+        "NextMarsWesternQuadrature": 4702521646667862913
+      }
+    },
+    {
+      "input_utc": "2003-09-13T05:49:02.678Z",
+      "tt_jd_bits": 4702521964846058499,
+      "events": {
+        "LastMarsConjunction": 4702521109471672966,
+        "LastMarsEasternQuadrature": 4702520463914907054,
+        "LastMarsOpposition": 4702521931573042479,
+        "LastMarsProgradeToRetrograde": 4702520129599844994,
+        "LastMarsRetrogradeToPrograde": 4702520278429951356,
+        "LastMarsWesternQuadrature": 4702521646667862913,
+        "NextMarsConjunction": 4702522755753602095,
+        "NextMarsEasternQuadrature": 4702522196782468985,
+        "NextMarsOpposition": 4702523652958025929,
+        "NextMarsProgradeToRetrograde": 4702523725151046242,
+        "NextMarsRetrogradeToPrograde": 4702523725151049149,
+        "NextMarsWesternQuadrature": 4702523400900985901
+      }
+    },
+    {
+      "input_utc": "2004-07-20T09:58:19.678Z",
+      "tt_jd_bits": 4702522633085231278,
+      "events": {
+        "LastMarsConjunction": 4702521109471672966,
+        "LastMarsEasternQuadrature": 4702522196782468985,
+        "LastMarsOpposition": 4702521931573042479,
+        "LastMarsProgradeToRetrograde": 4702520129599844994,
+        "LastMarsRetrogradeToPrograde": 4702520278429951356,
+        "LastMarsWesternQuadrature": 4702521646667862913,
+        "NextMarsConjunction": 4702522755753602095,
+        "NextMarsEasternQuadrature": 4702523876976064160,
+        "NextMarsOpposition": 4702523652958025929,
+        "NextMarsProgradeToRetrograde": 4702523725151046242,
+        "NextMarsRetrogradeToPrograde": 4702523725151049149,
+        "NextMarsWesternQuadrature": 4702523400900985901
+      }
+    },
+    {
+      "input_utc": "2005-05-27T14:07:36.678Z",
+      "tt_jd_bits": 4702523301324404058,
+      "events": {
+        "LastMarsConjunction": 4702522755753602095,
+        "LastMarsEasternQuadrature": 4702522196782468985,
+        "LastMarsOpposition": 4702521931573042479,
+        "LastMarsProgradeToRetrograde": 4702520129599844994,
+        "LastMarsRetrogradeToPrograde": 4702520278429951356,
+        "LastMarsWesternQuadrature": 4702521646667862913,
+        "NextMarsConjunction": 4702524404470766366,
+        "NextMarsEasternQuadrature": 4702523876976064160,
+        "NextMarsOpposition": 4702523652958025929,
+        "NextMarsProgradeToRetrograde": 4702523725151046242,
+        "NextMarsRetrogradeToPrograde": 4702523725151049149,
+        "NextMarsWesternQuadrature": 4702523400900985901
+      }
+    },
+    {
+      "input_utc": "2006-04-02T10:16:53.678Z",
+      "tt_jd_bits": 4702523966700290162,
+      "events": {
+        "LastMarsConjunction": 4702522755753602095,
+        "LastMarsEasternQuadrature": 4702523876976064160,
+        "LastMarsOpposition": 4702523652958025929,
+        "LastMarsProgradeToRetrograde": 4702634249608255825,
+        "LastMarsRetrogradeToPrograde": 4702521999943121632,
+        "LastMarsWesternQuadrature": 4702523400900985901,
+        "NextMarsConjunction": 4702524404470766366,
+        "NextMarsEasternQuadrature": 4702525529803801021,
+        "NextMarsOpposition": 4702525322610468648,
+        "NextMarsProgradeToRetrograde": 4702525402191072896,
+        "NextMarsRetrogradeToPrograde": 4702525402191078709,
+        "NextMarsWesternQuadrature": 4702525112250566914
+      }
+    },
+    {
+      "input_utc": "2007-02-07T14:26:10.678Z",
+      "tt_jd_bits": 4702524634939462941,
+      "events": {
+        "LastMarsConjunction": 4702524404470766366,
+        "LastMarsEasternQuadrature": 4702523876976064160,
+        "LastMarsOpposition": 4702523652958025929,
+        "LastMarsProgradeToRetrograde": 4702634249608255825,
+        "LastMarsRetrogradeToPrograde": 4702521999943121632,
+        "LastMarsWesternQuadrature": 4702523400900985901,
+        "NextMarsConjunction": 4702526067991659410,
+        "NextMarsEasternQuadrature": 4702525529803801021,
+        "NextMarsOpposition": 4702525322610468648,
+        "NextMarsProgradeToRetrograde": 4702525402191072896,
+        "NextMarsRetrogradeToPrograde": 4702525402191078709,
+        "NextMarsWesternQuadrature": 4702525112250566914
+      }
+    },
+    {
+      "input_utc": "2007-12-15T18:35:27.678Z",
+      "tt_jd_bits": 4702525303178635721,
+      "events": {
+        "LastMarsConjunction": 4702524404470766366,
+        "LastMarsEasternQuadrature": 4702523876976064160,
+        "LastMarsOpposition": 4702523652958025929,
+        "LastMarsProgradeToRetrograde": 4702634249608255825,
+        "LastMarsRetrogradeToPrograde": 4702521999943121632,
+        "LastMarsWesternQuadrature": 4702525112250566914,
+        "NextMarsConjunction": 4702526067991659410,
+        "NextMarsEasternQuadrature": 4702525529803801021,
+        "NextMarsOpposition": 4702525322610468648,
+        "NextMarsProgradeToRetrograde": 4702525402191072896,
+        "NextMarsRetrogradeToPrograde": 4702525402191078709,
+        "NextMarsWesternQuadrature": 4702526771102296588
+      }
+    },
+    {
+      "input_utc": "2008-10-21T22:44:44.678Z",
+      "tt_jd_bits": 4702525971417808500,
+      "events": {
+        "LastMarsConjunction": 4702524404470766366,
+        "LastMarsEasternQuadrature": 4702525529803801021,
+        "LastMarsOpposition": 4702525322610468648,
+        "LastMarsProgradeToRetrograde": 4702523725151046242,
+        "LastMarsRetrogradeToPrograde": 4702523725151049149,
+        "LastMarsWesternQuadrature": 4702525112250566914,
+        "NextMarsConjunction": 4702526067991659410,
+        "NextMarsEasternQuadrature": 4702527173148483498,
+        "NextMarsOpposition": 4702526969725138182,
+        "NextMarsProgradeToRetrograde": 4702526885607883545,
+        "NextMarsRetrogradeToPrograde": 4702527056790909413,
+        "NextMarsWesternQuadrature": 4702526771102296588
+      }
+    },
+    {
+      "input_utc": "2009-08-29T01:24:01.678Z",
+      "tt_jd_bits": 4702526639522788406,
+      "events": {
+        "LastMarsConjunction": 4702526067991659410,
+        "LastMarsEasternQuadrature": 4702525529803801021,
+        "LastMarsOpposition": 4702525322610468648,
+        "LastMarsProgradeToRetrograde": 4702523725151046242,
+        "LastMarsRetrogradeToPrograde": 4702523725151049149,
+        "LastMarsWesternQuadrature": 4702525112250566914,
+        "NextMarsConjunction": 4702527766168593028,
+        "NextMarsEasternQuadrature": 4702527173148483498,
+        "NextMarsOpposition": 4702526969725138182,
+        "NextMarsProgradeToRetrograde": 4702526885607883545,
+        "NextMarsRetrogradeToPrograde": 4702527056790909413,
+        "NextMarsWesternQuadrature": 4702526771102296588
+      }
+    },
+    {
+      "input_utc": "2010-07-06T05:33:18.678Z",
+      "tt_jd_bits": 4702527307761961186,
+      "events": {
+        "LastMarsConjunction": 4702526067991659410,
+        "LastMarsEasternQuadrature": 4702527173148483498,
+        "LastMarsOpposition": 4702526969725138182,
+        "LastMarsProgradeToRetrograde": 4702526885607883545,
+        "LastMarsRetrogradeToPrograde": 4702525402191078709,
+        "LastMarsWesternQuadrature": 4702526771102296588,
+        "NextMarsConjunction": 4702527766168593028,
+        "NextMarsEasternQuadrature": 4702528817168150831,
+        "NextMarsOpposition": 4702528610443475645,
+        "NextMarsProgradeToRetrograde": 4702528527088142862,
+        "NextMarsRetrogradeToPrograde": 4702528702087940528,
+        "NextMarsWesternQuadrature": 4702528412245034916
+      }
+    },
+    {
+      "input_utc": "2011-05-13T09:42:35.678Z",
+      "tt_jd_bits": 4702527976001133965,
+      "events": {
+        "LastMarsConjunction": 4702527766168593028,
+        "LastMarsEasternQuadrature": 4702527173148483498,
+        "LastMarsOpposition": 4702526969725138182,
+        "LastMarsProgradeToRetrograde": 4702526885607883545,
+        "LastMarsRetrogradeToPrograde": 4702525402191078709,
+        "LastMarsWesternQuadrature": 4702526771102296588,
+        "NextMarsConjunction": 4702529491283803396,
+        "NextMarsEasternQuadrature": 4702528817168150831,
+        "NextMarsOpposition": 4702528610443475645,
+        "NextMarsProgradeToRetrograde": 4702528527088142862,
+        "NextMarsRetrogradeToPrograde": 4702528702087940528,
+        "NextMarsWesternQuadrature": 4702528412245034916
+      }
+    },
+    {
+      "input_utc": "2012-03-19T13:51:52.678Z",
+      "tt_jd_bits": 4702528644240306745,
+      "events": {
+        "LastMarsConjunction": 4702527766168593028,
+        "LastMarsEasternQuadrature": 4702527173148483498,
+        "LastMarsOpposition": 4702528610443475645,
+        "LastMarsProgradeToRetrograde": 4702528527088142862,
+        "LastMarsRetrogradeToPrograde": 4702527056790909413,
+        "LastMarsWesternQuadrature": 4702528412245034916,
+        "NextMarsConjunction": 4702529491283803396,
+        "NextMarsEasternQuadrature": 4702528817168150831,
+        "NextMarsOpposition": 4702530255495147614,
+        "NextMarsProgradeToRetrograde": 4702530173884075455,
+        "NextMarsRetrogradeToPrograde": 4702530346783988256,
+        "NextMarsWesternQuadrature": 4702530049620996652
+      }
+    },
+    {
+      "input_utc": "2013-01-23T09:57:45.678Z",
+      "tt_jd_bits": 4702529309611122401,
+      "events": {
+        "LastMarsConjunction": 4702527766168593028,
+        "LastMarsEasternQuadrature": 4702528817168150831,
+        "LastMarsOpposition": 4702528610443475645,
+        "LastMarsProgradeToRetrograde": 4702528527088142862,
+        "LastMarsRetrogradeToPrograde": 4702527056790909413,
+        "LastMarsWesternQuadrature": 4702528412245034916,
+        "NextMarsConjunction": 4702529491283803396,
+        "NextMarsEasternQuadrature": 4702530473238556632,
+        "NextMarsOpposition": 4702530255495147614,
+        "NextMarsProgradeToRetrograde": 4702530173884075455,
+        "NextMarsRetrogradeToPrograde": 4702530346783988256,
+        "NextMarsWesternQuadrature": 4702530049620996652
+      }
+    },
+    {
+      "input_utc": "2013-11-30T14:07:02.678Z",
+      "tt_jd_bits": 4702529977850295180,
+      "events": {
+        "LastMarsConjunction": 4702529491283803396,
+        "LastMarsEasternQuadrature": 4702528817168150831,
+        "LastMarsOpposition": 4702528610443475645,
+        "LastMarsProgradeToRetrograde": 4702528527088142862,
+        "LastMarsRetrogradeToPrograde": 4702527056790909413,
+        "LastMarsWesternQuadrature": 4702528412245034916,
+        "NextMarsConjunction": 4702531182749855459,
+        "NextMarsEasternQuadrature": 4702530473238556632,
+        "NextMarsOpposition": 4702530255495147614,
+        "NextMarsProgradeToRetrograde": 4702530173884075455,
+        "NextMarsRetrogradeToPrograde": 4702530346783988256,
+        "NextMarsWesternQuadrature": 4702530049620996652
+      }
+    },
+    {
+      "input_utc": "2014-10-07T18:16:19.678Z",
+      "tt_jd_bits": 4702530646089467960,
+      "events": {
+        "LastMarsConjunction": 4702529491283803396,
+        "LastMarsEasternQuadrature": 4702530473238556632,
+        "LastMarsOpposition": 4702530255495147614,
+        "LastMarsProgradeToRetrograde": 4702530173884075455,
+        "LastMarsRetrogradeToPrograde": 4702528702087940528,
+        "LastMarsWesternQuadrature": 4702530049620996652,
+        "NextMarsConjunction": 4702531182749855459,
+        "NextMarsEasternQuadrature": 4702532164571039724,
+        "NextMarsOpposition": 4702531918919952384,
+        "NextMarsProgradeToRetrograde": 4702533696942539461,
+        "NextMarsRetrogradeToPrograde": 4702532002409627902,
+        "NextMarsWesternQuadrature": 4702531693510265298
+      }
+    },
+    {
+      "input_utc": "2015-08-14T22:25:36.678Z",
+      "tt_jd_bits": 4702531314328665595,
+      "events": {
+        "LastMarsConjunction": 4702531182749855459,
+        "LastMarsEasternQuadrature": 4702530473238556632,
+        "LastMarsOpposition": 4702530255495147614,
+        "LastMarsProgradeToRetrograde": 4702530173884075455,
+        "LastMarsRetrogradeToPrograde": 4702528702087940528,
+        "LastMarsWesternQuadrature": 4702530049620996652,
+        "NextMarsConjunction": 4702532843561104052,
+        "NextMarsEasternQuadrature": 4702532164571039724,
+        "NextMarsOpposition": 4702531918919952384,
+        "NextMarsProgradeToRetrograde": 4702533696942539461,
+        "NextMarsRetrogradeToPrograde": 4702532002409627902,
+        "NextMarsWesternQuadrature": 4702531693510265298
+      }
+    },
+    {
+      "input_utc": "2016-06-21T02:34:53.678Z",
+      "tt_jd_bits": 4702531982567838375,
+      "events": {
+        "LastMarsConjunction": 4702531182749855459,
+        "LastMarsEasternQuadrature": 4702530473238556632,
+        "LastMarsOpposition": 4702531918919952384,
+        "LastMarsProgradeToRetrograde": 4702530173884075455,
+        "LastMarsRetrogradeToPrograde": 4702530346783988256,
+        "LastMarsWesternQuadrature": 4702531693510265298,
+        "NextMarsConjunction": 4702532843561104052,
+        "NextMarsEasternQuadrature": 4702532164571039724,
+        "NextMarsOpposition": 4702533627774826721,
+        "NextMarsProgradeToRetrograde": 4702533566263011475,
+        "NextMarsRetrogradeToPrograde": 4702533696942389852,
+        "NextMarsWesternQuadrature": 4702533360315560440
+      }
+    },
+    {
+      "input_utc": "2017-04-28T06:44:10.678Z",
+      "tt_jd_bits": 4702532650807036009,
+      "events": {
+        "LastMarsConjunction": 4702531182749855459,
+        "LastMarsEasternQuadrature": 4702532164571039724,
+        "LastMarsOpposition": 4702531918919952384,
+        "LastMarsProgradeToRetrograde": 4702530173884075455,
+        "LastMarsRetrogradeToPrograde": 4702530346783988256,
+        "LastMarsWesternQuadrature": 4702531693510265298,
+        "NextMarsConjunction": 4702532843561104052,
+        "NextMarsEasternQuadrature": 4702533904383943511,
+        "NextMarsOpposition": 4702533627774826721,
+        "NextMarsProgradeToRetrograde": 4702533566262905328,
+        "NextMarsRetrogradeToPrograde": 4702533696942418412,
+        "NextMarsWesternQuadrature": 4702533360315560440
+      }
+    },
+    {
+      "input_utc": "2018-03-05T09:23:27.678Z",
+      "tt_jd_bits": 4702533318911991060,
+      "events": {
+        "LastMarsConjunction": 4702532843561104052,
+        "LastMarsEasternQuadrature": 4702532164571039724,
+        "LastMarsOpposition": 4702531918919952384,
+        "LastMarsProgradeToRetrograde": 4702530173884075455,
+        "LastMarsRetrogradeToPrograde": 4702530346783988256,
+        "LastMarsWesternQuadrature": 4702531693510265298,
+        "NextMarsConjunction": 4702534491554150909,
+        "NextMarsEasternQuadrature": 4702533904383943511,
+        "NextMarsOpposition": 4702533627774826721,
+        "NextMarsProgradeToRetrograde": 4702533566262905328,
+        "NextMarsRetrogradeToPrograde": 4702533696942418412,
+        "NextMarsWesternQuadrature": 4702533360315560440
+      }
+    },
+    {
+      "input_utc": "2019-01-10T13:32:44.678Z",
+      "tt_jd_bits": 4702533987151163840,
+      "events": {
+        "LastMarsConjunction": 4702532843561104052,
+        "LastMarsEasternQuadrature": 4702533904383943511,
+        "LastMarsOpposition": 4702533627774826721,
+        "LastMarsProgradeToRetrograde": 4702533566262905328,
+        "LastMarsRetrogradeToPrograde": 4702532002409627902,
+        "LastMarsWesternQuadrature": 4702533360315560440,
+        "NextMarsConjunction": 4702534491554150909,
+        "NextMarsEasternQuadrature": 4702535603937516985,
+        "NextMarsOpposition": 4702535366718438879,
+        "NextMarsProgradeToRetrograde": 4702535293198908396,
+        "NextMarsRetrogradeToPrograde": 4702535437223938369,
+        "NextMarsWesternQuadrature": 4702535089312994459
+      }
+    },
+    {
+      "input_utc": "2019-11-16T09:42:01.678Z",
+      "tt_jd_bits": 4702534652527025089,
+      "events": {
+        "LastMarsConjunction": 4702534491554150909,
+        "LastMarsEasternQuadrature": 4702533904383943511,
+        "LastMarsOpposition": 4702533627774826721,
+        "LastMarsProgradeToRetrograde": 4702533566262905328,
+        "LastMarsRetrogradeToPrograde": 4702532002409627902,
+        "LastMarsWesternQuadrature": 4702533360315560440,
+        "NextMarsConjunction": 4702536138075364714,
+        "NextMarsEasternQuadrature": 4702535603937516985,
+        "NextMarsOpposition": 4702535366718438879,
+        "NextMarsProgradeToRetrograde": 4702535293198908396,
+        "NextMarsRetrogradeToPrograde": 4702535437223938369,
+        "NextMarsWesternQuadrature": 4702535089312994459
+      }
+    },
+    {
+      "input_utc": "2020-09-22T13:51:18.678Z",
+      "tt_jd_bits": 4702535320766197868,
+      "events": {
+        "LastMarsConjunction": 4702534491554150909,
+        "LastMarsEasternQuadrature": 4702533904383943511,
+        "LastMarsOpposition": 4702533627774826721,
+        "LastMarsProgradeToRetrograde": 4702533566262905328,
+        "LastMarsRetrogradeToPrograde": 4702532002409627902,
+        "LastMarsWesternQuadrature": 4702535089312994459,
+        "NextMarsConjunction": 4702536138075364714,
+        "NextMarsEasternQuadrature": 4702535603937516985,
+        "NextMarsOpposition": 4702535366718438879,
+        "NextMarsProgradeToRetrograde": 4702536969767855545,
+        "NextMarsRetrogradeToPrograde": 4702535437223938369,
+        "NextMarsWesternQuadrature": 4702536831841557220
+      }
+    },
+    {
+      "input_utc": "2021-07-30T18:00:35.678Z",
+      "tt_jd_bits": 4702535989005370647,
+      "events": {
+        "LastMarsConjunction": 4702534491554150909,
+        "LastMarsEasternQuadrature": 4702535603937516985,
+        "LastMarsOpposition": 4702535366718438879,
+        "LastMarsProgradeToRetrograde": 4702535293198908396,
+        "LastMarsRetrogradeToPrograde": 4702533696942418412,
+        "LastMarsWesternQuadrature": 4702535089312994459,
+        "NextMarsConjunction": 4702536138075364714,
+        "NextMarsEasternQuadrature": 4702537264622348917,
+        "NextMarsOpposition": 4702537053053470798,
+        "NextMarsProgradeToRetrograde": 4702536969767855545,
+        "NextMarsRetrogradeToPrograde": 4702537129513571677,
+        "NextMarsWesternQuadrature": 4702536831841557220
+      }
+    },
+    {
+      "input_utc": "2022-06-06T22:09:52.678Z",
+      "tt_jd_bits": 4702536657244543427,
+      "events": {
+        "LastMarsConjunction": 4702536138075364714,
+        "LastMarsEasternQuadrature": 4702535603937516985,
+        "LastMarsOpposition": 4702535366718438879,
+        "LastMarsProgradeToRetrograde": 4702535293198908396,
+        "LastMarsRetrogradeToPrograde": 4702533696942418412,
+        "LastMarsWesternQuadrature": 4702535089312994459,
+        "NextMarsConjunction": 4702537793935342367,
+        "NextMarsEasternQuadrature": 4702537264622348917,
+        "NextMarsOpposition": 4702537053053470798,
+        "NextMarsProgradeToRetrograde": 4702536969767855545,
+        "NextMarsRetrogradeToPrograde": 4702537129513571677,
+        "NextMarsWesternQuadrature": 4702536831841557220
+      }
+    },
+    {
+      "input_utc": "2023-04-14T02:15:45.678Z",
+      "tt_jd_bits": 4702537325478645759,
+      "events": {
+        "LastMarsConjunction": 4702536138075364714,
+        "LastMarsEasternQuadrature": 4702537264622348917,
+        "LastMarsOpposition": 4702537053053470798,
+        "LastMarsProgradeToRetrograde": 4702536969767855545,
+        "LastMarsRetrogradeToPrograde": 4702535437223938369,
+        "LastMarsWesternQuadrature": 4702536831841557220,
+        "NextMarsConjunction": 4702537793935342367,
+        "NextMarsEasternQuadrature": 4702538910257416888,
+        "NextMarsOpposition": 4702538706342900330,
+        "NextMarsProgradeToRetrograde": 4702538622085374095,
+        "NextMarsRetrogradeToPrograde": 4702538790716230518,
+        "NextMarsWesternQuadrature": 4702538504981788228
+      }
+    },
+    {
+      "input_utc": "2024-02-19T06:25:02.678Z",
+      "tt_jd_bits": 4702537993717818538,
+      "events": {
+        "LastMarsConjunction": 4702537793935342367,
+        "LastMarsEasternQuadrature": 4702537264622348917,
+        "LastMarsOpposition": 4702537053053470798,
+        "LastMarsProgradeToRetrograde": 4702536969767855545,
+        "LastMarsRetrogradeToPrograde": 4702535437223938369,
+        "LastMarsWesternQuadrature": 4702536831841557220,
+        "NextMarsConjunction": 4702539475951379004,
+        "NextMarsEasternQuadrature": 4702538910257416888,
+        "NextMarsOpposition": 4702538706342900330,
+        "NextMarsProgradeToRetrograde": 4702538622085374095,
+        "NextMarsRetrogradeToPrograde": 4702538790716230518,
+        "NextMarsWesternQuadrature": 4702538504981788228
+      }
+    },
+    {
+      "input_utc": "2024-12-26T10:34:19.678Z",
+      "tt_jd_bits": 4702538661956991318,
+      "events": {
+        "LastMarsConjunction": 4702537793935342367,
+        "LastMarsEasternQuadrature": 4702537264622348917,
+        "LastMarsOpposition": 4702537053053470798,
+        "LastMarsProgradeToRetrograde": 4702536969767855545,
+        "LastMarsRetrogradeToPrograde": 4702535437223938369,
+        "LastMarsWesternQuadrature": 4702538504981788228,
+        "NextMarsConjunction": 4702539475951379004,
+        "NextMarsEasternQuadrature": 4702538910257416888,
+        "NextMarsOpposition": 4702538706342900330,
+        "NextMarsProgradeToRetrograde": 4702540264478155406,
+        "NextMarsRetrogradeToPrograde": 4702538790716230518,
+        "NextMarsWesternQuadrature": 4702540150809722827
+      }
+    },
+    {
+      "input_utc": "2025-11-02T14:43:36.678Z",
+      "tt_jd_bits": 4702539330196164097,
+      "events": {
+        "LastMarsConjunction": 4702537793935342367,
+        "LastMarsEasternQuadrature": 4702538910257416888,
+        "LastMarsOpposition": 4702538706342900330,
+        "LastMarsProgradeToRetrograde": 4702538622085374095,
+        "LastMarsRetrogradeToPrograde": 4702537129513571677,
+        "LastMarsWesternQuadrature": 4702538504981788228,
+        "NextMarsConjunction": 4702539475951379004,
+        "NextMarsEasternQuadrature": 4702540552873043153,
+        "NextMarsOpposition": 4702540348202063438,
+        "NextMarsProgradeToRetrograde": 4702540264478155406,
+        "NextMarsRetrogradeToPrograde": 4702540438547751596,
+        "NextMarsWesternQuadrature": 4702540150809722827
+      }
+    },
+    {
+      "input_utc": "2026-09-08T09:22:53.678Z",
+      "tt_jd_bits": 4702539995437809167,
+      "events": {
+        "LastMarsConjunction": 4702539475951379004,
+        "LastMarsEasternQuadrature": 4702538910257416888,
+        "LastMarsOpposition": 4702538706342900330,
+        "LastMarsProgradeToRetrograde": 4702538622085374095,
+        "LastMarsRetrogradeToPrograde": 4702537129513571677,
+        "LastMarsWesternQuadrature": 4702538504981788228,
+        "NextMarsConjunction": 4702541197419748099,
+        "NextMarsEasternQuadrature": 4702540552873043153,
+        "NextMarsOpposition": 4702540348202063438,
+        "NextMarsProgradeToRetrograde": 4702540264478155406,
+        "NextMarsRetrogradeToPrograde": 4702540438547751596,
+        "NextMarsWesternQuadrature": 4702540150809722827
+      }
+    },
+    {
+      "input_utc": "2027-07-16T13:32:10.678Z",
+      "tt_jd_bits": 4702540663676983199,
+      "events": {
+        "LastMarsConjunction": 4702539475951379004,
+        "LastMarsEasternQuadrature": 4702540552873043153,
+        "LastMarsOpposition": 4702540348202063438,
+        "LastMarsProgradeToRetrograde": 4702540264478155406,
+        "LastMarsRetrogradeToPrograde": 4702538790716230518,
+        "LastMarsWesternQuadrature": 4702540150809722827,
+        "NextMarsConjunction": 4702541197419748099,
+        "NextMarsEasternQuadrature": 4702542202541018405,
+        "NextMarsOpposition": 4702541990308405654,
+        "NextMarsProgradeToRetrograde": 4702541907782069451,
+        "NextMarsRetrogradeToPrograde": 4702542082453876459,
+        "NextMarsWesternQuadrature": 4702541788461656427
+      }
+    },
+    {
+      "input_utc": "2028-05-22T17:41:27.678Z",
+      "tt_jd_bits": 4702541331916157311,
+      "events": {
+        "LastMarsConjunction": 4702541197419748099,
+        "LastMarsEasternQuadrature": 4702540552873043153,
+        "LastMarsOpposition": 4702540348202063438,
+        "LastMarsProgradeToRetrograde": 4702540264478155406,
+        "LastMarsRetrogradeToPrograde": 4702538790716230518,
+        "LastMarsWesternQuadrature": 4702540150809722827,
+        "NextMarsConjunction": 4702542905406336388,
+        "NextMarsEasternQuadrature": 4702542202541018405,
+        "NextMarsOpposition": 4702541990308405654,
+        "NextMarsProgradeToRetrograde": 4702541907782069451,
+        "NextMarsRetrogradeToPrograde": 4702542082453876459,
+        "NextMarsWesternQuadrature": 4702541788461656427
+      }
+    },
+    {
+      "input_utc": "2029-03-29T21:50:44.678Z",
+      "tt_jd_bits": 4702542000155331504,
+      "events": {
+        "LastMarsConjunction": 4702541197419748099,
+        "LastMarsEasternQuadrature": 4702540552873043153,
+        "LastMarsOpposition": 4702541990308405654,
+        "LastMarsProgradeToRetrograde": 4702541907782069451,
+        "LastMarsRetrogradeToPrograde": 4702540438547751596,
+        "LastMarsWesternQuadrature": 4702541788461656427,
+        "NextMarsConjunction": 4702542905406336388,
+        "NextMarsEasternQuadrature": 4702542202541018405,
+        "NextMarsOpposition": 4702543644250273394,
+        "NextMarsProgradeToRetrograde": 4702543565204503042,
+        "NextMarsRetrogradeToPrograde": 4702543731884271417,
+        "NextMarsWesternQuadrature": 4702543428460430225
+      }
+    },
+    {
+      "input_utc": "2030-02-04T02:00:01.678Z",
+      "tt_jd_bits": 4702542668394505778,
+      "events": {
+        "LastMarsConjunction": 4702541197419748099,
+        "LastMarsEasternQuadrature": 4702542202541018405,
+        "LastMarsOpposition": 4702541990308405654,
+        "LastMarsProgradeToRetrograde": 4702541907782069451,
+        "LastMarsRetrogradeToPrograde": 4702540438547751596,
+        "LastMarsWesternQuadrature": 4702541788461656427,
+        "NextMarsConjunction": 4702542905406336388,
+        "NextMarsEasternQuadrature": 4702543875903592158,
+        "NextMarsOpposition": 4702543644250273394,
+        "NextMarsProgradeToRetrograde": 4702543565204357634,
+        "NextMarsRetrogradeToPrograde": 4702543731884140821,
+        "NextMarsWesternQuadrature": 4702543428460430225
+      }
+    },
+    {
+      "input_utc": "2030-12-12T06:09:18.678Z",
+      "tt_jd_bits": 4702543336633680133,
+      "events": {
+        "LastMarsConjunction": 4702542905406336388,
+        "LastMarsEasternQuadrature": 4702542202541018405,
+        "LastMarsOpposition": 4702541990308405654,
+        "LastMarsProgradeToRetrograde": 4702541907782069451,
+        "LastMarsRetrogradeToPrograde": 4702540438547751596,
+        "LastMarsWesternQuadrature": 4702541788461656427,
+        "NextMarsConjunction": 4702544575650513787,
+        "NextMarsEasternQuadrature": 4702543875903592158,
+        "NextMarsOpposition": 4702543644250273394,
+        "NextMarsProgradeToRetrograde": 4702543565204503042,
+        "NextMarsRetrogradeToPrograde": 4702543731884271417,
+        "NextMarsWesternQuadrature": 4702543428460430225
+      }
+    },
+    {
+      "input_utc": "2031-10-19T10:18:35.678Z",
+      "tt_jd_bits": 4702544004872854570,
+      "events": {
+        "LastMarsConjunction": 4702542905406336388,
+        "LastMarsEasternQuadrature": 4702543875903592158,
+        "LastMarsOpposition": 4702543644250273394,
+        "LastMarsProgradeToRetrograde": 4702543565204503042,
+        "LastMarsRetrogradeToPrograde": 4702542082453876459,
+        "LastMarsWesternQuadrature": 4702543428460430225,
+        "NextMarsConjunction": 4702544575650513787,
+        "NextMarsEasternQuadrature": 4702545602958340469,
+        "NextMarsOpposition": 4702545331227605900,
+        "NextMarsProgradeToRetrograde": 4702545263444993759,
+        "NextMarsRetrogradeToPrograde": 4702545405393295800,
+        "NextMarsWesternQuadrature": 4702545083280256452
+      }
+    },
+    {
+      "input_utc": "2032-08-25T14:27:52.678Z",
+      "tt_jd_bits": 4702544673112029090,
+      "events": {
+        "LastMarsConjunction": 4702544575650513787,
+        "LastMarsEasternQuadrature": 4702543875903592158,
+        "LastMarsOpposition": 4702543644250273394,
+        "LastMarsProgradeToRetrograde": 4702543565204503042,
+        "LastMarsRetrogradeToPrograde": 4702542082453876459,
+        "LastMarsWesternQuadrature": 4702543428460430225,
+        "NextMarsConjunction": 4702546227074587139,
+        "NextMarsEasternQuadrature": 4702545602958340469,
+        "NextMarsOpposition": 4702545331227605900,
+        "NextMarsProgradeToRetrograde": 4702545263444993759,
+        "NextMarsRetrogradeToPrograde": 4702545405393295800,
+        "NextMarsWesternQuadrature": 4702545083280256452
+      }
+    },
+    {
+      "input_utc": "1992-10-09T09:21:45.678Z",
+      "tt_jd_bits": 4702513394555921141,
+      "events": {
+        "LastMarsConjunction": 4702512672991061109,
+        "LastMarsEasternQuadrature": 4702512146017136351,
+        "LastMarsOpposition": 4702511930972129169,
+        "LastMarsProgradeToRetrograde": 4702511848566905624,
+        "LastMarsRetrogradeToPrograde": 4702510163804814255,
+        "LastMarsWesternQuadrature": 4702513385284770883,
+        "NextMarsConjunction": 4702514347420774406,
+        "NextMarsEasternQuadrature": 4702513793695761911,
+        "NextMarsOpposition": 4702513589022081913,
+        "NextMarsProgradeToRetrograde": 4702513504713645965,
+        "NextMarsRetrogradeToPrograde": 4702513671731162645,
+        "NextMarsWesternQuadrature": 4702515034746663848
+      }
+    },
+    {
+      "input_utc": "1993-04-24T14:36:08.678Z",
+      "tt_jd_bits": 4702513818079042205,
+      "events": {
+        "LastMarsConjunction": 4702512672991061109,
+        "LastMarsEasternQuadrature": 4702513793695761911,
+        "LastMarsOpposition": 4702513589022081913,
+        "LastMarsProgradeToRetrograde": 4702513504713645965,
+        "LastMarsRetrogradeToPrograde": 4702512005746656870,
+        "LastMarsWesternQuadrature": 4702513385284770883,
+        "NextMarsConjunction": 4702514347420774406,
+        "NextMarsEasternQuadrature": 4702515436148833352,
+        "NextMarsOpposition": 4702515232188471705,
+        "NextMarsProgradeToRetrograde": 4702515148308195069,
+        "NextMarsRetrogradeToPrograde": 4702515321508642044,
+        "NextMarsWesternQuadrature": 4702515034746663848
+      }
+    },
+    {
+      "input_utc": "1993-11-07T19:50:31.678Z",
+      "tt_jd_bits": 4702514241602188124,
+      "events": {
+        "LastMarsConjunction": 4702512672991061109,
+        "LastMarsEasternQuadrature": 4702513793695761911,
+        "LastMarsOpposition": 4702513589022081913,
+        "LastMarsProgradeToRetrograde": 4702513504713645965,
+        "LastMarsRetrogradeToPrograde": 4702512005746656870,
+        "LastMarsWesternQuadrature": 4702513385284770883,
+        "NextMarsConjunction": 4702514347420774406,
+        "NextMarsEasternQuadrature": 4702515436148833352,
+        "NextMarsOpposition": 4702515232188471705,
+        "NextMarsProgradeToRetrograde": 4702515148308195069,
+        "NextMarsRetrogradeToPrograde": 4702515321508642044,
+        "NextMarsWesternQuadrature": 4702515034746663848
+      }
+    },
+    {
+      "input_utc": "1994-05-24T01:04:54.678Z",
+      "tt_jd_bits": 4702514665125309188,
+      "events": {
+        "LastMarsConjunction": 4702514347420774406,
+        "LastMarsEasternQuadrature": 4702513793695761911,
+        "LastMarsOpposition": 4702513589022081913,
+        "LastMarsProgradeToRetrograde": 4702513504713645965,
+        "LastMarsRetrogradeToPrograde": 4702512005746656870,
+        "LastMarsWesternQuadrature": 4702513385284770883,
+        "NextMarsConjunction": 4702516062146475025,
+        "NextMarsEasternQuadrature": 4702515436148833352,
+        "NextMarsOpposition": 4702515232188471705,
+        "NextMarsProgradeToRetrograde": 4702515148308195069,
+        "NextMarsRetrogradeToPrograde": 4702515321508642044,
+        "NextMarsWesternQuadrature": 4702515034746663848
+      }
+    },
+    {
+      "input_utc": "1994-12-07T06:19:17.678Z",
+      "tt_jd_bits": 4702515088648455108,
+      "events": {
+        "LastMarsConjunction": 4702514347420774406,
+        "LastMarsEasternQuadrature": 4702513793695761911,
+        "LastMarsOpposition": 4702513589022081913,
+        "LastMarsProgradeToRetrograde": 4702513504713645965,
+        "LastMarsRetrogradeToPrograde": 4702512005746656870,
+        "LastMarsWesternQuadrature": 4702515034746663848,
+        "NextMarsConjunction": 4702516062146475025,
+        "NextMarsEasternQuadrature": 4702515436148833352,
+        "NextMarsOpposition": 4702515232188471705,
+        "NextMarsProgradeToRetrograde": 4702515148308182210,
+        "NextMarsRetrogradeToPrograde": 4702515321508639866,
+        "NextMarsWesternQuadrature": 4702516673165460030
+      }
+    },
+    {
+      "input_utc": "1995-06-22T11:33:40.678Z",
+      "tt_jd_bits": 4702515512171576172,
+      "events": {
+        "LastMarsConjunction": 4702514347420774406,
+        "LastMarsEasternQuadrature": 4702515436148833352,
+        "LastMarsOpposition": 4702515232188471705,
+        "LastMarsProgradeToRetrograde": 4702515148308195069,
+        "LastMarsRetrogradeToPrograde": 4702513671731162645,
+        "LastMarsWesternQuadrature": 4702515034746663848,
+        "NextMarsConjunction": 4702516062146475025,
+        "NextMarsEasternQuadrature": 4702517083255863228,
+        "NextMarsOpposition": 4702516873348048143,
+        "NextMarsProgradeToRetrograde": 4702516965530186729,
+        "NextMarsRetrogradeToPrograde": 4702516965530200658,
+        "NextMarsWesternQuadrature": 4702516673165460030
+      }
+    },
+    {
+      "input_utc": "1996-01-05T16:48:03.678Z",
+      "tt_jd_bits": 4702515935694722091,
+      "events": {
+        "LastMarsConjunction": 4702514347420774406,
+        "LastMarsEasternQuadrature": 4702515436148833352,
+        "LastMarsOpposition": 4702515232188471705,
+        "LastMarsProgradeToRetrograde": 4702515148308195069,
+        "LastMarsRetrogradeToPrograde": 4702513671731162645,
+        "LastMarsWesternQuadrature": 4702515034746663848,
+        "NextMarsConjunction": 4702516062146475025,
+        "NextMarsEasternQuadrature": 4702517083255863228,
+        "NextMarsOpposition": 4702516873348048143,
+        "NextMarsProgradeToRetrograde": 4702516965530186729,
+        "NextMarsRetrogradeToPrograde": 4702516965530200658,
+        "NextMarsWesternQuadrature": 4702516673165460030
+      }
+    },
+    {
+      "input_utc": "1996-07-19T11:02:26.678Z",
+      "tt_jd_bits": 4702516356086096168,
+      "events": {
+        "LastMarsConjunction": 4702516062146475025,
+        "LastMarsEasternQuadrature": 4702515436148833352,
+        "LastMarsOpposition": 4702515232188471705,
+        "LastMarsProgradeToRetrograde": 4702515148308195069,
+        "LastMarsRetrogradeToPrograde": 4702513671731162645,
+        "LastMarsWesternQuadrature": 4702515034746663848,
+        "NextMarsConjunction": 4702517778500177165,
+        "NextMarsEasternQuadrature": 4702517083255863228,
+        "NextMarsOpposition": 4702516873348048143,
+        "NextMarsProgradeToRetrograde": 4702516965530186729,
+        "NextMarsRetrogradeToPrograde": 4702516965530200658,
+        "NextMarsWesternQuadrature": 4702516673165460030
+      }
+    },
+    {
+      "input_utc": "1997-02-01T16:16:49.678Z",
+      "tt_jd_bits": 4702516779609217232,
+      "events": {
+        "LastMarsConjunction": 4702516062146475025,
+        "LastMarsEasternQuadrature": 4702515436148833352,
+        "LastMarsOpposition": 4702515232188471705,
+        "LastMarsProgradeToRetrograde": 4702515148308195069,
+        "LastMarsRetrogradeToPrograde": 4702513671731162645,
+        "LastMarsWesternQuadrature": 4702516673165460030,
+        "NextMarsConjunction": 4702517778500177165,
+        "NextMarsEasternQuadrature": 4702517083255863228,
+        "NextMarsOpposition": 4702516873348048143,
+        "NextMarsProgradeToRetrograde": 4702516965530192156,
+        "NextMarsRetrogradeToPrograde": 4702516965530194837,
+        "NextMarsWesternQuadrature": 4702518311829558718
+      }
+    },
+    {
+      "input_utc": "1997-08-17T19:25:12.678Z",
+      "tt_jd_bits": 4702517202944458332,
+      "events": {
+        "LastMarsConjunction": 4702516062146475025,
+        "LastMarsEasternQuadrature": 4702517083255863228,
+        "LastMarsOpposition": 4702516873348048143,
+        "LastMarsProgradeToRetrograde": 4702515148308195069,
+        "LastMarsRetrogradeToPrograde": 4702515321508642044,
+        "LastMarsWesternQuadrature": 4702516673165460030,
+        "NextMarsConjunction": 4702517778500177165,
+        "NextMarsEasternQuadrature": 4702518749267113224,
+        "NextMarsOpposition": 4702518523484696384,
+        "NextMarsProgradeToRetrograde": 4702518443319413718,
+        "NextMarsRetrogradeToPrograde": 4702518612758689391,
+        "NextMarsWesternQuadrature": 4702518311829558718
+      }
+    },
+    {
+      "input_utc": "1998-03-03T00:39:35.678Z",
+      "tt_jd_bits": 4702517626467579396,
+      "events": {
+        "LastMarsConjunction": 4702516062146475025,
+        "LastMarsEasternQuadrature": 4702517083255863228,
+        "LastMarsOpposition": 4702516873348048143,
+        "LastMarsProgradeToRetrograde": 4702515148308195069,
+        "LastMarsRetrogradeToPrograde": 4702515321508642044,
+        "LastMarsWesternQuadrature": 4702516673165460030,
+        "NextMarsConjunction": 4702517778500177165,
+        "NextMarsEasternQuadrature": 4702518749267113224,
+        "NextMarsOpposition": 4702518523484696384,
+        "NextMarsProgradeToRetrograde": 4702518443319444248,
+        "NextMarsRetrogradeToPrograde": 4702518612758695341,
+        "NextMarsWesternQuadrature": 4702518311829558718
+      }
+    },
+    {
+      "input_utc": "1998-09-16T05:53:58.678Z",
+      "tt_jd_bits": 4702518049990700460,
+      "events": {
+        "LastMarsConjunction": 4702517778500177165,
+        "LastMarsEasternQuadrature": 4702517083255863228,
+        "LastMarsOpposition": 4702516873348048143,
+        "LastMarsProgradeToRetrograde": 4702515148308195069,
+        "LastMarsRetrogradeToPrograde": 4702515321508642044,
+        "LastMarsWesternQuadrature": 4702516673165460030,
+        "NextMarsConjunction": 4702519455332226831,
+        "NextMarsEasternQuadrature": 4702518749267113224,
+        "NextMarsOpposition": 4702518523484696384,
+        "NextMarsProgradeToRetrograde": 4702518443319413718,
+        "NextMarsRetrogradeToPrograde": 4702518612758689391,
+        "NextMarsWesternQuadrature": 4702518311829558718
+      }
+    },
+    {
+      "input_utc": "1999-04-01T11:08:21.678Z",
+      "tt_jd_bits": 4702518473513846379,
+      "events": {
+        "LastMarsConjunction": 4702517778500177165,
+        "LastMarsEasternQuadrature": 4702517083255863228,
+        "LastMarsOpposition": 4702516873348048143,
+        "LastMarsProgradeToRetrograde": 4702515148308195069,
+        "LastMarsRetrogradeToPrograde": 4702515321508642044,
+        "LastMarsWesternQuadrature": 4702518311829558718,
+        "NextMarsConjunction": 4702519455332226831,
+        "NextMarsEasternQuadrature": 4702518749267113224,
+        "NextMarsOpposition": 4702518523484696384,
+        "NextMarsProgradeToRetrograde": 4702520129599844994,
+        "NextMarsRetrogradeToPrograde": 4702518612758689391,
+        "NextMarsWesternQuadrature": 4702519961901889358
+      }
+    },
+    {
+      "input_utc": "1999-10-15T16:22:44.678Z",
+      "tt_jd_bits": 4702518897036967443,
+      "events": {
+        "LastMarsConjunction": 4702517778500177165,
+        "LastMarsEasternQuadrature": 4702518749267113224,
+        "LastMarsOpposition": 4702518523484696384,
+        "LastMarsProgradeToRetrograde": 4702518443319413718,
+        "LastMarsRetrogradeToPrograde": 4702516965530200658,
+        "LastMarsWesternQuadrature": 4702518311829558718,
+        "NextMarsConjunction": 4702519455332226831,
+        "NextMarsEasternQuadrature": 4702520463914907054,
+        "NextMarsOpposition": 4702520200681939265,
+        "NextMarsProgradeToRetrograde": 4702520129599872540,
+        "NextMarsRetrogradeToPrograde": 4702520278429909334,
+        "NextMarsWesternQuadrature": 4702519961901889358
+      }
+    },
+    {
+      "input_utc": "2000-04-28T10:37:07.678Z",
+      "tt_jd_bits": 4702519317428341520,
+      "events": {
+        "LastMarsConjunction": 4702517778500177165,
+        "LastMarsEasternQuadrature": 4702518749267113224,
+        "LastMarsOpposition": 4702518523484696384,
+        "LastMarsProgradeToRetrograde": 4702518443319413718,
+        "LastMarsRetrogradeToPrograde": 4702516965530200658,
+        "LastMarsWesternQuadrature": 4702518311829558718,
+        "NextMarsConjunction": 4702519455332226831,
+        "NextMarsEasternQuadrature": 4702520463914907054,
+        "NextMarsOpposition": 4702520200681939265,
+        "NextMarsProgradeToRetrograde": 4702520129599844994,
+        "NextMarsRetrogradeToPrograde": 4702520278429951356,
+        "NextMarsWesternQuadrature": 4702519961901889358
+      }
+    },
+    {
+      "input_utc": "2000-11-11T15:51:30.678Z",
+      "tt_jd_bits": 4702519740951462584,
+      "events": {
+        "LastMarsConjunction": 4702519455332226831,
+        "LastMarsEasternQuadrature": 4702518749267113224,
+        "LastMarsOpposition": 4702518523484696384,
+        "LastMarsProgradeToRetrograde": 4702518443319413718,
+        "LastMarsRetrogradeToPrograde": 4702516965530200658,
+        "LastMarsWesternQuadrature": 4702518311829558718,
+        "NextMarsConjunction": 4702521109471672966,
+        "NextMarsEasternQuadrature": 4702520463914907054,
+        "NextMarsOpposition": 4702520200681939265,
+        "NextMarsProgradeToRetrograde": 4702520129599844994,
+        "NextMarsRetrogradeToPrograde": 4702520278429951356,
+        "NextMarsWesternQuadrature": 4702519961901889358
+      }
+    },
+    {
+      "input_utc": "2001-05-27T20:59:45.678Z",
+      "tt_jd_bits": 4702520164465436959,
+      "events": {
+        "LastMarsConjunction": 4702519455332226831,
+        "LastMarsEasternQuadrature": 4702518749267113224,
+        "LastMarsOpposition": 4702518523484696384,
+        "LastMarsProgradeToRetrograde": 4702518443319413718,
+        "LastMarsRetrogradeToPrograde": 4702516965530200658,
+        "LastMarsWesternQuadrature": 4702519961901889358,
+        "NextMarsConjunction": 4702521109471672966,
+        "NextMarsEasternQuadrature": 4702520463914907054,
+        "NextMarsOpposition": 4702520200681939265,
+        "NextMarsProgradeToRetrograde": 4702634249608255825,
+        "NextMarsRetrogradeToPrograde": 4702520278429951356,
+        "NextMarsWesternQuadrature": 4702521646667862913
+      }
+    },
+    {
+      "input_utc": "2001-12-11T02:14:08.678Z",
+      "tt_jd_bits": 4702520587988558023,
+      "events": {
+        "LastMarsConjunction": 4702519455332226831,
+        "LastMarsEasternQuadrature": 4702520463914907054,
+        "LastMarsOpposition": 4702520200681939265,
+        "LastMarsProgradeToRetrograde": 4702520129599844994,
+        "LastMarsRetrogradeToPrograde": 4702518612758689391,
+        "LastMarsWesternQuadrature": 4702519961901889358,
+        "NextMarsConjunction": 4702521109471672966,
+        "NextMarsEasternQuadrature": 4702522196782468985,
+        "NextMarsOpposition": 4702521931573042479,
+        "NextMarsProgradeToRetrograde": 4702634249608255825,
+        "NextMarsRetrogradeToPrograde": 4702521999943121632,
+        "NextMarsWesternQuadrature": 4702521646667862913
+      }
+    },
+    {
+      "input_utc": "2002-06-26T05:22:31.678Z",
+      "tt_jd_bits": 4702521011323774268,
+      "events": {
+        "LastMarsConjunction": 4702519455332226831,
+        "LastMarsEasternQuadrature": 4702520463914907054,
+        "LastMarsOpposition": 4702520200681939265,
+        "LastMarsProgradeToRetrograde": 4702520129599844994,
+        "LastMarsRetrogradeToPrograde": 4702518612758689391,
+        "LastMarsWesternQuadrature": 4702519961901889358,
+        "NextMarsConjunction": 4702521109471672966,
+        "NextMarsEasternQuadrature": 4702522196782468985,
+        "NextMarsOpposition": 4702521931573042479,
+        "NextMarsProgradeToRetrograde": 4702523725151046242,
+        "NextMarsRetrogradeToPrograde": 4702521999943137449,
+        "NextMarsWesternQuadrature": 4702521646667862913
+      }
+    },
+    {
+      "input_utc": "2003-01-09T10:36:54.678Z",
+      "tt_jd_bits": 4702521434846895332,
+      "events": {
+        "LastMarsConjunction": 4702521109471672966,
+        "LastMarsEasternQuadrature": 4702520463914907054,
+        "LastMarsOpposition": 4702520200681939265,
+        "LastMarsProgradeToRetrograde": 4702520129599844994,
+        "LastMarsRetrogradeToPrograde": 4702518612758689391,
+        "LastMarsWesternQuadrature": 4702519961901889358,
+        "NextMarsConjunction": 4702522755753602095,
+        "NextMarsEasternQuadrature": 4702522196782468985,
+        "NextMarsOpposition": 4702521931573042479,
+        "NextMarsProgradeToRetrograde": 4702634249608255825,
+        "NextMarsRetrogradeToPrograde": 4702521999943121632,
+        "NextMarsWesternQuadrature": 4702521646667862913
+      }
+    },
+    {
+      "input_utc": "2003-07-25T15:51:17.678Z",
+      "tt_jd_bits": 4702521858370016396,
+      "events": {
+        "LastMarsConjunction": 4702521109471672966,
+        "LastMarsEasternQuadrature": 4702520463914907054,
+        "LastMarsOpposition": 4702520200681939265,
+        "LastMarsProgradeToRetrograde": 4702520129599844994,
+        "LastMarsRetrogradeToPrograde": 4702518612758689391,
+        "LastMarsWesternQuadrature": 4702521646667862913,
+        "NextMarsConjunction": 4702522755753602095,
+        "NextMarsEasternQuadrature": 4702522196782468985,
+        "NextMarsOpposition": 4702521931573042479,
+        "NextMarsProgradeToRetrograde": 4702634249608255825,
+        "NextMarsRetrogradeToPrograde": 4702521999943121632,
+        "NextMarsWesternQuadrature": 4702523400900985901
+      }
+    },
+    {
+      "input_utc": "2004-02-06T10:05:40.678Z",
+      "tt_jd_bits": 4702522278761390473,
+      "events": {
+        "LastMarsConjunction": 4702521109471672966,
+        "LastMarsEasternQuadrature": 4702522196782468985,
+        "LastMarsOpposition": 4702521931573042479,
+        "LastMarsProgradeToRetrograde": 4702520129599844994,
+        "LastMarsRetrogradeToPrograde": 4702520278429951356,
+        "LastMarsWesternQuadrature": 4702521646667862913,
+        "NextMarsConjunction": 4702522755753602095,
+        "NextMarsEasternQuadrature": 4702523876976064160,
+        "NextMarsOpposition": 4702523652958025929,
+        "NextMarsProgradeToRetrograde": 4702523725151046242,
+        "NextMarsRetrogradeToPrograde": 4702523725151049149,
+        "NextMarsWesternQuadrature": 4702523400900985901
+      }
+    },
+    {
+      "input_utc": "2004-08-21T15:20:03.678Z",
+      "tt_jd_bits": 4702522702284511537,
+      "events": {
+        "LastMarsConjunction": 4702521109471672966,
+        "LastMarsEasternQuadrature": 4702522196782468985,
+        "LastMarsOpposition": 4702521931573042479,
+        "LastMarsProgradeToRetrograde": 4702520129599844994,
+        "LastMarsRetrogradeToPrograde": 4702520278429951356,
+        "LastMarsWesternQuadrature": 4702521646667862913,
+        "NextMarsConjunction": 4702522755753602095,
+        "NextMarsEasternQuadrature": 4702523876976064160,
+        "NextMarsOpposition": 4702523652958025929,
+        "NextMarsProgradeToRetrograde": 4702523725151046242,
+        "NextMarsRetrogradeToPrograde": 4702523725151049149,
+        "NextMarsWesternQuadrature": 4702523400900985901
+      }
+    },
+    {
+      "input_utc": "2005-03-06T20:34:26.678Z",
+      "tt_jd_bits": 4702523125807632601,
+      "events": {
+        "LastMarsConjunction": 4702522755753602095,
+        "LastMarsEasternQuadrature": 4702522196782468985,
+        "LastMarsOpposition": 4702521931573042479,
+        "LastMarsProgradeToRetrograde": 4702520129599844994,
+        "LastMarsRetrogradeToPrograde": 4702520278429951356,
+        "LastMarsWesternQuadrature": 4702521646667862913,
+        "NextMarsConjunction": 4702524404470766366,
+        "NextMarsEasternQuadrature": 4702523876976064160,
+        "NextMarsOpposition": 4702523652958025929,
+        "NextMarsProgradeToRetrograde": 4702523725151046242,
+        "NextMarsRetrogradeToPrograde": 4702523725151049149,
+        "NextMarsWesternQuadrature": 4702523400900985901
+      }
+    },
+    {
+      "input_utc": "2005-09-20T01:48:49.678Z",
+      "tt_jd_bits": 4702523549330753665,
+      "events": {
+        "LastMarsConjunction": 4702522755753602095,
+        "LastMarsEasternQuadrature": 4702522196782468985,
+        "LastMarsOpposition": 4702521931573042479,
+        "LastMarsProgradeToRetrograde": 4702520129599844994,
+        "LastMarsRetrogradeToPrograde": 4702520278429951356,
+        "LastMarsWesternQuadrature": 4702523400900985901,
+        "NextMarsConjunction": 4702524404470766366,
+        "NextMarsEasternQuadrature": 4702523876976064160,
+        "NextMarsOpposition": 4702523652958025929,
+        "NextMarsProgradeToRetrograde": 4702523725151046242,
+        "NextMarsRetrogradeToPrograde": 4702523725151049149,
+        "NextMarsWesternQuadrature": 4702525112250566914
+      }
+    },
+    {
+      "input_utc": "2006-04-05T07:03:12.678Z",
+      "tt_jd_bits": 4702523972853899584,
+      "events": {
+        "LastMarsConjunction": 4702522755753602095,
+        "LastMarsEasternQuadrature": 4702523876976064160,
+        "LastMarsOpposition": 4702523652958025929,
+        "LastMarsProgradeToRetrograde": 4702634249608255825,
+        "LastMarsRetrogradeToPrograde": 4702521999943121632,
+        "LastMarsWesternQuadrature": 4702523400900985901,
+        "NextMarsConjunction": 4702524404470766366,
+        "NextMarsEasternQuadrature": 4702525529803801021,
+        "NextMarsOpposition": 4702525322610468648,
+        "NextMarsProgradeToRetrograde": 4702525402191072896,
+        "NextMarsRetrogradeToPrograde": 4702525402191078709,
+        "NextMarsWesternQuadrature": 4702525112250566914
+      }
+    },
+    {
+      "input_utc": "2006-10-19T12:17:35.678Z",
+      "tt_jd_bits": 4702524396377020648,
+      "events": {
+        "LastMarsConjunction": 4702522755753602095,
+        "LastMarsEasternQuadrature": 4702523876976064160,
+        "LastMarsOpposition": 4702523652958025929,
+        "LastMarsProgradeToRetrograde": 4702634249608255825,
+        "LastMarsRetrogradeToPrograde": 4702521999943121632,
+        "LastMarsWesternQuadrature": 4702523400900985901,
+        "NextMarsConjunction": 4702524404470766366,
+        "NextMarsEasternQuadrature": 4702525529803801021,
+        "NextMarsOpposition": 4702525322610468648,
+        "NextMarsProgradeToRetrograde": 4702525402191072896,
+        "NextMarsRetrogradeToPrograde": 4702525402191078709,
+        "NextMarsWesternQuadrature": 4702525112250566914
+      }
+    },
+    {
+      "input_utc": "2007-05-04T15:25:58.678Z",
+      "tt_jd_bits": 4702524819712236893,
+      "events": {
+        "LastMarsConjunction": 4702524404470766366,
+        "LastMarsEasternQuadrature": 4702523876976064160,
+        "LastMarsOpposition": 4702523652958025929,
+        "LastMarsProgradeToRetrograde": 4702634249608255825,
+        "LastMarsRetrogradeToPrograde": 4702521999943121632,
+        "LastMarsWesternQuadrature": 4702523400900985901,
+        "NextMarsConjunction": 4702526067991659410,
+        "NextMarsEasternQuadrature": 4702525529803801021,
+        "NextMarsOpposition": 4702525322610468648,
+        "NextMarsProgradeToRetrograde": 4702525402191072896,
+        "NextMarsRetrogradeToPrograde": 4702525402191078709,
+        "NextMarsWesternQuadrature": 4702525112250566914
+      }
+    },
+    {
+      "input_utc": "2007-11-16T09:40:21.678Z",
+      "tt_jd_bits": 4702525240103610970,
+      "events": {
+        "LastMarsConjunction": 4702524404470766366,
+        "LastMarsEasternQuadrature": 4702523876976064160,
+        "LastMarsOpposition": 4702523652958025929,
+        "LastMarsProgradeToRetrograde": 4702634249608255825,
+        "LastMarsRetrogradeToPrograde": 4702521999943121632,
+        "LastMarsWesternQuadrature": 4702525112250566914,
+        "NextMarsConjunction": 4702526067991659410,
+        "NextMarsEasternQuadrature": 4702525529803801021,
+        "NextMarsOpposition": 4702525322610468648,
+        "NextMarsProgradeToRetrograde": 4702525402191072896,
+        "NextMarsRetrogradeToPrograde": 4702525402191078709,
+        "NextMarsWesternQuadrature": 4702526771102296588
+      }
+    },
+    {
+      "input_utc": "2008-05-31T14:54:44.678Z",
+      "tt_jd_bits": 4702525663626732034,
+      "events": {
+        "LastMarsConjunction": 4702524404470766366,
+        "LastMarsEasternQuadrature": 4702525529803801021,
+        "LastMarsOpposition": 4702525322610468648,
+        "LastMarsProgradeToRetrograde": 4702523725151046242,
+        "LastMarsRetrogradeToPrograde": 4702523725151049149,
+        "LastMarsWesternQuadrature": 4702525112250566914,
+        "NextMarsConjunction": 4702526067991659410,
+        "NextMarsEasternQuadrature": 4702527173148483498,
+        "NextMarsOpposition": 4702526969725138182,
+        "NextMarsProgradeToRetrograde": 4702526885607883545,
+        "NextMarsRetrogradeToPrograde": 4702527056790909413,
+        "NextMarsWesternQuadrature": 4702526771102296588
+      }
+    },
+    {
+      "input_utc": "2008-12-14T20:09:07.678Z",
+      "tt_jd_bits": 4702526087149853098,
+      "events": {
+        "LastMarsConjunction": 4702526067991659410,
+        "LastMarsEasternQuadrature": 4702525529803801021,
+        "LastMarsOpposition": 4702525322610468648,
+        "LastMarsProgradeToRetrograde": 4702523725151046242,
+        "LastMarsRetrogradeToPrograde": 4702523725151049149,
+        "LastMarsWesternQuadrature": 4702525112250566914,
+        "NextMarsConjunction": 4702527766168593028,
+        "NextMarsEasternQuadrature": 4702527173148483498,
+        "NextMarsOpposition": 4702526969725138182,
+        "NextMarsProgradeToRetrograde": 4702526885607883545,
+        "NextMarsRetrogradeToPrograde": 4702527056790909413,
+        "NextMarsWesternQuadrature": 4702526771102296588
+      }
+    },
+    {
+      "input_utc": "2009-06-30T01:23:30.678Z",
+      "tt_jd_bits": 4702526510672999017,
+      "events": {
+        "LastMarsConjunction": 4702526067991659410,
+        "LastMarsEasternQuadrature": 4702525529803801021,
+        "LastMarsOpposition": 4702525322610468648,
+        "LastMarsProgradeToRetrograde": 4702523725151046242,
+        "LastMarsRetrogradeToPrograde": 4702523725151049149,
+        "LastMarsWesternQuadrature": 4702525112250566914,
+        "NextMarsConjunction": 4702527766168593028,
+        "NextMarsEasternQuadrature": 4702527173148483498,
+        "NextMarsOpposition": 4702526969725138182,
+        "NextMarsProgradeToRetrograde": 4702526885607883545,
+        "NextMarsRetrogradeToPrograde": 4702527056790909413,
+        "NextMarsWesternQuadrature": 4702526771102296588
+      }
+    },
+    {
+      "input_utc": "2010-01-13T06:31:45.678Z",
+      "tt_jd_bits": 4702526934186973392,
+      "events": {
+        "LastMarsConjunction": 4702526067991659410,
+        "LastMarsEasternQuadrature": 4702525529803801021,
+        "LastMarsOpposition": 4702525322610468648,
+        "LastMarsProgradeToRetrograde": 4702523725151046242,
+        "LastMarsRetrogradeToPrograde": 4702523725151049149,
+        "LastMarsWesternQuadrature": 4702526771102296588,
+        "NextMarsConjunction": 4702527766168593028,
+        "NextMarsEasternQuadrature": 4702527173148483498,
+        "NextMarsOpposition": 4702526969725138182,
+        "NextMarsProgradeToRetrograde": 4702528527088142862,
+        "NextMarsRetrogradeToPrograde": 4702527056790909413,
+        "NextMarsWesternQuadrature": 4702528412245034916
+      }
+    },
+    {
+      "input_utc": "2010-07-29T11:46:08.678Z",
+      "tt_jd_bits": 4702527357710094456,
+      "events": {
+        "LastMarsConjunction": 4702526067991659410,
+        "LastMarsEasternQuadrature": 4702527173148483498,
+        "LastMarsOpposition": 4702526969725138182,
+        "LastMarsProgradeToRetrograde": 4702526885607883545,
+        "LastMarsRetrogradeToPrograde": 4702525402191078709,
+        "LastMarsWesternQuadrature": 4702526771102296588,
+        "NextMarsConjunction": 4702527766168593028,
+        "NextMarsEasternQuadrature": 4702528817168150831,
+        "NextMarsOpposition": 4702528610443475645,
+        "NextMarsProgradeToRetrograde": 4702528527088142862,
+        "NextMarsRetrogradeToPrograde": 4702528702087940528,
+        "NextMarsWesternQuadrature": 4702528412245034916
+      }
+    },
+    {
+      "input_utc": "2011-02-11T17:00:31.678Z",
+      "tt_jd_bits": 4702527781233215520,
+      "events": {
+        "LastMarsConjunction": 4702527766168593028,
+        "LastMarsEasternQuadrature": 4702527173148483498,
+        "LastMarsOpposition": 4702526969725138182,
+        "LastMarsProgradeToRetrograde": 4702526885607883545,
+        "LastMarsRetrogradeToPrograde": 4702525402191078709,
+        "LastMarsWesternQuadrature": 4702526771102296588,
+        "NextMarsConjunction": 4702529491283803396,
+        "NextMarsEasternQuadrature": 4702528817168150831,
+        "NextMarsOpposition": 4702528610443475645,
+        "NextMarsProgradeToRetrograde": 4702528527088142862,
+        "NextMarsRetrogradeToPrograde": 4702528702087940528,
+        "NextMarsWesternQuadrature": 4702528412245034916
+      }
+    },
+    {
+      "input_utc": "2011-08-26T11:14:54.678Z",
+      "tt_jd_bits": 4702528201624589597,
+      "events": {
+        "LastMarsConjunction": 4702527766168593028,
+        "LastMarsEasternQuadrature": 4702527173148483498,
+        "LastMarsOpposition": 4702526969725138182,
+        "LastMarsProgradeToRetrograde": 4702526885607883545,
+        "LastMarsRetrogradeToPrograde": 4702525402191078709,
+        "LastMarsWesternQuadrature": 4702526771102296588,
+        "NextMarsConjunction": 4702529491283803396,
+        "NextMarsEasternQuadrature": 4702528817168150831,
+        "NextMarsOpposition": 4702528610443475645,
+        "NextMarsProgradeToRetrograde": 4702528527088142862,
+        "NextMarsRetrogradeToPrograde": 4702528702087940528,
+        "NextMarsWesternQuadrature": 4702528412245034916
+      }
+    },
+    {
+      "input_utc": "2012-03-10T14:23:17.678Z",
+      "tt_jd_bits": 4702528624959805842,
+      "events": {
+        "LastMarsConjunction": 4702527766168593028,
+        "LastMarsEasternQuadrature": 4702527173148483498,
+        "LastMarsOpposition": 4702528610443475645,
+        "LastMarsProgradeToRetrograde": 4702528527088142862,
+        "LastMarsRetrogradeToPrograde": 4702527056790909413,
+        "LastMarsWesternQuadrature": 4702528412245034916,
+        "NextMarsConjunction": 4702529491283803396,
+        "NextMarsEasternQuadrature": 4702528817168150831,
+        "NextMarsOpposition": 4702530255495147614,
+        "NextMarsProgradeToRetrograde": 4702530173884075455,
+        "NextMarsRetrogradeToPrograde": 4702530346783988256,
+        "NextMarsWesternQuadrature": 4702530049620996652
+      }
+    },
+    {
+      "input_utc": "2012-09-23T19:37:40.678Z",
+      "tt_jd_bits": 4702529048482951761,
+      "events": {
+        "LastMarsConjunction": 4702527766168593028,
+        "LastMarsEasternQuadrature": 4702528817168150831,
+        "LastMarsOpposition": 4702528610443475645,
+        "LastMarsProgradeToRetrograde": 4702528527088142862,
+        "LastMarsRetrogradeToPrograde": 4702527056790909413,
+        "LastMarsWesternQuadrature": 4702528412245034916,
+        "NextMarsConjunction": 4702529491283803396,
+        "NextMarsEasternQuadrature": 4702530473238556632,
+        "NextMarsOpposition": 4702530255495147614,
+        "NextMarsProgradeToRetrograde": 4702530173884075455,
+        "NextMarsRetrogradeToPrograde": 4702530346783988256,
+        "NextMarsWesternQuadrature": 4702530049620996652
+      }
+    },
+    {
+      "input_utc": "2013-04-09T00:52:03.678Z",
+      "tt_jd_bits": 4702529472006072825,
+      "events": {
+        "LastMarsConjunction": 4702527766168593028,
+        "LastMarsEasternQuadrature": 4702528817168150831,
+        "LastMarsOpposition": 4702528610443475645,
+        "LastMarsProgradeToRetrograde": 4702528527088142862,
+        "LastMarsRetrogradeToPrograde": 4702527056790909413,
+        "LastMarsWesternQuadrature": 4702528412245034916,
+        "NextMarsConjunction": 4702529491283803396,
+        "NextMarsEasternQuadrature": 4702530473238556632,
+        "NextMarsOpposition": 4702530255495147614,
+        "NextMarsProgradeToRetrograde": 4702530173884075455,
+        "NextMarsRetrogradeToPrograde": 4702530346783988256,
+        "NextMarsWesternQuadrature": 4702530049620996652
+      }
+    },
+    {
+      "input_utc": "2013-10-23T06:06:26.678Z",
+      "tt_jd_bits": 4702529895529193889,
+      "events": {
+        "LastMarsConjunction": 4702529491283803396,
+        "LastMarsEasternQuadrature": 4702528817168150831,
+        "LastMarsOpposition": 4702528610443475645,
+        "LastMarsProgradeToRetrograde": 4702528527088142862,
+        "LastMarsRetrogradeToPrograde": 4702527056790909413,
+        "LastMarsWesternQuadrature": 4702528412245034916,
+        "NextMarsConjunction": 4702531182749855459,
+        "NextMarsEasternQuadrature": 4702530473238556632,
+        "NextMarsOpposition": 4702530255495147614,
+        "NextMarsProgradeToRetrograde": 4702530173884075455,
+        "NextMarsRetrogradeToPrograde": 4702530346783988256,
+        "NextMarsWesternQuadrature": 4702530049620996652
+      }
+    },
+    {
+      "input_utc": "2014-05-08T11:20:49.678Z",
+      "tt_jd_bits": 4702530319052314953,
+      "events": {
+        "LastMarsConjunction": 4702529491283803396,
+        "LastMarsEasternQuadrature": 4702528817168150831,
+        "LastMarsOpposition": 4702530255495147614,
+        "LastMarsProgradeToRetrograde": 4702530173884075455,
+        "LastMarsRetrogradeToPrograde": 4702528702087940528,
+        "LastMarsWesternQuadrature": 4702530049620996652,
+        "NextMarsConjunction": 4702531182749855459,
+        "NextMarsEasternQuadrature": 4702530473238556632,
+        "NextMarsOpposition": 4702531918919952384,
+        "NextMarsProgradeToRetrograde": 4702533696942539461,
+        "NextMarsRetrogradeToPrograde": 4702532002409627902,
+        "NextMarsWesternQuadrature": 4702531693510265298
+      }
+    },
+    {
+      "input_utc": "2014-11-21T16:35:12.678Z",
+      "tt_jd_bits": 4702530742575436017,
+      "events": {
+        "LastMarsConjunction": 4702529491283803396,
+        "LastMarsEasternQuadrature": 4702530473238556632,
+        "LastMarsOpposition": 4702530255495147614,
+        "LastMarsProgradeToRetrograde": 4702530173884075455,
+        "LastMarsRetrogradeToPrograde": 4702528702087940528,
+        "LastMarsWesternQuadrature": 4702530049620996652,
+        "NextMarsConjunction": 4702531182749855459,
+        "NextMarsEasternQuadrature": 4702532164571039724,
+        "NextMarsOpposition": 4702531918919952384,
+        "NextMarsProgradeToRetrograde": 4702533696942539461,
+        "NextMarsRetrogradeToPrograde": 4702532002409627902,
+        "NextMarsWesternQuadrature": 4702531693510265298
+      }
+    },
+    {
+      "input_utc": "2015-06-05T10:49:35.678Z",
+      "tt_jd_bits": 4702531162966810094,
+      "events": {
+        "LastMarsConjunction": 4702529491283803396,
+        "LastMarsEasternQuadrature": 4702530473238556632,
+        "LastMarsOpposition": 4702530255495147614,
+        "LastMarsProgradeToRetrograde": 4702530173884075455,
+        "LastMarsRetrogradeToPrograde": 4702528702087940528,
+        "LastMarsWesternQuadrature": 4702530049620996652,
+        "NextMarsConjunction": 4702531182749855459,
+        "NextMarsEasternQuadrature": 4702532164571039724,
+        "NextMarsOpposition": 4702531918919952384,
+        "NextMarsProgradeToRetrograde": 4702533696942539461,
+        "NextMarsRetrogradeToPrograde": 4702532002409627902,
+        "NextMarsWesternQuadrature": 4702531693510265298
+      }
+    },
+    {
+      "input_utc": "2015-12-19T16:03:58.678Z",
+      "tt_jd_bits": 4702531586489956014,
+      "events": {
+        "LastMarsConjunction": 4702531182749855459,
+        "LastMarsEasternQuadrature": 4702530473238556632,
+        "LastMarsOpposition": 4702530255495147614,
+        "LastMarsProgradeToRetrograde": 4702530173884075455,
+        "LastMarsRetrogradeToPrograde": 4702528702087940528,
+        "LastMarsWesternQuadrature": 4702530049620996652,
+        "NextMarsConjunction": 4702532843561104052,
+        "NextMarsEasternQuadrature": 4702532164571039724,
+        "NextMarsOpposition": 4702531918919952384,
+        "NextMarsProgradeToRetrograde": 4702533696942539461,
+        "NextMarsRetrogradeToPrograde": 4702532002409627902,
+        "NextMarsWesternQuadrature": 4702531693510265298
+      }
+    },
+    {
+      "input_utc": "2016-07-03T21:18:21.678Z",
+      "tt_jd_bits": 4702532010013077078,
+      "events": {
+        "LastMarsConjunction": 4702531182749855459,
+        "LastMarsEasternQuadrature": 4702530473238556632,
+        "LastMarsOpposition": 4702531918919952384,
+        "LastMarsProgradeToRetrograde": 4702530173884075455,
+        "LastMarsRetrogradeToPrograde": 4702530346783988256,
+        "LastMarsWesternQuadrature": 4702531693510265298,
+        "NextMarsConjunction": 4702532843561104052,
+        "NextMarsEasternQuadrature": 4702532164571039724,
+        "NextMarsOpposition": 4702533627774826721,
+        "NextMarsProgradeToRetrograde": 4702533566262905328,
+        "NextMarsRetrogradeToPrograde": 4702533696942418412,
+        "NextMarsWesternQuadrature": 4702533360315560440
+      }
+    },
+    {
+      "input_utc": "2017-01-17T00:26:44.678Z",
+      "tt_jd_bits": 4702532433348318178,
+      "events": {
+        "LastMarsConjunction": 4702531182749855459,
+        "LastMarsEasternQuadrature": 4702532164571039724,
+        "LastMarsOpposition": 4702531918919952384,
+        "LastMarsProgradeToRetrograde": 4702530173884075455,
+        "LastMarsRetrogradeToPrograde": 4702530346783988256,
+        "LastMarsWesternQuadrature": 4702531693510265298,
+        "NextMarsConjunction": 4702532843561104052,
+        "NextMarsEasternQuadrature": 4702533904383943511,
+        "NextMarsOpposition": 4702533627774826721,
+        "NextMarsProgradeToRetrograde": 4702533566262905328,
+        "NextMarsRetrogradeToPrograde": 4702533696942418412,
+        "NextMarsWesternQuadrature": 4702533360315560440
+      }
+    },
+    {
+      "input_utc": "2017-08-02T05:41:07.678Z",
+      "tt_jd_bits": 4702532856871439242,
+      "events": {
+        "LastMarsConjunction": 4702532843561104052,
+        "LastMarsEasternQuadrature": 4702532164571039724,
+        "LastMarsOpposition": 4702531918919952384,
+        "LastMarsProgradeToRetrograde": 4702530173884075455,
+        "LastMarsRetrogradeToPrograde": 4702530346783988256,
+        "LastMarsWesternQuadrature": 4702531693510265298,
+        "NextMarsConjunction": 4702534491554150909,
+        "NextMarsEasternQuadrature": 4702533904383943511,
+        "NextMarsOpposition": 4702533627774826721,
+        "NextMarsProgradeToRetrograde": 4702533566262905328,
+        "NextMarsRetrogradeToPrograde": 4702533696942418412,
+        "NextMarsWesternQuadrature": 4702533360315560440
+      }
+    },
+    {
+      "input_utc": "2018-02-15T10:55:30.678Z",
+      "tt_jd_bits": 4702533280394560306,
+      "events": {
+        "LastMarsConjunction": 4702532843561104052,
+        "LastMarsEasternQuadrature": 4702532164571039724,
+        "LastMarsOpposition": 4702531918919952384,
+        "LastMarsProgradeToRetrograde": 4702530173884075455,
+        "LastMarsRetrogradeToPrograde": 4702530346783988256,
+        "LastMarsWesternQuadrature": 4702531693510265298,
+        "NextMarsConjunction": 4702534491554150909,
+        "NextMarsEasternQuadrature": 4702533904383943511,
+        "NextMarsOpposition": 4702533627774826721,
+        "NextMarsProgradeToRetrograde": 4702533566262905328,
+        "NextMarsRetrogradeToPrograde": 4702533696942418412,
+        "NextMarsWesternQuadrature": 4702533360315560440
+      }
+    }
+  ]
+}

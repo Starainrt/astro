@@ -1,0 +1,344 @@
+[
+  {
+    "utc": "1973-04-15T00:00:00Z",
+    "jupiter": {
+      "ra_deg": 311.88806,
+      "dec_deg": -18.29401,
+      "delta_au": 5.28137291912345
+    },
+    "satellites": {
+      "callisto": {
+        "ra_deg": 311.7589,
+        "dec_deg": -18.33129,
+        "delta_au": 5.2768299268895,
+        "offset_x_arcsec": -441.3803197314987,
+        "offset_y_arcsec": -134.36446774862958
+      },
+      "europa": {
+        "ra_deg": 311.90297,
+        "dec_deg": -18.2902,
+        "delta_au": 5.28564623493191,
+        "offset_x_arcsec": 50.96424397059699,
+        "offset_y_arcsec": 13.713918937389815
+      },
+      "ganymede": {
+        "ra_deg": 311.85552,
+        "dec_deg": -18.30439,
+        "delta_au": 5.2878698628188,
+        "offset_x_arcsec": -111.21668080202586,
+        "offset_y_arcsec": -37.37791869906149
+      },
+      "io": {
+        "ra_deg": 311.85761,
+        "dec_deg": -18.30307,
+        "delta_au": 5.2818325588453,
+        "offset_x_arcsec": -104.07417725728882,
+        "offset_y_arcsec": -32.62468494888245
+      }
+    }
+  },
+  {
+    "utc": "1979-07-09T12:00:00Z",
+    "jupiter": {
+      "ra_deg": 135.47291,
+      "dec_deg": 17.61495,
+      "delta_au": 6.22692079240897
+    },
+    "satellites": {
+      "callisto": {
+        "ra_deg": 135.41111,
+        "dec_deg": 17.634,
+        "delta_au": 6.21639039566952,
+        "offset_x_arcsec": -212.02591082772028,
+        "offset_y_arcsec": 68.61463977683415
+      },
+      "europa": {
+        "ra_deg": 135.45128,
+        "dec_deg": 17.62131,
+        "delta_au": 6.22314306640108,
+        "offset_x_arcsec": -74.21428902094401,
+        "offset_y_arcsec": 22.900240712738924
+      },
+      "ganymede": {
+        "ra_deg": 135.431,
+        "dec_deg": 17.62783,
+        "delta_au": 6.22139657545851,
+        "offset_x_arcsec": -143.79142173449782,
+        "offset_y_arcsec": 46.383925792891034
+      },
+      "io": {
+        "ra_deg": 135.48048,
+        "dec_deg": 17.61266,
+        "delta_au": 6.22960675673866,
+        "offset_x_arcsec": 25.974530718161613,
+        "offset_y_arcsec": -8.243480803327909
+      }
+    }
+  },
+  {
+    "utc": "1986-02-28T06:00:00Z",
+    "jupiter": {
+      "ra_deg": 334.31927,
+      "dec_deg": -11.53761,
+      "delta_au": 6.00043827450847
+    },
+    "satellites": {
+      "callisto": {
+        "ra_deg": 334.39264,
+        "dec_deg": -11.50804,
+        "delta_au": 5.99075804173071,
+        "offset_x_arcsec": 258.8221117548082,
+        "offset_y_arcsec": 106.4189385239666
+      },
+      "europa": {
+        "ra_deg": 334.34619,
+        "dec_deg": -11.5258,
+        "delta_au": 6.00369206259064,
+        "offset_x_arcsec": 94.95775500954227,
+        "offset_y_arcsec": 42.51154273649485
+      },
+      "ganymede": {
+        "ra_deg": 334.35893,
+        "dec_deg": -11.52063,
+        "delta_au": 6.00605898085651,
+        "offset_x_arcsec": 139.89947712091362,
+        "offset_y_arcsec": 61.11832971139567
+      },
+      "io": {
+        "ra_deg": 334.29956,
+        "dec_deg": -11.54609,
+        "delta_au": 5.9987041475836,
+        "offset_x_arcsec": -69.52013591273698,
+        "offset_y_arcsec": -30.530393390408392
+      }
+    }
+  },
+  {
+    "utc": "1990-01-01T00:00:00Z",
+    "jupiter": {
+      "ra_deg": 95.81931,
+      "dec_deg": 23.21442,
+      "delta_au": 4.17057854607155
+    },
+    "satellites": {
+      "callisto": {
+        "ra_deg": 95.92891,
+        "dec_deg": 23.21348,
+        "delta_au": 4.18089325952361,
+        "offset_x_arcsec": 362.6174261571469,
+        "offset_y_arcsec": -3.247297114635362
+      },
+      "europa": {
+        "ra_deg": 95.75478,
+        "dec_deg": 23.21883,
+        "delta_au": 4.17160377436699,
+        "offset_x_arcsec": -213.4923982076987,
+        "offset_y_arcsec": 15.923397637886637
+      },
+      "ganymede": {
+        "ra_deg": 95.72549,
+        "dec_deg": 23.22076,
+        "delta_au": 4.17400474524911,
+        "offset_x_arcsec": -310.3915493369612,
+        "offset_y_arcsec": 22.924196432221798
+      },
+      "io": {
+        "ra_deg": 95.85972,
+        "dec_deg": 23.21264,
+        "delta_au": 4.17134483600364,
+        "offset_x_arcsec": 133.69948476482548,
+        "offset_y_arcsec": -6.3894167489867995
+      }
+    }
+  },
+  {
+    "utc": "1994-07-16T20:00:00Z",
+    "jupiter": {
+      "ra_deg": 213.25869,
+      "dec_deg": -12.18243,
+      "delta_au": 5.13006301194003
+    },
+    "satellites": {
+      "callisto": {
+        "ra_deg": 213.33486,
+        "dec_deg": -12.21633,
+        "delta_au": 5.14030952670628,
+        "offset_x_arcsec": 268.002683889942,
+        "offset_y_arcsec": -122.07769582646469
+      },
+      "europa": {
+        "ra_deg": 213.3048,
+        "dec_deg": -12.19819,
+        "delta_au": 5.1287760793537,
+        "offset_x_arcsec": 162.24824222991055,
+        "offset_y_arcsec": -56.74979461519546
+      },
+      "ganymede": {
+        "ra_deg": 213.33267,
+        "dec_deg": -12.21081,
+        "delta_au": 5.13171837461076,
+        "offset_x_arcsec": 260.3026257035611,
+        "offset_y_arcsec": -102.20354428249364
+      },
+      "io": {
+        "ra_deg": 213.25028,
+        "dec_deg": -12.18102,
+        "delta_au": 5.13278719330082,
+        "offset_x_arcsec": -29.594361442763407,
+        "offset_y_arcsec": 5.075541713701257
+      }
+    }
+  },
+  {
+    "utc": "2000-01-01T00:00:00Z",
+    "jupiter": {
+      "ra_deg": 23.85196,
+      "dec_deg": 8.58622,
+      "delta_au": 4.61342273127327
+    },
+    "satellites": {
+      "callisto": {
+        "ra_deg": 23.94979,
+        "dec_deg": 8.63255,
+        "delta_au": 4.62253449896296,
+        "offset_x_arcsec": 348.19826724085266,
+        "offset_y_arcsec": 166.83261886559407
+      },
+      "europa": {
+        "ra_deg": 23.89053,
+        "dec_deg": 8.60003,
+        "delta_au": 4.61036909784164,
+        "offset_x_arcsec": 137.29079390672234,
+        "offset_y_arcsec": 49.72291009234657
+      },
+      "ganymede": {
+        "ra_deg": 23.87051,
+        "dec_deg": 8.58946,
+        "delta_au": 4.60642203313293,
+        "offset_x_arcsec": 66.030987085105,
+        "offset_y_arcsec": 11.665596446458599
+      },
+      "io": {
+        "ra_deg": 23.82242,
+        "dec_deg": 8.57313,
+        "delta_au": 4.61225879634782,
+        "offset_x_arcsec": -105.1557573112971,
+        "offset_y_arcsec": -47.119959026939206
+      }
+    }
+  },
+  {
+    "utc": "2003-11-01T03:00:00Z",
+    "jupiter": {
+      "ra_deg": 164.75393,
+      "dec_deg": 7.54667,
+      "delta_au": 5.89519011181137
+    },
+    "satellites": {
+      "callisto": {
+        "ra_deg": 164.67248,
+        "dec_deg": 7.58541,
+        "delta_au": 5.88672225624688,
+        "offset_x_arcsec": -290.6541511800618,
+        "offset_y_arcsec": 139.49127107610735
+      },
+      "europa": {
+        "ra_deg": 164.79359,
+        "dec_deg": 7.5289,
+        "delta_au": 5.89499084824017,
+        "offset_x_arcsec": 141.5451201277793,
+        "offset_y_arcsec": -63.9655812066536
+      },
+      "ganymede": {
+        "ra_deg": 164.69132,
+        "dec_deg": 7.57511,
+        "delta_au": 5.89658460351966,
+        "offset_x_arcsec": -223.42897345174333,
+        "offset_y_arcsec": 102.40009278019474
+      },
+      "io": {
+        "ra_deg": 164.72967,
+        "dec_deg": 7.5579,
+        "delta_au": 5.89452838126592,
+        "offset_x_arcsec": -86.5772659690193,
+        "offset_y_arcsec": 40.43041079542706
+      }
+    }
+  },
+  {
+    "utc": "2007-05-10T18:30:00Z",
+    "jupiter": {
+      "ra_deg": 256.8904,
+      "dec_deg": -22.15607,
+      "delta_au": 4.41668013865791
+    },
+    "satellites": {
+      "callisto": {
+        "ra_deg": 256.92962,
+        "dec_deg": -22.15161,
+        "delta_au": 4.40445022555321,
+        "offset_x_arcsec": 130.77052785171492,
+        "offset_y_arcsec": 16.03912383080068
+      },
+      "europa": {
+        "ra_deg": 256.94812,
+        "dec_deg": -22.15993,
+        "delta_au": 4.41502519173859,
+        "offset_x_arcsec": 192.4433571554188,
+        "offset_y_arcsec": -13.932562898451753
+      },
+      "ganymede": {
+        "ra_deg": 256.96968,
+        "dec_deg": -22.15942,
+        "delta_au": 4.41230056589285,
+        "offset_x_arcsec": 264.32717135812686,
+        "offset_y_arcsec": -12.128977503550622
+      },
+      "io": {
+        "ra_deg": 256.8516,
+        "dec_deg": -22.15279,
+        "delta_au": 4.41625480314586,
+        "offset_x_arcsec": -129.36904468312147,
+        "offset_y_arcsec": 11.791482646233307
+      }
+    }
+  },
+  {
+    "utc": "2010-09-21T00:00:00Z",
+    "jupiter": {
+      "ra_deg": 359.06914,
+      "dec_deg": -2.14436,
+      "delta_au": 3.95393079286274
+    },
+    "satellites": {
+      "callisto": {
+        "ra_deg": 358.92727,
+        "dec_deg": -2.20719,
+        "delta_au": 3.96045524535587,
+        "offset_x_arcsec": -510.35338962334276,
+        "offset_y_arcsec": -226.2123343336146
+      },
+      "europa": {
+        "ra_deg": 359.12197,
+        "dec_deg": -2.11777,
+        "delta_au": 3.95588150012068,
+        "offset_x_arcsec": 190.05811838293806,
+        "offset_y_arcsec": 95.72076203774765
+      },
+      "ganymede": {
+        "ra_deg": 359.00696,
+        "dec_deg": -2.17074,
+        "delta_au": 3.95934036114568,
+        "offset_x_arcsec": -223.687388112253,
+        "offset_y_arcsec": -94.97259749250195
+      },
+      "io": {
+        "ra_deg": 359.10579,
+        "dec_deg": -2.12709,
+        "delta_au": 3.95359305390024,
+        "offset_x_arcsec": 131.84909358793013,
+        "offset_y_arcsec": 62.17043482817281
+      }
+    }
+  }
+]

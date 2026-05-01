@@ -1,7 +1,6 @@
 package neptune
 
 import (
-	"fmt"
 	"testing"
 	"time"
 )
@@ -9,7 +8,7 @@ import (
 func TestNeptune(t *testing.T) {
 	tz := time.FixedZone("CST", 8*3600)
 	date := time.Date(2022, 01, 20, 00, 00, 00, 00, tz)
-	if NextConjunction(date).Unix() != 1647171796 {
+	if NextConjunction(date).Unix() != 1647171800 {
 		t.Fatal(NextConjunction(date).Unix())
 	}
 	if CulminationTime(date, 115).Unix() != 1642665021 {
@@ -22,5 +21,4 @@ func TestNeptune(t *testing.T) {
 	if date.Unix() != 1642644398 {
 		t.Fatal(date.Unix())
 	}
-	fmt.Println(SetTime(date, 115, 40, 0, false))
 }

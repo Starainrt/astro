@@ -1,0 +1,206 @@
+package basic
+
+import (
+	"math"
+
+	. "github.com/starainrt/astro/tools"
+)
+
+// Pos
+
+const (
+	SATURN_S_PERIOD            = 1 / ((1 / 365.256363004) - (1 / 10759.0))
+	saturnEventSearchN         = 16
+	saturnPhaseCoarseTolerance = 30.0 / 86400.0
+)
+
+func saturnSunLongitudeDelta(jde, degree float64, filter bool) float64 {
+	sub := Limit360(Limit360(SaturnApparentLo(jde)-HSunApparentLo(jde)) - degree)
+	if filter {
+		if sub > 180 {
+			sub -= 360
+		}
+		if sub < -180 {
+			sub += 360
+		}
+	}
+	return sub
+}
+
+func saturnSunLongitudeDeltaN(jde, degree float64, filter bool, n int) float64 {
+	sub := Limit360(Limit360(SaturnApparentLoN(jde, n)-HSunApparentLoN(jde, n)) - degree)
+	if filter {
+		if sub > 180 {
+			sub -= 360
+		}
+		if sub < -180 {
+			sub += 360
+		}
+	}
+	return sub
+}
+
+func saturnConjunctionFull(jde, degree float64, next uint8) float64 {
+	//0=last 1=next
+	daysPerDegree := SATURN_S_PERIOD / 360
+	currentDelta := saturnSunLongitudeDelta(jde, degree, false)
+	if next == 0 {
+		jde -= (360 - currentDelta) * daysPerDegree
+	} else {
+		jde += daysPerDegree * currentDelta
+	}
+	estimateJD := jde
+	for {
+		prevJD := estimateJD
+		longitudeDelta := saturnSunLongitudeDelta(prevJD, degree, true)
+		longitudeSlope := (saturnSunLongitudeDelta(prevJD+0.000005, degree, true) - saturnSunLongitudeDelta(prevJD-0.000005, degree, true)) / 0.00001
+		estimateJD = prevJD - longitudeDelta/longitudeSlope
+		if math.Abs(estimateJD-prevJD) <= 0.00001 {
+			break
+		}
+	}
+	return TD2UT(estimateJD, false)
+}
+
+func saturnConjunction(jde, degree float64, next uint8) float64 {
+	//0=last 1=next
+	daysPerDegree := SATURN_S_PERIOD / 360
+	currentDelta := saturnSunLongitudeDelta(jde, degree, false)
+	if next == 0 {
+		jde -= (360 - currentDelta) * daysPerDegree
+	} else {
+		jde += daysPerDegree * currentDelta
+	}
+	estimateJD := jde
+	for {
+		prevJD := estimateJD
+		longitudeDelta := saturnSunLongitudeDeltaN(prevJD, degree, true, saturnEventSearchN)
+		longitudeSlope := (saturnSunLongitudeDeltaN(prevJD+0.000005, degree, true, saturnEventSearchN) - saturnSunLongitudeDeltaN(prevJD-0.000005, degree, true, saturnEventSearchN)) / 0.00001
+		estimateJD = prevJD - longitudeDelta/longitudeSlope
+		if math.Abs(estimateJD-prevJD) <= saturnPhaseCoarseTolerance {
+			break
+		}
+	}
+	for {
+		prevJD := estimateJD
+		longitudeDelta := saturnSunLongitudeDelta(prevJD, degree, true)
+		longitudeSlope := (saturnSunLongitudeDelta(prevJD+0.000005, degree, true) - saturnSunLongitudeDelta(prevJD-0.000005, degree, true)) / 0.00001
+		estimateJD = prevJD - longitudeDelta/longitudeSlope
+		if math.Abs(estimateJD-prevJD) <= 0.00001 {
+			break
+		}
+	}
+	return TD2UT(estimateJD, false)
+}
+
+func LastSaturnConjunction(jde float64) float64 {
+	return saturnConjunction(jde, 0, 0)
+}
+
+func NextSaturnConjunction(jde float64) float64 {
+	return saturnConjunction(jde, 0, 1)
+}
+
+func LastSaturnOpposition(jde float64) float64 {
+	return saturnConjunction(jde, 180, 0)
+}
+
+func NextSaturnOpposition(jde float64) float64 {
+	return saturnConjunction(jde, 180, 1)
+}
+
+func NextSaturnEasternQuadrature(jde float64) float64 {
+	return saturnConjunction(jde, 90, 1)
+}
+
+func LastSaturnEasternQuadrature(jde float64) float64 {
+	return saturnConjunction(jde, 90, 0)
+}
+
+func NextSaturnWesternQuadrature(jde float64) float64 {
+	return saturnConjunction(jde, 270, 1)
+}
+
+func LastSaturnWesternQuadrature(jde float64) float64 {
+	return saturnConjunction(jde, 270, 0)
+}
+
+func saturnRetrograde(jde float64, searchBeforeOpposition bool) float64 {
+	//0=last 1=next
+	raRate := func(jde float64, delta float64) float64 {
+		sub := SaturnApparentRa(jde+delta) - SaturnApparentRa(jde-delta)
+		if sub > 180 {
+			sub -= 360
+		}
+		if sub < -180 {
+			sub += 360
+		}
+		return sub / (2 * delta)
+	}
+	jde = saturnConjunctionFull(jde, 180, 1)
+	if searchBeforeOpposition {
+		jde -= 60
+	} else {
+		jde += 60
+	}
+	for {
+		currentRate := raRate(jde, 1.0/86400.0)
+		if math.Abs(currentRate) > 0.55 {
+			jde += 2
+			continue
+		}
+		break
+	}
+	estimateJD := jde
+	for {
+		prevJD := estimateJD
+		rateValue := raRate(prevJD, 2.0/86400.0)
+		rateSlope := (raRate(prevJD+15.0/86400.0, 2.0/86400.0) - raRate(prevJD-15.0/86400.0, 2.0/86400.0)) / (30.0 / 86400.0)
+		estimateJD = prevJD - rateValue/rateSlope
+		if math.Abs(estimateJD-prevJD) <= 30.0/86400.0 {
+			break
+		}
+	}
+	bestJD := eventZeroRefine(estimateJD, 15.0/86400.0, 0.5/86400.0, func(jd float64) float64 {
+		return raRate(jd, 0.5/86400.0)
+	})
+	return TD2UT(bestJD, false)
+}
+
+func NextSaturnRetrogradeToPrograde(jde float64) float64 {
+	date := saturnRetrograde(jde, false)
+	if date < jde {
+		oppositionJD := saturnConjunctionFull(jde, 180, 1)
+		return saturnRetrograde(oppositionJD+10, false)
+	}
+	return date
+}
+
+func LastSaturnRetrogradeToPrograde(jde float64) float64 {
+	jde = saturnConjunctionFull(jde, 180, 0) - 10
+	date := saturnRetrograde(jde, false)
+	if date > jde {
+		oppositionJD := saturnConjunctionFull(jde, 180, 0)
+		return saturnRetrograde(oppositionJD-10, false)
+	}
+	return date
+}
+
+func NextSaturnProgradeToRetrograde(jde float64) float64 {
+	date := saturnRetrograde(jde, true)
+	if date < jde {
+		oppositionJD := saturnConjunctionFull(jde, 180, 1)
+		return saturnRetrograde(oppositionJD+10, true)
+	}
+	return date
+}
+
+func LastSaturnProgradeToRetrograde(jde float64) float64 {
+	jde = saturnConjunctionFull(jde, 180, 0) - 10
+	date := saturnRetrograde(jde, true)
+	if date > jde {
+		oppositionJD := saturnConjunctionFull(jde, 180, 0)
+		return saturnRetrograde(oppositionJD-10, true)
+	}
+	return date
+}

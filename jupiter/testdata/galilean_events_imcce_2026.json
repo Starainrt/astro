@@ -1,0 +1,90 @@
+[
+  {
+    "label": "io_transit_20260402",
+    "satellite": 1,
+    "type": "transit",
+    "start_utc": "2026-04-02T18:00:36.716Z",
+    "start_duration_minutes": 3.62,
+    "end_utc": "2026-04-02T20:16:11.316Z",
+    "end_duration_minutes": 3.62,
+    "source": "IMCCE phenomenes des satellites de Jupiter 2026 (English PDF, TT times)",
+    "source_lines": "PDF lines 660,662"
+  },
+  {
+    "label": "io_shadow_20260402",
+    "satellite": 1,
+    "type": "shadow_transit",
+    "start_utc": "2026-04-02T19:17:10.316Z",
+    "start_duration_minutes": 3.61,
+    "end_utc": "2026-04-02T21:33:23.716Z",
+    "end_duration_minutes": 3.61,
+    "source": "IMCCE phenomenes des satellites de Jupiter 2026 (English PDF, TT times)",
+    "source_lines": "PDF lines 661,664"
+  },
+  {
+    "label": "ganymede_occultation_20260406",
+    "satellite": 3,
+    "type": "occultation",
+    "start_utc": "2026-04-06T10:35:18.616Z",
+    "start_duration_minutes": 8.93,
+    "end_utc": "2026-04-06T13:54:58.216Z",
+    "end_duration_minutes": 8.93,
+    "source": "IMCCE phenomenes des satellites de Jupiter 2026 (English PDF, TT times)",
+    "source_lines": "PDF lines 690,691"
+  },
+  {
+    "label": "ganymede_eclipse_20260406",
+    "satellite": 3,
+    "type": "eclipse",
+    "start_utc": "2026-04-06T15:47:24.216Z",
+    "start_duration_minutes": 8.61,
+    "end_utc": "2026-04-06T19:14:32.116Z",
+    "end_duration_minutes": 8.61,
+    "source": "IMCCE phenomenes des satellites de Jupiter 2026 (English PDF, TT times)",
+    "source_lines": "PDF lines 692,693"
+  },
+  {
+    "label": "europa_transit_20260406",
+    "satellite": 2,
+    "type": "transit",
+    "start_utc": "2026-04-06T22:32:36.216Z",
+    "start_duration_minutes": 3.85,
+    "end_utc": "2026-04-07T01:21:05.516Z",
+    "end_duration_minutes": 3.85,
+    "source": "IMCCE phenomenes des satellites de Jupiter 2026 (English PDF, TT times)",
+    "source_lines": "PDF lines 694,696"
+  },
+  {
+    "label": "europa_shadow_20260407",
+    "satellite": 2,
+    "type": "shadow_transit",
+    "start_utc": "2026-04-07T01:04:31.716Z",
+    "start_duration_minutes": 3.81,
+    "end_utc": "2026-04-07T03:54:13.416Z",
+    "end_duration_minutes": 3.81,
+    "source": "IMCCE phenomenes des satellites de Jupiter 2026 (English PDF, TT times)",
+    "source_lines": "PDF lines 695,697"
+  },
+  {
+    "label": "callisto_transit_20260403",
+    "satellite": 4,
+    "type": "transit",
+    "start_utc": "2026-04-03T13:07:09.016Z",
+    "start_duration_minutes": 11.99,
+    "end_utc": "2026-04-03T17:04:35.916Z",
+    "end_duration_minutes": 11.92,
+    "source": "IMCCE phenomenes des satellites de Jupiter 2026 (English PDF, TT times)",
+    "source_lines": "PDF lines 671,674"
+  },
+  {
+    "label": "callisto_shadow_20260404",
+    "satellite": 4,
+    "type": "shadow_transit",
+    "start_utc": "2026-04-04T01:08:40.516Z",
+    "start_duration_minutes": 10.94,
+    "end_utc": "2026-04-04T05:26:50.116Z",
+    "end_duration_minutes": 10.98,
+    "source": "IMCCE phenomenes des satellites de Jupiter 2026 (English PDF, TT times)",
+    "source_lines": "PDF lines 676,677"
+  }
+]
