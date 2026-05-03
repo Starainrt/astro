@@ -11,6 +11,7 @@ const (
 	solarEclipseSynodicMonthDays = 29.530588853
 	solarEclipseSearchLimit      = 36
 	solarEclipseSearchEpsilonDay = 1e-8
+	solarEclipseLatitudeLimitDeg = 2.0
 )
 
 type solarEclipseCalculator func(float64) basic.SolarEclipseResult
@@ -236,14 +237,20 @@ func searchSolarEclipse(
 	candidateTT := basic.CalcMoonSHByJDE(targetTT, 0)
 
 	for i := 0; i < solarEclipseSearchLimit; i++ {
-		result := calculator(candidateTT)
-		if result.Type != basic.SolarEclipseNone && solarEclipseMatchesDirection(result.GreatestEclipse, targetTT, direction, includeCurrent) {
-			return solarEclipseInfoFromBasic(result, date.Location()), true
+		if isPotentialSolarEclipse(candidateTT) {
+			result := calculator(candidateTT)
+			if result.Type != basic.SolarEclipseNone && solarEclipseMatchesDirection(result.GreatestEclipse, targetTT, direction, includeCurrent) {
+				return solarEclipseInfoFromBasic(result, date.Location()), true
+			}
 		}
-		candidateTT = basic.CalcMoonSHByJDE(candidateTT+float64(direction)*solarEclipseSynodicMonthDays, 0)
+		candidateTT = nextEclipseSearchCandidateTT(candidateTT, 0, direction, solarEclipseSynodicMonthDays)
 	}
 
 	return SolarEclipseInfo{}, false
+}
+
+func isPotentialSolarEclipse(newMoonTT float64) bool {
+	return math.Abs(basic.HMoonTrueBo(newMoonTT)) <= solarEclipseLatitudeLimitDeg
 }
 
 func solarEclipseMatchesDirection(greatestTT, targetTT float64, direction int, includeCurrent bool) bool {

@@ -147,6 +147,12 @@ func LastLocalLunarEclipse(date time.Time, lon, lat, height float64) LocalLunarE
 	return LastLocalLunarEclipseDanjon(date, lon, lat, height)
 }
 
+// LastLocalTotalLunarEclipse 上次可见月全食 / previous visible local total lunar eclipse.
+// Previous visible local total lunar eclipse, using Danjon by default.
+func LastLocalTotalLunarEclipse(date time.Time, lon, lat, height float64) (LocalLunarEclipseInfo, bool) {
+	return searchLocalTotalLunarEclipse(date, lon, lat, height, -1, true, basic.LunarEclipseDanjon, localLunarEclipseQueryVisible)
+}
+
 // LastLocalLunarEclipseDanjon 上次可见月食（Danjon） / previous visible local lunar eclipse with Danjon model.
 // Previous visible local lunar eclipse with the Danjon model.
 func LastLocalLunarEclipseDanjon(date time.Time, lon, lat, height float64) LocalLunarEclipseInfo {
@@ -187,6 +193,12 @@ func NextLocalLunarEclipse(date time.Time, lon, lat, height float64) LocalLunarE
 	return NextLocalLunarEclipseDanjon(date, lon, lat, height)
 }
 
+// NextLocalTotalLunarEclipse 下次可见月全食 / next visible local total lunar eclipse.
+// Next visible local total lunar eclipse, using Danjon by default.
+func NextLocalTotalLunarEclipse(date time.Time, lon, lat, height float64) (LocalLunarEclipseInfo, bool) {
+	return searchLocalTotalLunarEclipse(date, lon, lat, height, 1, false, basic.LunarEclipseDanjon, localLunarEclipseQueryVisible)
+}
+
 // NextLocalLunarEclipseDanjon 下次可见月食（Danjon） / next visible local lunar eclipse with Danjon model.
 // Next visible local lunar eclipse with the Danjon model.
 func NextLocalLunarEclipseDanjon(date time.Time, lon, lat, height float64) LocalLunarEclipseInfo {
@@ -225,6 +237,14 @@ func NextGeometricLocalLunarEclipseChauvenet(date time.Time, lon, lat, height fl
 // Closest visible local lunar eclipse, using Danjon by default.
 func ClosestLocalLunarEclipse(date time.Time, lon, lat, height float64) LocalLunarEclipseInfo {
 	return ClosestLocalLunarEclipseDanjon(date, lon, lat, height)
+}
+
+// ClosestLocalTotalLunarEclipse 最近一次可见月全食 / closest visible local total lunar eclipse.
+// Closest visible local total lunar eclipse, using Danjon by default.
+func ClosestLocalTotalLunarEclipse(date time.Time, lon, lat, height float64) (LocalLunarEclipseInfo, bool) {
+	last, hasLast := searchLocalTotalLunarEclipse(date, lon, lat, height, -1, true, basic.LunarEclipseDanjon, localLunarEclipseQueryVisible)
+	next, hasNext := searchLocalTotalLunarEclipse(date, lon, lat, height, 1, false, basic.LunarEclipseDanjon, localLunarEclipseQueryVisible)
+	return closestLocalLunarEclipseResult(date, last, hasLast, next, hasNext)
 }
 
 // ClosestLocalLunarEclipseDanjon 最近一次可见月食（Danjon） / closest visible local lunar eclipse with Danjon model.
@@ -272,21 +292,32 @@ func closestLocalLunarEclipse(
 	next LocalLunarEclipseInfo,
 	hasNext bool,
 ) LocalLunarEclipseInfo {
+	info, _ := closestLocalLunarEclipseResult(date, last, hasLast, next, hasNext)
+	return info
+}
+
+func closestLocalLunarEclipseResult(
+	date time.Time,
+	last LocalLunarEclipseInfo,
+	hasLast bool,
+	next LocalLunarEclipseInfo,
+	hasNext bool,
+) (LocalLunarEclipseInfo, bool) {
 	switch {
 	case hasLast && !hasNext:
-		return last
+		return last, true
 	case !hasLast && hasNext:
-		return next
+		return next, true
 	case !hasLast && !hasNext:
-		return LocalLunarEclipseInfo{}
+		return LocalLunarEclipseInfo{}, false
 	}
 
 	lastDistance := math.Abs(date.Sub(last.Maximum).Seconds())
 	nextDistance := math.Abs(next.Maximum.Sub(date).Seconds())
 	if lastDistance <= nextDistance {
-		return last
+		return last, true
 	}
-	return next
+	return next, true
 }
 
 func searchLocalLunarEclipse(
@@ -311,7 +342,35 @@ func searchLocalLunarEclipse(
 				}
 			}
 		}
-		candidateTT = basic.CalcMoonSHByJDE(candidateTT+float64(direction)*lunarEclipseSynodicMonthDays, 1)
+		candidateTT = nextEclipseSearchCandidateTT(candidateTT, 1, direction, lunarEclipseSynodicMonthDays)
+	}
+
+	return LocalLunarEclipseInfo{}, false
+}
+
+func searchLocalTotalLunarEclipse(
+	date time.Time,
+	lon, lat, height float64,
+	direction int,
+	includeCurrent bool,
+	calculator lunarEclipseCalculator,
+	mode localLunarEclipseQueryMode,
+) (LocalLunarEclipseInfo, bool) {
+	targetTT := timeToTTJDE(date)
+	candidateTT := basic.CalcMoonSHByJDE(targetTT, 1)
+
+	for i := 0; i < localLunarEclipseSearchLimit; i++ {
+		if isPotentialLunarEclipse(candidateTT) {
+			result := calculator(candidateTT)
+			if result.HasTotal {
+				info := localLunarEclipseInfoFromBasic(result, lon, lat, height, date.Location())
+				if (mode != localLunarEclipseQueryVisible || localTotalLunarEclipseVisible(info)) &&
+					lunarEclipseMatchesDirection(result.Maximum, targetTT, direction, includeCurrent) {
+					return info, true
+				}
+			}
+		}
+		candidateTT = nextEclipseSearchCandidateTT(candidateTT, 1, direction, lunarEclipseSynodicMonthDays)
 	}
 
 	return LocalLunarEclipseInfo{}, false
@@ -373,6 +432,13 @@ func localLunarEclipseVisible(info LocalLunarEclipseInfo) bool {
 		return false
 	}
 	return localLunarEclipseVisibleDuring(info, eventStart, eventEnd)
+}
+
+func localTotalLunarEclipseVisible(info LocalLunarEclipseInfo) bool {
+	if !info.HasTotal || info.TotalStart.IsZero() || info.TotalEnd.IsZero() {
+		return false
+	}
+	return localLunarEclipseVisibleDuring(info, info.TotalStart, info.TotalEnd)
 }
 
 func localLunarEclipseVisibleOnDate(info LocalLunarEclipseInfo, dayStart, dayEnd time.Time) bool {

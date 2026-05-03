@@ -217,6 +217,18 @@ func LastGeometricLocalSolarEclipseIAUSingleK(date time.Time, lon, lat, height f
 	return info
 }
 
+// LastLocalTotalSolarEclipse 上次站心日全食 / previous local total solar eclipse.
+// Previous visible local total solar eclipse, using NASA bulletin Split-K by default.
+func LastLocalTotalSolarEclipse(date time.Time, lon, lat, height float64) (LocalSolarEclipseInfo, bool) {
+	return searchLocalTotalSolarEclipse(date, lon, lat, height, -1, true, localSolarEclipseNASABulletinSplitK, localSolarEclipseQueryVisible)
+}
+
+// LastLocalAnnularSolarEclipse 上次站心日环食 / previous local annular solar eclipse.
+// Previous visible local annular solar eclipse, using NASA bulletin Split-K by default.
+func LastLocalAnnularSolarEclipse(date time.Time, lon, lat, height float64) (LocalSolarEclipseInfo, bool) {
+	return searchLocalAnnularSolarEclipse(date, lon, lat, height, -1, true, localSolarEclipseNASABulletinSplitK, localSolarEclipseQueryVisible)
+}
+
 // NextLocalSolarEclipse 下次站心日食 / next local solar eclipse.
 // Next visible local solar eclipse, using NASA bulletin Split-K by default.
 func NextLocalSolarEclipse(date time.Time, lon, lat, height float64) LocalSolarEclipseInfo {
@@ -255,6 +267,18 @@ func NextGeometricLocalSolarEclipseNASABulletinSplitK(date time.Time, lon, lat, 
 func NextGeometricLocalSolarEclipseIAUSingleK(date time.Time, lon, lat, height float64) LocalSolarEclipseInfo {
 	info, _ := searchLocalSolarEclipse(date, lon, lat, height, 1, false, localSolarEclipseIAUSingleK, localSolarEclipseQueryGeometric)
 	return info
+}
+
+// NextLocalTotalSolarEclipse 下次站心日全食 / next local total solar eclipse.
+// Next visible local total solar eclipse, using NASA bulletin Split-K by default.
+func NextLocalTotalSolarEclipse(date time.Time, lon, lat, height float64) (LocalSolarEclipseInfo, bool) {
+	return searchLocalTotalSolarEclipse(date, lon, lat, height, 1, false, localSolarEclipseNASABulletinSplitK, localSolarEclipseQueryVisible)
+}
+
+// NextLocalAnnularSolarEclipse 下次站心日环食 / next local annular solar eclipse.
+// Next visible local annular solar eclipse, using NASA bulletin Split-K by default.
+func NextLocalAnnularSolarEclipse(date time.Time, lon, lat, height float64) (LocalSolarEclipseInfo, bool) {
+	return searchLocalAnnularSolarEclipse(date, lon, lat, height, 1, false, localSolarEclipseNASABulletinSplitK, localSolarEclipseQueryVisible)
 }
 
 // ClosestLocalSolarEclipse 最近一次站心日食 / closest local solar eclipse.
@@ -301,6 +325,22 @@ func ClosestGeometricLocalSolarEclipseIAUSingleK(date time.Time, lon, lat, heigh
 	return closestLocalSolarEclipse(date, last, hasLast, next, hasNext)
 }
 
+// ClosestLocalTotalSolarEclipse 最近一次站心日全食 / closest local total solar eclipse.
+// Closest visible local total solar eclipse, using NASA bulletin Split-K by default.
+func ClosestLocalTotalSolarEclipse(date time.Time, lon, lat, height float64) (LocalSolarEclipseInfo, bool) {
+	last, hasLast := searchLocalTotalSolarEclipse(date, lon, lat, height, -1, true, localSolarEclipseNASABulletinSplitK, localSolarEclipseQueryVisible)
+	next, hasNext := searchLocalTotalSolarEclipse(date, lon, lat, height, 1, false, localSolarEclipseNASABulletinSplitK, localSolarEclipseQueryVisible)
+	return closestLocalSolarEclipseResult(date, last, hasLast, next, hasNext)
+}
+
+// ClosestLocalAnnularSolarEclipse 最近一次站心日环食 / closest local annular solar eclipse.
+// Closest visible local annular solar eclipse, using NASA bulletin Split-K by default.
+func ClosestLocalAnnularSolarEclipse(date time.Time, lon, lat, height float64) (LocalSolarEclipseInfo, bool) {
+	last, hasLast := searchLocalAnnularSolarEclipse(date, lon, lat, height, -1, true, localSolarEclipseNASABulletinSplitK, localSolarEclipseQueryVisible)
+	next, hasNext := searchLocalAnnularSolarEclipse(date, lon, lat, height, 1, false, localSolarEclipseNASABulletinSplitK, localSolarEclipseQueryVisible)
+	return closestLocalSolarEclipseResult(date, last, hasLast, next, hasNext)
+}
+
 func closestLocalSolarEclipse(
 	date time.Time,
 	last LocalSolarEclipseInfo,
@@ -308,21 +348,32 @@ func closestLocalSolarEclipse(
 	next LocalSolarEclipseInfo,
 	hasNext bool,
 ) LocalSolarEclipseInfo {
+	info, _ := closestLocalSolarEclipseResult(date, last, hasLast, next, hasNext)
+	return info
+}
+
+func closestLocalSolarEclipseResult(
+	date time.Time,
+	last LocalSolarEclipseInfo,
+	hasLast bool,
+	next LocalSolarEclipseInfo,
+	hasNext bool,
+) (LocalSolarEclipseInfo, bool) {
 	switch {
 	case hasLast && !hasNext:
-		return last
+		return last, true
 	case !hasLast && hasNext:
-		return next
+		return next, true
 	case !hasLast && !hasNext:
-		return LocalSolarEclipseInfo{}
+		return LocalSolarEclipseInfo{}, false
 	}
 
 	lastDistance := math.Abs(date.Sub(last.GreatestEclipse).Seconds())
 	nextDistance := math.Abs(next.GreatestEclipse.Sub(date).Seconds())
 	if lastDistance <= nextDistance {
-		return last
+		return last, true
 	}
-	return next
+	return next, true
 }
 
 func searchLocalSolarEclipse(
@@ -350,7 +401,69 @@ func searchLocalSolarEclipse(
 				}
 			}
 		}
-		candidateTT = basic.CalcMoonSHByJDE(candidateTT+float64(direction)*localSolarEclipseSynodicMonthDays, 0)
+		candidateTT = nextEclipseSearchCandidateTT(candidateTT, 0, direction, localSolarEclipseSynodicMonthDays)
+	}
+
+	return LocalSolarEclipseInfo{}, false
+}
+
+func searchLocalTotalSolarEclipse(
+	date time.Time,
+	lon, lat, height float64,
+	direction int,
+	includeCurrent bool,
+	calculator localSolarEclipseCalculator,
+	mode localSolarEclipseQueryMode,
+) (LocalSolarEclipseInfo, bool) {
+	targetTT := solarEclipseTimeToTTJDE(date)
+	candidateTT := basic.CalcMoonSHByJDE(targetTT, 0)
+
+	for i := 0; i < localSolarEclipseSearchLimit; i++ {
+		if isPotentialLocalSolarEclipse(candidateTT) {
+			globalResult := calculator.global(candidateTT)
+			if globalResult.HasTotal || globalResult.HasHybrid {
+				result := calculator.local(globalResult.GreatestEclipse, lon, lat, height)
+				if result.HasTotal {
+					info := localSolarEclipseInfoFromBasic(result, lon, lat, height, date.Location())
+					if (mode != localSolarEclipseQueryVisible || localCentralSolarEclipseVisible(info)) &&
+						localSolarEclipseMatchesDirection(result.GreatestEclipse, targetTT, direction, includeCurrent) {
+						return info, true
+					}
+				}
+			}
+		}
+		candidateTT = nextEclipseSearchCandidateTT(candidateTT, 0, direction, localSolarEclipseSynodicMonthDays)
+	}
+
+	return LocalSolarEclipseInfo{}, false
+}
+
+func searchLocalAnnularSolarEclipse(
+	date time.Time,
+	lon, lat, height float64,
+	direction int,
+	includeCurrent bool,
+	calculator localSolarEclipseCalculator,
+	mode localSolarEclipseQueryMode,
+) (LocalSolarEclipseInfo, bool) {
+	targetTT := solarEclipseTimeToTTJDE(date)
+	candidateTT := basic.CalcMoonSHByJDE(targetTT, 0)
+
+	for i := 0; i < localSolarEclipseSearchLimit; i++ {
+		if isPotentialLocalSolarEclipse(candidateTT) {
+			globalResult := calculator.global(candidateTT)
+			if globalResult.HasAnnular || globalResult.HasHybrid {
+				result := calculator.local(globalResult.GreatestEclipse, lon, lat, height)
+				if result.HasAnnular && !result.HasTotal {
+					info := localSolarEclipseInfoFromBasic(result, lon, lat, height, date.Location())
+					if (mode != localSolarEclipseQueryVisible || localCentralSolarEclipseVisible(info)) &&
+						localSolarEclipseMatchesDirection(result.GreatestEclipse, targetTT, direction, includeCurrent) {
+						return info, true
+					}
+				}
+			}
+		}
+		candidateTT = nextEclipseSearchCandidateTT(candidateTT, 0, direction, localSolarEclipseSynodicMonthDays)
 	}
 
 	return LocalSolarEclipseInfo{}, false
@@ -499,6 +612,13 @@ func localSolarEclipseVisible(info LocalSolarEclipseInfo) bool {
 		return false
 	}
 	return localSolarEclipseVisibleDuring(info, eventStart, eventEnd)
+}
+
+func localCentralSolarEclipseVisible(info LocalSolarEclipseInfo) bool {
+	if !info.HasCentral || info.CentralStart.IsZero() || info.CentralEnd.IsZero() {
+		return false
+	}
+	return localSolarEclipseVisibleDuring(info, info.CentralStart, info.CentralEnd)
 }
 
 func localSolarEclipseVisibleOnDate(info LocalSolarEclipseInfo, dayStart, dayEnd time.Time) bool {

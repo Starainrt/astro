@@ -44,7 +44,7 @@ go get github.com/starainrt/astro
 - 🌙 **月亮计算**：天球位置、月出月落、地月距离、月相、朔望时间、视直径、亮边位置角、视差角、地心/站心天平动、近远地点、交点、最大赤纬等
 - 🪶 **轻量链路**：`lite/sun` 与 `lite/moon` 提供面向手表、前端、小程序和其它资源受限环境的轻量近似太阳/月亮算法，覆盖天球位置、升落和月相
 - 🌗 **日月食**：全局日食、站心日食、中心线/偏食足迹、月食、地方可见月食与 SVG 示意图
-- 🪐 **行星计算**：七大行星天球位置、升落时间、合冲留等特殊天象时间、升交点/降交点、视直径/视半径、相位、视差角、节点、视星等与物理星历
+- 🪐 **行星计算**：七大行星天球位置、升落时间、合冲留、大距、水星/金星地心凌日等特殊天象时间、升交点/降交点、视直径/视半径、相位、视差角、节点、视星等与物理星历
 - ⭐ **恒星计算**：指定天球坐标所属星座；同时包含9100颗恒星数据库，可计算升降时间、视差角和视高度角，获取指定日期的恒星坐标信息
 - 🧭 **坐标工具**：黄道/赤道/地平坐标转换、站心坐标、恒星时、岁差、章动、角距离、大气折射、大气质量、视差角、银道坐标
 - 🔭 **研究公式**：黑体辐射、会合周期、星等距离换算、望远镜极限星等、恒星半径/温度/光度换算、大气质量模型
@@ -61,7 +61,7 @@ go get github.com/starainrt/astro
 | `moon` | 月亮位置、月出月落、月相、朔望弦、视高度角、视差角、视直径、亮边位置角、地心/站心天平动、近远地点、交点、最大赤纬 |
 | `lite/sun` / `lite/moon` | 轻量太阳/月亮近似链路，面向分钟级升落、轻量天球位置和月相计算 |
 | `eclipse` / `eclipse/svg` | 全局/局地日月食、日食中心线与偏食足迹、局地可见性筛选、日月食 SVG |
-| `mercury` / `venus` | 水星、金星位置、升落、合日、留、大距、相位、视差角、视星等、视直径、节点和物理星历 |
+| `mercury` / `venus` | 水星、金星位置、升落、合日、留、大距、地心凌日、相位、视差角、视星等、视直径、节点和物理星历 |
 | `mars` / `jupiter` / `saturn` / `uranus` / `neptune` | 外行星位置、升落、合冲、留、方照、相位、视差角、视星等、视直径、节点和物理星历 |
 | `earth` | 地球轨道偏心率、近日点、远日点 |
 | `star` | 星座判定、恒星数据库、恒星自行/岁差/章动修正、恒星升落、视差角、视高度角 |
@@ -742,6 +742,8 @@ func main() {
 - `LastSolarEclipse` / `NextSolarEclipse` / `ClosestSolarEclipse`：搜索全局日食
 - `LocalSolarEclipseOnDate`：判断某地当天是否能看到站心日食
 - `LastLocalSolarEclipse` / `NextLocalSolarEclipse` / `ClosestLocalSolarEclipse`：搜索某地可见的站心日食
+- `LastLocalTotalSolarEclipse` / `NextLocalTotalSolarEclipse` / `ClosestLocalTotalSolarEclipse`：搜索某地可见的日全食，返回 `(info, ok)`
+- `LastLocalAnnularSolarEclipse` / `NextLocalAnnularSolarEclipse` / `ClosestLocalAnnularSolarEclipse`：搜索某地可见的日环食，返回 `(info, ok)`
 - `SolarEclipseCentralPath`：计算中心线、南北界和食甚点
 - `SolarEclipsePartialFootprints`：计算偏食半影在地球表面的足迹
 - `eclipse/svg.LocalSolarEclipseSVG`：生成某地的日面视圆 SVG
@@ -995,6 +997,7 @@ true 13424 // 北京日全食 SVG 生成成功，长度 13424 字节
 - `LastLunarEclipse` / `NextLunarEclipse` / `ClosestLunarEclipse`：搜索全局月食
 - `LocalLunarEclipseOnDate`：判断某地当天是否能看到可见月食
 - `LastLocalLunarEclipse` / `NextLocalLunarEclipse` / `ClosestLocalLunarEclipse`：搜索某地可见月食
+- `LastLocalTotalLunarEclipse` / `NextLocalTotalLunarEclipse` / `ClosestLocalTotalLunarEclipse`：搜索某地可见月全食，返回 `(info, ok)`
 - `GeometricLocalLunarEclipseOnDate`：判断某地当天是否发生几何月食，不做“月亮在地平线上方”的可见性过滤
 - `eclipse/svg.LunarEclipseSVG`：生成月食穿影图 SVG
 
@@ -1265,6 +1268,67 @@ fmt.Println(venus.AscendingNode(date), venus.DescendingNode(date))
 ```text
 4.287299886569956 2.143649943284978 // 火星视直径、视半径，单位角秒
 76.86008484515058 256.8600848451506 // 金星升交点、降交点黄经，单位度
+```
+
+水星和金星还提供 `NextTransit` / `LastTransit` / `ClosestTransit` 地心凌日查询。这里的“地心”指从地球中心看到的行星圆面经过太阳圆面，不判断某个地点当时太阳是否在地平线上；如果要做观测计划，还需要结合本地太阳高度角和天气条件。
+
+```go
+package main
+
+import (
+	"fmt"
+	"time"
+
+	"github.com/starainrt/astro/mercury"
+	"github.com/starainrt/astro/venus"
+)
+
+func main() {
+	// 查询 2019 年之后下一次地心水星凌日。
+	mercuryTransit := mercury.NextTransit(time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC))
+	fmt.Println(mercuryTransit.Valid)
+	fmt.Println(mercuryTransit.Start)
+	fmt.Println(mercuryTransit.InternalStart)
+	fmt.Println(mercuryTransit.Greatest)
+	fmt.Println(mercuryTransit.InternalEnd)
+	fmt.Println(mercuryTransit.End)
+	fmt.Println(mercuryTransit.Duration)
+	fmt.Println(mercuryTransit.MinimumSeparationArcsec)
+	fmt.Println(mercuryTransit.SunSemidiameterArcsec)
+	fmt.Println(mercuryTransit.PlanetSemidiameterArcsec)
+
+	// 查询 2012 年之后下一次地心金星凌日。
+	venusTransit := venus.NextTransit(time.Date(2012, 1, 1, 0, 0, 0, 0, time.UTC))
+	fmt.Println(venusTransit.Valid)
+	fmt.Println(venusTransit.Start)
+	fmt.Println(venusTransit.InternalStart)
+	fmt.Println(venusTransit.Greatest)
+	fmt.Println(venusTransit.InternalEnd)
+	fmt.Println(venusTransit.End)
+	fmt.Println(venusTransit.Duration)
+}
+```
+
+输出结果：
+
+```text
+true // 找到一次有效的地心水星凌日
+2019-11-11 12:35:31.637522578 +0000 UTC // 一触：水星外切进入太阳圆面
+2019-11-11 12:37:12.887506484 +0000 UTC // 二触：水星完全进入太阳圆面
+2019-11-11 15:19:48.430488109 +0000 UTC // 凌甚：水星中心最接近太阳中心
+2019-11-11 18:02:29.246907234 +0000 UTC // 三触：水星开始离开太阳圆面
+2019-11-11 18:04:10.707873702 +0000 UTC // 四触：水星外切离开太阳圆面
+5h28m39.070351124s // 一触到四触的地心凌日持续时间
+75.92460219695154 // 凌甚时水星中心与太阳中心的最小角距离，单位角秒
+968.8881521396688 // 凌甚时太阳视半径，单位角秒
+4.978442856283907 // 凌甚时水星视半径，单位角秒
+true // 找到一次有效的地心金星凌日
+2012-06-05 22:09:47.581470608 +0000 UTC // 一触：金星外切进入太阳圆面
+2012-06-05 22:27:35.979940295 +0000 UTC // 二触：金星完全进入太阳圆面
+2012-06-06 01:29:35.686955451 +0000 UTC // 凌甚：金星中心最接近太阳中心
+2012-06-06 04:31:35.18302828 +0000 UTC // 三触：金星开始离开太阳圆面
+2012-06-06 04:49:23.581457734 +0000 UTC // 四触：金星外切离开太阳圆面
+6h39m35.999987126s // 一触到四触的地心凌日持续时间
 ```
 
 #### 外行星
@@ -1849,7 +1913,7 @@ func main() {
 - ✅ `lite/sun`、`lite/moon` 轻量太阳/月亮链路：面向分钟级升落、轻量位置和月相计算
 - ✅ 地球偏心率、日地距离、近日点、远日点
 - ✅ 真平恒星时、星座计算、常用坐标转换、大气折射、大气质量、视差角、银道坐标
-- ✅ 七大行星坐标、距日距地距离、特殊天象、物理星历、视直径、相位、视差角与节点
+- ✅ 七大行星坐标、距日距地距离、特殊天象、水星/金星地心凌日、物理星历、视直径、相位、视差角与节点
 - ✅ 公农历转换（公元前104年-公元3000年）
 - ✅ 9100+恒星数据库
 - ✅ 通用小天体轨道传播、H-G 视星等、视双星位置角/角距

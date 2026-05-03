@@ -1,6 +1,7 @@
 package eclipse
 
 import (
+	"math"
 	"time"
 
 	"github.com/starainrt/astro/basic"
@@ -10,6 +11,18 @@ const (
 	sarosCycleLunations = 223
 	sarosCycleDays      = float64(sarosCycleLunations) * solarEclipseSynodicMonthDays
 	sarosWalkLimit      = 100
+
+	sarosMagicYearOffset    = 3000
+	sarosMagicCountMask     = 0x7f
+	sarosMagicDayMask       = 0x1f
+	sarosMagicMonthMask     = 0x0f
+	sarosMagicYearMask      = 0x1fff
+	sarosMagicCountShift    = 0
+	sarosMagicDayShift      = 7
+	sarosMagicMonthShift    = 12
+	sarosMagicYearShift     = 16
+	sarosMagicMatchLimitDay = 12.0
+	sarosMagicTieEpsilonDay = 1e-9
 )
 
 // SarosInfo 沙罗序列信息, Saros series metadata.
@@ -24,6 +37,8 @@ type SarosInfo struct {
 	// Count is the total number of eclipses in the series.
 	Count int
 }
+
+type sarosMagic uint32
 
 type sarosAnchor struct {
 	Series int16
@@ -53,6 +68,20 @@ var lunarSarosHeadOverrides = [...]sarosHeadOverride{
 }
 
 func solarSarosInfo(ttJDE float64) (SarosInfo, bool) {
+	if info, ok := matchSarosMagic(solarSarosAnchors[:], 0, solarSarosHeadOverrides[:], ttJDE); ok {
+		return info, true
+	}
+	return solarSarosInfoByWalk(ttJDE)
+}
+
+func lunarSarosInfo(ttJDE float64) (SarosInfo, bool) {
+	if info, ok := matchSarosMagic(lunarSarosAnchors[:], 1, lunarSarosHeadOverrides[:], ttJDE); ok {
+		return info, true
+	}
+	return lunarSarosInfoByWalk(ttJDE)
+}
+
+func solarSarosInfoByWalk(ttJDE float64) (SarosInfo, bool) {
 	headTT, member, ok := solarSarosHead(ttJDE)
 	if !ok {
 		return SarosInfo{}, false
@@ -60,7 +89,7 @@ func solarSarosInfo(ttJDE float64) (SarosInfo, bool) {
 	if info, ok := matchSarosHeadOverride(solarSarosHeadOverrides[:], headTT, member); ok {
 		return info, true
 	}
-	anchor, ok := matchSarosAnchor(solarSarosAnchors[:], headTT)
+	anchor, ok := matchSarosAnchor(solarSarosAnchors[:], 0, headTT)
 	if !ok || member > int(anchor.Count) {
 		return SarosInfo{}, false
 	}
@@ -71,7 +100,7 @@ func solarSarosInfo(ttJDE float64) (SarosInfo, bool) {
 	}, true
 }
 
-func lunarSarosInfo(ttJDE float64) (SarosInfo, bool) {
+func lunarSarosInfoByWalk(ttJDE float64) (SarosInfo, bool) {
 	headTT, member, ok := lunarSarosHead(ttJDE)
 	if !ok {
 		return SarosInfo{}, false
@@ -79,7 +108,7 @@ func lunarSarosInfo(ttJDE float64) (SarosInfo, bool) {
 	if info, ok := matchSarosHeadOverride(lunarSarosHeadOverrides[:], headTT, member); ok {
 		return info, true
 	}
-	anchor, ok := matchSarosAnchor(lunarSarosAnchors[:], headTT)
+	anchor, ok := matchSarosAnchor(lunarSarosAnchors[:], 1, headTT)
 	if !ok || member > int(anchor.Count) {
 		return SarosInfo{}, false
 	}
@@ -120,11 +149,102 @@ func lunarSarosHead(ttJDE float64) (float64, int, bool) {
 	return 0, 0, false
 }
 
-func matchSarosAnchor(anchors []sarosAnchor, headTT float64) (sarosAnchor, bool) {
+func matchSarosMagic(anchors []sarosMagic, seriesBase int, overrides []sarosHeadOverride, ttJDE float64) (SarosInfo, bool) {
+	if info, ok := matchSarosMagicOverrides(overrides, ttJDE); ok {
+		return info, true
+	}
+	bestDistance := math.Inf(1)
+	best := SarosInfo{}
+	for index, magic := range anchors {
+		anchor := decodeSarosMagic(magic, seriesBase+index)
+		info, distance, ok := matchSarosMagicCandidate(ttJDE, anchor, 0)
+		if !ok {
+			continue
+		}
+		if betterSarosMagicMatch(info, distance, best, bestDistance) {
+			bestDistance = distance
+			best = info
+		}
+	}
+	if bestDistance <= sarosMagicMatchLimitDay {
+		return best, true
+	}
+	return SarosInfo{}, false
+}
+
+func matchSarosMagicOverrides(overrides []sarosHeadOverride, ttJDE float64) (SarosInfo, bool) {
+	bestDistance := math.Inf(1)
+	best := SarosInfo{}
+	for _, override := range overrides {
+		anchor := sarosAnchor{
+			Series: override.Series,
+			Count:  override.Count,
+			Year:   override.HeadYear,
+			Month:  override.HeadMonth,
+			Day:    override.HeadDay,
+		}
+		info, distance, ok := matchSarosMagicCandidate(ttJDE, anchor, int(override.MemberOffset))
+		if !ok {
+			continue
+		}
+		if betterSarosMagicMatch(info, distance, best, bestDistance) {
+			bestDistance = distance
+			best = info
+		}
+	}
+	if bestDistance <= sarosMagicMatchLimitDay {
+		return best, true
+	}
+	return SarosInfo{}, false
+}
+
+func matchSarosMagicCandidate(ttJDE float64, anchor sarosAnchor, memberOffset int) (SarosInfo, float64, bool) {
+	headTT := basic.JDECalc(int(anchor.Year), int(anchor.Month), float64(anchor.Day))
+	if math.IsNaN(headTT) {
+		return SarosInfo{}, 0, false
+	}
+	member := int(math.Round((ttJDE-headTT)/sarosCycleDays)) + 1 + memberOffset
+	if member < 1 || member > int(anchor.Count) {
+		return SarosInfo{}, 0, false
+	}
+	expectedTT := headTT + float64(member-1-memberOffset)*sarosCycleDays
+	return SarosInfo{
+		Series: int(anchor.Series),
+		Member: member,
+		Count:  int(anchor.Count),
+	}, math.Abs(ttJDE - expectedTT), true
+}
+
+func betterSarosMagicMatch(info SarosInfo, distance float64, best SarosInfo, bestDistance float64) bool {
+	if distance < bestDistance-sarosMagicTieEpsilonDay {
+		return true
+	}
+	if math.Abs(distance-bestDistance) > sarosMagicTieEpsilonDay {
+		return false
+	}
+	if info.Series != best.Series {
+		return info.Series < best.Series
+	}
+	return info.Member < best.Member
+}
+
+func decodeSarosMagic(magic sarosMagic, series int) sarosAnchor {
+	value := uint32(magic)
+	return sarosAnchor{
+		Series: int16(series),
+		Count:  uint8((value >> sarosMagicCountShift) & sarosMagicCountMask),
+		Year:   int16(int((value>>sarosMagicYearShift)&sarosMagicYearMask) - sarosMagicYearOffset),
+		Month:  uint8((value >> sarosMagicMonthShift) & sarosMagicMonthMask),
+		Day:    uint8((value >> sarosMagicDayShift) & sarosMagicDayMask),
+	}
+}
+
+func matchSarosAnchor(anchors []sarosMagic, seriesBase int, headTT float64) (sarosAnchor, bool) {
 	headDate := basic.JDE2DateByZone(headTT, time.UTC, true)
 	year, month, day := headDate.Date()
 	monthNumber := int(month)
-	for _, anchor := range anchors {
+	for index, magic := range anchors {
+		anchor := decodeSarosMagic(magic, seriesBase+index)
 		if int(anchor.Year) == year && int(anchor.Month) == monthNumber && int(anchor.Day) == day {
 			return anchor, true
 		}

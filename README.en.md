@@ -46,7 +46,7 @@ go get github.com/starainrt/astro
 - Lunar position, rise/set, Earth distance, phase, new/full/quarter times, apparent diameter, bright-limb angle, parallactic angle, geocentric/topocentric libration, apsides, nodes, maximum declination
 - `lite/sun` and `lite/moon` lightweight approximation chains for watches, frontends, mini programs, and other resource-constrained environments
 - Global and local solar/lunar eclipses, solar central paths, partial footprints, visible local lunar eclipses, Saros metadata, and SVG diagrams
-- Seven major planets with positions, rise/set, conjunction/opposition/station events, quadratures, elongations, nodes, phase, apparent magnitude, apparent diameter, parallactic angle, and physical ephemerides
+- Seven major planets with positions, rise/set, conjunction/opposition/station events, quadratures, elongations, Mercury/Venus geocentric transits, nodes, phase, apparent magnitude, apparent diameter, parallactic angle, and physical ephemerides
 - 9100+ star catalog entries, constellation lookup, proper-motion propagation, rise/set, parallactic angle, and apparent altitude
 - Coordinate transforms, topocentric coordinates, sidereal time, precession, nutation, angular distance, refraction, airmass, parallactic angle, and Galactic coordinates
 - Standalone formulas for blackbody radiation, synodic periods, photometry, telescope limiting magnitude, stellar radius/temperature/luminosity relations, and airmass models
@@ -63,7 +63,7 @@ go get github.com/starainrt/astro
 | `moon` | Lunar position, rise/set, phases, new/full/quarter times, apparent altitude, parallactic angle, diameter, bright-limb angle, geocentric/topocentric libration, apsides, nodes, maximum declination |
 | `lite/sun` / `lite/moon` | Lightweight Sun/Moon approximation chains for minute-level rise/set, lightweight sky position, and lunar-phase work |
 | `eclipse` / `eclipse/svg` | Global/local solar and lunar eclipses, solar central paths, partial footprints, local visibility filtering, Saros metadata, SVG output |
-| `mercury` / `venus` | Positions, rise/set, conjunctions, stations, elongations, phase, parallactic angle, magnitude, diameter, nodes, physical ephemerides |
+| `mercury` / `venus` | Positions, rise/set, conjunctions, stations, elongations, geocentric transits, phase, parallactic angle, magnitude, diameter, nodes, physical ephemerides |
 | `mars` / `jupiter` / `saturn` / `uranus` / `neptune` | Positions, rise/set, conjunction/opposition, stations, quadratures, phase, parallactic angle, magnitude, diameter, nodes, physical ephemerides |
 | `earth` | Earth orbital eccentricity, perihelion, aphelion |
 | `star` | Constellation lookup, star catalog, proper motion / precession / nutation correction, stellar rise/set, parallactic angle, apparent altitude |
@@ -674,6 +674,8 @@ Common entry points:
 - `LastSolarEclipse` / `NextSolarEclipse` / `ClosestSolarEclipse`: search global solar eclipses
 - `LocalSolarEclipseOnDate`: detect whether a site can see a local solar eclipse on that date
 - `LastLocalSolarEclipse` / `NextLocalSolarEclipse` / `ClosestLocalSolarEclipse`: search locally visible solar eclipses
+- `LastLocalTotalSolarEclipse` / `NextLocalTotalSolarEclipse` / `ClosestLocalTotalSolarEclipse`: search locally visible total solar eclipses, returning `(info, ok)`
+- `LastLocalAnnularSolarEclipse` / `NextLocalAnnularSolarEclipse` / `ClosestLocalAnnularSolarEclipse`: search locally visible annular solar eclipses, returning `(info, ok)`
 - `SolarEclipseCentralPath`: compute central line, northern/southern limits, and greatest-eclipse point
 - `SolarEclipsePartialFootprints`: compute the partial-eclipse penumbral footprint on Earth
 - `eclipse/svg.LocalSolarEclipseSVG`: render a local solar-disk SVG
@@ -925,6 +927,7 @@ Common entry points:
 - `LastLunarEclipse` / `NextLunarEclipse` / `ClosestLunarEclipse`: search global lunar eclipses
 - `LocalLunarEclipseOnDate`: detect whether a visible lunar eclipse is visible from a site on a local date
 - `LastLocalLunarEclipse` / `NextLocalLunarEclipse` / `ClosestLocalLunarEclipse`: search visible local lunar eclipses
+- `LastLocalTotalLunarEclipse` / `NextLocalTotalLunarEclipse` / `ClosestLocalTotalLunarEclipse`: search visible local total lunar eclipses, returning `(info, ok)`
 - `GeometricLocalLunarEclipseOnDate`: detect geometric lunar eclipse overlap without filtering by whether the Moon is above the horizon
 - `eclipse/svg.LunarEclipseSVG`: render a lunar-eclipse shadow-path SVG
 
@@ -1189,6 +1192,67 @@ For `date := 2020-01-01 08:08:08 CST`, the output is:
 ```text
 4.287299886569956 2.143649943284978 // Mars apparent diameter and semidiameter, arcseconds
 76.86008484515058 256.8600848451506 // Venus ascending-node and descending-node longitudes, degrees
+```
+
+Mercury and Venus also expose `NextTransit` / `LastTransit` / `ClosestTransit` for geocentric planetary transits. "Geocentric" means the planet disk crosses the solar disk as seen from Earth's center; it does not test whether the Sun is above the horizon at a particular observing site. For observing plans, combine this with local solar altitude and weather.
+
+```go
+package main
+
+import (
+	"fmt"
+	"time"
+
+	"github.com/starainrt/astro/mercury"
+	"github.com/starainrt/astro/venus"
+)
+
+func main() {
+	// Next geocentric Mercury transit after the beginning of 2019.
+	mercuryTransit := mercury.NextTransit(time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC))
+	fmt.Println(mercuryTransit.Valid)
+	fmt.Println(mercuryTransit.Start)
+	fmt.Println(mercuryTransit.InternalStart)
+	fmt.Println(mercuryTransit.Greatest)
+	fmt.Println(mercuryTransit.InternalEnd)
+	fmt.Println(mercuryTransit.End)
+	fmt.Println(mercuryTransit.Duration)
+	fmt.Println(mercuryTransit.MinimumSeparationArcsec)
+	fmt.Println(mercuryTransit.SunSemidiameterArcsec)
+	fmt.Println(mercuryTransit.PlanetSemidiameterArcsec)
+
+	// Next geocentric Venus transit after the beginning of 2012.
+	venusTransit := venus.NextTransit(time.Date(2012, 1, 1, 0, 0, 0, 0, time.UTC))
+	fmt.Println(venusTransit.Valid)
+	fmt.Println(venusTransit.Start)
+	fmt.Println(venusTransit.InternalStart)
+	fmt.Println(venusTransit.Greatest)
+	fmt.Println(venusTransit.InternalEnd)
+	fmt.Println(venusTransit.End)
+	fmt.Println(venusTransit.Duration)
+}
+```
+
+Output:
+
+```text
+true // a valid geocentric Mercury transit was found
+2019-11-11 12:35:31.637522578 +0000 UTC // first contact: Mercury externally enters the solar disk
+2019-11-11 12:37:12.887506484 +0000 UTC // second contact: Mercury is fully inside the solar disk
+2019-11-11 15:19:48.430488109 +0000 UTC // greatest transit: Mercury center is closest to the Sun center
+2019-11-11 18:02:29.246907234 +0000 UTC // third contact: Mercury starts leaving the solar disk
+2019-11-11 18:04:10.707873702 +0000 UTC // fourth contact: Mercury externally leaves the solar disk
+5h28m39.070351124s // geocentric transit duration from first to fourth contact
+75.92460219695154 // minimum Mercury-Sun center separation at greatest transit, arcseconds
+968.8881521396688 // solar semidiameter at greatest transit, arcseconds
+4.978442856283907 // Mercury semidiameter at greatest transit, arcseconds
+true // a valid geocentric Venus transit was found
+2012-06-05 22:09:47.581470608 +0000 UTC // first contact: Venus externally enters the solar disk
+2012-06-05 22:27:35.979940295 +0000 UTC // second contact: Venus is fully inside the solar disk
+2012-06-06 01:29:35.686955451 +0000 UTC // greatest transit: Venus center is closest to the Sun center
+2012-06-06 04:31:35.18302828 +0000 UTC // third contact: Venus starts leaving the solar disk
+2012-06-06 04:49:23.581457734 +0000 UTC // fourth contact: Venus externally leaves the solar disk
+6h39m35.999987126s // geocentric transit duration from first to fourth contact
 ```
 
 #### Outer planets
@@ -1767,7 +1831,7 @@ Notes:
 - `lite/sun` and `lite/moon` lightweight Sun/Moon chains for minute-level rise/set, lightweight position, and lunar-phase work
 - Earth eccentricity, Sun-Earth distance, perihelion, aphelion
 - Apparent/mean sidereal time, constellation lookup, common coordinate transforms, refraction, airmass, parallactic angle, Galactic coordinates
-- Seven major-planet coordinates, Sun/body and Earth/body distances, special events, physical ephemerides, apparent diameters, phases, parallactic angles, and nodes
+- Seven major-planet coordinates, Sun/body and Earth/body distances, special events, Mercury/Venus geocentric transits, physical ephemerides, apparent diameters, phases, parallactic angles, and nodes
 - Chinese lunisolar calendar conversion from 104 BCE to 3000 CE
 - 9100+ star catalog
 - Generic small-body orbit propagation, H-G apparent magnitude, visual-binary position angle and separation

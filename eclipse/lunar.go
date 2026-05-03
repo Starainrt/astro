@@ -279,7 +279,7 @@ func searchLunarEclipse(
 				return lunarEclipseInfoFromBasic(result, date.Location()), true
 			}
 		}
-		candidateTT = basic.CalcMoonSHByJDE(candidateTT+float64(direction)*lunarEclipseSynodicMonthDays, 1)
+		candidateTT = nextEclipseSearchCandidateTT(candidateTT, 1, direction, lunarEclipseSynodicMonthDays)
 	}
 
 	return LunarEclipseInfo{}, false

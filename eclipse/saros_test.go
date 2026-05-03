@@ -117,10 +117,10 @@ func TestSolarPathAndFootprintsCarrySaros(t *testing.T) {
 }
 
 func TestSarosAnchorSanity(t *testing.T) {
-	assertSarosAnchorTable(t, solarSarosAnchors[:], true)
-	assertSarosAnchorTable(t, lunarSarosAnchors[:], false)
-	assertSarosHeadOverrides(t, solarSarosHeadOverrides[:], solarSarosAnchors[:])
-	assertSarosHeadOverrides(t, lunarSarosHeadOverrides[:], lunarSarosAnchors[:])
+	assertSarosAnchorTable(t, solarSarosAnchors[:], 0)
+	assertSarosAnchorTable(t, lunarSarosAnchors[:], 1)
+	assertSarosHeadOverrides(t, solarSarosHeadOverrides[:], solarSarosAnchors[:], 0)
+	assertSarosHeadOverrides(t, lunarSarosHeadOverrides[:], lunarSarosAnchors[:], 1)
 }
 
 func assertSarosInfo(t *testing.T, has bool, got SarosInfo, wantSeries, wantMember, wantCount int) {
@@ -141,14 +141,15 @@ func assertSarosInfo(t *testing.T, has bool, got SarosInfo, wantSeries, wantMemb
 	}
 }
 
-func assertSarosAnchorTable(t *testing.T, anchors []sarosAnchor, solar bool) {
+func assertSarosAnchorTable(t *testing.T, anchors []sarosMagic, seriesBase int) {
 	t.Helper()
 	if len(anchors) == 0 {
 		t.Fatal("expected non-empty Saros anchor table")
 	}
 	seenDates := make(map[[3]int]int, len(anchors))
-	lastSeries := int(anchors[0].Series) - 1
-	for _, anchor := range anchors {
+	lastSeries := seriesBase - 1
+	for index, magic := range anchors {
+		anchor := decodeSarosMagic(magic, seriesBase+index)
 		series := int(anchor.Series)
 		if series <= lastSeries {
 			t.Fatalf("series not strictly increasing: prev=%d current=%d", lastSeries, series)
@@ -163,25 +164,20 @@ func assertSarosAnchorTable(t *testing.T, anchors []sarosAnchor, solar bool) {
 		}
 		seenDates[dateKey] = series
 	}
-	if solar {
-		if got := int(anchors[0].Series); got != 0 {
-			t.Fatalf("unexpected first solar series: got %d want 0", got)
-		}
-	} else {
-		if got := int(anchors[0].Series); got != 1 {
-			t.Fatalf("unexpected first lunar series: got %d want 1", got)
-		}
+	if got := int(decodeSarosMagic(anchors[0], seriesBase).Series); got != seriesBase {
+		t.Fatalf("unexpected first series: got %d want %d", got, seriesBase)
 	}
 }
 
-func assertSarosHeadOverrides(t *testing.T, overrides []sarosHeadOverride, anchors []sarosAnchor) {
+func assertSarosHeadOverrides(t *testing.T, overrides []sarosHeadOverride, anchors []sarosMagic, seriesBase int) {
 	t.Helper()
 	if len(overrides) == 0 {
 		return
 	}
 	seenHeads := make(map[[3]int]int, len(overrides))
 	anchorSeries := make(map[int]int, len(anchors))
-	for _, anchor := range anchors {
+	for index, magic := range anchors {
+		anchor := decodeSarosMagic(magic, seriesBase+index)
 		anchorSeries[int(anchor.Series)] = int(anchor.Count)
 	}
 	for _, override := range overrides {

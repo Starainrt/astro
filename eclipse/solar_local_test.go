@@ -129,6 +129,116 @@ func TestLocalSolarEclipseSearchSkipsInvisibleCurrentCandidate(t *testing.T) {
 	}
 }
 
+func TestLocalTotalSolarEclipseSearch(t *testing.T) {
+	loc := time.UTC
+	lon, lat, height := -104.1, 25.3, 0.0
+	date := time.Date(2024, 4, 7, 0, 0, 0, 0, loc)
+
+	next, ok := NextLocalTotalSolarEclipse(date, lon, lat, height)
+	if !ok {
+		t.Fatal("expected to find next local total solar eclipse")
+	}
+	if next.Type != SolarEclipseTotal || !next.HasTotal {
+		t.Fatalf("unexpected next total eclipse: %+v", next)
+	}
+	assertSolarTimeClose(t, "NextLocalTotalSolarEclipse", next.GreatestEclipse, time.Date(2024, 4, 8, 18, 17, 15, 0, loc), time.Minute)
+	assertSolarDurationClose(t, "NextLocalTotalSolarEclipse duration", next.CentralEnd.Sub(next.CentralStart), 4*time.Minute+28*time.Second, 5*time.Second)
+
+	last, ok := LastLocalTotalSolarEclipse(next.GreatestEclipse, lon, lat, height)
+	if !ok {
+		t.Fatal("expected to find previous local total solar eclipse")
+	}
+	if last.Type != SolarEclipseTotal || !last.HasTotal {
+		t.Fatalf("unexpected last total eclipse: %+v", last)
+	}
+	assertSolarTimeClose(t, "LastLocalTotalSolarEclipse", last.GreatestEclipse, next.GreatestEclipse, time.Second)
+	assertSolarDurationClose(t, "LastLocalTotalSolarEclipse duration", last.CentralEnd.Sub(last.CentralStart), 4*time.Minute+28*time.Second, 5*time.Second)
+}
+
+func TestLocalTotalSolarEclipseClosest(t *testing.T) {
+	loc := time.UTC
+	lon, lat, height := -104.1, 25.3, 0.0
+	date := time.Date(2024, 4, 8, 12, 0, 0, 0, loc)
+
+	info, ok := ClosestLocalTotalSolarEclipse(date, lon, lat, height)
+	if !ok {
+		t.Fatal("expected to find closest local total solar eclipse")
+	}
+	if info.Type != SolarEclipseTotal || !info.HasTotal {
+		t.Fatalf("unexpected closest total eclipse: %+v", info)
+	}
+	assertSolarTimeClose(t, "ClosestLocalTotalSolarEclipse", info.GreatestEclipse, time.Date(2024, 4, 8, 18, 17, 15, 0, loc), time.Minute)
+}
+
+func TestLocalAnnularSolarEclipseSearch(t *testing.T) {
+	loc := time.UTC
+	lon, lat, height := -114.5, -22.0, 0.0
+	date := time.Date(2024, 10, 1, 0, 0, 0, 0, loc)
+
+	next, ok := NextLocalAnnularSolarEclipse(date, lon, lat, height)
+	if !ok {
+		t.Fatal("expected to find next local annular solar eclipse")
+	}
+	if next.Type != SolarEclipseAnnular || !next.HasAnnular || next.HasTotal {
+		t.Fatalf("unexpected next annular eclipse: %+v", next)
+	}
+	assertSolarTimeClose(t, "NextLocalAnnularSolarEclipse", next.GreatestEclipse, time.Date(2024, 10, 2, 18, 44, 59, 0, loc), time.Minute)
+	assertSolarDurationClose(t, "NextLocalAnnularSolarEclipse duration", next.CentralEnd.Sub(next.CentralStart), 7*time.Minute+25*time.Second, 5*time.Second)
+
+	last, ok := LastLocalAnnularSolarEclipse(next.GreatestEclipse, lon, lat, height)
+	if !ok {
+		t.Fatal("expected to find previous local annular solar eclipse")
+	}
+	if last.Type != SolarEclipseAnnular || !last.HasAnnular || last.HasTotal {
+		t.Fatalf("unexpected last annular eclipse: %+v", last)
+	}
+	assertSolarTimeClose(t, "LastLocalAnnularSolarEclipse", last.GreatestEclipse, next.GreatestEclipse, time.Second)
+}
+
+func TestLocalAnnularSolarEclipseClosest(t *testing.T) {
+	loc := time.UTC
+	lon, lat, height := -114.5, -22.0, 0.0
+	date := time.Date(2024, 10, 2, 12, 0, 0, 0, loc)
+
+	info, ok := ClosestLocalAnnularSolarEclipse(date, lon, lat, height)
+	if !ok {
+		t.Fatal("expected to find closest local annular solar eclipse")
+	}
+	if info.Type != SolarEclipseAnnular || !info.HasAnnular || info.HasTotal {
+		t.Fatalf("unexpected closest annular eclipse: %+v", info)
+	}
+	assertSolarTimeClose(t, "ClosestLocalAnnularSolarEclipse", info.GreatestEclipse, time.Date(2024, 10, 2, 18, 44, 59, 0, loc), time.Minute)
+}
+
+func TestLocalCentralSolarEclipseVisibleRequiresCentralPhaseVisibility(t *testing.T) {
+	info := LocalSolarEclipseInfo{
+		Type:              SolarEclipseTotal,
+		Longitude:         0,
+		Latitude:          0,
+		PartialStart:      time.Date(2024, 1, 1, 9, 0, 0, 0, time.UTC),
+		PartialEnd:        time.Date(2024, 1, 1, 15, 0, 0, 0, time.UTC),
+		CentralStart:      time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+		CentralEnd:        time.Date(2024, 1, 1, 1, 0, 0, 0, time.UTC),
+		HasPartial:        true,
+		HasCentral:        true,
+		HasTotal:          true,
+		VisibleAtGreatest: false,
+	}
+	if !localSolarEclipseVisible(info) {
+		t.Fatalf("expected partial phase to be visible")
+	}
+	if localCentralSolarEclipseVisible(info) {
+		t.Fatalf("expected central phase below horizon to be rejected")
+	}
+
+	info.Type = SolarEclipseAnnular
+	info.HasTotal = false
+	info.HasAnnular = true
+	if localCentralSolarEclipseVisible(info) {
+		t.Fatalf("expected annular central phase below horizon to be rejected")
+	}
+}
+
 func TestLocalSolarEclipseInfoKeepsLocation(t *testing.T) {
 	loc := time.FixedZone("UTC+08", 8*3600)
 	lon, lat, height := -104.1, 25.3, 1234.0
@@ -353,4 +463,15 @@ func assertSameLocalSolarEclipse(t *testing.T, name string, got, want LocalSolar
 		t.Fatalf("%s type mismatch: got %s want %s", name, got.Type, want.Type)
 	}
 	assertSolarTimeClose(t, name+".GreatestEclipse", got.GreatestEclipse, want.GreatestEclipse, tolerance)
+}
+
+func assertSolarDurationClose(t *testing.T, name string, got, want, tolerance time.Duration) {
+	t.Helper()
+	diff := got - want
+	if diff < 0 {
+		diff = -diff
+	}
+	if diff > tolerance {
+		t.Fatalf("%s mismatch: got %v want %v diff=%v", name, got, want, diff)
+	}
 }

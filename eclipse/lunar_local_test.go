@@ -133,6 +133,61 @@ func TestLocalLunarEclipseSearchBeyondFiveYears(t *testing.T) {
 	}
 }
 
+func TestLocalTotalLunarEclipseSearch(t *testing.T) {
+	loc := time.FixedZone("CDT", -5*3600)
+	lon, lat, height := -87.65, 41.85, 0.0
+	date := time.Date(2025, 3, 13, 0, 0, 0, 0, loc)
+
+	next, ok := NextLocalTotalLunarEclipse(date, lon, lat, height)
+	if !ok {
+		t.Fatal("expected to find next local total lunar eclipse")
+	}
+	if next.Type != LunarEclipseTotal || !next.HasTotal {
+		t.Fatalf("unexpected next total lunar eclipse: %+v", next)
+	}
+	assertTimeClose(t, "NextLocalTotalLunarEclipse", next.Maximum, time.Date(2025, 3, 14, 1, 58, 47, 0, loc), 2*time.Minute)
+
+	last, ok := LastLocalTotalLunarEclipse(next.Maximum, lon, lat, height)
+	if !ok {
+		t.Fatal("expected to find previous local total lunar eclipse")
+	}
+	if last.Type != LunarEclipseTotal || !last.HasTotal {
+		t.Fatalf("unexpected last total lunar eclipse: %+v", last)
+	}
+	assertTimeClose(t, "LastLocalTotalLunarEclipse", last.Maximum, next.Maximum, time.Second)
+}
+
+func TestLocalTotalLunarEclipseClosest(t *testing.T) {
+	loc := time.FixedZone("CDT", -5*3600)
+	lon, lat, height := -87.65, 41.85, 0.0
+	date := time.Date(2025, 3, 14, 0, 0, 0, 0, loc)
+
+	info, ok := ClosestLocalTotalLunarEclipse(date, lon, lat, height)
+	if !ok {
+		t.Fatal("expected to find closest local total lunar eclipse")
+	}
+	if info.Type != LunarEclipseTotal || !info.HasTotal {
+		t.Fatalf("unexpected closest total lunar eclipse: %+v", info)
+	}
+	assertTimeClose(t, "ClosestLocalTotalLunarEclipse", info.Maximum, time.Date(2025, 3, 14, 1, 58, 47, 0, loc), 2*time.Minute)
+}
+
+func TestLocalTotalLunarEclipseVisibleRequiresTotalPhaseVisibility(t *testing.T) {
+	info, ok := LocalLunarEclipseOnDate(time.Date(2025, 3, 14, 12, 0, 0, 0, time.UTC), -0.1278, 51.5074, 0)
+	if !ok {
+		t.Fatalf("expected visible local eclipse in London")
+	}
+	if info.Type != LunarEclipseTotal || !info.HasTotal {
+		t.Fatalf("unexpected eclipse type: %+v", info)
+	}
+	if !localLunarEclipseVisible(info) {
+		t.Fatalf("expected some phase to be visible")
+	}
+	if localTotalLunarEclipseVisible(info) {
+		t.Fatalf("expected total phase below horizon to be rejected")
+	}
+}
+
 func TestLocalLunarEclipseInfoKeepsLocation(t *testing.T) {
 	loc := time.FixedZone("JST", 9*3600)
 	lon, lat, height := 139.6917, 35.6895, 1234.0
