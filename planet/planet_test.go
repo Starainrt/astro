@@ -25,8 +25,9 @@ func TestWherePlanetNFullMatchesDefault(t *testing.T) {
 }
 
 func TestPlanetViewsMatchRawCuts(t *testing.T) {
+	views := planetViews()
 	for bodyIndex, raw := range planetRawData {
-		view := planetViews[bodyIndex]
+		view := views[bodyIndex]
 		if math.Float64bits(view.scale) != math.Float64bits(raw[0]) {
 			t.Fatalf("body=%d scale mismatch", bodyIndex)
 		}
@@ -40,5 +41,17 @@ func TestPlanetViewsMatchRawCuts(t *testing.T) {
 				}
 			}
 		}
+	}
+}
+
+func TestBuildPlanetViewsRejectsInvalidCuts(t *testing.T) {
+	_, err := buildPlanetViews([][]float64{{
+		10000000000,
+		20, 21, 20, 20, 20, 20, 20,
+		20, 20, 20, 20, 20, 20,
+		20, 20, 20, 20, 20, 20,
+	}})
+	if err == nil {
+		t.Fatal("expected invalid cut error")
 	}
 }

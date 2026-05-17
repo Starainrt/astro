@@ -25,7 +25,7 @@ func WherePlanetN(xt, zn int, jd float64, n int) float64 {
 	t := (jd - 2451545) / 36525.0000
 	t /= 10 // 转为儒略千年数
 
-	body := planetViews[xt]
+	body := planetViews()[xt]
 	coord := body.coords[zn]
 	baseOrderTerms := len(coord.orders[0])
 
