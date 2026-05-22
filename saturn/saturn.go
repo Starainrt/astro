@@ -207,8 +207,7 @@ func SetTime(date time.Time, lon, lat, height float64, aero bool) (time.Time, er
 
 // LastConjunction 上一次合日 / previous conjunction with the Sun.
 //
-// 返回 date 之前最近一次与太阳的合日时刻，结果保持 date 的时区。
-// Returns the most recent conjunction with the Sun relative to date, keeping date's time zone.
+// 返回 date 当前或之前最近一次与太阳的合日时刻，结果保持 date 的时区。
 func LastConjunction(date time.Time) time.Time {
 	jde := basic.TD2UT(basic.Date2JDE(date.UTC()), true)
 	return basic.JDE2DateByZone(basic.LastSaturnConjunction(jde), date.Location(), false)
@@ -216,8 +215,7 @@ func LastConjunction(date time.Time) time.Time {
 
 // NextConjunction 下一次合日 / next conjunction with the Sun.
 //
-// 返回 date 之后最近一次与太阳的合日时刻，结果保持 date 的时区。
-// Returns the next conjunction with the Sun relative to date, keeping date's time zone.
+// 返回 date 当前或之后最近一次与太阳的合日时刻，结果保持 date 的时区。
 func NextConjunction(date time.Time) time.Time {
 	jde := basic.TD2UT(basic.Date2JDE(date.UTC()), true)
 	return basic.JDE2DateByZone(basic.NextSaturnConjunction(jde), date.Location(), false)
@@ -225,8 +223,7 @@ func NextConjunction(date time.Time) time.Time {
 
 // LastOpposition 上一次冲日 / previous opposition.
 //
-// 返回 date 之前最近一次冲日时刻，结果保持 date 的时区。
-// Returns the most recent opposition relative to date, keeping date's time zone.
+// 返回 date 当前或之前最近一次冲日时刻，结果保持 date 的时区。
 func LastOpposition(date time.Time) time.Time {
 	jde := basic.TD2UT(basic.Date2JDE(date.UTC()), true)
 	return basic.JDE2DateByZone(basic.LastSaturnOpposition(jde), date.Location(), false)
@@ -234,8 +231,7 @@ func LastOpposition(date time.Time) time.Time {
 
 // NextOpposition 下一次冲日 / next opposition.
 //
-// 返回 date 之后最近一次冲日时刻，结果保持 date 的时区。
-// Returns the next opposition relative to date, keeping date's time zone.
+// 返回 date 当前或之后最近一次冲日时刻，结果保持 date 的时区。
 func NextOpposition(date time.Time) time.Time {
 	jde := basic.TD2UT(basic.Date2JDE(date.UTC()), true)
 	return basic.JDE2DateByZone(basic.NextSaturnOpposition(jde), date.Location(), false)
@@ -243,8 +239,7 @@ func NextOpposition(date time.Time) time.Time {
 
 // LastProgradeToRetrograde 上一次顺行转逆行留 / previous station from prograde to retrograde.
 //
-// 返回 date 之前最近一次由顺行转为逆行的留时刻，结果保持 date 的时区。
-// Returns the most recent stationary point where motion changes from prograde to retrograde relative to date, keeping date's time zone.
+// 返回 date 当前或之前最近一次由顺行转为逆行的留时刻，结果保持 date 的时区。
 func LastProgradeToRetrograde(date time.Time) time.Time {
 	jde := basic.TD2UT(basic.Date2JDE(date.UTC()), true)
 	return basic.JDE2DateByZone(basic.LastSaturnProgradeToRetrograde(jde), date.Location(), false)
@@ -252,8 +247,7 @@ func LastProgradeToRetrograde(date time.Time) time.Time {
 
 // NextProgradeToRetrograde 下一次顺行转逆行留 / next station from prograde to retrograde.
 //
-// 返回 date 之后最近一次由顺行转为逆行的留时刻，结果保持 date 的时区。
-// Returns the next stationary point where motion changes from prograde to retrograde relative to date, keeping date's time zone.
+// 返回 date 当前或之后最近一次由顺行转为逆行的留时刻，结果保持 date 的时区。
 func NextProgradeToRetrograde(date time.Time) time.Time {
 	jde := basic.TD2UT(basic.Date2JDE(date.UTC()), true)
 	return basic.JDE2DateByZone(basic.NextSaturnProgradeToRetrograde(jde), date.Location(), false)
@@ -261,8 +255,7 @@ func NextProgradeToRetrograde(date time.Time) time.Time {
 
 // LastRetrogradeToPrograde 上一次逆行转顺行留 / previous station from retrograde to prograde.
 //
-// 返回 date 之前最近一次由逆行转为顺行的留时刻，结果保持 date 的时区。
-// Returns the most recent stationary point where motion changes from retrograde to prograde relative to date, keeping date's time zone.
+// 返回 date 当前或之前最近一次由逆行转为顺行的留时刻，结果保持 date 的时区。
 func LastRetrogradeToPrograde(date time.Time) time.Time {
 	jde := basic.TD2UT(basic.Date2JDE(date.UTC()), true)
 	return basic.JDE2DateByZone(basic.LastSaturnRetrogradeToPrograde(jde), date.Location(), false)
@@ -270,8 +263,7 @@ func LastRetrogradeToPrograde(date time.Time) time.Time {
 
 // NextRetrogradeToPrograde 下一次逆行转顺行留 / next station from retrograde to prograde.
 //
-// 返回 date 之后最近一次由逆行转为顺行的留时刻，结果保持 date 的时区。
-// Returns the next stationary point where motion changes from retrograde to prograde relative to date, keeping date's time zone.
+// 返回 date 当前或之后最近一次由逆行转为顺行的留时刻，结果保持 date 的时区。
 func NextRetrogradeToPrograde(date time.Time) time.Time {
 	jde := basic.TD2UT(basic.Date2JDE(date.UTC()), true)
 	return basic.JDE2DateByZone(basic.NextSaturnRetrogradeToPrograde(jde), date.Location(), false)
@@ -279,8 +271,7 @@ func NextRetrogradeToPrograde(date time.Time) time.Time {
 
 // LastEasternQuadrature 上一次东方照 / previous eastern quadrature.
 //
-// 返回 date 之前最近一次东方照时刻，结果保持 date 的时区。
-// Returns the most recent eastern quadrature relative to date, keeping date's time zone.
+// 返回 date 当前或之前最近一次东方照时刻，结果保持 date 的时区。
 func LastEasternQuadrature(date time.Time) time.Time {
 	jde := basic.TD2UT(basic.Date2JDE(date.UTC()), true)
 	return basic.JDE2DateByZone(basic.LastSaturnEasternQuadrature(jde), date.Location(), false)
@@ -288,8 +279,7 @@ func LastEasternQuadrature(date time.Time) time.Time {
 
 // NextEasternQuadrature 下一次东方照 / next eastern quadrature.
 //
-// 返回 date 之后最近一次东方照时刻，结果保持 date 的时区。
-// Returns the next eastern quadrature relative to date, keeping date's time zone.
+// 返回 date 当前或之后最近一次东方照时刻，结果保持 date 的时区。
 func NextEasternQuadrature(date time.Time) time.Time {
 	jde := basic.TD2UT(basic.Date2JDE(date.UTC()), true)
 	return basic.JDE2DateByZone(basic.NextSaturnEasternQuadrature(jde), date.Location(), false)
@@ -297,8 +287,7 @@ func NextEasternQuadrature(date time.Time) time.Time {
 
 // LastWesternQuadrature 上一次西方照 / previous western quadrature.
 //
-// 返回 date 之前最近一次西方照时刻，结果保持 date 的时区。
-// Returns the most recent western quadrature relative to date, keeping date's time zone.
+// 返回 date 当前或之前最近一次西方照时刻，结果保持 date 的时区。
 func LastWesternQuadrature(date time.Time) time.Time {
 	jde := basic.TD2UT(basic.Date2JDE(date.UTC()), true)
 	return basic.JDE2DateByZone(basic.LastSaturnWesternQuadrature(jde), date.Location(), false)
@@ -306,8 +295,7 @@ func LastWesternQuadrature(date time.Time) time.Time {
 
 // NextWesternQuadrature 下一次西方照 / next western quadrature.
 //
-// 返回 date 之后最近一次西方照时刻，结果保持 date 的时区。
-// Returns the next western quadrature relative to date, keeping date's time zone.
+// 返回 date 当前或之后最近一次西方照时刻，结果保持 date 的时区。
 func NextWesternQuadrature(date time.Time) time.Time {
 	jde := basic.TD2UT(basic.Date2JDE(date.UTC()), true)
 	return basic.JDE2DateByZone(basic.NextSaturnWesternQuadrature(jde), date.Location(), false)

@@ -11,6 +11,7 @@ const (
 	MERCURY_S_PERIOD                    = 1 / ((1 / 87.9691) - (1 / 365.256363004))
 	mercuryConjunctionDerivativeStepDay = 2e-5 * 36525.0
 	mercuryLightTimeDaysPerAU           = 0.0057755183
+	mercuryEventSearchN                 = 16
 )
 
 type mercuryConjunctionLBR struct {
@@ -206,41 +207,49 @@ func mercuryConjunction(jde float64, next uint8) float64 {
 }
 
 func LastMercuryConjunction(jde float64) float64 {
-	return mercuryConjunction(jde, 0)
+	return inclusiveLastSimpleEvent(jde, LastMercuryConjunctionStrict, NextMercuryConjunctionStrict)
 }
 
 func NextMercuryConjunction(jde float64) float64 {
+	return inclusiveNextSimpleEvent(jde, LastMercuryConjunctionStrict, NextMercuryConjunctionStrict)
+}
+
+func LastMercuryConjunctionStrict(jde float64) float64 {
+	return mercuryConjunction(jde, 0)
+}
+
+func NextMercuryConjunctionStrict(jde float64) float64 {
 	return mercuryConjunction(jde, 1)
 }
 
 func NextMercuryInferiorConjunction(jde float64) float64 {
-	date := NextMercuryConjunction(jde)
+	date := NextMercuryConjunctionStrict(jde)
 	if EarthMercuryAway(date) > EarthAway(date) {
-		return NextMercuryConjunction(date + 2)
+		return NextMercuryConjunctionStrict(date + 2)
 	}
 	return date
 }
 
 func NextMercurySuperiorConjunction(jde float64) float64 {
-	date := NextMercuryConjunction(jde)
+	date := NextMercuryConjunctionStrict(jde)
 	if EarthMercuryAway(date) < EarthAway(date) {
-		return NextMercuryConjunction(date + 2)
+		return NextMercuryConjunctionStrict(date + 2)
 	}
 	return date
 }
 
 func LastMercuryInferiorConjunction(jde float64) float64 {
-	date := LastMercuryConjunction(jde)
+	date := LastMercuryConjunctionStrict(jde)
 	if EarthMercuryAway(date) > EarthAway(date) {
-		return LastMercuryConjunction(date - 2)
+		return LastMercuryConjunctionStrict(date - 2)
 	}
 	return date
 }
 
 func LastMercurySuperiorConjunction(jde float64) float64 {
-	date := LastMercuryConjunction(jde)
+	date := LastMercuryConjunctionStrict(jde)
 	if EarthMercuryAway(date) < EarthAway(date) {
-		return LastMercuryConjunction(date - 2)
+		return LastMercuryConjunctionStrict(date - 2)
 	}
 	return date
 }
@@ -257,16 +266,6 @@ func mercuryRetrograde(jde float64) float64 {
 		}
 		return sub
 	}
-	raRate := func(jde float64, delta float64) float64 {
-		sub := MercuryApparentRa(jde+delta) - MercuryApparentRa(jde-delta)
-		if sub > 180 {
-			sub -= 360
-		}
-		if sub < -180 {
-			sub += 360
-		}
-		return sub / (2 * delta)
-	}
 	lastConjunction := mercuryConjunctionLegacy(jde, 0)
 	nextConjunction := mercuryConjunctionLegacy(jde, 1)
 	currentRADelta := solarRADelta(jde)
@@ -276,7 +275,7 @@ func mercuryRetrograde(jde float64) float64 {
 		jde = lastConjunction + ((nextConjunction - lastConjunction) / 5.5)
 	}
 	for {
-		currentRate := raRate(jde, 1.0/86400.0)
+		currentRate := mercuryRADerivative(jde, 1.0/86400.0)
 		if math.Abs(currentRate) > 0.55 {
 			jde += 2
 			continue
@@ -286,80 +285,210 @@ func mercuryRetrograde(jde float64) float64 {
 	estimateJD := jde
 	for {
 		prevJD := estimateJD
-		rateValue := raRate(prevJD, 2.0/86400.0)
-		rateSlope := (raRate(prevJD+15.0/86400.0, 2.0/86400.0) - raRate(prevJD-15.0/86400.0, 2.0/86400.0)) / (30.0 / 86400.0)
+		rateValue := mercuryRADerivative(prevJD, 2.0/86400.0)
+		rateSlope := (mercuryRADerivative(prevJD+15.0/86400.0, 2.0/86400.0) - mercuryRADerivative(prevJD-15.0/86400.0, 2.0/86400.0)) / (30.0 / 86400.0)
 		estimateJD = prevJD - rateValue/rateSlope
 		if math.Abs(estimateJD-prevJD) <= 30.0/86400.0 {
 			break
 		}
 	}
 	bestJD := eventZeroRefine(estimateJD, 15.0/86400.0, 0.5/86400.0, func(jd float64) float64 {
-		return raRate(jd, 0.5/86400.0)
+		return mercuryRADerivative(jd, 0.5/86400.0)
 	})
 	//fmt.Println((bestJD - lastConjunction) / (nextConjunction - lastConjunction))
 	return TD2UT(bestJD, false)
 }
 
+func mercuryRADerivative(jde, delta float64) float64 {
+	sub := MercuryApparentRa(jde+delta) - MercuryApparentRa(jde-delta)
+	if sub > 180 {
+		sub -= 360
+	}
+	if sub < -180 {
+		sub += 360
+	}
+	return sub / (2 * delta)
+}
+
+func mercuryStationIsProgradeToRetrograde(eventUT float64) bool {
+	for _, offset := range []float64{0.25, 0.5, 1.0} {
+		before := mercuryRADerivative(eventUT-offset, 0.5/86400.0)
+		after := mercuryRADerivative(eventUT+offset, 0.5/86400.0)
+		if before > 0 && after < 0 {
+			return true
+		}
+		if before < 0 && after > 0 {
+			return false
+		}
+	}
+	before := mercuryRADerivative(eventUT-0.25, 0.5/86400.0)
+	after := mercuryRADerivative(eventUT+0.25, 0.5/86400.0)
+	return before > after
+}
+
+func nextMercuryTypedStation(jde float64, progradeToRetrograde bool) float64 {
+	date := NextMercuryRetrogradeStrict(jde)
+	for mercuryStationIsProgradeToRetrograde(date) != progradeToRetrograde {
+		date = NextMercuryRetrogradeStrict(eventUTNextQueryTT(date))
+	}
+	return date
+}
+
+func lastMercuryTypedStation(jde float64, progradeToRetrograde bool) float64 {
+	date := LastMercuryRetrogradeStrict(jde)
+	for mercuryStationIsProgradeToRetrograde(date) != progradeToRetrograde {
+		date = LastMercuryRetrogradeStrict(eventUTLastQueryTT(date))
+	}
+	return date
+}
+
 func NextMercuryRetrograde(jde float64) float64 {
 	date := mercuryRetrograde(jde)
-	if date < jde {
-		nextConjunction := mercuryConjunctionLegacy(jde, 1)
+	if !eventUTQueryAfterOrEqual(date, jde) {
+		nextConjunction := NextMercuryConjunctionStrict(jde)
 		return mercuryRetrograde(nextConjunction + 2)
 	}
 	return date
 }
 
 func LastMercuryRetrograde(jde float64) float64 {
-	lastConjunction := mercuryConjunctionLegacy(jde, 0)
+	lastConjunction := LastMercuryConjunctionStrict(jde)
 	date := mercuryRetrograde(lastConjunction + 2)
-	if date > jde {
-		previousConjunction := mercuryConjunctionLegacy(lastConjunction-2, 0)
+	if !eventUTQueryBeforeOrEqual(date, jde) {
+		previousConjunction := LastMercuryConjunctionStrict(eventUTLastQueryTT(lastConjunction))
 		return mercuryRetrograde(previousConjunction + 2)
 	}
 	return date
 }
 
+func LastMercuryRetrogradeStrict(jde float64) float64 {
+	return LastMercuryRetrograde(jde)
+}
+
+func NextMercuryRetrogradeStrict(jde float64) float64 {
+	return NextMercuryRetrograde(jde)
+}
+
 func NextMercuryProgradeToRetrograde(jde float64) float64 {
-	date := NextMercuryRetrograde(jde)
-	sub := Limit360(MercuryApparentRa(date) - SunApparentRa(date))
-	if sub > 180 {
-		return NextMercuryRetrograde(date + MERCURY_S_PERIOD/2)
-	}
-	return date
+	return nextMercuryTypedStation(jde, true)
 }
 
 func NextMercuryRetrogradeToPrograde(jde float64) float64 {
-	date := NextMercuryRetrograde(jde)
-	sub := Limit360(MercuryApparentRa(date) - SunApparentRa(date))
-	if sub < 180 {
-		return NextMercuryRetrograde(date + 12)
-	}
-	return date
+	return nextMercuryTypedStation(jde, false)
 }
 
 func LastMercuryProgradeToRetrograde(jde float64) float64 {
-	date := LastMercuryRetrograde(jde)
-	sub := Limit360(MercuryApparentRa(date) - SunApparentRa(date))
-	if sub > 180 {
-		return LastMercuryRetrograde(date - 12)
-	}
-	return date
+	return lastMercuryTypedStation(jde, true)
 }
 
 func LastMercuryRetrogradeToPrograde(jde float64) float64 {
-	date := LastMercuryRetrograde(jde)
-	sub := Limit360(MercuryApparentRa(date) - SunApparentRa(date))
-	if sub < 180 {
-		return LastMercuryRetrograde(date - MERCURY_S_PERIOD/2)
-	}
-	return date
+	return lastMercuryTypedStation(jde, false)
 }
 
 func MercurySunElongation(jde float64) float64 {
 	lo1, bo1 := MercuryApparentLoBo(jde)
-	lo2 := SunApparentLo(jde)
+	lo2 := HSunApparentLo(jde)
 	bo2 := HSunTrueBo(jde)
 	return StarAngularSeparation(lo1, bo1, lo2, bo2)
+}
+
+func mercurySunElongationN(jde float64, n int) float64 {
+	lo1, bo1 := MercuryApparentLoBoN(jde, n)
+	lo2 := HSunApparentLoN(jde, n)
+	bo2 := HSunTrueBoN(jde, n)
+	return StarAngularSeparation(lo1, bo1, lo2, bo2)
+}
+
+func mercuryTrueElongationN(jde float64, n int) float64 {
+	earth := mercuryHelioN(-1, jde, n)
+	planetPos := mercuryHelioN(1, jde, n)
+	geo := mercuryGeocentric(planetPos, earth)
+	return StarAngularSeparation(geo.lo, geo.bo, HSunTrueLoN(jde, n), HSunTrueBoN(jde, n))
+}
+
+func mercuryGreatestElongationInWindow(start, end float64) float64 {
+	best := maximizeInWindow(start, end, 2.0, func(jd float64) float64 {
+		return mercuryTrueElongationN(jd, mercuryEventSearchN)
+	}, func(jd float64) float64 {
+		return mercuryTrueElongationN(jd, -1)
+	})
+	return TD2UT(best, false)
+}
+
+func mercuryEastElongationWindowEndingAt(inferior float64) (float64, float64) {
+	lastSuperior := LastMercurySuperiorConjunction(eventUTLastQueryTT(inferior))
+	return lastSuperior + innerEventEpsilon, inferior - innerEventEpsilon
+}
+
+func mercuryWestElongationWindowEndingAt(superior float64) (float64, float64) {
+	lastInferior := LastMercuryInferiorConjunction(eventUTLastQueryTT(superior))
+	return lastInferior + innerEventEpsilon, superior - innerEventEpsilon
+}
+
+func mercuryEastElongationWindowContaining(jde float64) (float64, float64) {
+	nextInferior := NextMercuryInferiorConjunction(jde)
+	start, end := mercuryEastElongationWindowEndingAt(nextInferior)
+	if eventUTQueryBeforeOrEqual(start, jde) {
+		return start, end
+	}
+	currentInferior := LastMercuryInferiorConjunction(jde)
+	return mercuryEastElongationWindowEndingAt(currentInferior)
+}
+
+func mercuryWestElongationWindowContaining(jde float64) (float64, float64) {
+	nextSuperior := NextMercurySuperiorConjunction(jde)
+	start, end := mercuryWestElongationWindowEndingAt(nextSuperior)
+	if eventUTQueryBeforeOrEqual(start, jde) {
+		return start, end
+	}
+	currentSuperior := LastMercurySuperiorConjunction(jde)
+	return mercuryWestElongationWindowEndingAt(currentSuperior)
+}
+
+func nextMercuryGreatestElongationTyped(jde float64, east bool) float64 {
+	if east {
+		start, windowEnd := mercuryEastElongationWindowContaining(jde)
+		for {
+			date := mercuryGreatestElongationInWindow(start, windowEnd)
+			if eventUTQueryAfterOrEqual(date, jde) {
+				return date
+			}
+			nextInferior := NextMercuryInferiorConjunction(eventUTNextQueryTT(windowEnd))
+			start, windowEnd = mercuryEastElongationWindowEndingAt(nextInferior)
+		}
+	}
+	start, windowEnd := mercuryWestElongationWindowContaining(jde)
+	for {
+		date := mercuryGreatestElongationInWindow(start, windowEnd)
+		if eventUTQueryAfterOrEqual(date, jde) {
+			return date
+		}
+		nextSuperior := NextMercurySuperiorConjunction(eventUTNextQueryTT(windowEnd))
+		start, windowEnd = mercuryWestElongationWindowEndingAt(nextSuperior)
+	}
+}
+
+func lastMercuryGreatestElongationTyped(jde float64, east bool) float64 {
+	if east {
+		start, windowEnd := mercuryEastElongationWindowContaining(jde)
+		for {
+			date := mercuryGreatestElongationInWindow(start, windowEnd)
+			if eventUTQueryBeforeOrEqual(date, jde) {
+				return date
+			}
+			prevInferior := LastMercuryInferiorConjunction(eventUTLastQueryTT(start))
+			start, windowEnd = mercuryEastElongationWindowEndingAt(prevInferior)
+		}
+	}
+	start, windowEnd := mercuryWestElongationWindowContaining(jde)
+	for {
+		date := mercuryGreatestElongationInWindow(start, windowEnd)
+		if eventUTQueryBeforeOrEqual(date, jde) {
+			return date
+		}
+		prevSuperior := LastMercurySuperiorConjunction(eventUTLastQueryTT(start))
+		start, windowEnd = mercuryWestElongationWindowEndingAt(prevSuperior)
+	}
 }
 
 func mercuryGreatestElongation(jde float64) float64 {
@@ -383,8 +512,8 @@ func mercuryGreatestElongation(jde float64) float64 {
 		}
 		return sub / (2 * delta)
 	}
-	lastConjunction := mercuryConjunctionLegacy(jde, 0)
-	nextConjunction := mercuryConjunctionLegacy(jde, 1)
+	lastConjunction := LastMercuryConjunctionStrict(jde)
+	nextConjunction := NextMercuryConjunctionStrict(jde)
 	currentRADelta := solarRADelta(jde)
 	if currentRADelta > 0 {
 		jde = lastConjunction + ((nextConjunction - lastConjunction) / 5.0 * 2.0)
@@ -417,56 +546,105 @@ func mercuryGreatestElongation(jde float64) float64 {
 }
 
 func NextMercuryGreatestElongation(jde float64) float64 {
-	date := mercuryGreatestElongation(jde)
-	if date < jde {
-		nextConjunction := mercuryConjunctionLegacy(jde, 1)
-		return mercuryGreatestElongation(nextConjunction + 2)
+	east := NextMercuryGreatestElongationEast(jde)
+	west := NextMercuryGreatestElongationWest(jde)
+	if sameEventJD(east, west) {
+		return east
 	}
-	return date
+	if east < west {
+		return east
+	}
+	return west
 }
 
 func LastMercuryGreatestElongation(jde float64) float64 {
-	lastConjunction := mercuryConjunctionLegacy(jde, 0)
-	date := mercuryGreatestElongation(lastConjunction + 2)
-	if date > jde {
-		previousConjunction := mercuryConjunctionLegacy(lastConjunction-2, 0)
-		return mercuryGreatestElongation(previousConjunction + 2)
+	east := LastMercuryGreatestElongationEast(jde)
+	west := LastMercuryGreatestElongationWest(jde)
+	if sameEventJD(east, west) {
+		return east
 	}
-	return date
+	if east > west {
+		return east
+	}
+	return west
+}
+
+func LastMercuryInferiorConjunctionInclusive(jde float64) float64 {
+	return inclusiveLastSimpleEvent(jde, LastMercuryInferiorConjunction, NextMercuryInferiorConjunction)
+}
+
+func NextMercuryInferiorConjunctionInclusive(jde float64) float64 {
+	return inclusiveNextSimpleEvent(jde, LastMercuryInferiorConjunction, NextMercuryInferiorConjunction)
+}
+
+func LastMercurySuperiorConjunctionInclusive(jde float64) float64 {
+	return inclusiveLastSimpleEvent(jde, LastMercurySuperiorConjunction, NextMercurySuperiorConjunction)
+}
+
+func NextMercurySuperiorConjunctionInclusive(jde float64) float64 {
+	return inclusiveNextSimpleEvent(jde, LastMercurySuperiorConjunction, NextMercurySuperiorConjunction)
+}
+
+func LastMercuryRetrogradeInclusive(jde float64) float64 {
+	return inclusiveLastSimpleEvent(jde, LastMercuryRetrograde, NextMercuryRetrograde)
+}
+
+func NextMercuryRetrogradeInclusive(jde float64) float64 {
+	return inclusiveNextSimpleEvent(jde, LastMercuryRetrograde, NextMercuryRetrograde)
+}
+
+func LastMercuryProgradeToRetrogradeInclusive(jde float64) float64 {
+	return inclusiveLastSimpleEvent(jde, LastMercuryProgradeToRetrograde, NextMercuryProgradeToRetrograde)
+}
+
+func NextMercuryProgradeToRetrogradeInclusive(jde float64) float64 {
+	return inclusiveNextSimpleEvent(jde, LastMercuryProgradeToRetrograde, NextMercuryProgradeToRetrograde)
+}
+
+func LastMercuryRetrogradeToProgradeInclusive(jde float64) float64 {
+	return inclusiveLastSimpleEvent(jde, LastMercuryRetrogradeToPrograde, NextMercuryRetrogradeToPrograde)
+}
+
+func NextMercuryRetrogradeToProgradeInclusive(jde float64) float64 {
+	return inclusiveNextSimpleEvent(jde, LastMercuryRetrogradeToPrograde, NextMercuryRetrogradeToPrograde)
+}
+
+func LastMercuryGreatestElongationInclusive(jde float64) float64 {
+	return inclusiveLastSimpleEvent(jde, LastMercuryGreatestElongation, NextMercuryGreatestElongation)
+}
+
+func NextMercuryGreatestElongationInclusive(jde float64) float64 {
+	return inclusiveNextSimpleEvent(jde, LastMercuryGreatestElongation, NextMercuryGreatestElongation)
+}
+
+func LastMercuryGreatestElongationEastInclusive(jde float64) float64 {
+	return inclusiveLastSimpleEvent(jde, LastMercuryGreatestElongationEast, NextMercuryGreatestElongationEast)
+}
+
+func NextMercuryGreatestElongationEastInclusive(jde float64) float64 {
+	return inclusiveNextSimpleEvent(jde, LastMercuryGreatestElongationEast, NextMercuryGreatestElongationEast)
+}
+
+func LastMercuryGreatestElongationWestInclusive(jde float64) float64 {
+	return inclusiveLastSimpleEvent(jde, LastMercuryGreatestElongationWest, NextMercuryGreatestElongationWest)
+}
+
+func NextMercuryGreatestElongationWestInclusive(jde float64) float64 {
+	return inclusiveNextSimpleEvent(jde, LastMercuryGreatestElongationWest, NextMercuryGreatestElongationWest)
 }
 
 func NextMercuryGreatestElongationEast(jde float64) float64 {
-	date := NextMercuryGreatestElongation(jde)
-	sub := Limit360(MercuryApparentRa(date) - SunApparentRa(date))
-	if sub > 180 {
-		return NextMercuryGreatestElongation(date + 1)
-	}
-	return date
+	return nextMercuryGreatestElongationTyped(jde, true)
 }
 
 func NextMercuryGreatestElongationWest(jde float64) float64 {
-	date := NextMercuryGreatestElongation(jde)
-	sub := Limit360(MercuryApparentRa(date) - SunApparentRa(date))
-	if sub < 180 {
-		return NextMercuryGreatestElongation(date + 1)
-	}
-	return date
+	return nextMercuryGreatestElongationTyped(jde, false)
 }
 
 func LastMercuryGreatestElongationEast(jde float64) float64 {
-	date := LastMercuryGreatestElongation(jde)
-	sub := Limit360(MercuryApparentRa(date) - SunApparentRa(date))
-	if sub > 180 {
-		return LastMercuryGreatestElongation(date - 1)
-	}
-	return date
+	return lastMercuryGreatestElongationTyped(jde, true)
 }
 
 func LastMercuryGreatestElongationWest(jde float64) float64 {
-	date := LastMercuryGreatestElongation(jde)
-	sub := Limit360(MercuryApparentRa(date) - SunApparentRa(date))
-	if sub < 180 {
-		return LastMercuryGreatestElongation(date - 1)
-	}
-	return date
+	return lastMercuryGreatestElongationTyped(jde, false)
 }

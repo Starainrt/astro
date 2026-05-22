@@ -80,52 +80,22 @@ func MercuryApparentRaDec(jd float64) (float64, float64) {
 }
 
 func EarthMercuryAway(jd float64) float64 {
-	x, y, z := AMercuryXYZ(jd)
-	to := math.Sqrt(x*x + y*y + z*z)
-	return to
+	return planetEarthAwayExplicitN(1, jd, -1)
 }
 
 func MercuryApparentLo(jd float64) float64 {
-	x, y, z := AMercuryXYZ(jd)
-	to := 0.0057755183 * math.Sqrt(x*x+y*y+z*z)
-	x, y, z = AMercuryXYZ(jd - to)
-	lo := math.Atan2(y, x)
-	bo := math.Atan2(z, math.Sqrt(x*x+y*y))
-	lo = lo * 180 / math.Pi
-	bo = bo * 180 / math.Pi
-	lo = Limit360(lo)
-	//lo-=GXCLo(lo,bo,jd)/3600;
-	//bo+=GXCBo(lo,bo,jd);
-	lo += Nutation2000Bi(jd)
-	return lo
+	geo, _ := planetApparentGeocentricPositionN(1, jd, -1)
+	return geo.lo
 }
 
 func MercuryApparentBo(jd float64) float64 {
-	x, y, z := AMercuryXYZ(jd)
-	to := 0.0057755183 * math.Sqrt(x*x+y*y+z*z)
-	x, y, z = AMercuryXYZ(jd - to)
-	//lo := math.Atan2(y, x)
-	bo := math.Atan2(z, math.Sqrt(x*x+y*y))
-	//lo = lo * 180 / math.Pi
-	bo = bo * 180 / math.Pi
-	//lo+=GXCLo(lo,bo,jd);
-	//bo+=GXCBo(lo,bo,jd)/3600;
-	//lo+=Nutation2000Bi(jd);
-	return bo
+	geo, _ := planetApparentGeocentricPositionN(1, jd, -1)
+	return geo.bo
 }
 
 func MercuryApparentLoBo(jd float64) (float64, float64) {
-	x, y, z := AMercuryXYZ(jd)
-	to := 0.0057755183 * math.Sqrt(x*x+y*y+z*z)
-	x, y, z = AMercuryXYZ(jd - to)
-	lo := math.Atan2(y, x)
-	bo := math.Atan2(z, math.Sqrt(x*x+y*y))
-	lo = lo * 180 / math.Pi
-	bo = bo * 180 / math.Pi
-	lo = Limit360(lo) + Nutation2000Bi(jd)
-	//lo-=GXCLo(lo,bo,jd)/3600;
-	//bo+=GXCBo(lo,bo,jd);
-	return lo, bo
+	geo, _ := planetApparentGeocentricPositionN(1, jd, -1)
+	return geo.lo, geo.bo
 }
 
 func MercuryMag(jd float64) float64 {

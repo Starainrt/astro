@@ -40,6 +40,28 @@ func saturnSunLongitudeDeltaN(jde, degree float64, filter bool, n int) float64 {
 	return sub
 }
 
+func saturnRADerivative(jde, delta float64) float64 {
+	sub := SaturnApparentRa(jde+delta) - SaturnApparentRa(jde-delta)
+	if sub > 180 {
+		sub -= 360
+	}
+	if sub < -180 {
+		sub += 360
+	}
+	return sub / (2 * delta)
+}
+
+func saturnRADerivativeN(jde, delta float64, n int) float64 {
+	sub := SaturnApparentRaN(jde+delta, n) - SaturnApparentRaN(jde-delta, n)
+	if sub > 180 {
+		sub -= 360
+	}
+	if sub < -180 {
+		sub += 360
+	}
+	return sub / (2 * delta)
+}
+
 func saturnConjunctionFull(jde, degree float64, next uint8) float64 {
 	//0=last 1=next
 	daysPerDegree := SATURN_S_PERIOD / 360
@@ -94,113 +116,92 @@ func saturnConjunction(jde, degree float64, next uint8) float64 {
 }
 
 func LastSaturnConjunction(jde float64) float64 {
-	return saturnConjunction(jde, 0, 0)
+	return inclusiveLastPhaseEvent(jde, 0, saturnConjunction)
 }
 
 func NextSaturnConjunction(jde float64) float64 {
-	return saturnConjunction(jde, 0, 1)
+	return inclusiveNextPhaseEvent(jde, 0, saturnConjunction)
 }
 
 func LastSaturnOpposition(jde float64) float64 {
-	return saturnConjunction(jde, 180, 0)
+	return inclusiveLastPhaseEvent(jde, 180, saturnConjunction)
 }
 
 func NextSaturnOpposition(jde float64) float64 {
-	return saturnConjunction(jde, 180, 1)
+	return inclusiveNextPhaseEvent(jde, 180, saturnConjunction)
 }
 
 func NextSaturnEasternQuadrature(jde float64) float64 {
-	return saturnConjunction(jde, 90, 1)
+	return inclusiveNextPhaseEvent(jde, 90, saturnConjunction)
 }
 
 func LastSaturnEasternQuadrature(jde float64) float64 {
-	return saturnConjunction(jde, 90, 0)
+	return inclusiveLastPhaseEvent(jde, 90, saturnConjunction)
 }
 
 func NextSaturnWesternQuadrature(jde float64) float64 {
-	return saturnConjunction(jde, 270, 1)
+	return inclusiveNextPhaseEvent(jde, 270, saturnConjunction)
 }
 
 func LastSaturnWesternQuadrature(jde float64) float64 {
-	return saturnConjunction(jde, 270, 0)
+	return inclusiveLastPhaseEvent(jde, 270, saturnConjunction)
 }
 
-func saturnRetrograde(jde float64, searchBeforeOpposition bool) float64 {
-	//0=last 1=next
-	raRate := func(jde float64, delta float64) float64 {
-		sub := SaturnApparentRa(jde+delta) - SaturnApparentRa(jde-delta)
-		if sub > 180 {
-			sub -= 360
-		}
-		if sub < -180 {
-			sub += 360
-		}
-		return sub / (2 * delta)
-	}
-	jde = saturnConjunctionFull(jde, 180, 1)
+func saturnRetrogradeAroundOpposition(oppositionJD float64, searchBeforeOpposition bool) float64 {
+	oppositionTT := TD2UT(oppositionJD, true)
+	startTT := oppositionTT
+	endTT := oppositionTT
 	if searchBeforeOpposition {
-		jde -= 60
+		easternQuadratureUT := saturnConjunction(oppositionTT, 90, 0)
+		startTT = TD2UT(easternQuadratureUT, true)
 	} else {
-		jde += 60
+		westernQuadratureUT := saturnConjunction(oppositionTT, 270, 1)
+		endTT = TD2UT(westernQuadratureUT, true)
 	}
-	for {
-		currentRate := raRate(jde, 1.0/86400.0)
-		if math.Abs(currentRate) > 0.55 {
-			jde += 2
-			continue
-		}
-		break
-	}
-	estimateJD := jde
-	for {
-		prevJD := estimateJD
-		rateValue := raRate(prevJD, 2.0/86400.0)
-		rateSlope := (raRate(prevJD+15.0/86400.0, 2.0/86400.0) - raRate(prevJD-15.0/86400.0, 2.0/86400.0)) / (30.0 / 86400.0)
-		estimateJD = prevJD - rateValue/rateSlope
-		if math.Abs(estimateJD-prevJD) <= 30.0/86400.0 {
-			break
-		}
-	}
-	bestJD := eventZeroRefine(estimateJD, 15.0/86400.0, 0.5/86400.0, func(jd float64) float64 {
-		return raRate(jd, 0.5/86400.0)
+	bestJD := zeroEventInWindow(startTT, endTT, 2.0, 2.0, 30.0/86400.0, func(jd float64) float64 {
+		return saturnRADerivativeN(jd, 1.0/86400.0, saturnEventSearchN)
+	}, func(jd float64) float64 {
+		return saturnRADerivative(jd, 0.5/86400.0)
 	})
 	return TD2UT(bestJD, false)
 }
 
 func NextSaturnRetrogradeToPrograde(jde float64) float64 {
-	date := saturnRetrograde(jde, false)
-	if date < jde {
-		oppositionJD := saturnConjunctionFull(jde, 180, 1)
-		return saturnRetrograde(oppositionJD+10, false)
+	lastOppositionJD := saturnConjunctionFull(jde, 180, 0)
+	date := saturnRetrogradeAroundOpposition(lastOppositionJD, false)
+	if sameEventUTQueryTT(date, jde) || eventUTQueryAfterOrEqual(date, jde) {
+		return date
 	}
-	return date
+	nextOppositionJD := saturnConjunctionFull(jde, 180, 1)
+	return saturnRetrogradeAroundOpposition(nextOppositionJD, false)
 }
 
 func LastSaturnRetrogradeToPrograde(jde float64) float64 {
-	jde = saturnConjunctionFull(jde, 180, 0) - 10
-	date := saturnRetrograde(jde, false)
-	if date > jde {
-		oppositionJD := saturnConjunctionFull(jde, 180, 0)
-		return saturnRetrograde(oppositionJD-10, false)
+	lastOppositionJD := saturnConjunctionFull(jde, 180, 0)
+	date := saturnRetrogradeAroundOpposition(lastOppositionJD, false)
+	if sameEventUTQueryTT(date, jde) || eventUTQueryBeforeOrEqual(date, jde) {
+		return date
 	}
-	return date
+	previousOppositionJD := saturnConjunctionFull(eventUTLastQueryTT(lastOppositionJD), 180, 0)
+	return saturnRetrogradeAroundOpposition(previousOppositionJD, false)
 }
 
 func NextSaturnProgradeToRetrograde(jde float64) float64 {
-	date := saturnRetrograde(jde, true)
-	if date < jde {
-		oppositionJD := saturnConjunctionFull(jde, 180, 1)
-		return saturnRetrograde(oppositionJD+10, true)
+	nextOppositionJD := saturnConjunctionFull(jde, 180, 1)
+	date := saturnRetrogradeAroundOpposition(nextOppositionJD, true)
+	if sameEventUTQueryTT(date, jde) || eventUTQueryAfterOrEqual(date, jde) {
+		return date
 	}
-	return date
+	followingOppositionJD := saturnConjunctionFull(eventUTNextQueryTT(nextOppositionJD), 180, 1)
+	return saturnRetrogradeAroundOpposition(followingOppositionJD, true)
 }
 
 func LastSaturnProgradeToRetrograde(jde float64) float64 {
-	jde = saturnConjunctionFull(jde, 180, 0) - 10
-	date := saturnRetrograde(jde, true)
-	if date > jde {
-		oppositionJD := saturnConjunctionFull(jde, 180, 0)
-		return saturnRetrograde(oppositionJD-10, true)
+	nextOppositionJD := saturnConjunctionFull(jde, 180, 1)
+	date := saturnRetrogradeAroundOpposition(nextOppositionJD, true)
+	if sameEventUTQueryTT(date, jde) || eventUTQueryBeforeOrEqual(date, jde) {
+		return date
 	}
-	return date
+	lastOppositionJD := saturnConjunctionFull(jde, 180, 0)
+	return saturnRetrogradeAroundOpposition(lastOppositionJD, true)
 }

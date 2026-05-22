@@ -40,9 +40,7 @@ func eventZeroBracket(leftJD, leftVal, centerJD, centerVal, rightJD, rightVal fl
 	return 0, 0, 0, 0, false
 }
 
-// eventZeroRefine 细化 seed 附近的零点；若找不到可用括号区间，则退回旧的固定步长扫描。
-// eventZeroRefine refines a nearby zero crossing and falls back to the legacy
-// fixed-step scan when no usable bracket is found.
+// eventZeroRefine 细化 seed 附近的零点；无可用括号区间时退回固定步长扫描。
 func eventZeroRefine(seed, halfWindow, step float64, fn func(float64) float64) float64 {
 	leftJD := seed - halfWindow
 	centerJD := seed

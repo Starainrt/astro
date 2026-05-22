@@ -9,7 +9,7 @@ import (
 // Pos
 
 const (
-	NEPTUNE_S_PERIOD            = 1 / ((1 / 365.256363004) - (1 / 4332.59))
+	NEPTUNE_S_PERIOD            = 1 / ((1 / 365.256363004) - (1 / 60190.03))
 	neptuneEventSearchN         = 16
 	neptunePhaseCoarseTolerance = 30.0 / 86400.0
 )
@@ -38,6 +38,28 @@ func neptuneSunLongitudeDeltaN(jde, degree float64, filter bool, n int) float64 
 		}
 	}
 	return sub
+}
+
+func neptuneRADerivative(jde, delta float64) float64 {
+	sub := NeptuneApparentRa(jde+delta) - NeptuneApparentRa(jde-delta)
+	if sub > 180 {
+		sub -= 360
+	}
+	if sub < -180 {
+		sub += 360
+	}
+	return sub / (2 * delta)
+}
+
+func neptuneRADerivativeN(jde, delta float64, n int) float64 {
+	sub := NeptuneApparentRaN(jde+delta, n) - NeptuneApparentRaN(jde-delta, n)
+	if sub > 180 {
+		sub -= 360
+	}
+	if sub < -180 {
+		sub += 360
+	}
+	return sub / (2 * delta)
 }
 
 func neptuneConjunctionFull(jde, degree float64, next uint8) float64 {
@@ -94,113 +116,92 @@ func neptuneConjunction(jde, degree float64, next uint8) float64 {
 }
 
 func LastNeptuneConjunction(jde float64) float64 {
-	return neptuneConjunction(jde, 0, 0)
+	return inclusiveLastPhaseEvent(jde, 0, neptuneConjunction)
 }
 
 func NextNeptuneConjunction(jde float64) float64 {
-	return neptuneConjunction(jde, 0, 1)
+	return inclusiveNextPhaseEvent(jde, 0, neptuneConjunction)
 }
 
 func LastNeptuneOpposition(jde float64) float64 {
-	return neptuneConjunction(jde, 180, 0)
+	return inclusiveLastPhaseEvent(jde, 180, neptuneConjunction)
 }
 
 func NextNeptuneOpposition(jde float64) float64 {
-	return neptuneConjunction(jde, 180, 1)
+	return inclusiveNextPhaseEvent(jde, 180, neptuneConjunction)
 }
 
 func NextNeptuneEasternQuadrature(jde float64) float64 {
-	return neptuneConjunction(jde, 90, 1)
+	return inclusiveNextPhaseEvent(jde, 90, neptuneConjunction)
 }
 
 func LastNeptuneEasternQuadrature(jde float64) float64 {
-	return neptuneConjunction(jde, 90, 0)
+	return inclusiveLastPhaseEvent(jde, 90, neptuneConjunction)
 }
 
 func NextNeptuneWesternQuadrature(jde float64) float64 {
-	return neptuneConjunction(jde, 270, 1)
+	return inclusiveNextPhaseEvent(jde, 270, neptuneConjunction)
 }
 
 func LastNeptuneWesternQuadrature(jde float64) float64 {
-	return neptuneConjunction(jde, 270, 0)
+	return inclusiveLastPhaseEvent(jde, 270, neptuneConjunction)
 }
 
-func neptuneRetrograde(jde float64, searchBeforeOpposition bool) float64 {
-	//0=last 1=next
-	raRate := func(jde float64, delta float64) float64 {
-		sub := NeptuneApparentRa(jde+delta) - NeptuneApparentRa(jde-delta)
-		if sub > 180 {
-			sub -= 360
-		}
-		if sub < -180 {
-			sub += 360
-		}
-		return sub / (2 * delta)
-	}
-	jde = neptuneConjunctionFull(jde, 180, 1)
+func neptuneRetrogradeAroundOpposition(oppositionJD float64, searchBeforeOpposition bool) float64 {
+	oppositionTT := TD2UT(oppositionJD, true)
+	startTT := oppositionTT
+	endTT := oppositionTT
 	if searchBeforeOpposition {
-		jde -= 60
+		easternQuadratureUT := neptuneConjunction(oppositionTT, 90, 0)
+		startTT = TD2UT(easternQuadratureUT, true)
 	} else {
-		jde += 60
+		westernQuadratureUT := neptuneConjunction(oppositionTT, 270, 1)
+		endTT = TD2UT(westernQuadratureUT, true)
 	}
-	for {
-		currentRate := raRate(jde, 1.0/86400.0)
-		if math.Abs(currentRate) > 0.55 {
-			jde += 2
-			continue
-		}
-		break
-	}
-	estimateJD := jde
-	for {
-		prevJD := estimateJD
-		rateValue := raRate(prevJD, 2.0/86400.0)
-		rateSlope := (raRate(prevJD+15.0/86400.0, 2.0/86400.0) - raRate(prevJD-15.0/86400.0, 2.0/86400.0)) / (30.0 / 86400.0)
-		estimateJD = prevJD - rateValue/rateSlope
-		if math.Abs(estimateJD-prevJD) <= 30.0/86400.0 {
-			break
-		}
-	}
-	bestJD := eventZeroRefine(estimateJD, 15.0/86400.0, 0.5/86400.0, func(jd float64) float64 {
-		return raRate(jd, 0.5/86400.0)
+	bestJD := zeroEventInWindow(startTT, endTT, 2.0, 2.0, 30.0/86400.0, func(jd float64) float64 {
+		return neptuneRADerivativeN(jd, 1.0/86400.0, neptuneEventSearchN)
+	}, func(jd float64) float64 {
+		return neptuneRADerivative(jd, 0.5/86400.0)
 	})
 	return TD2UT(bestJD, false)
 }
 
 func NextNeptuneRetrogradeToPrograde(jde float64) float64 {
-	date := neptuneRetrograde(jde, false)
-	if date < jde {
-		oppositionJD := neptuneConjunctionFull(jde, 180, 1)
-		return neptuneRetrograde(oppositionJD+10, false)
+	lastOppositionJD := neptuneConjunctionFull(jde, 180, 0)
+	date := neptuneRetrogradeAroundOpposition(lastOppositionJD, false)
+	if sameEventUTQueryTT(date, jde) || eventUTQueryAfterOrEqual(date, jde) {
+		return date
 	}
-	return date
+	nextOppositionJD := neptuneConjunctionFull(jde, 180, 1)
+	return neptuneRetrogradeAroundOpposition(nextOppositionJD, false)
 }
 
 func LastNeptuneRetrogradeToPrograde(jde float64) float64 {
-	jde = neptuneConjunctionFull(jde, 180, 0) - 10
-	date := neptuneRetrograde(jde, false)
-	if date > jde {
-		oppositionJD := neptuneConjunctionFull(jde, 180, 0)
-		return neptuneRetrograde(oppositionJD-10, false)
+	lastOppositionJD := neptuneConjunctionFull(jde, 180, 0)
+	date := neptuneRetrogradeAroundOpposition(lastOppositionJD, false)
+	if sameEventUTQueryTT(date, jde) || eventUTQueryBeforeOrEqual(date, jde) {
+		return date
 	}
-	return date
+	previousOppositionJD := neptuneConjunctionFull(eventUTLastQueryTT(lastOppositionJD), 180, 0)
+	return neptuneRetrogradeAroundOpposition(previousOppositionJD, false)
 }
 
 func NextNeptuneProgradeToRetrograde(jde float64) float64 {
-	date := neptuneRetrograde(jde, true)
-	if date < jde {
-		oppositionJD := neptuneConjunctionFull(jde, 180, 1)
-		return neptuneRetrograde(oppositionJD+10, true)
+	nextOppositionJD := neptuneConjunctionFull(jde, 180, 1)
+	date := neptuneRetrogradeAroundOpposition(nextOppositionJD, true)
+	if sameEventUTQueryTT(date, jde) || eventUTQueryAfterOrEqual(date, jde) {
+		return date
 	}
-	return date
+	followingOppositionJD := neptuneConjunctionFull(eventUTNextQueryTT(nextOppositionJD), 180, 1)
+	return neptuneRetrogradeAroundOpposition(followingOppositionJD, true)
 }
 
 func LastNeptuneProgradeToRetrograde(jde float64) float64 {
-	jde = neptuneConjunctionFull(jde, 180, 0) - 10
-	date := neptuneRetrograde(jde, true)
-	if date > jde {
-		oppositionJD := neptuneConjunctionFull(jde, 180, 0)
-		return neptuneRetrograde(oppositionJD-10, true)
+	nextOppositionJD := neptuneConjunctionFull(jde, 180, 1)
+	date := neptuneRetrogradeAroundOpposition(nextOppositionJD, true)
+	if sameEventUTQueryTT(date, jde) || eventUTQueryBeforeOrEqual(date, jde) {
+		return date
 	}
-	return date
+	lastOppositionJD := neptuneConjunctionFull(jde, 180, 0)
+	return neptuneRetrogradeAroundOpposition(lastOppositionJD, true)
 }

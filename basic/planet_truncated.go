@@ -24,14 +24,8 @@ func planetXYZN(planetIndex int, jd float64, n int) (float64, float64, float64) 
 }
 
 func planetApparentLoBoN(planetIndex int, jd float64, n int) (float64, float64) {
-	x, y, z := planetXYZN(planetIndex, jd, n)
-	to := 0.0057755183 * math.Sqrt(x*x+y*y+z*z)
-	x, y, z = planetXYZN(planetIndex, jd-to, n)
-	lo := math.Atan2(y, x)
-	bo := math.Atan2(z, math.Sqrt(x*x+y*y))
-	lo = Limit360(lo*180/math.Pi) + Nutation2000Bi(jd)
-	bo = bo * 180 / math.Pi
-	return lo, bo
+	geo, _ := planetApparentGeocentricPositionN(planetIndex, jd, n)
+	return geo.lo, geo.bo
 }
 
 func planetApparentRaManualN(planetIndex int, jd float64, n int) float64 {
@@ -57,8 +51,7 @@ func planetApparentRaDecManualN(planetIndex int, jd float64, n int) (float64, fl
 }
 
 func planetEarthAwayN(planetIndex int, jd float64, n int) float64 {
-	x, y, z := planetXYZN(planetIndex, jd, n)
-	return math.Sqrt(x*x + y*y + z*z)
+	return planetEarthAwayExplicitN(planetIndex, jd, n)
 }
 
 func planetHeightN(jde, lon, lat, timezone float64, n int, apparentRaDec func(float64, int) (float64, float64)) float64 {

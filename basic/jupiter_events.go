@@ -40,6 +40,28 @@ func jupiterSunLongitudeDeltaN(jde, degree float64, filter bool, n int) float64 
 	return sub
 }
 
+func jupiterRADerivative(jde, delta float64) float64 {
+	sub := JupiterApparentRa(jde+delta) - JupiterApparentRa(jde-delta)
+	if sub > 180 {
+		sub -= 360
+	}
+	if sub < -180 {
+		sub += 360
+	}
+	return sub / (2 * delta)
+}
+
+func jupiterRADerivativeN(jde, delta float64, n int) float64 {
+	sub := JupiterApparentRaN(jde+delta, n) - JupiterApparentRaN(jde-delta, n)
+	if sub > 180 {
+		sub -= 360
+	}
+	if sub < -180 {
+		sub += 360
+	}
+	return sub / (2 * delta)
+}
+
 func jupiterConjunctionFull(jde, degree float64, next uint8) float64 {
 	//0=last 1=next
 	daysPerDegree := JUPITER_S_PERIOD / 360
@@ -94,113 +116,92 @@ func jupiterConjunction(jde, degree float64, next uint8) float64 {
 }
 
 func LastJupiterConjunction(jde float64) float64 {
-	return jupiterConjunction(jde, 0, 0)
+	return inclusiveLastPhaseEvent(jde, 0, jupiterConjunction)
 }
 
 func NextJupiterConjunction(jde float64) float64 {
-	return jupiterConjunction(jde, 0, 1)
+	return inclusiveNextPhaseEvent(jde, 0, jupiterConjunction)
 }
 
 func LastJupiterOpposition(jde float64) float64 {
-	return jupiterConjunction(jde, 180, 0)
+	return inclusiveLastPhaseEvent(jde, 180, jupiterConjunction)
 }
 
 func NextJupiterOpposition(jde float64) float64 {
-	return jupiterConjunction(jde, 180, 1)
+	return inclusiveNextPhaseEvent(jde, 180, jupiterConjunction)
 }
 
 func NextJupiterEasternQuadrature(jde float64) float64 {
-	return jupiterConjunction(jde, 90, 1)
+	return inclusiveNextPhaseEvent(jde, 90, jupiterConjunction)
 }
 
 func LastJupiterEasternQuadrature(jde float64) float64 {
-	return jupiterConjunction(jde, 90, 0)
+	return inclusiveLastPhaseEvent(jde, 90, jupiterConjunction)
 }
 
 func NextJupiterWesternQuadrature(jde float64) float64 {
-	return jupiterConjunction(jde, 270, 1)
+	return inclusiveNextPhaseEvent(jde, 270, jupiterConjunction)
 }
 
 func LastJupiterWesternQuadrature(jde float64) float64 {
-	return jupiterConjunction(jde, 270, 0)
+	return inclusiveLastPhaseEvent(jde, 270, jupiterConjunction)
 }
 
-func jupiterRetrograde(jde float64, searchBeforeOpposition bool) float64 {
-	//0=last 1=next
-	raRate := func(jde float64, delta float64) float64 {
-		sub := JupiterApparentRa(jde+delta) - JupiterApparentRa(jde-delta)
-		if sub > 180 {
-			sub -= 360
-		}
-		if sub < -180 {
-			sub += 360
-		}
-		return sub / (2 * delta)
-	}
-	jde = jupiterConjunctionFull(jde, 180, 1)
+func jupiterRetrogradeAroundOpposition(oppositionJD float64, searchBeforeOpposition bool) float64 {
+	oppositionTT := TD2UT(oppositionJD, true)
+	startTT := oppositionTT
+	endTT := oppositionTT
 	if searchBeforeOpposition {
-		jde -= 60
+		easternQuadratureUT := jupiterConjunction(oppositionTT, 90, 0)
+		startTT = TD2UT(easternQuadratureUT, true)
 	} else {
-		jde += 60
+		westernQuadratureUT := jupiterConjunction(oppositionTT, 270, 1)
+		endTT = TD2UT(westernQuadratureUT, true)
 	}
-	for {
-		currentRate := raRate(jde, 1.0/86400.0)
-		if math.Abs(currentRate) > 0.55 {
-			jde += 2
-			continue
-		}
-		break
-	}
-	estimateJD := jde
-	for {
-		prevJD := estimateJD
-		rateValue := raRate(prevJD, 2.0/86400.0)
-		rateSlope := (raRate(prevJD+15.0/86400.0, 2.0/86400.0) - raRate(prevJD-15.0/86400.0, 2.0/86400.0)) / (30.0 / 86400.0)
-		estimateJD = prevJD - rateValue/rateSlope
-		if math.Abs(estimateJD-prevJD) <= 30.0/86400.0 {
-			break
-		}
-	}
-	bestJD := eventZeroRefine(estimateJD, 15.0/86400.0, 0.5/86400.0, func(jd float64) float64 {
-		return raRate(jd, 0.5/86400.0)
+	bestJD := zeroEventInWindow(startTT, endTT, 2.0, 2.0, 30.0/86400.0, func(jd float64) float64 {
+		return jupiterRADerivativeN(jd, 1.0/86400.0, jupiterEventSearchN)
+	}, func(jd float64) float64 {
+		return jupiterRADerivative(jd, 0.5/86400.0)
 	})
 	return TD2UT(bestJD, false)
 }
 
 func NextJupiterRetrogradeToPrograde(jde float64) float64 {
-	date := jupiterRetrograde(jde, false)
-	if date < jde {
-		oppositionJD := jupiterConjunctionFull(jde, 180, 1)
-		return jupiterRetrograde(oppositionJD+10, false)
+	lastOppositionJD := jupiterConjunctionFull(jde, 180, 0)
+	date := jupiterRetrogradeAroundOpposition(lastOppositionJD, false)
+	if sameEventUTQueryTT(date, jde) || eventUTQueryAfterOrEqual(date, jde) {
+		return date
 	}
-	return date
+	nextOppositionJD := jupiterConjunctionFull(jde, 180, 1)
+	return jupiterRetrogradeAroundOpposition(nextOppositionJD, false)
 }
 
 func LastJupiterRetrogradeToPrograde(jde float64) float64 {
-	jde = jupiterConjunctionFull(jde, 180, 0) - 10
-	date := jupiterRetrograde(jde, false)
-	if date > jde {
-		oppositionJD := jupiterConjunctionFull(jde, 180, 0)
-		return jupiterRetrograde(oppositionJD-10, false)
+	lastOppositionJD := jupiterConjunctionFull(jde, 180, 0)
+	date := jupiterRetrogradeAroundOpposition(lastOppositionJD, false)
+	if sameEventUTQueryTT(date, jde) || eventUTQueryBeforeOrEqual(date, jde) {
+		return date
 	}
-	return date
+	previousOppositionJD := jupiterConjunctionFull(eventUTLastQueryTT(lastOppositionJD), 180, 0)
+	return jupiterRetrogradeAroundOpposition(previousOppositionJD, false)
 }
 
 func NextJupiterProgradeToRetrograde(jde float64) float64 {
-	date := jupiterRetrograde(jde, true)
-	if date < jde {
-		oppositionJD := jupiterConjunctionFull(jde, 180, 1)
-		return jupiterRetrograde(oppositionJD+10, true)
+	nextOppositionJD := jupiterConjunctionFull(jde, 180, 1)
+	date := jupiterRetrogradeAroundOpposition(nextOppositionJD, true)
+	if sameEventUTQueryTT(date, jde) || eventUTQueryAfterOrEqual(date, jde) {
+		return date
 	}
-	return date
+	followingOppositionJD := jupiterConjunctionFull(eventUTNextQueryTT(nextOppositionJD), 180, 1)
+	return jupiterRetrogradeAroundOpposition(followingOppositionJD, true)
 }
 
 func LastJupiterProgradeToRetrograde(jde float64) float64 {
-	jde = jupiterConjunctionFull(jde, 180, 0) - 10
-	date := jupiterRetrograde(jde, true)
-	if date > jde {
-		oppositionJD := jupiterConjunctionFull(jde, 180, 0)
-		return jupiterRetrograde(oppositionJD-10, true)
+	nextOppositionJD := jupiterConjunctionFull(jde, 180, 1)
+	date := jupiterRetrogradeAroundOpposition(nextOppositionJD, true)
+	if sameEventUTQueryTT(date, jde) || eventUTQueryBeforeOrEqual(date, jde) {
+		return date
 	}
-	return date
+	lastOppositionJD := jupiterConjunctionFull(jde, 180, 0)
+	return jupiterRetrogradeAroundOpposition(lastOppositionJD, true)
 }

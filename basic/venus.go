@@ -87,53 +87,22 @@ func VenusApparentRaDec(jd float64) (float64, float64) {
 }
 
 func EarthVenusAway(jd float64) float64 {
-	x, y, z := AVenusXYZ(jd)
-	to := math.Sqrt(x*x + y*y + z*z)
-	return to
+	return planetEarthAwayExplicitN(2, jd, -1)
 }
 
 func VenusApparentLo(jd float64) float64 {
-	x, y, z := AVenusXYZ(jd)
-	to := 0.0057755183 * math.Sqrt(x*x+y*y+z*z)
-	x, y, z = AVenusXYZ(jd - to)
-	lo := math.Atan2(y, x)
-	bo := math.Atan2(z, math.Sqrt(x*x+y*y))
-	lo = lo * 180 / math.Pi
-	bo = bo * 180 / math.Pi
-	lo = Limit360(lo)
-	//lo-=GXCLo(lo,bo,jd)/3600;
-	//bo+=GXCBo(lo,bo,jd);
-	lo += Nutation2000Bi(jd)
-	return lo
+	geo, _ := planetApparentGeocentricPositionN(2, jd, -1)
+	return geo.lo
 }
 
 func VenusApparentBo(jd float64) float64 {
-	x, y, z := AVenusXYZ(jd)
-	to := 0.0057755183 * math.Sqrt(x*x+y*y+z*z)
-	x, y, z = AVenusXYZ(jd - to)
-	//lo := math.Atan2(y, x)
-	bo := math.Atan2(z, math.Sqrt(x*x+y*y))
-	//lo = lo * 180 / math.Pi
-	bo = bo * 180 / math.Pi
-	//lo+=GXCLo(lo,bo,jd);
-	//bo+=GXCBo(lo,bo,jd)/3600;
-	//lo+=Nutation2000Bi(jd);
-	return bo
+	geo, _ := planetApparentGeocentricPositionN(2, jd, -1)
+	return geo.bo
 }
 
 func VenusApparentLoBo(jd float64) (float64, float64) {
-	x, y, z := AVenusXYZ(jd)
-	to := 0.0057755183 * math.Sqrt(x*x+y*y+z*z)
-	x, y, z = AVenusXYZ(jd - to)
-	lo := math.Atan2(y, x)
-	bo := math.Atan2(z, math.Sqrt(x*x+y*y))
-	lo = lo * 180 / math.Pi
-	bo = bo * 180 / math.Pi
-	lo = Limit360(lo)
-	//lo-=GXCLo(lo,bo,jd)/3600;
-	//bo+=GXCBo(lo,bo,jd);
-	lo += Nutation2000Bi(jd)
-	return lo, bo
+	geo, _ := planetApparentGeocentricPositionN(2, jd, -1)
+	return geo.lo, geo.bo
 }
 
 func VenusMag(jd float64) float64 {

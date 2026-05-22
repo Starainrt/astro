@@ -207,8 +207,7 @@ func SetTime(date time.Time, lon, lat, height float64, aero bool) (time.Time, er
 
 // LastConjunction 上一次合日 / previous conjunction with the Sun.
 //
-// 返回 date 之前最近一次与太阳的合日时刻，结果保持 date 的时区。
-// Returns the most recent conjunction with the Sun relative to date, keeping date's time zone.
+// 返回 date 当前或之前最近一次与太阳的合日时刻，结果保持 date 的时区。
 func LastConjunction(date time.Time) time.Time {
 	jde := basic.TD2UT(basic.Date2JDE(date.UTC()), true)
 	return basic.JDE2DateByZone(basic.LastVenusConjunction(jde), date.Location(), false)
@@ -216,8 +215,7 @@ func LastConjunction(date time.Time) time.Time {
 
 // NextConjunction 下一次合日 / next conjunction with the Sun.
 //
-// 返回 date 之后最近一次与太阳的合日时刻，结果保持 date 的时区。
-// Returns the next conjunction with the Sun relative to date, keeping date's time zone.
+// 返回 date 当前或之后最近一次与太阳的合日时刻，结果保持 date 的时区。
 func NextConjunction(date time.Time) time.Time {
 	jde := basic.TD2UT(basic.Date2JDE(date.UTC()), true)
 	return basic.JDE2DateByZone(basic.NextVenusConjunction(jde), date.Location(), false)
@@ -225,144 +223,128 @@ func NextConjunction(date time.Time) time.Time {
 
 // LastInferiorConjunction 上一次下合 / previous inferior conjunction.
 //
-// 返回 date 之前最近一次下合时刻，结果保持 date 的时区。
-// Returns the most recent inferior conjunction relative to date, keeping date's time zone.
+// 返回 date 当前或之前最近一次下合时刻，结果保持 date 的时区。
 func LastInferiorConjunction(date time.Time) time.Time {
 	jde := basic.TD2UT(basic.Date2JDE(date.UTC()), true)
-	return basic.JDE2DateByZone(basic.LastVenusInferiorConjunction(jde), date.Location(), false)
+	return basic.JDE2DateByZone(basic.LastVenusInferiorConjunctionInclusive(jde), date.Location(), false)
 }
 
 // NextInferiorConjunction 下一次下合 / next inferior conjunction.
 //
-// 返回 date 之后最近一次下合时刻，结果保持 date 的时区。
-// Returns the next inferior conjunction relative to date, keeping date's time zone.
+// 返回 date 当前或之后最近一次下合时刻，结果保持 date 的时区。
 func NextInferiorConjunction(date time.Time) time.Time {
 	jde := basic.TD2UT(basic.Date2JDE(date.UTC()), true)
-	return basic.JDE2DateByZone(basic.NextVenusInferiorConjunction(jde), date.Location(), false)
+	return basic.JDE2DateByZone(basic.NextVenusInferiorConjunctionInclusive(jde), date.Location(), false)
 }
 
 // LastSuperiorConjunction 上一次上合 / previous superior conjunction.
 //
-// 返回 date 之前最近一次上合时刻，结果保持 date 的时区。
-// Returns the most recent superior conjunction relative to date, keeping date's time zone.
+// 返回 date 当前或之前最近一次上合时刻，结果保持 date 的时区。
 func LastSuperiorConjunction(date time.Time) time.Time {
 	jde := basic.TD2UT(basic.Date2JDE(date.UTC()), true)
-	return basic.JDE2DateByZone(basic.LastVenusSuperiorConjunction(jde), date.Location(), false)
+	return basic.JDE2DateByZone(basic.LastVenusSuperiorConjunctionInclusive(jde), date.Location(), false)
 }
 
 // NextSuperiorConjunction 下一次上合 / next superior conjunction.
 //
-// 返回 date 之后最近一次上合时刻，结果保持 date 的时区。
-// Returns the next superior conjunction relative to date, keeping date's time zone.
+// 返回 date 当前或之后最近一次上合时刻，结果保持 date 的时区。
 func NextSuperiorConjunction(date time.Time) time.Time {
 	jde := basic.TD2UT(basic.Date2JDE(date.UTC()), true)
-	return basic.JDE2DateByZone(basic.NextVenusSuperiorConjunction(jde), date.Location(), false)
+	return basic.JDE2DateByZone(basic.NextVenusSuperiorConjunctionInclusive(jde), date.Location(), false)
 }
 
 // LastRetrograde 上一次留 / previous stationary point.
 //
-// 返回 date 之前最近一次留时刻，不区分顺转逆还是逆转顺，结果保持 date 的时区。
-// Returns the most recent stationary point relative to date without distinguishing direction, keeping date's time zone.
+// 返回 date 当前或之前最近一次留时刻，不区分顺转逆还是逆转顺，结果保持 date 的时区。
 func LastRetrograde(date time.Time) time.Time {
 	jde := basic.TD2UT(basic.Date2JDE(date.UTC()), true)
-	return basic.JDE2DateByZone(basic.LastVenusRetrograde(jde), date.Location(), false)
+	return basic.JDE2DateByZone(basic.LastVenusRetrogradeInclusive(jde), date.Location(), false)
 }
 
 // NextRetrograde 下一次留 / next stationary point.
 //
-// 返回 date 之后最近一次留时刻，不区分顺转逆还是逆转顺，结果保持 date 的时区。
-// Returns the next stationary point relative to date without distinguishing direction, keeping date's time zone.
+// 返回 date 当前或之后最近一次留时刻，不区分顺转逆还是逆转顺，结果保持 date 的时区。
 func NextRetrograde(date time.Time) time.Time {
 	jde := basic.TD2UT(basic.Date2JDE(date.UTC()), true)
-	return basic.JDE2DateByZone(basic.NextVenusRetrograde(jde), date.Location(), false)
+	return basic.JDE2DateByZone(basic.NextVenusRetrogradeInclusive(jde), date.Location(), false)
 }
 
 // LastProgradeToRetrograde 上一次顺行转逆行留 / previous station from prograde to retrograde.
 //
-// 返回 date 之前最近一次由顺行转为逆行的留时刻，结果保持 date 的时区。
-// Returns the most recent stationary point where motion changes from prograde to retrograde relative to date, keeping date's time zone.
+// 返回 date 当前或之前最近一次由顺行转为逆行的留时刻，结果保持 date 的时区。
 func LastProgradeToRetrograde(date time.Time) time.Time {
 	jde := basic.TD2UT(basic.Date2JDE(date.UTC()), true)
-	return basic.JDE2DateByZone(basic.LastVenusProgradeToRetrograde(jde), date.Location(), false)
+	return basic.JDE2DateByZone(basic.LastVenusProgradeToRetrogradeInclusive(jde), date.Location(), false)
 }
 
 // NextProgradeToRetrograde 下一次顺行转逆行留 / next station from prograde to retrograde.
 //
-// 返回 date 之后最近一次由顺行转为逆行的留时刻，结果保持 date 的时区。
-// Returns the next stationary point where motion changes from prograde to retrograde relative to date, keeping date's time zone.
+// 返回 date 当前或之后最近一次由顺行转为逆行的留时刻，结果保持 date 的时区。
 func NextProgradeToRetrograde(date time.Time) time.Time {
 	jde := basic.TD2UT(basic.Date2JDE(date.UTC()), true)
-	return basic.JDE2DateByZone(basic.NextVenusProgradeToRetrograde(jde), date.Location(), false)
+	return basic.JDE2DateByZone(basic.NextVenusProgradeToRetrogradeInclusive(jde), date.Location(), false)
 }
 
 // LastRetrogradeToPrograde 上一次逆行转顺行留 / previous station from retrograde to prograde.
 //
-// 返回 date 之前最近一次由逆行转为顺行的留时刻，结果保持 date 的时区。
-// Returns the most recent stationary point where motion changes from retrograde to prograde relative to date, keeping date's time zone.
+// 返回 date 当前或之前最近一次由逆行转为顺行的留时刻，结果保持 date 的时区。
 func LastRetrogradeToPrograde(date time.Time) time.Time {
 	jde := basic.TD2UT(basic.Date2JDE(date.UTC()), true)
-	return basic.JDE2DateByZone(basic.LastVenusRetrogradeToPrograde(jde), date.Location(), false)
+	return basic.JDE2DateByZone(basic.LastVenusRetrogradeToProgradeInclusive(jde), date.Location(), false)
 }
 
 // NextRetrogradeToPrograde 下一次逆行转顺行留 / next station from retrograde to prograde.
 //
-// 返回 date 之后最近一次由逆行转为顺行的留时刻，结果保持 date 的时区。
-// Returns the next stationary point where motion changes from retrograde to prograde relative to date, keeping date's time zone.
+// 返回 date 当前或之后最近一次由逆行转为顺行的留时刻，结果保持 date 的时区。
 func NextRetrogradeToPrograde(date time.Time) time.Time {
 	jde := basic.TD2UT(basic.Date2JDE(date.UTC()), true)
-	return basic.JDE2DateByZone(basic.NextVenusRetrogradeToPrograde(jde), date.Location(), false)
+	return basic.JDE2DateByZone(basic.NextVenusRetrogradeToProgradeInclusive(jde), date.Location(), false)
 }
 
 // LastGreatestElongation 上一次大距 / previous greatest elongation.
 //
-// 返回 date 之前最近一次大距时刻，不区分东西大距，结果保持 date 的时区。
-// Returns the most recent greatest elongation relative to date without distinguishing east or west, keeping date's time zone.
+// 返回 date 当前或之前最近一次大距时刻，不区分东西大距，结果保持 date 的时区。
 func LastGreatestElongation(date time.Time) time.Time {
 	jde := basic.TD2UT(basic.Date2JDE(date.UTC()), true)
-	return basic.JDE2DateByZone(basic.LastVenusGreatestElongation(jde), date.Location(), false)
+	return basic.JDE2DateByZone(basic.LastVenusGreatestElongationInclusive(jde), date.Location(), false)
 }
 
 // NextGreatestElongation 下一次大距 / next greatest elongation.
 //
-// 返回 date 之后最近一次大距时刻，不区分东西大距，结果保持 date 的时区。
-// Returns the next greatest elongation relative to date without distinguishing east or west, keeping date's time zone.
+// 返回 date 当前或之后最近一次大距时刻，不区分东西大距，结果保持 date 的时区。
 func NextGreatestElongation(date time.Time) time.Time {
 	jde := basic.TD2UT(basic.Date2JDE(date.UTC()), true)
-	return basic.JDE2DateByZone(basic.NextVenusGreatestElongation(jde), date.Location(), false)
+	return basic.JDE2DateByZone(basic.NextVenusGreatestElongationInclusive(jde), date.Location(), false)
 }
 
 // LastGreatestElongationEast 上一次东大距 / previous greatest eastern elongation.
 //
-// 返回 date 之前最近一次东大距时刻，结果保持 date 的时区。
-// Returns the most recent greatest eastern elongation relative to date, keeping date's time zone.
+// 返回 date 当前或之前最近一次东大距时刻，结果保持 date 的时区。
 func LastGreatestElongationEast(date time.Time) time.Time {
 	jde := basic.TD2UT(basic.Date2JDE(date.UTC()), true)
-	return basic.JDE2DateByZone(basic.LastVenusGreatestElongationEast(jde), date.Location(), false)
+	return basic.JDE2DateByZone(basic.LastVenusGreatestElongationEastInclusive(jde), date.Location(), false)
 }
 
 // NextGreatestElongationEast 下一次东大距 / next greatest eastern elongation.
 //
-// 返回 date 之后最近一次东大距时刻，结果保持 date 的时区。
-// Returns the next greatest eastern elongation relative to date, keeping date's time zone.
+// 返回 date 当前或之后最近一次东大距时刻，结果保持 date 的时区。
 func NextGreatestElongationEast(date time.Time) time.Time {
 	jde := basic.TD2UT(basic.Date2JDE(date.UTC()), true)
-	return basic.JDE2DateByZone(basic.NextVenusGreatestElongationEast(jde), date.Location(), false)
+	return basic.JDE2DateByZone(basic.NextVenusGreatestElongationEastInclusive(jde), date.Location(), false)
 }
 
 // LastGreatestElongationWest 上一次西大距 / previous greatest western elongation.
 //
-// 返回 date 之前最近一次西大距时刻，结果保持 date 的时区。
-// Returns the most recent greatest western elongation relative to date, keeping date's time zone.
+// 返回 date 当前或之前最近一次西大距时刻，结果保持 date 的时区。
 func LastGreatestElongationWest(date time.Time) time.Time {
 	jde := basic.TD2UT(basic.Date2JDE(date.UTC()), true)
-	return basic.JDE2DateByZone(basic.LastVenusGreatestElongationWest(jde), date.Location(), false)
+	return basic.JDE2DateByZone(basic.LastVenusGreatestElongationWestInclusive(jde), date.Location(), false)
 }
 
 // NextGreatestElongationWest 下一次西大距 / next greatest western elongation.
 //
-// 返回 date 之后最近一次西大距时刻，结果保持 date 的时区。
-// Returns the next greatest western elongation relative to date, keeping date's time zone.
+// 返回 date 当前或之后最近一次西大距时刻，结果保持 date 的时区。
 func NextGreatestElongationWest(date time.Time) time.Time {
 	jde := basic.TD2UT(basic.Date2JDE(date.UTC()), true)
-	return basic.JDE2DateByZone(basic.NextVenusGreatestElongationWest(jde), date.Location(), false)
+	return basic.JDE2DateByZone(basic.NextVenusGreatestElongationWestInclusive(jde), date.Location(), false)
 }

@@ -1,0 +1,2597 @@
+{
+  "source": "https://eco.mtk.nao.ac.jp/cgi-bin/koyomi/cande/phenomena_f_en.cgi",
+  "events": [
+    {
+      "planet": "Mercury",
+      "kind": "GEE",
+      "when_jst": "2009-01-04 23:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "P2R",
+      "when_jst": "2009-01-11 15:41",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "IC",
+      "when_jst": "2009-01-21 00:59",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "R2P",
+      "when_jst": "2009-02-01 11:06",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEW",
+      "when_jst": "2009-02-14 06:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "SC",
+      "when_jst": "2009-03-31 12:29",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEE",
+      "when_jst": "2009-04-26 17:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "P2R",
+      "when_jst": "2009-05-08 01:05",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "IC",
+      "when_jst": "2009-05-18 19:02",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "R2P",
+      "when_jst": "2009-05-31 00:50",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEW",
+      "when_jst": "2009-06-13 21:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "SC",
+      "when_jst": "2009-07-14 11:16",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEE",
+      "when_jst": "2009-08-25 01:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "P2R",
+      "when_jst": "2009-09-07 04:46",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "IC",
+      "when_jst": "2009-09-20 19:05",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "R2P",
+      "when_jst": "2009-09-29 03:32",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEW",
+      "when_jst": "2009-10-06 10:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "SC",
+      "when_jst": "2009-11-05 17:02",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEE",
+      "when_jst": "2009-12-19 02:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "P2R",
+      "when_jst": "2009-12-26 17:42",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "IC",
+      "when_jst": "2010-01-05 04:06",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "R2P",
+      "when_jst": "2010-01-16 00:59",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEW",
+      "when_jst": "2010-01-27 14:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "SC",
+      "when_jst": "2010-03-14 22:16",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEE",
+      "when_jst": "2010-04-09 08:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "P2R",
+      "when_jst": "2010-04-18 19:16",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "IC",
+      "when_jst": "2010-04-29 01:44",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "R2P",
+      "when_jst": "2010-05-11 09:08",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEW",
+      "when_jst": "2010-05-26 11:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "SC",
+      "when_jst": "2010-06-28 21:07",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEE",
+      "when_jst": "2010-08-07 10:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "P2R",
+      "when_jst": "2010-08-20 12:48",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "IC",
+      "when_jst": "2010-09-03 21:35",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "R2P",
+      "when_jst": "2010-09-12 12:10",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEW",
+      "when_jst": "2010-09-20 02:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "SC",
+      "when_jst": "2010-10-17 10:05",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEE",
+      "when_jst": "2010-12-02 01:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "P2R",
+      "when_jst": "2010-12-10 19:32",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "IC",
+      "when_jst": "2010-12-20 10:23",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "R2P",
+      "when_jst": "2010-12-30 17:10",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEW",
+      "when_jst": "2011-01-09 23:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "SC",
+      "when_jst": "2011-02-25 17:48",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEE",
+      "when_jst": "2011-03-23 10:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "P2R",
+      "when_jst": "2011-03-31 02:14",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "IC",
+      "when_jst": "2011-04-10 04:36",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "R2P",
+      "when_jst": "2011-04-22 14:05",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEW",
+      "when_jst": "2011-05-08 04:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "SC",
+      "when_jst": "2011-06-13 08:44",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEE",
+      "when_jst": "2011-07-20 14:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "P2R",
+      "when_jst": "2011-08-02 15:51",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "IC",
+      "when_jst": "2011-08-17 10:04",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "R2P",
+      "when_jst": "2011-08-26 13:05",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEW",
+      "when_jst": "2011-09-03 15:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "SC",
+      "when_jst": "2011-09-29 05:16",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEE",
+      "when_jst": "2011-11-14 17:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "P2R",
+      "when_jst": "2011-11-24 18:36",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "IC",
+      "when_jst": "2011-12-04 17:52",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "R2P",
+      "when_jst": "2011-12-14 10:44",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEW",
+      "when_jst": "2011-12-23 12:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "SC",
+      "when_jst": "2012-02-07 18:02",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEE",
+      "when_jst": "2012-03-05 18:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "P2R",
+      "when_jst": "2012-03-12 05:49",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "IC",
+      "when_jst": "2012-03-22 04:21",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "R2P",
+      "when_jst": "2012-04-03 14:56",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEW",
+      "when_jst": "2012-04-19 02:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "SC",
+      "when_jst": "2012-05-27 20:19",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEE",
+      "when_jst": "2012-07-01 11:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "P2R",
+      "when_jst": "2012-07-14 14:23",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "IC",
+      "when_jst": "2012-07-29 04:57",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "R2P",
+      "when_jst": "2012-08-08 02:20",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEW",
+      "when_jst": "2012-08-16 21:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "SC",
+      "when_jst": "2012-09-10 21:44",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEE",
+      "when_jst": "2012-10-27 07:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "P2R",
+      "when_jst": "2012-11-07 12:38",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "IC",
+      "when_jst": "2012-11-18 00:47",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "R2P",
+      "when_jst": "2012-11-27 04:51",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEW",
+      "when_jst": "2012-12-05 08:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "SC",
+      "when_jst": "2013-01-18 17:56",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEE",
+      "when_jst": "2013-02-17 06:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "P2R",
+      "when_jst": "2013-02-23 04:24",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "IC",
+      "when_jst": "2013-03-04 21:58",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "R2P",
+      "when_jst": "2013-03-17 06:17",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEW",
+      "when_jst": "2013-04-01 07:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "SC",
+      "when_jst": "2013-05-12 06:10",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEE",
+      "when_jst": "2013-06-13 02:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "P2R",
+      "when_jst": "2013-06-26 08:01",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "IC",
+      "when_jst": "2013-07-10 03:41",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "R2P",
+      "when_jst": "2013-07-20 22:54",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEW",
+      "when_jst": "2013-07-30 18:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "SC",
+      "when_jst": "2013-08-25 05:56",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEE",
+      "when_jst": "2013-10-09 19:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "P2R",
+      "when_jst": "2013-10-21 23:53",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "IC",
+      "when_jst": "2013-11-02 05:19",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "R2P",
+      "when_jst": "2013-11-10 22:49",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEW",
+      "when_jst": "2013-11-18 11:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "SC",
+      "when_jst": "2013-12-29 15:27",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEE",
+      "when_jst": "2014-01-31 19:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "P2R",
+      "when_jst": "2014-02-06 16:26",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "IC",
+      "when_jst": "2014-02-16 05:22",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "R2P",
+      "when_jst": "2014-02-28 07:32",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEW",
+      "when_jst": "2014-03-14 15:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "SC",
+      "when_jst": "2014-04-26 12:27",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEE",
+      "when_jst": "2014-05-25 16:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "P2R",
+      "when_jst": "2014-06-07 18:54",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "IC",
+      "when_jst": "2014-06-20 07:50",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "R2P",
+      "when_jst": "2014-07-01 22:42",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEW",
+      "when_jst": "2014-07-13 03:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "SC",
+      "when_jst": "2014-08-09 01:21",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEE",
+      "when_jst": "2014-09-22 07:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "P2R",
+      "when_jst": "2014-10-05 03:14",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "IC",
+      "when_jst": "2014-10-17 05:40",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "R2P",
+      "when_jst": "2014-10-25 15:53",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEW",
+      "when_jst": "2014-11-01 21:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "SC",
+      "when_jst": "2014-12-08 18:51",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEE",
+      "when_jst": "2015-01-15 05:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "P2R",
+      "when_jst": "2015-01-21 12:52",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "IC",
+      "when_jst": "2015-01-30 22:45",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "R2P",
+      "when_jst": "2015-02-11 15:30",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEW",
+      "when_jst": "2015-02-25 01:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "SC",
+      "when_jst": "2015-04-10 13:00",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEE",
+      "when_jst": "2015-05-07 14:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "P2R",
+      "when_jst": "2015-05-19 19:43",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "IC",
+      "when_jst": "2015-05-31 01:56",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "R2P",
+      "when_jst": "2015-06-12 04:39",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEW",
+      "when_jst": "2015-06-25 02:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "SC",
+      "when_jst": "2015-07-24 04:24",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEE",
+      "when_jst": "2015-09-04 19:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "P2R",
+      "when_jst": "2015-09-17 22:25",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "IC",
+      "when_jst": "2015-09-30 23:38",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "R2P",
+      "when_jst": "2015-10-09 07:08",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEW",
+      "when_jst": "2015-10-16 12:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "SC",
+      "when_jst": "2015-11-17 23:53",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEE",
+      "when_jst": "2015-12-29 12:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "P2R",
+      "when_jst": "2016-01-05 13:41",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "IC",
+      "when_jst": "2016-01-14 23:05",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "R2P",
+      "when_jst": "2016-01-26 03:48",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEW",
+      "when_jst": "2016-02-07 10:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "SC",
+      "when_jst": "2016-03-24 05:11",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEE",
+      "when_jst": "2016-04-18 23:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "P2R",
+      "when_jst": "2016-04-29 12:29",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "IC",
+      "when_jst": "2016-05-10 00:12",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "R2P",
+      "when_jst": "2016-05-22 07:10",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEW",
+      "when_jst": "2016-06-05 18:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "SC",
+      "when_jst": "2016-07-07 12:24",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEE",
+      "when_jst": "2016-08-17 06:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "P2R",
+      "when_jst": "2016-08-30 09:54",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "IC",
+      "when_jst": "2016-09-13 08:40",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "R2P",
+      "when_jst": "2016-09-21 18:57",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEW",
+      "when_jst": "2016-09-29 04:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "SC",
+      "when_jst": "2016-10-28 01:16",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEE",
+      "when_jst": "2016-12-11 13:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "P2R",
+      "when_jst": "2016-12-19 15:50",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "IC",
+      "when_jst": "2016-12-29 03:47",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "R2P",
+      "when_jst": "2017-01-08 18:51",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEW",
+      "when_jst": "2017-01-19 19:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "SC",
+      "when_jst": "2017-03-07 09:29",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEE",
+      "when_jst": "2017-04-01 19:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "P2R",
+      "when_jst": "2017-04-10 10:19",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "IC",
+      "when_jst": "2017-04-20 14:54",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "R2P",
+      "when_jst": "2017-05-02 23:21",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEW",
+      "when_jst": "2017-05-18 08:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "SC",
+      "when_jst": "2017-06-21 23:14",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEE",
+      "when_jst": "2017-07-30 13:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "P2R",
+      "when_jst": "2017-08-12 15:17",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "IC",
+      "when_jst": "2017-08-27 05:42",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "R2P",
+      "when_jst": "2017-09-05 00:55",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEW",
+      "when_jst": "2017-09-12 19:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "SC",
+      "when_jst": "2017-10-09 05:54",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEE",
+      "when_jst": "2017-11-24 09:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "P2R",
+      "when_jst": "2017-12-03 16:45",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "IC",
+      "when_jst": "2017-12-13 10:49",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "R2P",
+      "when_jst": "2017-12-23 11:37",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEW",
+      "when_jst": "2018-01-02 05:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "SC",
+      "when_jst": "2018-02-17 21:27",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEE",
+      "when_jst": "2018-03-16 00:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "P2R",
+      "when_jst": "2018-03-23 02:08",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "IC",
+      "when_jst": "2018-04-02 02:53",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "R2P",
+      "when_jst": "2018-04-14 12:51",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEW",
+      "when_jst": "2018-04-30 03:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "SC",
+      "when_jst": "2018-06-06 11:02",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEE",
+      "when_jst": "2018-07-12 14:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "P2R",
+      "when_jst": "2018-07-25 16:22",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "IC",
+      "when_jst": "2018-08-09 11:06",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "R2P",
+      "when_jst": "2018-08-18 21:22",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEW",
+      "when_jst": "2018-08-27 05:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "SC",
+      "when_jst": "2018-09-21 10:52",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEE",
+      "when_jst": "2018-11-07 00:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "P2R",
+      "when_jst": "2018-11-17 14:02",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "IC",
+      "when_jst": "2018-11-27 18:15",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "R2P",
+      "when_jst": "2018-12-07 05:22",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEW",
+      "when_jst": "2018-12-15 20:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "SC",
+      "when_jst": "2019-01-30 11:52",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEE",
+      "when_jst": "2019-02-27 10:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "P2R",
+      "when_jst": "2019-03-05 14:27",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "IC",
+      "when_jst": "2019-03-15 10:48",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "R2P",
+      "when_jst": "2019-03-27 20:43",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEW",
+      "when_jst": "2019-04-12 05:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "SC",
+      "when_jst": "2019-05-21 22:07",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEE",
+      "when_jst": "2019-06-24 08:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "P2R",
+      "when_jst": "2019-07-07 13:25",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "IC",
+      "when_jst": "2019-07-21 21:34",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "R2P",
+      "when_jst": "2019-08-01 03:50",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEW",
+      "when_jst": "2019-08-10 08:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "SC",
+      "when_jst": "2019-09-04 10:40",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEE",
+      "when_jst": "2019-10-20 13:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "P2R",
+      "when_jst": "2019-11-01 05:32",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "IC",
+      "when_jst": "2019-11-12 00:22",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "R2P",
+      "when_jst": "2019-11-20 23:30",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEW",
+      "when_jst": "2019-11-28 19:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "SC",
+      "when_jst": "2020-01-11 00:19",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEE",
+      "when_jst": "2020-02-10 23:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "P2R",
+      "when_jst": "2020-02-16 19:15",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "IC",
+      "when_jst": "2020-02-26 10:45",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "R2P",
+      "when_jst": "2020-03-09 17:05",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEW",
+      "when_jst": "2020-03-24 11:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "SC",
+      "when_jst": "2020-05-05 06:41",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEE",
+      "when_jst": "2020-06-04 22:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "P2R",
+      "when_jst": "2020-06-18 04:31",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "IC",
+      "when_jst": "2020-07-01 11:53",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "R2P",
+      "when_jst": "2020-07-12 15:56",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEW",
+      "when_jst": "2020-07-23 00:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "SC",
+      "when_jst": "2020-08-18 00:07",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEE",
+      "when_jst": "2020-10-02 01:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "P2R",
+      "when_jst": "2020-10-14 13:31",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "IC",
+      "when_jst": "2020-10-26 03:23",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "R2P",
+      "when_jst": "2020-11-03 17:21",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEW",
+      "when_jst": "2020-11-11 02:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "SC",
+      "when_jst": "2020-12-20 12:26",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEE",
+      "when_jst": "2021-01-24 11:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "P2R",
+      "when_jst": "2021-01-30 11:18",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "IC",
+      "when_jst": "2021-02-08 22:48",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "R2P",
+      "when_jst": "2021-02-20 21:28",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEW",
+      "when_jst": "2021-03-06 20:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "SC",
+      "when_jst": "2021-04-19 10:50",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEE",
+      "when_jst": "2021-05-17 15:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "P2R",
+      "when_jst": "2021-05-30 10:49",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "IC",
+      "when_jst": "2021-06-11 10:13",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "R2P",
+      "when_jst": "2021-06-23 07:38",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEW",
+      "when_jst": "2021-07-05 05:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "SC",
+      "when_jst": "2021-08-01 23:08",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEE",
+      "when_jst": "2021-09-14 13:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "P2R",
+      "when_jst": "2021-09-27 13:08",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "IC",
+      "when_jst": "2021-10-10 01:18",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "R2P",
+      "when_jst": "2021-10-18 09:53",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEW",
+      "when_jst": "2021-10-25 14:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "SC",
+      "when_jst": "2021-11-29 13:39",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEE",
+      "when_jst": "2022-01-07 20:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "P2R",
+      "when_jst": "2022-01-14 10:03",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "IC",
+      "when_jst": "2022-01-23 19:28",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "R2P",
+      "when_jst": "2022-02-04 07:17",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEW",
+      "when_jst": "2022-02-17 06:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "SC",
+      "when_jst": "2022-04-03 08:11",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEE",
+      "when_jst": "2022-04-29 17:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "P2R",
+      "when_jst": "2022-05-11 07:37",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "IC",
+      "when_jst": "2022-05-22 04:18",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "R2P",
+      "when_jst": "2022-06-03 09:27",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEW",
+      "when_jst": "2022-06-17 00:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "SC",
+      "when_jst": "2022-07-17 04:38",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEE",
+      "when_jst": "2022-08-28 01:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "P2R",
+      "when_jst": "2022-09-10 04:48",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "IC",
+      "when_jst": "2022-09-23 15:50",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "R2P",
+      "when_jst": "2022-10-01 23:50",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEW",
+      "when_jst": "2022-10-09 06:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "SC",
+      "when_jst": "2022-11-09 01:42",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEE",
+      "when_jst": "2022-12-22 00:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "P2R",
+      "when_jst": "2022-12-29 11:54",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "IC",
+      "when_jst": "2023-01-07 21:57",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "R2P",
+      "when_jst": "2023-01-18 20:49",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEW",
+      "when_jst": "2023-01-30 15:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "SC",
+      "when_jst": "2023-03-17 19:45",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEE",
+      "when_jst": "2023-04-12 07:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "P2R",
+      "when_jst": "2023-04-22 01:01",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "IC",
+      "when_jst": "2023-05-02 08:28",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "R2P",
+      "when_jst": "2023-05-14 15:44",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEW",
+      "when_jst": "2023-05-29 14:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "SC",
+      "when_jst": "2023-07-01 14:06",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEE",
+      "when_jst": "2023-08-10 11:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "P2R",
+      "when_jst": "2023-08-23 13:48",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "IC",
+      "when_jst": "2023-09-06 20:09",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "R2P",
+      "when_jst": "2023-09-15 09:21",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEW",
+      "when_jst": "2023-09-22 22:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "SC",
+      "when_jst": "2023-10-20 14:38",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEE",
+      "when_jst": "2023-12-04 23:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "P2R",
+      "when_jst": "2023-12-13 13:55",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "IC",
+      "when_jst": "2023-12-23 03:54",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "R2P",
+      "when_jst": "2024-01-02 12:51",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEW",
+      "when_jst": "2024-01-12 23:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "SC",
+      "when_jst": "2024-02-28 17:43",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEE",
+      "when_jst": "2024-03-25 07:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "P2R",
+      "when_jst": "2024-04-02 05:07",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "IC",
+      "when_jst": "2024-04-12 08:03",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "R2P",
+      "when_jst": "2024-04-24 17:25",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEW",
+      "when_jst": "2024-05-10 06:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "SC",
+      "when_jst": "2024-06-15 01:33",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEE",
+      "when_jst": "2024-07-22 15:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "P2R",
+      "when_jst": "2024-08-04 17:21",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "IC",
+      "when_jst": "2024-08-19 10:58",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "R2P",
+      "when_jst": "2024-08-28 11:41",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEW",
+      "when_jst": "2024-09-05 11:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "SC",
+      "when_jst": "2024-10-01 06:09",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEE",
+      "when_jst": "2024-11-16 17:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "P2R",
+      "when_jst": "2024-11-26 13:26",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "IC",
+      "when_jst": "2024-12-06 11:18",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "R2P",
+      "when_jst": "2024-12-16 06:14",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEW",
+      "when_jst": "2024-12-25 11:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "SC",
+      "when_jst": "2025-02-09 21:08",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEE",
+      "when_jst": "2025-03-08 15:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "P2R",
+      "when_jst": "2025-03-15 05:39",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "IC",
+      "when_jst": "2025-03-25 04:48",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "R2P",
+      "when_jst": "2025-04-06 15:21",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEW",
+      "when_jst": "2025-04-22 04:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "SC",
+      "when_jst": "2025-05-30 13:13",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEE",
+      "when_jst": "2025-07-04 13:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "P2R",
+      "when_jst": "2025-07-17 16:23",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "IC",
+      "when_jst": "2025-08-01 08:41",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "R2P",
+      "when_jst": "2025-08-11 03:02",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEW",
+      "when_jst": "2025-08-19 19:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "SC",
+      "when_jst": "2025-09-13 19:52",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEE",
+      "when_jst": "2025-10-30 07:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "P2R",
+      "when_jst": "2025-11-10 08:22",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "IC",
+      "when_jst": "2025-11-20 18:23",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "R2P",
+      "when_jst": "2025-11-30 00:16",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEW",
+      "when_jst": "2025-12-08 06:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "SC",
+      "when_jst": "2026-01-22 00:49",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEE",
+      "when_jst": "2026-02-20 03:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "P2R",
+      "when_jst": "2026-02-26 01:46",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "IC",
+      "when_jst": "2026-03-07 20:02",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "R2P",
+      "when_jst": "2026-03-20 04:46",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEW",
+      "when_jst": "2026-04-04 07:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "SC",
+      "when_jst": "2026-05-14 23:24",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEE",
+      "when_jst": "2026-06-16 05:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "P2R",
+      "when_jst": "2026-06-29 10:58",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "IC",
+      "when_jst": "2026-07-13 10:26",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "R2P",
+      "when_jst": "2026-07-24 02:14",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEW",
+      "when_jst": "2026-08-02 17:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "SC",
+      "when_jst": "2026-08-28 02:04",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEE",
+      "when_jst": "2026-10-12 19:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "P2R",
+      "when_jst": "2026-10-24 20:49",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "IC",
+      "when_jst": "2026-11-04 23:24",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "R2P",
+      "when_jst": "2026-11-13 18:15",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEW",
+      "when_jst": "2026-11-21 08:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "SC",
+      "when_jst": "2027-01-02 02:08",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEE",
+      "when_jst": "2027-02-03 15:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "P2R",
+      "when_jst": "2027-02-09 12:07",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "IC",
+      "when_jst": "2027-02-19 01:39",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "R2P",
+      "when_jst": "2027-03-03 04:56",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEW",
+      "when_jst": "2027-03-17 16:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "SC",
+      "when_jst": "2027-04-29 06:22",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEE",
+      "when_jst": "2027-05-28 19:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "P2R",
+      "when_jst": "2027-06-10 23:08",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "IC",
+      "when_jst": "2027-06-23 17:00",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "R2P",
+      "when_jst": "2027-07-05 05:08",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEW",
+      "when_jst": "2027-07-16 04:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "SC",
+      "when_jst": "2027-08-11 20:02",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEE",
+      "when_jst": "2027-09-25 07:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "P2R",
+      "when_jst": "2027-10-08 01:31",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "IC",
+      "when_jst": "2027-10-20 00:31",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "R2P",
+      "when_jst": "2027-10-28 11:33",
+      "precision": "minute"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "GEW",
+      "when_jst": "2027-11-04 18:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Mercury",
+      "kind": "SC",
+      "when_jst": "2027-12-12 07:17",
+      "precision": "minute"
+    },
+    {
+      "planet": "Venus",
+      "kind": "GEE",
+      "when_jst": "2009-01-15 06:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Venus",
+      "kind": "P2R",
+      "when_jst": "2009-03-05 09:39",
+      "precision": "minute"
+    },
+    {
+      "planet": "Venus",
+      "kind": "IC",
+      "when_jst": "2009-03-28 04:24",
+      "precision": "minute"
+    },
+    {
+      "planet": "Venus",
+      "kind": "R2P",
+      "when_jst": "2009-04-15 17:05",
+      "precision": "minute"
+    },
+    {
+      "planet": "Venus",
+      "kind": "GEW",
+      "when_jst": "2009-06-06 06:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Venus",
+      "kind": "SC",
+      "when_jst": "2010-01-12 06:06",
+      "precision": "minute"
+    },
+    {
+      "planet": "Venus",
+      "kind": "GEE",
+      "when_jst": "2010-08-20 13:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Venus",
+      "kind": "P2R",
+      "when_jst": "2010-10-08 04:02",
+      "precision": "minute"
+    },
+    {
+      "planet": "Venus",
+      "kind": "IC",
+      "when_jst": "2010-10-29 10:10",
+      "precision": "minute"
+    },
+    {
+      "planet": "Venus",
+      "kind": "R2P",
+      "when_jst": "2010-11-17 00:39",
+      "precision": "minute"
+    },
+    {
+      "planet": "Venus",
+      "kind": "GEW",
+      "when_jst": "2011-01-09 01:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Venus",
+      "kind": "SC",
+      "when_jst": "2011-08-16 21:08",
+      "precision": "minute"
+    },
+    {
+      "planet": "Venus",
+      "kind": "GEE",
+      "when_jst": "2012-03-27 16:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Venus",
+      "kind": "P2R",
+      "when_jst": "2012-05-16 02:22",
+      "precision": "minute"
+    },
+    {
+      "planet": "Venus",
+      "kind": "IC",
+      "when_jst": "2012-06-06 10:09",
+      "precision": "minute"
+    },
+    {
+      "planet": "Venus",
+      "kind": "R2P",
+      "when_jst": "2012-06-27 13:21",
+      "precision": "minute"
+    },
+    {
+      "planet": "Venus",
+      "kind": "GEW",
+      "when_jst": "2012-08-15 18:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Venus",
+      "kind": "SC",
+      "when_jst": "2013-03-29 02:05",
+      "precision": "minute"
+    },
+    {
+      "planet": "Venus",
+      "kind": "GEE",
+      "when_jst": "2013-11-01 17:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Venus",
+      "kind": "P2R",
+      "when_jst": "2013-12-21 04:38",
+      "precision": "minute"
+    },
+    {
+      "planet": "Venus",
+      "kind": "IC",
+      "when_jst": "2014-01-11 21:24",
+      "precision": "minute"
+    },
+    {
+      "planet": "Venus",
+      "kind": "R2P",
+      "when_jst": "2014-02-01 04:14",
+      "precision": "minute"
+    },
+    {
+      "planet": "Venus",
+      "kind": "GEW",
+      "when_jst": "2014-03-23 04:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Venus",
+      "kind": "SC",
+      "when_jst": "2014-10-25 16:31",
+      "precision": "minute"
+    },
+    {
+      "planet": "Venus",
+      "kind": "GEE",
+      "when_jst": "2015-06-07 03:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Venus",
+      "kind": "P2R",
+      "when_jst": "2015-07-23 15:24",
+      "precision": "minute"
+    },
+    {
+      "planet": "Venus",
+      "kind": "IC",
+      "when_jst": "2015-08-16 04:22",
+      "precision": "minute"
+    },
+    {
+      "planet": "Venus",
+      "kind": "R2P",
+      "when_jst": "2015-09-05 17:36",
+      "precision": "minute"
+    },
+    {
+      "planet": "Venus",
+      "kind": "GEW",
+      "when_jst": "2015-10-26 16:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Venus",
+      "kind": "SC",
+      "when_jst": "2016-06-07 06:39",
+      "precision": "minute"
+    },
+    {
+      "planet": "Venus",
+      "kind": "GEE",
+      "when_jst": "2017-01-12 22:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Venus",
+      "kind": "P2R",
+      "when_jst": "2017-03-02 23:17",
+      "precision": "minute"
+    },
+    {
+      "planet": "Venus",
+      "kind": "IC",
+      "when_jst": "2017-03-25 19:17",
+      "precision": "minute"
+    },
+    {
+      "planet": "Venus",
+      "kind": "R2P",
+      "when_jst": "2017-04-13 08:39",
+      "precision": "minute"
+    },
+    {
+      "planet": "Venus",
+      "kind": "GEW",
+      "when_jst": "2017-06-03 21:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Venus",
+      "kind": "SC",
+      "when_jst": "2018-01-09 16:02",
+      "precision": "minute"
+    },
+    {
+      "planet": "Venus",
+      "kind": "GEE",
+      "when_jst": "2018-08-18 02:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Venus",
+      "kind": "P2R",
+      "when_jst": "2018-10-05 13:17",
+      "precision": "minute"
+    },
+    {
+      "planet": "Venus",
+      "kind": "IC",
+      "when_jst": "2018-10-26 23:16",
+      "precision": "minute"
+    },
+    {
+      "planet": "Venus",
+      "kind": "R2P",
+      "when_jst": "2018-11-14 12:12",
+      "precision": "minute"
+    },
+    {
+      "planet": "Venus",
+      "kind": "GEW",
+      "when_jst": "2019-01-06 14:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Venus",
+      "kind": "SC",
+      "when_jst": "2019-08-14 15:07",
+      "precision": "minute"
+    },
+    {
+      "planet": "Venus",
+      "kind": "GEE",
+      "when_jst": "2020-03-25 07:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Venus",
+      "kind": "P2R",
+      "when_jst": "2020-05-13 19:16",
+      "precision": "minute"
+    },
+    {
+      "planet": "Venus",
+      "kind": "IC",
+      "when_jst": "2020-06-04 02:44",
+      "precision": "minute"
+    },
+    {
+      "planet": "Venus",
+      "kind": "R2P",
+      "when_jst": "2020-06-25 03:08",
+      "precision": "minute"
+    },
+    {
+      "planet": "Venus",
+      "kind": "GEW",
+      "when_jst": "2020-08-13 09:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Venus",
+      "kind": "SC",
+      "when_jst": "2021-03-26 15:58",
+      "precision": "minute"
+    },
+    {
+      "planet": "Venus",
+      "kind": "GEE",
+      "when_jst": "2021-10-30 06:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Venus",
+      "kind": "P2R",
+      "when_jst": "2021-12-18 19:59",
+      "precision": "minute"
+    },
+    {
+      "planet": "Venus",
+      "kind": "IC",
+      "when_jst": "2022-01-09 09:48",
+      "precision": "minute"
+    },
+    {
+      "planet": "Venus",
+      "kind": "R2P",
+      "when_jst": "2022-01-29 16:59",
+      "precision": "minute"
+    },
+    {
+      "planet": "Venus",
+      "kind": "GEW",
+      "when_jst": "2022-03-20 18:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Venus",
+      "kind": "SC",
+      "when_jst": "2022-10-23 06:17",
+      "precision": "minute"
+    },
+    {
+      "planet": "Venus",
+      "kind": "GEE",
+      "when_jst": "2023-06-04 20:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Venus",
+      "kind": "P2R",
+      "when_jst": "2023-07-21 08:29",
+      "precision": "minute"
+    },
+    {
+      "planet": "Venus",
+      "kind": "IC",
+      "when_jst": "2023-08-13 20:16",
+      "precision": "minute"
+    },
+    {
+      "planet": "Venus",
+      "kind": "R2P",
+      "when_jst": "2023-09-03 12:34",
+      "precision": "minute"
+    },
+    {
+      "planet": "Venus",
+      "kind": "GEW",
+      "when_jst": "2023-10-24 08:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Venus",
+      "kind": "SC",
+      "when_jst": "2024-06-05 00:32",
+      "precision": "minute"
+    },
+    {
+      "planet": "Venus",
+      "kind": "GEE",
+      "when_jst": "2025-01-10 14:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Venus",
+      "kind": "P2R",
+      "when_jst": "2025-02-28 12:27",
+      "precision": "minute"
+    },
+    {
+      "planet": "Venus",
+      "kind": "IC",
+      "when_jst": "2025-03-23 10:08",
+      "precision": "minute"
+    },
+    {
+      "planet": "Venus",
+      "kind": "R2P",
+      "when_jst": "2025-04-10 23:59",
+      "precision": "minute"
+    },
+    {
+      "planet": "Venus",
+      "kind": "GEW",
+      "when_jst": "2025-06-01 12:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Venus",
+      "kind": "SC",
+      "when_jst": "2026-01-07 01:36",
+      "precision": "minute"
+    },
+    {
+      "planet": "Venus",
+      "kind": "GEE",
+      "when_jst": "2026-08-15 15:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Venus",
+      "kind": "P2R",
+      "when_jst": "2026-10-02 22:40",
+      "precision": "minute"
+    },
+    {
+      "planet": "Venus",
+      "kind": "IC",
+      "when_jst": "2026-10-24 12:44",
+      "precision": "minute"
+    },
+    {
+      "planet": "Venus",
+      "kind": "R2P",
+      "when_jst": "2026-11-12 00:11",
+      "precision": "minute"
+    },
+    {
+      "planet": "Venus",
+      "kind": "GEW",
+      "when_jst": "2027-01-04 03:00",
+      "precision": "hour"
+    },
+    {
+      "planet": "Venus",
+      "kind": "SC",
+      "when_jst": "2027-08-12 09:21",
+      "precision": "minute"
+    }
+  ]
+}

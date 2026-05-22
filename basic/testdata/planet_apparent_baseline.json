@@ -1,0 +1,58 @@
+[
+  {
+    "body": "mercury",
+    "input_utc": "2026-01-01T00:00:00Z",
+    "right_ascension": 268.524035973,
+    "declination": -24.001291126,
+    "ecliptic_longitude": 268.6516112,
+    "ecliptic_latitude": -0.5700521
+  },
+  {
+    "body": "venus",
+    "input_utc": "2026-01-01T00:00:00Z",
+    "right_ascension": 280.056455581,
+    "declination": -23.622404581,
+    "ecliptic_longitude": 279.2064734,
+    "ecliptic_latitude": -0.5050645
+  },
+  {
+    "body": "mars",
+    "input_utc": "2026-01-01T00:00:00Z",
+    "right_ascension": 283.879610807,
+    "declination": -23.720007274,
+    "ecliptic_longitude": 282.6881475,
+    "ecliptic_latitude": -0.8911035
+  },
+  {
+    "body": "jupiter",
+    "input_utc": "2026-01-01T00:00:00Z",
+    "right_ascension": 113.124332352,
+    "declination": 21.979135798,
+    "ecliptic_longitude": 111.3575894,
+    "ecliptic_latitude": 0.2391257
+  },
+  {
+    "body": "saturn",
+    "input_utc": "2026-01-01T00:00:00Z",
+    "right_ascension": 357.380959207,
+    "declination": -3.596394732,
+    "ecliptic_longitude": 356.1672313,
+    "ecliptic_latitude": -2.2587419
+  },
+  {
+    "body": "uranus",
+    "input_utc": "2026-01-01T00:00:00Z",
+    "right_ascension": 55.737099009,
+    "declination": 19.509648526,
+    "ecliptic_longitude": 57.9492508,
+    "ecliptic_latitude": -0.1975992
+  },
+  {
+    "body": "neptune",
+    "input_utc": "2026-01-01T00:00:00Z",
+    "right_ascension": 0.077612938,
+    "declination": -1.418610222,
+    "ecliptic_longitude": 359.5068407,
+    "ecliptic_latitude": -1.3324096
+  }
+]

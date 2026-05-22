@@ -249,7 +249,6 @@ Output:
 
 ```text
 [魏明帝 景初三年腊月二十 蜀后主 延熙二年冬月十九 吴大帝 赤乌二年冬月二十] // one Gregorian instant maps to parallel Three Kingdoms lunisolar results
-
 [
   {
     "solarDate": "0240-01-01T08:08:08.000000008+08:00",
@@ -309,7 +308,6 @@ Output:
     "chineseZodiac": "羊"
   }
 ] // structured lunisolar records, one object per matching historical result
-
 1083-11-24 00:00:00 +0800 CST // Gregorian date corresponding to 元丰六年十月十二日
 [宋神宗 元丰六年十月十二 辽道宗 大康九年十月十二] // the same day also matches a Liao calendar result
 2026-02-17 00:00:00 +0800 CST // Chinese New Year in 2026
@@ -341,10 +339,10 @@ func main() {
 Output:
 
 ```text
-2020-02-04 17:03:17.820854187 +0800 CST // Beginning of Spring
-2020-12-21 18:02:17.568823993 +0800 CST // Winter Solstice
-2020-03-20 11:49:34.502393603 +0800 CST // March Equinox
-2020-03-20 11:49:34.502393603 +0800 CST // same result from direct longitude input
+2020-02-04 17:03:20.471614301 +0800 CST // Beginning of Spring
+2020-12-21 18:02:20.648710727 +0800 CST // Winter Solstice
+2020-03-20 11:49:37.149532735 +0800 CST // March Equinox
+2020-03-20 11:49:37.149532735 +0800 CST // same result from direct longitude input
 ```
 
 ### Sun And Moon
@@ -400,14 +398,14 @@ func main() {
 Output:
 
 ```text
-2020-01-01 07:22:27.964431345 +0800 CST <nil> // civil morning twilight begins
-2020-01-01 07:50:14.534510672 +0800 CST <nil> // sunrise
+2020-01-01 07:22:27.960488498 +0800 CST <nil> // civil morning twilight begins
+2020-01-01 07:50:14.530648291 +0800 CST <nil> // sunrise
 2020-01-01 12:47:35.933117866 +0800 CST // solar upper culmination
-2020-01-01 17:44:47.076647579 +0800 CST <nil> // sunset
-2020-01-01 18:12:33.629668056 +0800 CST <nil> // civil evening twilight ends
-2020-01-01 11:52:44.643359184 +0800 CST <nil> // moonrise
-2020-01-01 17:38:03.879639208 +0800 CST // lunar upper culmination
-2020-01-01 23:26:52.202896177 +0800 CST <nil> // moonset
+2020-01-01 17:44:47.070974707 +0800 CST <nil> // sunset
+2020-01-01 18:12:33.624035418 +0800 CST <nil> // civil evening twilight ends
+2020-01-01 11:52:45.157297253 +0800 CST <nil> // moonrise
+2020-01-01 17:38:02.510787248 +0800 CST // lunar upper culmination
+2020-01-01 23:26:51.580328643 +0800 CST <nil> // moonset
 ```
 
 #### Sun and Moon position
@@ -461,17 +459,16 @@ func main() {
 Output:
 
 ```text
-280.0152925179703 // apparent ecliptic longitude of the Sun, degrees
-23.436215552851408 // true obliquity of the ecliptic, degrees
-RA: 18h43m34.83s Dec: -23°3′30.25″ // apparent RA and Dec of the Sun
+280.01526210031136 // apparent ecliptic longitude of the Sun, degrees
+23.4362178391013 // true obliquity of the ecliptic, degrees
+RA: 18h43m34.82s Dec: -23°3′30.27″ // apparent RA and Dec of the Sun
 Sagittarius // English constellation containing the Sun
-Azimuth: 120.19483856399326 Altitude: 2.4014324584398516 Zenith: 87.59856754156014 // solar horizontal coordinates at Xi'an
-0.9832929365443133 // Sun-Earth distance, AU
-
-RA: 23h17m51.93s Dec: -10°19′17.02″ // topocentric apparent RA and Dec of the Moon
+Azimuth: 120.19477090015224 Altitude: 2.4014437419430097 Zenith: 87.59855625805699 // solar horizontal coordinates at Xi'an
+0.983292937163176 // Sun-Earth distance, AU
+RA: 23h17m53.15s Dec: -10°19′18.57″ // topocentric apparent RA and Dec of the Moon
 Aquarius // English constellation containing the Moon
-Azimuth: 67.84449893794012 Altitude: -45.13018696439911 Zenith: 135.13018696439912 // lunar horizontal coordinates at Xi'an
-404238.6354387698 // Earth-Moon distance, km
+Azimuth: 67.84050700509859 Altitude: -45.13425530765482 Zenith: 135.13425530765483 // lunar horizontal coordinates at Xi'an
+404238.6096080479 // Earth-Moon distance, km
 ```
 
 `sun.Physical` / `sun.PhysicalN` return:
@@ -609,12 +606,12 @@ func main() {
 Output:
 
 ```text
-0.3000437415436273 // about 30% of the lunar disk is illuminated
+0.300041309608744 // about 30% of the lunar disk is illuminated
 上峨眉月 // Chinese phase description
-2020-01-25 05:41:55.820311009 +0800 CST // next new moon
-2020-01-03 12:45:20.809730887 +0800 CST // next first quarter
-2020-01-11 03:21:14.729664623 +0800 CST // next full moon
-2020-01-17 20:58:20.955985486 +0800 CST // next last quarter
+2020-01-25 05:41:58.271192908 +0800 CST // next new moon
+2020-01-03 12:45:23.229190707 +0800 CST // next first quarter
+2020-01-11 03:21:17.159625291 +0800 CST // next full moon
+2020-01-17 20:58:23.396406769 +0800 CST // next last quarter
 ```
 
 Phase aliases:
@@ -1005,18 +1002,18 @@ Output:
 ```text
 total // eclipse type
 true {125 49 72} // Lunar Saros 125, member 49/72
-2028-12-31 16:52:05.257715537 +0000 UTC // greatest eclipse
-2.273989043 1.246114288 // penumbral and umbral magnitudes
-2028-12-31 14:03:54.163612125 +0000 UTC // P1
-2028-12-31 15:07:42.293254197 +0000 UTC // U1
-2028-12-31 16:16:27.717077732 +0000 UTC // U2
-2028-12-31 17:27:46.687390804 +0000 UTC // U3
-2028-12-31 18:36:32.272528112 +0000 UTC // U4
-2028-12-31 19:40:11.173523784 +0000 UTC // P4
-2.29960334 1.25117109 // Chauvenet penumbral and umbral magnitudes
+2028-12-31 16:52:05.566135346 +0000 UTC // greatest eclipse
+2.273989043382249 1.2461142882946992 // penumbral and umbral magnitudes
+2028-12-31 14:03:54.219463169 +0000 UTC // P1
+2028-12-31 15:07:42.115980684 +0000 UTC // U1
+2028-12-31 16:16:27.24464178 +0000 UTC // U2
+2028-12-31 17:27:46.214954853 +0000 UTC // U3
+2028-12-31 18:36:32.251235246 +0000 UTC // U4
+2028-12-31 19:40:11.52023971 +0000 UTC // P4
+2.2996033397593934 1.2511710895700923 // Chauvenet penumbral and umbral magnitudes
 true // local date overlaps an eclipse
 total // local eclipse type
-2029-01-01 00:52:05.257715537 +0800 CST // greatest eclipse in UTC+8
+2029-01-01 00:52:05.566135346 +0800 CST // greatest eclipse in UTC+8
 ```
 
 #### Checks against NASA data
@@ -1156,20 +1153,20 @@ func main() {
 Output:
 
 ```text
-2019-11-11 23:21:39.702344834 +0800 CST // previous inferior conjunction of Mercury
-2021-03-26 14:57:38.289429545 +0800 CST // next superior conjunction of Venus
-2019-11-01 04:31:47.807287573 +0800 CST // previous Mercury station from prograde to retrograde
-2021-12-18 18:59:12.762369811 +0800 CST // next Venus station from retrograde to prograde
-2019-10-20 11:59:33.893027007 +0800 CST // previous greatest eastern elongation of Mercury
-2020-08-13 07:56:02.326616048 +0800 CST // next greatest western elongation of Venus
-2020-01-01 10:01:10.821288228 +0800 CST <nil> // Venus rise time in Xi'an; no error
-2020-01-01 20:27:00.741534233 +0800 CST <nil> // Venus set time in Xi'an; no error
+2019-11-11 23:21:42.048057317 +0800 CST // previous inferior conjunction of Mercury
+2021-03-26 14:57:43.01215589 +0800 CST // next superior conjunction of Venus
+2019-11-01 04:31:38.999851942 +0800 CST // previous Mercury station from prograde to retrograde
+2020-06-25 02:07:41.549940705 +0800 CST // next Venus station from retrograde to prograde
+2019-10-20 11:50:28.734245896 +0800 CST // previous greatest eastern elongation of Mercury
+2020-08-13 07:59:17.123789191 +0800 CST // next greatest western elongation of Venus
+2020-01-01 10:02:34.172194004 +0800 CST <nil> // Venus rise time in Xi'an; no error
+2020-01-01 20:25:37.363712489 +0800 CST <nil> // Venus set time in Xi'an; no error
 -4 // Venus apparent magnitude
 49.98145049145023 // Venus phase angle, degrees
 0.8215177914415865 // illuminated fraction of Venus
-255.63802111818407 // bright-limb position angle of Venus, degrees
-1.2760033106813273 // Earth-Venus distance, AU
-0.7262288470390035 // Sun-Venus distance, AU
+255.63802093000768 // bright-limb position angle of Venus, degrees
+1.2778819631550336 // Earth-Venus distance, AU
+0.7262651056423838 // Sun-Venus distance, AU
 ```
 
 Inner and outer planets also expose `Diameter` / `Semidiameter` and `N` variants, returning geocentric apparent diameter/semidiameter in arcseconds.
@@ -1237,22 +1234,22 @@ Output:
 
 ```text
 true // a valid geocentric Mercury transit was found
-2019-11-11 12:35:31.637522578 +0000 UTC // first contact: Mercury externally enters the solar disk
-2019-11-11 12:37:12.887506484 +0000 UTC // second contact: Mercury is fully inside the solar disk
-2019-11-11 15:19:48.430488109 +0000 UTC // greatest transit: Mercury center is closest to the Sun center
-2019-11-11 18:02:29.246907234 +0000 UTC // third contact: Mercury starts leaving the solar disk
-2019-11-11 18:04:10.707873702 +0000 UTC // fourth contact: Mercury externally leaves the solar disk
+2019-11-11 12:35:31.617325544 +0000 UTC // first contact: Mercury externally enters the solar disk
+2019-11-11 12:37:13.078211545 +0000 UTC // second contact: Mercury is fully inside the solar disk
+2019-11-11 15:19:48.410291075 +0000 UTC // greatest transit: Mercury center is closest to the Sun center
+2019-11-11 18:02:29.2267102 +0000 UTC // third contact: Mercury starts leaving the solar disk
+2019-11-11 18:04:10.687676668 +0000 UTC // fourth contact: Mercury externally leaves the solar disk
 5h28m39.070351124s // geocentric transit duration from first to fourth contact
-75.92460219695154 // minimum Mercury-Sun center separation at greatest transit, arcseconds
-968.8881521396688 // solar semidiameter at greatest transit, arcseconds
-4.978442856283907 // Mercury semidiameter at greatest transit, arcseconds
+75.92506897631685 // minimum Mercury-Sun center separation at greatest transit, arcseconds
+968.8881520858397 // solar semidiameter at greatest transit, arcseconds
+4.978442860728242 // Mercury semidiameter at greatest transit, arcseconds
 true // a valid geocentric Venus transit was found
-2012-06-05 22:09:47.581470608 +0000 UTC // first contact: Venus externally enters the solar disk
-2012-06-05 22:27:35.979940295 +0000 UTC // second contact: Venus is fully inside the solar disk
-2012-06-06 01:29:35.686955451 +0000 UTC // greatest transit: Venus center is closest to the Sun center
-2012-06-06 04:31:35.18302828 +0000 UTC // third contact: Venus starts leaving the solar disk
-2012-06-06 04:49:23.581457734 +0000 UTC // fourth contact: Venus externally leaves the solar disk
-6h39m35.999987126s // geocentric transit duration from first to fourth contact
+2012-06-05 22:09:47.514281272 +0000 UTC // first contact: Venus externally enters the solar disk
+2012-06-05 22:27:35.701768398 +0000 UTC // second contact: Venus is fully inside the solar disk
+2012-06-06 01:29:35.408823788 +0000 UTC // greatest transit: Venus center is closest to the Sun center
+2012-06-06 04:31:34.90493685 +0000 UTC // third contact: Venus starts leaving the solar disk
+2012-06-06 04:49:23.303366303 +0000 UTC // fourth contact: Venus externally leaves the solar disk
+6h39m35.789085031s // geocentric transit duration from first to fourth contact
 ```
 
 #### Outer planets
@@ -1315,18 +1312,18 @@ func main() {
 Output:
 
 ```text
-2020-10-14 07:25:47.740884125 +0800 CST // next opposition of Mars
-2021-01-29 09:39:30.916356146 +0800 CST // next conjunction of Jupiter
-2019-04-30 10:28:27.453395426 +0800 CST // previous Saturn station from prograde to retrograde
-saturn B=23.577026 Bp=23.266930 P=6.629811 dU=1.171017 major=34.133852 minor=13.652911 // Saturn ring B, B', P, dU, major axis, minor axis
-2021-01-14 21:35:01.269377768 +0800 CST // next Uranus station from retrograde to prograde
-2019-12-08 17:00:13.772284984 +0800 CST // previous eastern quadrature of Neptune
-2020-06-07 03:10:57.179121673 +0800 CST // next western quadrature of Mars
-2020-01-01 04:40:05.409269034 +0800 CST <nil> // Mars rise time in Xi'an; no error
-2020-01-01 14:56:57.175483703 +0800 CST <nil> // Mars set time in Xi'an; no error
+2020-10-14 07:25:50.262777507 +0800 CST // next opposition of Mars
+2021-01-29 09:39:33.565426468 +0800 CST // next conjunction of Jupiter
+2019-04-30 10:27:41.606289446 +0800 CST // previous Saturn station from prograde to retrograde
+saturn B=23.577026 Bp=23.266930 P=6.629811 dU=1.171016 major=34.133852 minor=13.652911 // Saturn ring B, B', P, dU, major axis, minor axis
+2020-01-11 15:23:07.378419935 +0800 CST // next Uranus station from retrograde to prograde
+2019-12-08 17:00:15.328663587 +0800 CST // previous eastern quadrature of Neptune
+2020-06-07 03:10:59.356176853 +0800 CST // next western quadrature of Mars
+2020-01-01 04:41:29.622089266 +0800 CST <nil> // Mars rise time in Xi'an; no error
+2020-01-01 14:55:32.963870465 +0800 CST <nil> // Mars set time in Xi'an; no error
 1.57 // Mars apparent magnitude
-2.1820316323604088 // Earth-Mars distance, AU
-1.5894169865107062 // Sun-Mars distance, AU
+2.1844284956325937 // Earth-Mars distance, AU
+1.5897860004265403 // Sun-Mars distance, AU
 ```
 
 `saturn.Ring` returns `RingInfo`: `EarthLatitude` is ring opening angle B, `SunLatitude` is B', `PositionAngle` is the position angle of the northern semiminor axis, `DeltaU` is the Saturnicentric longitude difference between the Sun and Earth in the ring plane, and `MajorAxis` / `MinorAxis` are the apparent outer major/minor axes in arcseconds.
@@ -1376,7 +1373,7 @@ Output:
 
 ```text
 jupiter DS=54.342153 DE=1.436485 CMI=292.712909 CMII=276.309048 CMIII=147.241811 // Jupiter DS/DE and System I/II/III central meridians, degrees
-saturn B=-0.608048 Bp=-2.675677 P=4.480276 major=42.709920 minor=0.453248 // Saturn ring B, B', minor-axis position angle, outer major/minor axes
+saturn B=-0.608046 Bp=-2.675677 P=4.480276 major=42.709920 minor=0.453246 // Saturn ring B, B', minor-axis position angle, outer major/minor axes
 ```
 
 If only Jupiter central meridians are needed:
@@ -1539,8 +1536,8 @@ Output:
 2019-12-31 19:22:56.176710426 +0800 CST // rise time of Sirius
 2020-01-01 05:30:39.834894239 +0800 CST // set time of Sirius
 Canis Major // English constellation containing Sirius
-5h58m10.19s // right ascension of Vega in year 13600
-84°19′26.25″ // declination of Vega in year 13600
+5h58m5.71s // right ascension of Vega in year 13600
+84°19′26.13″ // declination of Vega in year 13600
 天狼 Sirius -1.46 // first brightest-star entry: Chinese name, common English name, apparent magnitude
 ```
 

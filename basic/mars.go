@@ -87,72 +87,32 @@ func MarsApparentRaDec(jd float64) (float64, float64) {
 }
 
 func EarthMarsAway(jd float64) float64 {
-	x, y, z := AMarsXYZ(jd)
-	to := math.Sqrt(x*x + y*y + z*z)
-	return to
+	return planetEarthAwayExplicitN(3, jd, -1)
 }
 
 func MarsApparentLo(jd float64) float64 {
-	x, y, z := AMarsXYZ(jd)
-	to := 0.0057755183 * math.Sqrt(x*x+y*y+z*z)
-	x, y, z = AMarsXYZ(jd - to)
-	lo := math.Atan2(y, x)
-	//bo := math.Atan2(z, math.Sqrt(x*x+y*y))
-	lo = lo * 180.0 / math.Pi
-	//bo = bo * 180 / math.Pi
-	lo = Limit360(lo) + Nutation2000Bi(jd)
-	//lo-=GXCLo(lo,bo,jd)/3600;
-	//bo+=GXCBo(lo,bo,jd);
-	return lo
+	geo, _ := planetApparentGeocentricPositionN(3, jd, -1)
+	return geo.lo
 }
 
 func MarsApparentBo(jd float64) float64 {
-	x, y, z := AMarsXYZ(jd)
-	to := 0.0057755183 * math.Sqrt(x*x+y*y+z*z)
-	x, y, z = AMarsXYZ(jd - to)
-	//lo := math.Atan2(y, x)
-	bo := math.Atan2(z, math.Sqrt(x*x+y*y))
-	//lo = lo * 180 / math.Pi
-	bo = bo * 180 / math.Pi
-	//lo+=GXCLo(lo,bo,jd);
-	//bo+=GXCBo(lo,bo,jd)/3600;
-	//lo+=Nutation2000Bi(jd);
-	return bo
+	geo, _ := planetApparentGeocentricPositionN(3, jd, -1)
+	return geo.bo
 }
 
 func MarsApparentLoBo(jd float64) (float64, float64) {
-	x, y, z := AMarsXYZ(jd)
-	to := 0.0057755183 * math.Sqrt(x*x+y*y+z*z)
-	x, y, z = AMarsXYZ(jd - to)
-	lo := math.Atan2(y, x)
-	bo := math.Atan2(z, math.Sqrt(x*x+y*y))
-	lo = lo * 180 / math.Pi
-	bo = bo * 180 / math.Pi
-	lo = Limit360(lo)
-	//lo -= GXCLo(lo, bo, jd) / 3600
-	//bo += GXCBo(lo, bo, jd)
-	lo += Nutation2000Bi(jd)
-	return lo, bo
+	geo, _ := planetApparentGeocentricPositionN(3, jd, -1)
+	return geo.lo, geo.bo
 }
 
 func MarsTrueLoBo(jd float64) (float64, float64) {
-	x, y, z := AMarsXYZ(jd)
-	to := 0.0057755183 * math.Sqrt(x*x+y*y+z*z)
-	x, y, z = AMarsXYZ(jd - to)
-	lo := math.Atan2(y, x)
-	bo := math.Atan2(z, math.Sqrt(x*x+y*y))
-	lo = lo * 180 / math.Pi
-	bo = bo * 180 / math.Pi
-	lo = Limit360(lo)
-	return lo, bo
+	geo, _ := planetTrueGeocentricPositionN(3, jd, -1)
+	return geo.lo, geo.bo
 }
 
 func MarsTrueLo(jd float64) float64 {
-	x, y, _ := AMarsXYZ(jd)
-	lo := math.Atan2(y, x)
-	lo = lo * 180 / math.Pi
-	lo = Limit360(lo)
-	return lo
+	geo, _ := planetTrueGeocentricPositionN(3, jd, -1)
+	return geo.lo
 }
 
 func MarsMag(jd float64) float64 {

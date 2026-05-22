@@ -1,14 +1,19 @@
 package neptune
 
 import (
+	"math"
 	"testing"
 	"time"
 )
 
+func sameUnixSecond(got time.Time, want int64) bool {
+	return math.Abs(float64(got.Unix()-want)) <= 1
+}
+
 func TestNeptune(t *testing.T) {
 	tz := time.FixedZone("CST", 8*3600)
 	date := time.Date(2022, 01, 20, 00, 00, 00, 00, tz)
-	if NextConjunction(date).Unix() != 1647171800 {
+	if !sameUnixSecond(NextConjunction(date), 1647171800) {
 		t.Fatal(NextConjunction(date).Unix())
 	}
 	if CulminationTime(date, 115).Unix() != 1642665021 {

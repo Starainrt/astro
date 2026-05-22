@@ -40,6 +40,28 @@ func uranusSunLongitudeDeltaN(jde, degree float64, filter bool, n int) float64 {
 	return sub
 }
 
+func uranusRADerivative(jde, delta float64) float64 {
+	sub := UranusApparentRa(jde+delta) - UranusApparentRa(jde-delta)
+	if sub > 180 {
+		sub -= 360
+	}
+	if sub < -180 {
+		sub += 360
+	}
+	return sub / (2 * delta)
+}
+
+func uranusRADerivativeN(jde, delta float64, n int) float64 {
+	sub := UranusApparentRaN(jde+delta, n) - UranusApparentRaN(jde-delta, n)
+	if sub > 180 {
+		sub -= 360
+	}
+	if sub < -180 {
+		sub += 360
+	}
+	return sub / (2 * delta)
+}
+
 func uranusConjunctionFull(jde, degree float64, next uint8) float64 {
 	//0=last 1=next
 	daysPerDegree := URANUS_S_PERIOD / 360
@@ -94,113 +116,92 @@ func uranusConjunction(jde, degree float64, next uint8) float64 {
 }
 
 func LastUranusConjunction(jde float64) float64 {
-	return uranusConjunction(jde, 0, 0)
+	return inclusiveLastPhaseEvent(jde, 0, uranusConjunction)
 }
 
 func NextUranusConjunction(jde float64) float64 {
-	return uranusConjunction(jde, 0, 1)
+	return inclusiveNextPhaseEvent(jde, 0, uranusConjunction)
 }
 
 func LastUranusOpposition(jde float64) float64 {
-	return uranusConjunction(jde, 180, 0)
+	return inclusiveLastPhaseEvent(jde, 180, uranusConjunction)
 }
 
 func NextUranusOpposition(jde float64) float64 {
-	return uranusConjunction(jde, 180, 1)
+	return inclusiveNextPhaseEvent(jde, 180, uranusConjunction)
 }
 
 func NextUranusEasternQuadrature(jde float64) float64 {
-	return uranusConjunction(jde, 90, 1)
+	return inclusiveNextPhaseEvent(jde, 90, uranusConjunction)
 }
 
 func LastUranusEasternQuadrature(jde float64) float64 {
-	return uranusConjunction(jde, 90, 0)
+	return inclusiveLastPhaseEvent(jde, 90, uranusConjunction)
 }
 
 func NextUranusWesternQuadrature(jde float64) float64 {
-	return uranusConjunction(jde, 270, 1)
+	return inclusiveNextPhaseEvent(jde, 270, uranusConjunction)
 }
 
 func LastUranusWesternQuadrature(jde float64) float64 {
-	return uranusConjunction(jde, 270, 0)
+	return inclusiveLastPhaseEvent(jde, 270, uranusConjunction)
 }
 
-func uranusRetrograde(jde float64, searchBeforeOpposition bool) float64 {
-	//0=last 1=next
-	raRate := func(jde float64, delta float64) float64 {
-		sub := UranusApparentRa(jde+delta) - UranusApparentRa(jde-delta)
-		if sub > 180 {
-			sub -= 360
-		}
-		if sub < -180 {
-			sub += 360
-		}
-		return sub / (2 * delta)
-	}
-	jde = uranusConjunctionFull(jde, 180, 1)
+func uranusRetrogradeAroundOpposition(oppositionJD float64, searchBeforeOpposition bool) float64 {
+	oppositionTT := TD2UT(oppositionJD, true)
+	startTT := oppositionTT
+	endTT := oppositionTT
 	if searchBeforeOpposition {
-		jde -= 60
+		easternQuadratureUT := uranusConjunction(oppositionTT, 90, 0)
+		startTT = TD2UT(easternQuadratureUT, true)
 	} else {
-		jde += 60
+		westernQuadratureUT := uranusConjunction(oppositionTT, 270, 1)
+		endTT = TD2UT(westernQuadratureUT, true)
 	}
-	for {
-		currentRate := raRate(jde, 1.0/86400.0)
-		if math.Abs(currentRate) > 0.55 {
-			jde += 2
-			continue
-		}
-		break
-	}
-	estimateJD := jde
-	for {
-		prevJD := estimateJD
-		rateValue := raRate(prevJD, 2.0/86400.0)
-		rateSlope := (raRate(prevJD+15.0/86400.0, 2.0/86400.0) - raRate(prevJD-15.0/86400.0, 2.0/86400.0)) / (30.0 / 86400.0)
-		estimateJD = prevJD - rateValue/rateSlope
-		if math.Abs(estimateJD-prevJD) <= 30.0/86400.0 {
-			break
-		}
-	}
-	bestJD := eventZeroRefine(estimateJD, 15.0/86400.0, 0.5/86400.0, func(jd float64) float64 {
-		return raRate(jd, 0.5/86400.0)
+	bestJD := zeroEventInWindow(startTT, endTT, 2.0, 2.0, 30.0/86400.0, func(jd float64) float64 {
+		return uranusRADerivativeN(jd, 1.0/86400.0, uranusEventSearchN)
+	}, func(jd float64) float64 {
+		return uranusRADerivative(jd, 0.5/86400.0)
 	})
 	return TD2UT(bestJD, false)
 }
 
 func NextUranusRetrogradeToPrograde(jde float64) float64 {
-	date := uranusRetrograde(jde, false)
-	if date < jde {
-		oppositionJD := uranusConjunctionFull(jde, 180, 1)
-		return uranusRetrograde(oppositionJD+10, false)
+	lastOppositionJD := uranusConjunctionFull(jde, 180, 0)
+	date := uranusRetrogradeAroundOpposition(lastOppositionJD, false)
+	if sameEventUTQueryTT(date, jde) || eventUTQueryAfterOrEqual(date, jde) {
+		return date
 	}
-	return date
+	nextOppositionJD := uranusConjunctionFull(jde, 180, 1)
+	return uranusRetrogradeAroundOpposition(nextOppositionJD, false)
 }
 
 func LastUranusRetrogradeToPrograde(jde float64) float64 {
-	jde = uranusConjunctionFull(jde, 180, 0) - 10
-	date := uranusRetrograde(jde, false)
-	if date > jde {
-		oppositionJD := uranusConjunctionFull(jde, 180, 0)
-		return uranusRetrograde(oppositionJD-10, false)
+	lastOppositionJD := uranusConjunctionFull(jde, 180, 0)
+	date := uranusRetrogradeAroundOpposition(lastOppositionJD, false)
+	if sameEventUTQueryTT(date, jde) || eventUTQueryBeforeOrEqual(date, jde) {
+		return date
 	}
-	return date
+	previousOppositionJD := uranusConjunctionFull(eventUTLastQueryTT(lastOppositionJD), 180, 0)
+	return uranusRetrogradeAroundOpposition(previousOppositionJD, false)
 }
 
 func NextUranusProgradeToRetrograde(jde float64) float64 {
-	date := uranusRetrograde(jde, true)
-	if date < jde {
-		oppositionJD := uranusConjunctionFull(jde, 180, 1)
-		return uranusRetrograde(oppositionJD+10, true)
+	nextOppositionJD := uranusConjunctionFull(jde, 180, 1)
+	date := uranusRetrogradeAroundOpposition(nextOppositionJD, true)
+	if sameEventUTQueryTT(date, jde) || eventUTQueryAfterOrEqual(date, jde) {
+		return date
 	}
-	return date
+	followingOppositionJD := uranusConjunctionFull(eventUTNextQueryTT(nextOppositionJD), 180, 1)
+	return uranusRetrogradeAroundOpposition(followingOppositionJD, true)
 }
 
 func LastUranusProgradeToRetrograde(jde float64) float64 {
-	jde = uranusConjunctionFull(jde, 180, 0) - 10
-	date := uranusRetrograde(jde, true)
-	if date > jde {
-		oppositionJD := uranusConjunctionFull(jde, 180, 0)
-		return uranusRetrograde(oppositionJD-10, true)
+	nextOppositionJD := uranusConjunctionFull(jde, 180, 1)
+	date := uranusRetrogradeAroundOpposition(nextOppositionJD, true)
+	if sameEventUTQueryTT(date, jde) || eventUTQueryBeforeOrEqual(date, jde) {
+		return date
 	}
-	return date
+	lastOppositionJD := uranusConjunctionFull(jde, 180, 0)
+	return uranusRetrogradeAroundOpposition(lastOppositionJD, true)
 }
