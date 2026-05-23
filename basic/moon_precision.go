@@ -126,6 +126,68 @@ func HMoonApparentLoN(jd float64, n int) float64 {
 	return HMoonTrueLoN(jd, n) + Nutation2000Bi(jd)
 }
 
+// HMoonGeocentricApparentRa 月亮地心视赤经 / apparent geocentric right ascension of the Moon.
+func HMoonGeocentricApparentRa(jd float64) float64 {
+	return HMoonGeocentricApparentRaN(jd, -1)
+}
+
+// HMoonGeocentricApparentRaN 月亮地心视赤经（截断版） / truncated apparent geocentric right ascension of the Moon.
+func HMoonGeocentricApparentRaN(jd float64, n int) float64 {
+	return LoToRa(jd, HMoonApparentLoN(jd, n), HMoonTrueBoN(jd, n))
+}
+
+// HMoonGeocentricApparentDec 月亮地心视赤纬 / apparent geocentric declination of the Moon.
+func HMoonGeocentricApparentDec(jd float64) float64 {
+	return HMoonGeocentricApparentDecN(jd, -1)
+}
+
+// HMoonGeocentricApparentDecN 月亮地心视赤纬（截断版） / truncated apparent geocentric declination of the Moon.
+func HMoonGeocentricApparentDecN(jd float64, n int) float64 {
+	return ArcSin(Sin(HMoonTrueBoN(jd, n))*Cos(TrueObliquity(jd)) +
+		Cos(HMoonTrueBoN(jd, n))*Sin(TrueObliquity(jd))*Sin(HMoonApparentLoN(jd, n)))
+}
+
+// HMoonGeocentricApparentRaDec 月亮地心视赤经、视赤纬 / apparent geocentric right ascension and declination of the Moon.
+func HMoonGeocentricApparentRaDec(jd float64) (float64, float64) {
+	return HMoonGeocentricApparentRaDecN(jd, -1)
+}
+
+// HMoonGeocentricApparentRaDecN 月亮地心视赤经、视赤纬（截断版） / truncated apparent geocentric right ascension and declination of the Moon.
+func HMoonGeocentricApparentRaDecN(jd float64, n int) (float64, float64) {
+	return LoBoToRaDec(jd, HMoonApparentLoN(jd, n), HMoonTrueBoN(jd, n))
+}
+
+// HMoonGeocentricTrueRa 月亮地心真赤经 / true geocentric right ascension of the Moon.
+func HMoonGeocentricTrueRa(jd float64) float64 {
+	return HMoonGeocentricTrueRaN(jd, -1)
+}
+
+// HMoonGeocentricTrueRaN 月亮地心真赤经（截断版） / truncated true geocentric right ascension of the Moon.
+func HMoonGeocentricTrueRaN(jd float64, n int) float64 {
+	return LoToRa(jd, HMoonTrueLoN(jd, n), HMoonTrueBoN(jd, n))
+}
+
+// HMoonGeocentricTrueDec 月亮地心真赤纬 / true geocentric declination of the Moon.
+func HMoonGeocentricTrueDec(jd float64) float64 {
+	return HMoonGeocentricTrueDecN(jd, -1)
+}
+
+// HMoonGeocentricTrueDecN 月亮地心真赤纬（截断版） / truncated true geocentric declination of the Moon.
+func HMoonGeocentricTrueDecN(jd float64, n int) float64 {
+	return ArcSin(Sin(HMoonTrueBoN(jd, n))*Cos(TrueObliquity(jd)) +
+		Cos(HMoonTrueBoN(jd, n))*Sin(TrueObliquity(jd))*Sin(HMoonTrueLoN(jd, n)))
+}
+
+// HMoonGeocentricTrueRaDec 月亮地心真赤经、真赤纬 / true geocentric right ascension and declination of the Moon.
+func HMoonGeocentricTrueRaDec(jd float64) (float64, float64) {
+	return HMoonGeocentricTrueRaDecN(jd, -1)
+}
+
+// HMoonGeocentricTrueRaDecN 月亮地心真赤经、真赤纬（截断版） / truncated true geocentric right ascension and declination of the Moon.
+func HMoonGeocentricTrueRaDecN(jd float64, n int) (float64, float64) {
+	return LoBoToRaDec(jd, HMoonTrueLoN(jd, n), HMoonTrueBoN(jd, n))
+}
+
 func HMoonTrueRaDec(jd float64) (float64, float64) {
 	return HMoonTrueRaDecN(jd, -1)
 }

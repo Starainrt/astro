@@ -1,0 +1,34 @@
+[
+  {
+    "input_utc": "2026-01-01T00:00:00Z",
+    "right_ascension": 63.920306258,
+    "declination": 26.403701421,
+    "ecliptic_longitude": 66.7156363,
+    "ecliptic_latitude": 5.0490966
+  }
+,
+  {
+    "input_utc": "2026-05-01T00:00:00Z",
+    "right_ascension": 208.849626532,
+    "declination": -16.256039871,
+    "ecliptic_longitude": 212.5315932,
+    "ecliptic_latitude": -4.1622995
+  }
+,
+  {
+    "input_utc": "2026-08-29T00:00:00Z",
+    "right_ascension": 346.062573698,
+    "declination": -4.416718092,
+    "ecliptic_longitude": 345.4608613,
+    "ecliptic_latitude": 1.4247855
+  }
+,
+  {
+    "input_utc": "2026-12-27T00:00:00Z",
+    "right_ascension": 139.195692903,
+    "declination": 16.272137989,
+    "ecliptic_longitude": 136.6058459,
+    "ecliptic_latitude": 0.4338603
+  }
+
+]

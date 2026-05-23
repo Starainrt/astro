@@ -84,7 +84,7 @@ func ApparentLo(date time.Time) float64 {
 // Returns the Moon's geocentric true right ascension at the instant represented by date, in degrees.
 func TrueRa(date time.Time) float64 {
 	jde := basic.Date2JDE(date.UTC())
-	return basic.HMoonTrueRa(basic.TD2UT(jde, true))
+	return basic.HMoonGeocentricTrueRa(basic.TD2UT(jde, true))
 }
 
 // TrueDec 月亮地心真赤纬 / true geocentric declination.
@@ -93,7 +93,7 @@ func TrueRa(date time.Time) float64 {
 // Returns the Moon's geocentric true declination at the instant represented by date, in degrees.
 func TrueDec(date time.Time) float64 {
 	jde := basic.Date2JDE(date.UTC())
-	return basic.HMoonTrueDec(basic.TD2UT(jde, true))
+	return basic.HMoonGeocentricTrueDec(basic.TD2UT(jde, true))
 }
 
 // TrueRaDec 月亮地心真赤经、真赤纬 / true geocentric right ascension and declination.
@@ -102,7 +102,34 @@ func TrueDec(date time.Time) float64 {
 // Returns the Moon's geocentric true right ascension and declination at the instant represented by date, in degrees.
 func TrueRaDec(date time.Time) (float64, float64) {
 	jde := basic.Date2JDE(date.UTC())
-	return basic.HMoonTrueRaDec(basic.TD2UT(jde, true))
+	return basic.HMoonGeocentricTrueRaDec(basic.TD2UT(jde, true))
+}
+
+// GeocentricApparentRa 月亮地心视赤经 / apparent geocentric right ascension.
+//
+// 返回月亮在 date 对应绝对时刻的地心视赤经，单位度。
+// Returns the Moon's apparent geocentric right ascension at the instant represented by date, in degrees.
+func GeocentricApparentRa(date time.Time) float64 {
+	jde := basic.Date2JDE(date.UTC())
+	return basic.HMoonGeocentricApparentRa(basic.TD2UT(jde, true))
+}
+
+// GeocentricApparentDec 月亮地心视赤纬 / apparent geocentric declination.
+//
+// 返回月亮在 date 对应绝对时刻的地心视赤纬，单位度。
+// Returns the Moon's apparent geocentric declination at the instant represented by date, in degrees.
+func GeocentricApparentDec(date time.Time) float64 {
+	jde := basic.Date2JDE(date.UTC())
+	return basic.HMoonGeocentricApparentDec(basic.TD2UT(jde, true))
+}
+
+// GeocentricApparentRaDec 月亮地心视赤经、视赤纬 / apparent geocentric right ascension and declination.
+//
+// 返回月亮在 date 对应绝对时刻的地心视赤经与视赤纬，单位度。
+// Returns the Moon's apparent geocentric right ascension and declination at the instant represented by date, in degrees.
+func GeocentricApparentRaDec(date time.Time) (float64, float64) {
+	jde := basic.Date2JDE(date.UTC())
+	return basic.HMoonGeocentricApparentRaDec(basic.TD2UT(jde, true))
 }
 
 // ApparentRa 月亮站心视赤经 / apparent topocentric right ascension.

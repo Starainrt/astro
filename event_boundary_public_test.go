@@ -9,6 +9,7 @@ import (
 	"github.com/starainrt/astro/jupiter"
 	"github.com/starainrt/astro/mars"
 	"github.com/starainrt/astro/mercury"
+	"github.com/starainrt/astro/moon"
 	"github.com/starainrt/astro/neptune"
 	"github.com/starainrt/astro/saturn"
 	"github.com/starainrt/astro/uranus"
@@ -77,6 +78,56 @@ func TestPublicPlanetEventBoundaryIncludesCurrent(t *testing.T) {
 		{name: "NeptuneR2P", eventUT: basic.NextNeptuneRetrogradeToPrograde(eventBoundaryTT(2026)), funcs: eventFuncs{last: neptune.LastRetrogradeToPrograde, next: neptune.NextRetrogradeToPrograde}},
 		{name: "NeptuneEasternQuadrature", eventUT: basic.NextNeptuneEasternQuadrature(eventBoundaryTT(2026)), funcs: eventFuncs{last: neptune.LastEasternQuadrature, next: neptune.NextEasternQuadrature}},
 		{name: "NeptuneWesternQuadrature", eventUT: basic.NextNeptuneWesternQuadrature(eventBoundaryTT(2026)), funcs: eventFuncs{last: neptune.LastWesternQuadrature, next: neptune.NextWesternQuadrature}},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			eventTime := basic.JDE2DateByZone(tc.eventUT, time.UTC, false)
+			assertSameEventTime(t, "last", tc.funcs.last(eventTime), eventTime)
+			assertSameEventTime(t, "next", tc.funcs.next(eventTime), eventTime)
+		})
+	}
+}
+
+func TestPublicMoonPlanetConjunctionBoundaryIncludesCurrent(t *testing.T) {
+	type eventFuncs struct {
+		last func(time.Time) time.Time
+		next func(time.Time) time.Time
+	}
+
+	cases := []struct {
+		name    string
+		eventUT float64
+		funcs   eventFuncs
+	}{
+		{name: "MoonMercuryConjunction", eventUT: basic.NextMoonPlanetConjunction(eventBoundaryTT(2026), basic.MoonPlanetConjunctionMercury), funcs: eventFuncs{
+			last: func(date time.Time) time.Time { return moon.LastConjunctionWithPlanet(date, moon.ConjunctionMercury) },
+			next: func(date time.Time) time.Time { return moon.NextConjunctionWithPlanet(date, moon.ConjunctionMercury) },
+		}},
+		{name: "MoonVenusConjunction", eventUT: basic.NextMoonPlanetConjunction(eventBoundaryTT(2026), basic.MoonPlanetConjunctionVenus), funcs: eventFuncs{
+			last: func(date time.Time) time.Time { return moon.LastConjunctionWithPlanet(date, moon.ConjunctionVenus) },
+			next: func(date time.Time) time.Time { return moon.NextConjunctionWithPlanet(date, moon.ConjunctionVenus) },
+		}},
+		{name: "MoonMarsConjunction", eventUT: basic.NextMoonPlanetConjunction(eventBoundaryTT(2026), basic.MoonPlanetConjunctionMars), funcs: eventFuncs{
+			last: func(date time.Time) time.Time { return moon.LastConjunctionWithPlanet(date, moon.ConjunctionMars) },
+			next: func(date time.Time) time.Time { return moon.NextConjunctionWithPlanet(date, moon.ConjunctionMars) },
+		}},
+		{name: "MoonJupiterConjunction", eventUT: basic.NextMoonPlanetConjunction(eventBoundaryTT(2026), basic.MoonPlanetConjunctionJupiter), funcs: eventFuncs{
+			last: func(date time.Time) time.Time { return moon.LastConjunctionWithPlanet(date, moon.ConjunctionJupiter) },
+			next: func(date time.Time) time.Time { return moon.NextConjunctionWithPlanet(date, moon.ConjunctionJupiter) },
+		}},
+		{name: "MoonSaturnConjunction", eventUT: basic.NextMoonPlanetConjunction(eventBoundaryTT(2026), basic.MoonPlanetConjunctionSaturn), funcs: eventFuncs{
+			last: func(date time.Time) time.Time { return moon.LastConjunctionWithPlanet(date, moon.ConjunctionSaturn) },
+			next: func(date time.Time) time.Time { return moon.NextConjunctionWithPlanet(date, moon.ConjunctionSaturn) },
+		}},
+		{name: "MoonUranusConjunction", eventUT: basic.NextMoonPlanetConjunction(eventBoundaryTT(2026), basic.MoonPlanetConjunctionUranus), funcs: eventFuncs{
+			last: func(date time.Time) time.Time { return moon.LastConjunctionWithPlanet(date, moon.ConjunctionUranus) },
+			next: func(date time.Time) time.Time { return moon.NextConjunctionWithPlanet(date, moon.ConjunctionUranus) },
+		}},
+		{name: "MoonNeptuneConjunction", eventUT: basic.NextMoonPlanetConjunction(eventBoundaryTT(2026), basic.MoonPlanetConjunctionNeptune), funcs: eventFuncs{
+			last: func(date time.Time) time.Time { return moon.LastConjunctionWithPlanet(date, moon.ConjunctionNeptune) },
+			next: func(date time.Time) time.Time { return moon.NextConjunctionWithPlanet(date, moon.ConjunctionNeptune) },
+		}},
 	}
 
 	for _, tc := range cases {
