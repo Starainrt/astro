@@ -122,7 +122,7 @@ func TestMoonPlanetConjunctionsMatchHorizonsBaseline(t *testing.T) {
 	t.Logf("moon-planet conjunction max diff: time=%v", maxDiff)
 }
 
-func TestMoonPlanetConjunctionDirectionalConsistencyAroundBaseline(t *testing.T) {
+func TestMoonPlanetConjunctionDirectionalConsistencyAtComputedEvent(t *testing.T) {
 	baseline := loadMoonPlanetConjunctionBaseline(t)
 
 	planets := map[string]MoonPlanetConjunctionPlanet{
@@ -144,22 +144,24 @@ func TestMoonPlanetConjunctionDirectionalConsistencyAroundBaseline(t *testing.T)
 		if err != nil {
 			t.Fatalf("parse sample time %q: %v", sample.TimeUTC, err)
 		}
-		queryAtTT := TD2UT(Date2JDE(wantTime.UTC()), true)
-		queryAfterTT := TD2UT(Date2JDE(wantTime.Add(time.Hour).UTC()), true)
+		seedTT := TD2UT(Date2JDE(wantTime.Add(-12*time.Hour).UTC()), true)
+		eventUT := NextMoonPlanetConjunction(seedTT, planet)
+		eventTime := JDE2DateByZone(eventUT, time.UTC, false)
+		queryAtTT := TD2UT(Date2JDE(eventTime.UTC()), true)
+		queryAfterTT := TD2UT(Date2JDE(eventTime.Add(time.Hour).UTC()), true)
 
 		exactNext := NextMoonPlanetConjunction(queryAtTT, planet)
 		exactClosest := ClosestMoonPlanetConjunction(queryAtTT, planet)
 		exactLastAfter := LastMoonPlanetConjunction(queryAfterTT, planet)
 
-		wantUT := Date2JDE(wantTime.UTC())
 		for name, gotUT := range map[string]float64{
 			"exactNext":      exactNext,
 			"exactClosest":   exactClosest,
 			"lastAfterEvent": exactLastAfter,
 		} {
 			gotTime := JDE2DateByZone(gotUT, time.UTC, false)
-			if diff := math.Abs(gotUT - wantUT); diff > 5.0/86400.0 {
-				t.Fatalf("%s %s mismatch: got %s want %s diff=%v", sample.Planet, name, gotTime.Format(time.RFC3339Nano), sample.TimeUTC, diff*86400)
+			if diff := math.Abs(gotUT - eventUT); diff > 1e-9 {
+				t.Fatalf("%s %s mismatch: got %s want %s diff=%v", sample.Planet, name, gotTime.Format(time.RFC3339Nano), eventTime.Format(time.RFC3339Nano), diff*86400)
 			}
 		}
 	}
@@ -256,5 +258,27 @@ func TestMoonPlanetConjunctionKeepsImmediateNeighborEvents(t *testing.T) {
 	}
 	if !sameEventJD(closestUT, lastUT) {
 		t.Fatalf("closest should keep immediate previous event: closest=%s last=%s", JDE2DateByZone(closestUT, time.UTC, false).Format(time.RFC3339Nano), JDE2DateByZone(lastUT, time.UTC, false).Format(time.RFC3339Nano))
+	}
+}
+
+func TestMoonPlanetConjunctionNextAdvancesPastReturnedEvent(t *testing.T) {
+	seed := TD2UT(Date2JDE(time.Date(2026, 5, 1, 0, 0, 0, 0, time.UTC)), true)
+	eventUT := NextMoonPlanetConjunction(seed, MoonPlanetConjunctionMercury)
+	query := JDE2DateByZone(eventUT, time.UTC, false).Add(time.Second)
+	queryTT := TD2UT(Date2JDE(query.UTC()), true)
+
+	nextUT := NextMoonPlanetConjunction(queryTT, MoonPlanetConjunctionMercury)
+	if eventUTQueryTTDelta(nextUT, queryTT) <= 0 {
+		t.Fatalf("expected next conjunction after query: query=%s next=%s delta=%.6fs",
+			query.Format(time.RFC3339Nano),
+			JDE2DateByZone(nextUT, time.UTC, false).Format(time.RFC3339Nano),
+			eventUTQueryTTDelta(nextUT, queryTT)*86400,
+		)
+	}
+	if sameEventJD(nextUT, eventUT) {
+		t.Fatalf("next conjunction should advance to a later event: event=%s next=%s",
+			JDE2DateByZone(eventUT, time.UTC, false).Format(time.RFC3339Nano),
+			JDE2DateByZone(nextUT, time.UTC, false).Format(time.RFC3339Nano),
+		)
 	}
 }

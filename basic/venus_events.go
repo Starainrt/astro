@@ -202,10 +202,14 @@ func venusConjunction(jde float64, next uint8) float64 {
 	}
 	left := queryTT
 	leftVal := venusSunLongitudeDeltaN(left, venusEventSearchN)
-	if math.Abs(leftVal) <= 30.0/86400.0 {
+	if math.Abs(venusSunLongitudeDelta(queryTT)) <= 30.0/86400.0 {
 		exact := eventZeroRefine(left, 1.0, 0.000005, venusSunLongitudeDelta)
-		if math.Abs(exact-queryTT) <= 1.0 {
-			return TD2UT(exact, false)
+		eventUT := TD2UT(exact, false)
+		if next == 0 && eventUTQueryBeforeOrEqual(eventUT, queryTT) {
+			return eventUT
+		}
+		if next == 1 && eventUTQueryAfterOrEqual(eventUT, queryTT) {
+			return eventUT
 		}
 	}
 	const step = 8.0
@@ -432,12 +436,12 @@ func venusGreatestElongationInWindow(start, end float64) float64 {
 
 func venusEastElongationWindowEndingAt(inferior float64) (float64, float64) {
 	lastSuperior := LastVenusSuperiorConjunction(eventUTLastQueryTT(inferior))
-	return lastSuperior + innerEventEpsilon, inferior - innerEventEpsilon
+	return lastSuperior + innerEventWindowPadding, inferior - innerEventWindowPadding
 }
 
 func venusWestElongationWindowEndingAt(superior float64) (float64, float64) {
 	lastInferior := LastVenusInferiorConjunction(eventUTLastQueryTT(superior))
-	return lastInferior + innerEventEpsilon, superior - innerEventEpsilon
+	return lastInferior + innerEventWindowPadding, superior - innerEventWindowPadding
 }
 
 func venusEastElongationWindowContaining(jde float64) (float64, float64) {
@@ -539,35 +543,19 @@ func LastVenusGreatestElongation(jde float64) float64 {
 }
 
 func LastVenusInferiorConjunctionInclusive(jde float64) float64 {
-	date := LastVenusConjunction(jde)
-	if venusConjunctionTypeAt(date) {
-		return date
-	}
-	return LastVenusConjunction(eventUTLastQueryTT(date))
+	return inclusiveLastSimpleEvent(jde, LastVenusInferiorConjunction, NextVenusInferiorConjunction)
 }
 
 func NextVenusInferiorConjunctionInclusive(jde float64) float64 {
-	date := NextVenusConjunction(jde)
-	if venusConjunctionTypeAt(date) {
-		return date
-	}
-	return NextVenusConjunction(eventUTNextQueryTT(date))
+	return inclusiveNextSimpleEvent(jde, LastVenusInferiorConjunction, NextVenusInferiorConjunction)
 }
 
 func LastVenusSuperiorConjunctionInclusive(jde float64) float64 {
-	date := LastVenusConjunction(jde)
-	if !venusConjunctionTypeAt(date) {
-		return date
-	}
-	return LastVenusConjunction(eventUTLastQueryTT(date))
+	return inclusiveLastSimpleEvent(jde, LastVenusSuperiorConjunction, NextVenusSuperiorConjunction)
 }
 
 func NextVenusSuperiorConjunctionInclusive(jde float64) float64 {
-	date := NextVenusConjunction(jde)
-	if !venusConjunctionTypeAt(date) {
-		return date
-	}
-	return NextVenusConjunction(eventUTNextQueryTT(date))
+	return inclusiveNextSimpleEvent(jde, LastVenusSuperiorConjunction, NextVenusSuperiorConjunction)
 }
 
 func LastVenusRetrogradeInclusive(jde float64) float64 {

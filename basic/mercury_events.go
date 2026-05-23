@@ -168,6 +168,26 @@ func mercuryConjunctionLegacy(jde float64, next uint8) float64 {
 
 func mercuryConjunction(jde float64, next uint8) float64 {
 	//0=last 1=next
+	if math.Abs(mercuryConjunctionExactDelta(jde)) <= 30.0/86400.0 {
+		best := math.NaN()
+		consider := func(inferior bool) {
+			eventUT := TD2UT(mercuryConjunctionExactTT(jde, inferior), false)
+			if next == 0 && !eventUTQueryBeforeOrEqual(eventUT, jde) {
+				return
+			}
+			if next == 1 && !eventUTQueryAfterOrEqual(eventUT, jde) {
+				return
+			}
+			if math.IsNaN(best) || math.Abs(eventUTQueryTTDelta(eventUT, jde)) < math.Abs(eventUTQueryTTDelta(best, jde)) {
+				best = eventUT
+			}
+		}
+		consider(true)
+		consider(false)
+		if !math.IsNaN(best) {
+			return best
+		}
+	}
 	currentDelta := mercuryConjunctionExactDelta(jde)
 	// pos 大于0:远离太阳 小于0:靠近太阳
 	distanceTrend := math.Abs(mercuryConjunctionExactDelta(jde+1/86400.0)) - math.Abs(currentDelta)
@@ -417,12 +437,12 @@ func mercuryGreatestElongationInWindow(start, end float64) float64 {
 
 func mercuryEastElongationWindowEndingAt(inferior float64) (float64, float64) {
 	lastSuperior := LastMercurySuperiorConjunction(eventUTLastQueryTT(inferior))
-	return lastSuperior + innerEventEpsilon, inferior - innerEventEpsilon
+	return lastSuperior + innerEventWindowPadding, inferior - innerEventWindowPadding
 }
 
 func mercuryWestElongationWindowEndingAt(superior float64) (float64, float64) {
 	lastInferior := LastMercuryInferiorConjunction(eventUTLastQueryTT(superior))
-	return lastInferior + innerEventEpsilon, superior - innerEventEpsilon
+	return lastInferior + innerEventWindowPadding, superior - innerEventWindowPadding
 }
 
 func mercuryEastElongationWindowContaining(jde float64) (float64, float64) {

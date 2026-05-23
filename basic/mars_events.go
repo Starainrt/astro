@@ -186,12 +186,29 @@ func marsOppositionFromAfter(oppositionJD float64) float64 {
 	return marsConjunctionFull(eventUTNextQueryTT(oppositionJD), 180, 0)
 }
 
+func stabilizeMarsStationNearQuery(jde, date float64, searchBeforeOpposition bool) float64 {
+	if math.Abs(eventUTQueryTTDelta(date, jde)) > exactEventTolerance {
+		return date
+	}
+	if searchBeforeOpposition {
+		stableOppositionJD := NextMarsOpposition(jde)
+		sameOppositionJD := marsOppositionFromAfter(stableOppositionJD)
+		return closestEventUTToQueryTT(jde, date, marsRetrogradeAroundOpposition(stableOppositionJD, true), marsRetrogradeAroundOpposition(sameOppositionJD, true))
+	}
+	stableOppositionJD := LastMarsOpposition(jde)
+	sameOppositionJD := marsOppositionFromBefore(stableOppositionJD)
+	return closestEventUTToQueryTT(jde, date, marsRetrogradeAroundOpposition(stableOppositionJD, false), marsRetrogradeAroundOpposition(sameOppositionJD, false))
+}
+
 func NextMarsRetrogradeToPrograde(jde float64) float64 {
 	lastOppositionJD := marsConjunctionFull(jde, 180, 0)
 	date := marsRetrogradeAroundOpposition(lastOppositionJD, false)
+	date = stabilizeMarsStationNearQuery(jde, date, false)
 	if sameEventUTQueryTT(date, jde) {
-		sameOppositionJD := marsOppositionFromBefore(lastOppositionJD)
-		return closestEventUTToQueryTT(jde, date, marsRetrogradeAroundOpposition(sameOppositionJD, false))
+		stableOppositionJD := LastMarsOpposition(jde)
+		stableDate := marsRetrogradeAroundOpposition(stableOppositionJD, false)
+		sameOppositionJD := marsOppositionFromBefore(stableOppositionJD)
+		return closestEventUTToQueryTT(jde, date, stableDate, marsRetrogradeAroundOpposition(sameOppositionJD, false))
 	}
 	if !eventUTQueryAfterOrEqual(date, jde) {
 		nextOppositionJD := marsConjunctionFull(jde, 180, 1)
@@ -203,9 +220,12 @@ func NextMarsRetrogradeToPrograde(jde float64) float64 {
 func LastMarsRetrogradeToPrograde(jde float64) float64 {
 	lastOppositionJD := marsConjunctionFull(jde, 180, 0)
 	date := marsRetrogradeAroundOpposition(lastOppositionJD, false)
+	date = stabilizeMarsStationNearQuery(jde, date, false)
 	if sameEventUTQueryTT(date, jde) {
-		sameOppositionJD := marsOppositionFromBefore(lastOppositionJD)
-		return closestEventUTToQueryTT(jde, date, marsRetrogradeAroundOpposition(sameOppositionJD, false))
+		stableOppositionJD := LastMarsOpposition(jde)
+		stableDate := marsRetrogradeAroundOpposition(stableOppositionJD, false)
+		sameOppositionJD := marsOppositionFromBefore(stableOppositionJD)
+		return closestEventUTToQueryTT(jde, date, stableDate, marsRetrogradeAroundOpposition(sameOppositionJD, false))
 	}
 	if !eventUTQueryBeforeOrEqual(date, jde) {
 		previousOppositionJD := marsConjunctionFull(eventUTLastQueryTT(lastOppositionJD), 180, 0)
@@ -217,9 +237,12 @@ func LastMarsRetrogradeToPrograde(jde float64) float64 {
 func NextMarsProgradeToRetrograde(jde float64) float64 {
 	nextOppositionJD := marsConjunctionFull(jde, 180, 1)
 	date := marsRetrogradeAroundOpposition(nextOppositionJD, true)
+	date = stabilizeMarsStationNearQuery(jde, date, true)
 	if sameEventUTQueryTT(date, jde) {
-		sameOppositionJD := marsOppositionFromAfter(nextOppositionJD)
-		return closestEventUTToQueryTT(jde, date, marsRetrogradeAroundOpposition(sameOppositionJD, true))
+		stableOppositionJD := NextMarsOpposition(jde)
+		stableDate := marsRetrogradeAroundOpposition(stableOppositionJD, true)
+		sameOppositionJD := marsOppositionFromAfter(stableOppositionJD)
+		return closestEventUTToQueryTT(jde, date, stableDate, marsRetrogradeAroundOpposition(sameOppositionJD, true))
 	}
 	if !eventUTQueryAfterOrEqual(date, jde) {
 		followingOppositionJD := marsConjunctionFull(eventUTNextQueryTT(nextOppositionJD), 180, 1)
@@ -231,9 +254,12 @@ func NextMarsProgradeToRetrograde(jde float64) float64 {
 func LastMarsProgradeToRetrograde(jde float64) float64 {
 	nextOppositionJD := marsConjunctionFull(jde, 180, 1)
 	date := marsRetrogradeAroundOpposition(nextOppositionJD, true)
+	date = stabilizeMarsStationNearQuery(jde, date, true)
 	if sameEventUTQueryTT(date, jde) {
-		sameOppositionJD := marsOppositionFromAfter(nextOppositionJD)
-		return closestEventUTToQueryTT(jde, date, marsRetrogradeAroundOpposition(sameOppositionJD, true))
+		stableOppositionJD := NextMarsOpposition(jde)
+		stableDate := marsRetrogradeAroundOpposition(stableOppositionJD, true)
+		sameOppositionJD := marsOppositionFromAfter(stableOppositionJD)
+		return closestEventUTToQueryTT(jde, date, stableDate, marsRetrogradeAroundOpposition(sameOppositionJD, true))
 	}
 	if !eventUTQueryBeforeOrEqual(date, jde) {
 		lastOppositionJD := marsConjunctionFull(jde, 180, 0)

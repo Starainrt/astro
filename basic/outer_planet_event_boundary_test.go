@@ -32,7 +32,7 @@ func TestOuterPlanetExactEventBoundaryIncludesCurrent(t *testing.T) {
 		{name: "MarsEasternQuadrature", seed: NextMarsEasternQuadrature(ttjdUTC(2026, 1, 1, 0, 0, 0)), lastFn: LastMarsEasternQuadrature, nextFn: NextMarsEasternQuadrature},
 		{name: "MarsWesternQuadrature", seed: NextMarsWesternQuadrature(ttjdUTC(2026, 1, 1, 0, 0, 0)), lastFn: LastMarsWesternQuadrature, nextFn: NextMarsWesternQuadrature},
 		{name: "MarsP2R", seed: NextMarsProgradeToRetrograde(ttjdUTC(2026, 1, 1, 0, 0, 0)), lastFn: LastMarsProgradeToRetrograde, nextFn: NextMarsProgradeToRetrograde},
-		{name: "MarsR2P", seed: NextMarsRetrogradeToPrograde(ttjdUTC(2026, 1, 1, 0, 0, 0)), lastFn: LastMarsRetrogradeToPrograde, nextFn: NextMarsRetrogradeToPrograde},
+		{name: "MarsR2P", seed: NextMarsRetrogradeToPrograde(ttjdUTC(2025, 1, 1, 0, 0, 0)), lastFn: LastMarsRetrogradeToPrograde, nextFn: NextMarsRetrogradeToPrograde},
 	}
 
 	for _, tc := range cases {
@@ -45,6 +45,35 @@ func TestOuterPlanetExactEventBoundaryIncludesCurrent(t *testing.T) {
 			}
 			if !sameEventJD(next, tc.seed) {
 				t.Fatalf("next exact boundary mismatch: got %.12f want %.12f", next, tc.seed)
+			}
+		})
+	}
+}
+
+func TestOuterPlanetNextEventAdvancesPastReturnedEvent(t *testing.T) {
+	cases := []struct {
+		name string
+		seed float64
+		next func(float64) float64
+	}{
+		{name: "MarsOpposition", seed: ttjdUTC(2026, 1, 1, 0, 0, 0), next: NextMarsOpposition},
+		{name: "MarsP2R", seed: ttjdUTC(2026, 1, 1, 0, 0, 0), next: NextMarsProgradeToRetrograde},
+		{name: "JupiterOpposition", seed: ttjdUTC(2026, 1, 1, 0, 0, 0), next: NextJupiterOpposition},
+		{name: "SaturnConjunction", seed: ttjdUTC(2026, 1, 1, 0, 0, 0), next: NextSaturnConjunction},
+		{name: "UranusP2R", seed: ttjdUTC(2026, 1, 1, 0, 0, 0), next: NextUranusProgradeToRetrograde},
+		{name: "NeptuneR2P", seed: ttjdUTC(2026, 1, 1, 0, 0, 0), next: NextNeptuneRetrogradeToPrograde},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			first := tc.next(tc.seed)
+			query := TD2UT(Date2JDE(JDE2DateByZone(first, time.UTC, false).Add(time.Second)), true)
+			next := tc.next(query)
+			if !eventUTQueryAfterOrEqual(next, query) {
+				t.Fatalf("next should be after query: first=%.12f query=%.12f next=%.12f", first, query, next)
+			}
+			if sameEventJD(next, first) {
+				t.Fatalf("next should advance past first event: first=%.12f next=%.12f", first, next)
 			}
 		})
 	}

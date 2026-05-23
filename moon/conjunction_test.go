@@ -80,3 +80,24 @@ func TestInvalidConjunctionPlanetReturnsZeroTime(t *testing.T) {
 		}
 	}
 }
+
+func TestNextConjunctionAdvancesPastReturnedEvent(t *testing.T) {
+	cursor := time.Date(2026, 5, 1, 0, 0, 0, 0, time.UTC)
+	first := NextConjunctionWithPlanet(cursor, ConjunctionMercury)
+	query := first.Add(time.Second)
+	next := NextConjunctionWithPlanet(query, ConjunctionMercury)
+
+	if !next.After(query) {
+		t.Fatalf("expected next conjunction after query: query=%s next=%s delta=%v",
+			query.Format(time.RFC3339Nano),
+			next.Format(time.RFC3339Nano),
+			next.Sub(query),
+		)
+	}
+	if next.Equal(first) {
+		t.Fatalf("expected next conjunction to advance: first=%s next=%s",
+			first.Format(time.RFC3339Nano),
+			next.Format(time.RFC3339Nano),
+		)
+	}
+}

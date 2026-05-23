@@ -1,6 +1,9 @@
 package basic
 
-import "testing"
+import (
+	"testing"
+	"time"
+)
 
 func TestInnerPlanetExactEventBoundaryIncludesCurrent(t *testing.T) {
 	cases := []struct {
@@ -34,6 +37,63 @@ func TestInnerPlanetExactEventBoundaryIncludesCurrent(t *testing.T) {
 			queryTT := TD2UT(tc.seed, true)
 			last := tc.lastFn(queryTT)
 			next := tc.nextFn(queryTT)
+			if !sameEventJD(last, tc.seed) {
+				t.Fatalf("last exact boundary mismatch: got %.12f want %.12f", last, tc.seed)
+			}
+			if !sameEventJD(next, tc.seed) {
+				t.Fatalf("next exact boundary mismatch: got %.12f want %.12f", next, tc.seed)
+			}
+		})
+	}
+}
+
+func TestInnerPlanetNextEventAdvancesPastReturnedEvent(t *testing.T) {
+	cases := []struct {
+		name string
+		seed float64
+		next func(float64) float64
+	}{
+		{name: "MercuryConjunction", seed: ttjdUTC(2026, 5, 1, 0, 0, 0), next: NextMercuryConjunction},
+		{name: "MercuryInferior", seed: ttjdUTC(2026, 5, 1, 0, 0, 0), next: NextMercuryInferiorConjunction},
+		{name: "MercuryP2R", seed: ttjdUTC(2026, 5, 1, 0, 0, 0), next: NextMercuryProgradeToRetrograde},
+		{name: "MercuryEastElongation", seed: ttjdUTC(2026, 5, 1, 0, 0, 0), next: NextMercuryGreatestElongationEast},
+		{name: "VenusConjunction", seed: ttjdUTC(2026, 5, 1, 0, 0, 0), next: NextVenusConjunction},
+		{name: "VenusWestElongation", seed: ttjdUTC(2026, 5, 1, 0, 0, 0), next: NextVenusGreatestElongationWest},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			first := tc.next(tc.seed)
+			query := TD2UT(Date2JDE(JDE2DateByZone(first, time.UTC, false).Add(time.Second)), true)
+			next := tc.next(query)
+			if !eventUTQueryAfterOrEqual(next, query) {
+				t.Fatalf("next should be after query: first=%.12f query=%.12f next=%.12f", first, query, next)
+			}
+			if sameEventJD(next, first) {
+				t.Fatalf("next should advance past first event: first=%.12f next=%.12f", first, next)
+			}
+		})
+	}
+}
+
+func TestInnerPlanetTypedConjunctionExactBoundaryIncludesCurrent(t *testing.T) {
+	cases := []struct {
+		name string
+		seed float64
+		next func(float64) float64
+		last func(float64) float64
+	}{
+		{name: "MercuryInferior", seed: NextMercuryInferiorConjunction(ttjdUTC(2026, 1, 1, 0, 0, 0)), next: NextMercuryInferiorConjunction, last: LastMercuryInferiorConjunction},
+		{name: "MercurySuperior", seed: NextMercurySuperiorConjunction(ttjdUTC(2026, 1, 1, 0, 0, 0)), next: NextMercurySuperiorConjunction, last: LastMercurySuperiorConjunction},
+		{name: "VenusInferior", seed: NextVenusInferiorConjunction(ttjdUTC(2026, 1, 1, 0, 0, 0)), next: NextVenusInferiorConjunction, last: LastVenusInferiorConjunction},
+		{name: "VenusSuperior", seed: NextVenusSuperiorConjunction(ttjdUTC(2026, 1, 1, 0, 0, 0)), next: NextVenusSuperiorConjunction, last: LastVenusSuperiorConjunction},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			queryTT := TD2UT(tc.seed, true)
+			last := tc.last(queryTT)
+			next := tc.next(queryTT)
 			if !sameEventJD(last, tc.seed) {
 				t.Fatalf("last exact boundary mismatch: got %.12f want %.12f", last, tc.seed)
 			}

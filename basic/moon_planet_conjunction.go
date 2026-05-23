@@ -5,6 +5,7 @@ import "math"
 const (
 	moonPlanetConjunctionEstimateN         = 8
 	moonPlanetConjunctionNearQueryDeltaDeg = 3.0
+	moonPlanetConjunctionDirectionEpsilon  = 0.1 / 86400.0
 	moonPlanetConjunctionBracketStepDays   = 0.5
 	moonPlanetConjunctionNearQueryStepDays = 0.25
 	moonPlanetConjunctionNearQueryHalfSpan = 1.5
@@ -94,12 +95,20 @@ func moonPlanetConjunctionPeriodDays(planet MoonPlanetConjunctionPlanet) float64
 	}
 }
 
+func moonPlanetConjunctionBeforeOrEqual(eventUT, queryTT float64) bool {
+	return eventUTQueryTTDelta(eventUT, queryTT) <= moonPlanetConjunctionDirectionEpsilon
+}
+
+func moonPlanetConjunctionAfterOrEqual(eventUT, queryTT float64) bool {
+	return eventUTQueryTTDelta(eventUT, queryTT) >= -moonPlanetConjunctionDirectionEpsilon
+}
+
 func moonPlanetConjunctionInDirection(eventUT, queryTT float64, direction int) bool {
 	switch direction {
 	case -1:
-		return eventUTQueryBeforeOrEqual(eventUT, queryTT)
+		return moonPlanetConjunctionBeforeOrEqual(eventUT, queryTT)
 	case 1:
-		return eventUTQueryAfterOrEqual(eventUT, queryTT)
+		return moonPlanetConjunctionAfterOrEqual(eventUT, queryTT)
 	default:
 		return true
 	}
@@ -182,12 +191,12 @@ func moonPlanetConjunctionCollectLocalEvent(result *moonPlanetConjunctionLocalRe
 	if math.IsNaN(eventUT) {
 		return
 	}
-	if eventUTQueryBeforeOrEqual(eventUT, queryTT) {
+	if moonPlanetConjunctionBeforeOrEqual(eventUT, queryTT) {
 		if math.IsNaN(result.lastUT) || math.Abs(eventUTQueryTTDelta(eventUT, queryTT)) < math.Abs(eventUTQueryTTDelta(result.lastUT, queryTT)) {
 			result.lastUT = eventUT
 		}
 	}
-	if eventUTQueryAfterOrEqual(eventUT, queryTT) {
+	if moonPlanetConjunctionAfterOrEqual(eventUT, queryTT) {
 		if math.IsNaN(result.nextUT) || math.Abs(eventUTQueryTTDelta(eventUT, queryTT)) < math.Abs(eventUTQueryTTDelta(result.nextUT, queryTT)) {
 			result.nextUT = eventUT
 		}

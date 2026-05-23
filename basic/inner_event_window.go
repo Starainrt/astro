@@ -2,7 +2,11 @@ package basic
 
 import "math"
 
-const innerEventEpsilon = 4.0 / 86400.0
+const (
+	innerEventEpsilon         = 0.1 / 86400.0
+	innerEventWindowPadding   = 4.0 / 86400.0
+	innerEventMaximizeEpsilon = 4.0 / 86400.0
+)
 
 func eventQueryTTAsUT(queryTT float64) float64 {
 	return TD2UT(queryTT, false)
@@ -157,7 +161,7 @@ func maximizeInWindow(start, end, coarseStep float64, coarseFn, exactFn func(flo
 	guess := scanWindowForMax(start, end, coarseStep, coarseFn)
 	left := clampFloat64(guess-coarseStep, start, end)
 	right := clampFloat64(guess+coarseStep, start, end)
-	if right-left <= innerEventEpsilon {
+	if right-left <= innerEventMaximizeEpsilon {
 		return guess
 	}
 	for i := 0; i < 20; i++ {

@@ -2,14 +2,17 @@ package basic
 
 import "math"
 
-const exactEventTolerance = 2.0 / 86400.0
+const (
+	exactEventTolerance     = 2.0 / 86400.0
+	exactQueryTTToleranceUT = 0.1 / 86400.0
+)
 
 func sameEventJD(a, b float64) bool {
 	return math.Abs(a-b) <= exactEventTolerance
 }
 
 func sameEventUTQueryTT(eventUT, queryTT float64) bool {
-	return math.Abs(eventUTQueryTTDelta(eventUT, queryTT)) <= exactEventTolerance
+	return math.Abs(eventUTQueryTTDelta(eventUT, queryTT)) <= exactQueryTTToleranceUT
 }
 
 func closestEventUTToQueryTT(queryTT, best float64, candidates ...float64) float64 {
