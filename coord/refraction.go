@@ -9,6 +9,7 @@ import (
 // AtmosphericRefractionFromTrueAltitude 真高度角折射修正 / atmospheric refraction from true altitude.
 //
 // 输入真高度角，返回应加到真高度角上的大气折射修正量，单位度。
+// Takes true altitude and returns the atmospheric-refraction correction to be added to it, in degrees.
 func AtmosphericRefractionFromTrueAltitude(trueAltitude, pressureHPa, temperatureC float64) float64 {
 	return basic.RefractionFromTrueAltitude(trueAltitude, pressureHPa, temperatureC)
 }
@@ -16,6 +17,7 @@ func AtmosphericRefractionFromTrueAltitude(trueAltitude, pressureHPa, temperatur
 // AtmosphericRefractionFromApparentAltitude 视高度角折射修正 / atmospheric refraction from apparent altitude.
 //
 // 输入视高度角，返回对应的大气折射修正量，单位度。
+// Takes apparent altitude and returns the corresponding atmospheric-refraction correction, in degrees.
 func AtmosphericRefractionFromApparentAltitude(apparentAltitude, pressureHPa, temperatureC float64) float64 {
 	return basic.RefractionFromApparentAltitude(apparentAltitude, pressureHPa, temperatureC)
 }
@@ -23,6 +25,7 @@ func AtmosphericRefractionFromApparentAltitude(apparentAltitude, pressureHPa, te
 // ApparentAltitude 真高度角转视高度角 / apparent altitude from true altitude.
 //
 // 输入真高度角，返回加入标准大气折射后的视高度角，单位度。
+// Takes true altitude and returns the apparent altitude after applying standard atmospheric refraction, in degrees.
 func ApparentAltitude(trueAltitude, pressureHPa, temperatureC float64) float64 {
 	return basic.ApparentAltitude(trueAltitude, pressureHPa, temperatureC)
 }
@@ -30,6 +33,7 @@ func ApparentAltitude(trueAltitude, pressureHPa, temperatureC float64) float64 {
 // TrueAltitude 视高度角转真高度角 / true altitude from apparent altitude.
 //
 // 输入视高度角，返回去除大气折射后的真高度角，单位度。
+// Takes apparent altitude and returns the true altitude after removing atmospheric refraction, in degrees.
 func TrueAltitude(apparentAltitude, pressureHPa, temperatureC float64) float64 {
 	return basic.TrueAltitude(apparentAltitude, pressureHPa, temperatureC)
 }

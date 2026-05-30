@@ -39,6 +39,9 @@ func HourAngle(date time.Time, lon float64) float64 {
 // date 负责提供地方平太阳时日期与时区，原有钟面时间会被 meanSolarHours 替换；
 // meanSolarHours 为地方平太阳时钟面读数，单位小时，例如 9.5 表示地方平太阳时 09:30。
 // 返回对应的视太阳时角，单位度，上午为负，下午为正。
+// date provides the local mean-solar date and timezone, while its clock fields are replaced by meanSolarHours.
+// meanSolarHours is the local mean-solar clock reading in hours, for example 9.5 for 09:30.
+// Returns the corresponding apparent-solar hour angle in degrees, negative in the morning and positive in the afternoon.
 func MeanSolarHourAngle(date time.Time, meanSolarHours float64) float64 {
 	if !isFinite(meanSolarHours) {
 		return math.NaN()
@@ -52,6 +55,9 @@ func MeanSolarHourAngle(date time.Time, meanSolarHours float64) float64 {
 // zoneTimeHours 为 date 所在时区下的钟面读数，单位小时；lon 为当地经度，东正西负。
 // 返回该区时在给定经度上对应的视太阳时角，单位度，上午为负，下午为正。
 // date 提供民用日期和时区；其原有钟面时间会被 zoneTimeHours 替换。
+// zoneTimeHours is the civil clock reading in the timezone carried by date, in hours; lon is east-positive longitude.
+// Returns the apparent-solar hour angle for that civil time and longitude, in degrees, negative in the morning and positive in the afternoon.
+// date provides the civil date and timezone, and its original clock fields are replaced by zoneTimeHours.
 func ZoneTimeHourAngle(date time.Time, lon, zoneTimeHours float64) float64 {
 	if !isFinite(zoneTimeHours) || !isFinite(lon) {
 		return math.NaN()
@@ -79,6 +85,7 @@ func HorizontalHourLineAngle(lat, hourAngle float64) float64 {
 // HorizontalHourLineAngleAt 水平日晷时线角 / horizontal sundial hour-line angle.
 //
 // 先按给定时刻和经度求瞬时视太阳时角，再结合纬度返回水平日晷的时线角。
+// First derives the apparent-solar hour angle for the supplied instant and longitude, then returns the horizontal-dial hour-line angle for the given latitude.
 func HorizontalHourLineAngleAt(date time.Time, lon, lat float64) float64 {
 	return HorizontalHourLineAngle(lat, HourAngle(date, lon))
 }

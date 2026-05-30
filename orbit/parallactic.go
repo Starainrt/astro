@@ -9,6 +9,7 @@ import (
 // ParallacticAngle 轨道目标视差角（天顶方向角） / orbit-target parallactic angle.
 //
 // 返回轨道目标在观测者所在地的视差角，单位度；`observerLon` 东经为正，`observerLat` 北纬为正，`observerHeight` 单位米。
+// Returns the parallactic angle of the orbital target for the observing site, in degrees. `observerLon` is east-positive, `observerLat` is north-positive, and `observerHeight` is in meters.
 func ParallacticAngle(date time.Time, elements Elements, observerLon, observerLat, observerHeight float64) float64 {
 	position := ApparentTopocentricEquatorial(date, elements, observerLon, observerLat, observerHeight)
 	return basic.ParallacticAngleByHourAngle(

@@ -50,6 +50,10 @@ const (
 // 返回 农历月，日，是否闰月以及文字描述
 // 按现行农历GB/T 33661-2017算法计算，推荐使用年限为[1929-3000]年
 // 古代由于定朔定气误差此处计算会与古时不符
+// Inputs are civil year, month, day, and timezone offset in hours.
+// Returns the lunar year, month, day, leap-month flag, and text description.
+// The current GB/T 33661-2017 lunar-calendar convention is recommended for years 1929-3000.
+// For ancient dates, the result may differ from historical practice because computed new-moon and solar-term reconstructions are approximate for ancient dates.
 func Lunar(year, month, day int, timezone float64) (int, int, int, bool, string) {
 	return basic.GetLunar(year, month, day, timezone/24.0)
 }
@@ -62,6 +66,12 @@ func Lunar(year, month, day int, timezone float64) (int, int, int, bool, string)
 // 由于农历还未到鼠年，故应当传入Solar(2019,12,30,false)
 // 按现行农历GB/T 33661-2017算法计算，推荐使用年限为[1929-3000]年
 // 古代由于定朔定气误差此处计算会与古时不符
+// Inputs are the civil-year proxy of the lunar year, lunar month, lunar day, leap-month flag, and timezone offset in hours.
+// Returns the corresponding civil time.
+// The lunar year parameter follows the civil year containing the lunar New Year of that cycle.
+// For example, the last day of the Ji-Hai year corresponds to 2020-01-24, but should still be passed as `Solar(2019, 12, 30, false, ...)`.
+// The current GB/T 33661-2017 lunar-calendar convention is recommended for years 1929-3000.
+// For ancient dates, the result may differ from historical practice because computed new-moon and solar-term reconstructions are approximate for ancient dates.
 func Solar(year, month, day int, leap bool, timezone float64) time.Time {
 	jde := basic.GetSolar(year, month, day, leap, timezone/24.0)
 	zone := time.FixedZone("CST", int(timezone*3600))
@@ -74,6 +84,11 @@ func Solar(year, month, day int, leap bool, timezone float64) time.Time {
 // 支持年份：[-103,3000]
 // [-103,1912] 按照古代历法提供的农历信息
 // (1912,3000]按现行农历GB/T 33661-2017算法计算
+// Input is a civil `time.Time`.
+// Returns a `Time` value carrying the lunar-calendar information.
+// Supported years are [-103, 3000].
+// Years [-103, 1912] use the historical-calendar tables included in this package.
+// Years (1912, 3000] use the current GB/T 33661-2017 lunar-calendar convention.
 func SolarToLunar(date time.Time) (Time, error) {
 	return innerSolarToLunar(date)
 }
@@ -84,6 +99,11 @@ func SolarToLunar(date time.Time) (Time, error) {
 // 支持年份：[-103,3000]
 // [-103,1912] 按照古代历法提供的农历信息
 // (1912,3000]按现行农历GB/T 33661-2017算法计算
+// Inputs are the civil year, month, and day.
+// Returns a `Time` value carrying the lunar-calendar information.
+// Supported years are [-103, 3000].
+// Years [-103, 1912] use the historical-calendar tables included in this package.
+// Years (1912, 3000] use the current GB/T 33661-2017 lunar-calendar convention.
 func SolarToLunarByYMD(year, month, day int) (Time, error) {
 	return innerSolarToLunarByYMD(year, month, day)
 }
@@ -165,6 +185,14 @@ func transformModenLunar2Time(date time.Time, year, month, day int, leap bool, d
 // 年号+农历月中文描述+农历日中文描述
 // 年号+农历月中文描述+干支日中文描述
 // 支持年份：[-103,3000]
+// Input is a lunar-date description such as `二零二零年正月初一`, `元丰六年十月十二`, or `元嘉二十七年七月庚午日`.
+// Returns all matching `Time` results with both civil and lunar information.
+// The parser accepts these forms:
+// lunar year text + lunar month text + lunar day text
+// lunar year text + lunar month text + sexagenary day text
+// era name + lunar month text + lunar day text
+// era name + lunar month text + sexagenary day text
+// Supported years are [-103, 3000].
 func LunarToSolar(desc string) ([]Time, error) {
 	dates, err := innerParseLunar(desc)
 	if err != nil {
@@ -189,6 +217,12 @@ func LunarToSolar(desc string) ([]Time, error) {
 // 支持年份：[-103,3000]
 // [-103,1912] 按照古代历法提供的农历信息,注意，这里农历月份代表的是以当时的历法推定的农历月与正月的距离，正月为1，二月为2，依次类推，闰月显示所闰月
 // (1912,3000]按现行农历GB/T 33661-2017算法计算
+// Deprecated: use LunarToSolarByYMD.
+// Inputs are lunar year, month, day, and the leap-month flag.
+// Returns a `Time` value carrying both civil and lunar information.
+// Supported years are [-103, 3000].
+// For years [-103, 1912], the lunar month index follows the historical calendar in force at that time, counted from the first month of that year.
+// Years (1912, 3000] use the current GB/T 33661-2017 lunar-calendar convention.
 func LunarToSolarSingle(year, month, day int, leap bool) (Time, error) {
 	return LunarToSolarByYMD(year, month, day, leap)
 }
@@ -199,6 +233,11 @@ func LunarToSolarSingle(year, month, day int, leap bool) (Time, error) {
 // 支持年份：[-103,3000]
 // [-103,1912] 按照古代历法提供的农历信息,注意，这里农历月份代表的是以当时的历法推定的农历月与正月的距离，正月为1，二月为2，依次类推，闰月显示所闰月
 // (1912,3000]按现行农历GB/T 33661-2017算法计算
+// Inputs are lunar year, month, day, and the leap-month flag.
+// Returns a `Time` value carrying both civil and lunar information.
+// Supported years are [-103, 3000].
+// For years [-103, 1912], the lunar month index follows the historical calendar in force at that time, counted from the first month of that year.
+// Years (1912, 3000] use the current GB/T 33661-2017 lunar-calendar convention.
 func LunarToSolarByYMD(year, month, day int, leap bool) (Time, error) {
 	if year < -103 || year > 9999 {
 		return Time{}, fmt.Errorf("年份超出范围")
@@ -218,6 +257,7 @@ func LunarToSolarByYMD(year, month, day int, leap bool) (Time, error) {
 // JieQi 节气时刻（北京时间） / solar term instant in Beijing time.
 //
 // 返回传入年份、节气对应的北京时间节气时间。
+// Returns the Beijing-time instant of the requested solar term in the supplied year.
 func JieQi(year, term int) time.Time {
 	calcJde := basic.GetJQTime(year, term)
 	zone := time.FixedZone("CST", 8*3600)
@@ -227,6 +267,7 @@ func JieQi(year, term int) time.Time {
 // WuHou 物候时刻（北京时间） / pentad instant in Beijing time.
 //
 // 返回传入年份、物候对应的北京时间物候时间。
+// Returns the Beijing-time instant of the requested pentad in the supplied year.
 func WuHou(year, term int) time.Time {
 	calcJde := basic.GetWuHouTime(year, term)
 	zone := time.FixedZone("CST", 8*3600)

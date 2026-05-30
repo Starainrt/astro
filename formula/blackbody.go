@@ -18,6 +18,8 @@ const (
 // 返回：
 //
 //	峰值波长，单位米
+//
+// Returns the wavelength of maximum emission in meters for a blackbody at the supplied temperature.
 func WienPeakWavelength(temperatureK float64) float64 {
 	if temperatureK <= 0 || math.IsNaN(temperatureK) || math.IsInf(temperatureK, 0) {
 		return math.NaN()
@@ -32,6 +34,8 @@ func WienPeakWavelength(temperatureK float64) float64 {
 // 返回：
 //
 //	单位面积总出射度，单位 W/m^2
+//
+// Returns the total radiant exitance in W/m^2 for a blackbody at the supplied temperature.
 func StefanBoltzmannFlux(temperatureK float64) float64 {
 	if temperatureK < 0 || math.IsNaN(temperatureK) || math.IsInf(temperatureK, 0) {
 		return math.NaN()
@@ -47,6 +51,8 @@ func StefanBoltzmannFlux(temperatureK float64) float64 {
 // 返回：
 //
 //	谱辐亮度，单位 W·sr^-1·m^-3
+//
+// Returns spectral radiance in W·sr^-1·m^-3 at the supplied wavelength and temperature.
 //
 // 例：
 //

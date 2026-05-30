@@ -8,7 +8,10 @@ import (
 const visualBinaryDeg = 180 / math.Pi
 const visualBinaryRad = math.Pi / 180
 
-// VisualBinaryElements 视双星轨道要素，采用《天文算法》第 55 章的经典口径。
+// VisualBinaryElements 视双星轨道要素 / visual-binary orbital elements.
+//
+// 采用《天文算法》第 55 章的经典口径。
+// Uses the classical convention described in Chapter 55 of Astronomical Algorithms.
 type VisualBinaryElements struct {
 	PeriodYears        float64 // 周期 P，单位平太阳年 / orbital period in mean solar years.
 	PeriastronYear     float64 // 过近星点时刻 T，采用带小数的年 / epoch of periastron as a decimal year.
@@ -19,7 +22,7 @@ type VisualBinaryElements struct {
 	PeriastronArgument float64 // 近星点角距 ω，单位度 / argument of periastron in degrees.
 }
 
-// VisualBinaryPosition 视双星在天球上的计算结果。
+// VisualBinaryPosition 视双星在天球上的计算结果 / computed sky-plane position of a visual binary.
 type VisualBinaryPosition struct {
 	Year             float64 // 计算使用的小数年 / decimal year used for the evaluation.
 	MeanAnomaly      float64 // 平近点角 M，单位度 / mean anomaly in degrees.
@@ -41,6 +44,7 @@ func VisualBinary(date time.Time, elements VisualBinaryElements) VisualBinaryPos
 // VisualBinaryByYear 视双星位置（按小数年） / visual binary position by decimal year.
 //
 // 返回给定小数年对应的视双星位置角和角距离。
+// Returns the position angle and apparent separation for the supplied decimal year.
 func VisualBinaryByYear(year float64, elements VisualBinaryElements) VisualBinaryPosition {
 	if !validVisualBinaryElements(year, elements) {
 		return invalidVisualBinaryPosition(year)

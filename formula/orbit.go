@@ -11,6 +11,8 @@ import "math"
 //
 //	会合周期，单位与输入相同
 //
+// Returns the synodic period in the same unit as the two input periods.
+//
 // 例：
 //
 //	// 地球与金星的会合周期，单位天

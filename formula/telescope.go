@@ -12,6 +12,8 @@ const darkAdaptedPupilDiameterMM = 7.0
 // 返回：
 //
 //	集光力比值，等于 (diameter1MM / diameter2MM)^2
+//
+// Returns the light-gathering power ratio, equal to (diameter1MM / diameter2MM)^2.
 func LightGatheringPowerRatio(diameter1MM, diameter2MM float64) float64 {
 	if diameter1MM <= 0 || diameter2MM <= 0 ||
 		math.IsNaN(diameter1MM) || math.IsInf(diameter1MM, 0) ||
@@ -28,6 +30,8 @@ func LightGatheringPowerRatio(diameter1MM, diameter2MM float64) float64 {
 // 返回：
 //
 //	Dawes 极限，单位角秒
+//
+// Returns the Dawes limit in arcseconds for the supplied aperture.
 func DawesLimitArcsec(diameterMM float64) float64 {
 	if diameterMM <= 0 || math.IsNaN(diameterMM) || math.IsInf(diameterMM, 0) {
 		return math.NaN()
@@ -42,6 +46,8 @@ func DawesLimitArcsec(diameterMM float64) float64 {
 // 返回：
 //
 //	Rayleigh 极限，单位角秒
+//
+// Returns the Rayleigh limit in arcseconds for the supplied aperture.
 func RayleighLimitArcsec(diameterMM float64) float64 {
 	if diameterMM <= 0 || math.IsNaN(diameterMM) || math.IsInf(diameterMM, 0) {
 		return math.NaN()
@@ -57,6 +63,8 @@ func RayleighLimitArcsec(diameterMM float64) float64 {
 // 返回：
 //
 //	经验极限星等；这是经验值，不包含天空背景、倍率、透过率和观测经验修正
+//
+// Returns an empirical limiting magnitude estimate. It does not account for sky background, magnification, transmission, or observer skill.
 //
 // 例：
 //

@@ -15,6 +15,12 @@ import (
 //
 // 坐标系沿本章通用约定：x 轴位于盘面内且保持水平，y 轴沿盘面最大坡度向上，
 // x 正向为右侧，y 正向为上坡方向。
+// Latitude is geographic latitude, north positive. PlaneNormalAzimuth is the azimuth of the dial-plane normal,
+// measured from north toward east. PlaneNormalZenithDistance is the zenith distance of the plane normal:
+// 0 degrees for a horizontal dial and 90 degrees for a vertical dial. StylusLength is the length of the direct stylus normal to the plane.
+//
+// The plane coordinates follow the chapter convention: the x axis lies in the plane and remains horizontal,
+// the y axis follows the steepest upward direction in the plane, x positive points to the right, and y positive points upslope.
 type PlanarDial struct {
 	Latitude                  float64
 	PlaneNormalAzimuth        float64
@@ -27,6 +33,9 @@ type PlanarDial struct {
 // X/Y 为影尖在盘面坐标系中的坐标；DenominatorQ 对应书中公式里的 Q；
 // SunAboveHorizon 表示太阳在地平线上方；PlaneIlluminated 表示盘面被太阳照亮；
 // Illuminated 为前两者同时满足。
+// X/Y are the shadow-tip coordinates in the dial-plane coordinate system. DenominatorQ is the Q term from the book formula.
+// SunAboveHorizon reports whether the Sun is above the horizon. PlaneIlluminated reports whether sunlight reaches the dial plane.
+// Illuminated is true only when both conditions are satisfied.
 type PlanarShadowPoint struct {
 	X                float64
 	Y                float64
@@ -41,6 +50,9 @@ type PlanarShadowPoint struct {
 // CenterX/CenterY 为日晷中心（极轴晷针固定点）坐标；PolarStylusLength 为极轴晷针长度；
 // PolarStylusPlaneAngle 为极轴晷针与盘面的夹角。HasFiniteCenter 为 false 时，
 // 表示极轴晷针与盘面平行，中心退化到无穷远处。
+// CenterX/CenterY are the coordinates of the dial center, where the polar stylus is fixed. PolarStylusLength is the polar-stylus length.
+// PolarStylusPlaneAngle is the angle between the polar stylus and the dial plane. When HasFiniteCenter is false,
+// the polar stylus is parallel to the plane and the center degenerates to infinity.
 type PlanarGeometry struct {
 	CenterX               float64
 	CenterY               float64
@@ -53,6 +65,8 @@ type PlanarGeometry struct {
 //
 // Start/End 均为有符号太阳时角，单位度，满足 Start <= End。
 // 约定取值范围为 [-180, 180]，用于表达一天中的一段连续时角。
+// Start and End are signed solar hour angles in degrees, with Start <= End.
+// The intended range is [-180, 180], representing one continuous hour-angle span within a day.
 type HourAngleInterval struct {
 	Start float64
 	End   float64
@@ -61,6 +75,7 @@ type HourAngleInterval struct {
 // DeclinationCurveSample 赤纬曲线采样点 / sampled point on a declination curve.
 //
 // HourAngle 为采样点的太阳时角；Point 为该时角下的影尖位置与照明状态。
+// HourAngle is the solar hour angle of the sample. Point gives the shadow-tip position and illumination state at that hour angle.
 type DeclinationCurveSample struct {
 	HourAngle float64
 	Point     PlanarShadowPoint
@@ -69,6 +84,7 @@ type DeclinationCurveSample struct {
 // DeclinationCurveSegment 赤纬曲线分段 / one illuminated segment of a declination curve.
 //
 // Interval 给出该段对应的连续受光时角范围；Samples 为该段内部的采样点。
+// Interval gives the continuous illuminated hour-angle span for the segment. Samples contains the sampled points within that segment.
 type DeclinationCurveSegment struct {
 	Declination float64
 	Interval    HourAngleInterval
@@ -80,6 +96,9 @@ type DeclinationCurveSegment struct {
 // Date 为该采样点对应的绝对时刻；其日期来自输入 date，钟面时间由调用参数指定。
 // Declination 为该采样瞬时的太阳赤纬；HourAngle 为换算后的视太阳时角；
 // Point 为该时角下的影尖位置与照明状态。
+// Date is the absolute instant of the sample. Its date comes from the input date, while the clock reading comes from the call parameters.
+// Declination is the solar declination at that instant. HourAngle is the derived apparent-solar hour angle.
+// Point gives the shadow-tip position and illumination state at that hour angle.
 type TimeLineSample struct {
 	Date        time.Time
 	Declination float64
@@ -90,6 +109,7 @@ type TimeLineSample struct {
 // EquatorialNorthDial 北面赤道日晷 / north-face equatorial dial.
 //
 // 北半球时用于春夏半年（太阳赤纬为正）；南半球也可直接按公式使用。
+// In the northern hemisphere this face is used during the spring and summer half-year, when solar declination is positive. The same formula can also be used directly in the southern hemisphere.
 func EquatorialNorthDial(latitude, stylusLength float64) PlanarDial {
 	return PlanarDial{
 		Latitude:                  latitude,
@@ -102,6 +122,7 @@ func EquatorialNorthDial(latitude, stylusLength float64) PlanarDial {
 // EquatorialSouthDial 南面赤道日晷 / south-face equatorial dial.
 //
 // 北半球时用于秋冬半年（太阳赤纬为负）；南半球也可直接按公式使用。
+// In the northern hemisphere this face is used during the autumn and winter half-year, when solar declination is negative. The same formula can also be used directly in the southern hemisphere.
 func EquatorialSouthDial(latitude, stylusLength float64) PlanarDial {
 	return PlanarDial{
 		Latitude:                  latitude,
@@ -114,6 +135,7 @@ func EquatorialSouthDial(latitude, stylusLength float64) PlanarDial {
 // HorizontalDial 水平日晷 / horizontal dial.
 //
 // 该构造器采用经典水平日晷的坐标约定：x 轴向东，y 轴向北。
+// This constructor follows the classical horizontal-dial coordinate convention: the x axis points east and the y axis points north.
 func HorizontalDial(latitude, stylusLength float64) PlanarDial {
 	return PlanarDial{
 		Latitude:                  latitude,
@@ -127,6 +149,8 @@ func HorizontalDial(latitude, stylusLength float64) PlanarDial {
 //
 // planeNormalAzimuth 为盘面法线方位角，按正北为 0°、向东增加。
 // 例如：朝南墙面取 180°，朝东墙面取 90°。
+// planeNormalAzimuth is the azimuth of the plane normal, measured from north toward east.
+// For example, use 180 degrees for a south-facing wall and 90 degrees for an east-facing wall.
 func VerticalDial(latitude, planeNormalAzimuth, stylusLength float64) PlanarDial {
 	return PlanarDial{
 		Latitude:                  latitude,
@@ -136,7 +160,10 @@ func VerticalDial(latitude, planeNormalAzimuth, stylusLength float64) PlanarDial
 	}
 }
 
-// Geometry 返回平面日晷的中心与极轴晷针几何量 / returns the derived planar geometry.
+// Geometry 平面日晷中心与极轴晷针几何量 / derived planar-dial center and polar-stylus geometry.
+//
+// 返回平面日晷的中心与极轴晷针几何量。
+// Returns the derived center and polar-stylus geometry of the planar dial.
 func (dial PlanarDial) Geometry() PlanarGeometry {
 	geometry := PlanarGeometry{
 		CenterX:               math.NaN(),
@@ -167,6 +194,7 @@ func (dial PlanarDial) Geometry() PlanarGeometry {
 // ShadowPointByHourAngleDeclination 影尖坐标（按时角与赤纬） / shadow point from hour angle and declination.
 //
 // hourAngle 为有符号太阳时角，上午为负，下午为正；declination 为太阳赤纬，单位度。
+// hourAngle is the signed solar hour angle, negative in the morning and positive in the afternoon. declination is solar declination in degrees.
 func (dial PlanarDial) ShadowPointByHourAngleDeclination(hourAngle, declination float64) PlanarShadowPoint {
 	point := PlanarShadowPoint{
 		X:            math.NaN(),
@@ -194,6 +222,7 @@ func (dial PlanarDial) ShadowPointByHourAngleDeclination(hourAngle, declination 
 // ShadowPointAt 影尖坐标（按绝对时刻） / shadow point at an instant.
 //
 // 直接读取该时刻对应的视太阳时角和瞬时太阳赤纬，并返回平面日晷上的影尖位置。
+// Uses the apparent-solar hour angle and instantaneous solar declination at the supplied instant, and returns the shadow-tip position on the planar dial.
 func (dial PlanarDial) ShadowPointAt(date time.Time, lon float64) PlanarShadowPoint {
 	return dial.ShadowPointByHourAngleDeclination(HourAngle(date, lon), sun.ApparentDec(date))
 }
@@ -202,6 +231,8 @@ func (dial PlanarDial) ShadowPointAt(date time.Time, lon float64) PlanarShadowPo
 //
 // date 应处于目标地点的地方平太阳时区，例如 `MeanSolarTime` 的返回值；其原有钟面时间会被忽略。
 // meanSolarHours 为地方平太阳时钟面读数，单位小时，例如 9.5 表示 09:30。
+// date should already be expressed in the local mean-solar timezone of the site, for example a value returned by `MeanSolarTime`; its original clock fields are ignored.
+// meanSolarHours is the local mean-solar clock reading in hours, for example 9.5 for 09:30.
 func (dial PlanarDial) MeanSolarTimePoint(date time.Time, meanSolarHours float64) PlanarShadowPoint {
 	sampleTime := dateWithClockHours(date, meanSolarHours)
 	declination := sun.ApparentDec(sampleTime)
@@ -211,6 +242,7 @@ func (dial PlanarDial) MeanSolarTimePoint(date time.Time, meanSolarHours float64
 // ZoneTimePoint 区时影尖位置 / shadow point for zone time.
 //
 // date 提供民用日期和时区，原有钟面时间会被忽略；zoneTimeHours 为该时区下的区时钟面读数。
+// date provides the civil date and timezone; its original clock fields are ignored. zoneTimeHours is the civil clock reading in that timezone.
 func (dial PlanarDial) ZoneTimePoint(date time.Time, lon, zoneTimeHours float64) PlanarShadowPoint {
 	sampleTime := dateWithClockHours(date, zoneTimeHours)
 	declination := sun.ApparentDec(sampleTime)
@@ -221,6 +253,8 @@ func (dial PlanarDial) ZoneTimePoint(date time.Time, lon, zoneTimeHours float64)
 //
 // dates 由调用者自行决定取样日期密度，例如每月或每日；每个 date 都应处于目标地点的地方平太阳时区，
 // 例如先通过 `MeanSolarTime` 得到对应地点的地方平太阳时再取其年月日。meanSolarHours 为地方平太阳时钟面读数。
+// dates define the sampling cadence, for example monthly or daily. Each date should already be in the site's local mean-solar timezone,
+// for example by first calling `MeanSolarTime` and then keeping its year, month, and day. meanSolarHours is the local mean-solar clock reading.
 func (dial PlanarDial) MeanSolarTimeLine(dates []time.Time, meanSolarHours float64) []TimeLineSample {
 	if !isFinite(meanSolarHours) {
 		return nil
@@ -244,6 +278,8 @@ func (dial PlanarDial) MeanSolarTimeLine(dates []time.Time, meanSolarHours float
 //
 // dates 由调用者自行决定取样日期密度；zoneTimeHours 为 date 所在时区的区时钟面读数。
 // 每个 date 的原有钟面时间都会被 zoneTimeHours 替换。
+// dates define the sampling cadence. zoneTimeHours is the civil clock reading in the timezone carried by each date.
+// The original clock fields of every date are replaced by zoneTimeHours.
 func (dial PlanarDial) ZoneTimeLine(dates []time.Time, lon, zoneTimeHours float64) []TimeLineSample {
 	if !isFinite(zoneTimeHours) || !isFinite(lon) {
 		return nil
@@ -266,6 +302,7 @@ func (dial PlanarDial) ZoneTimeLine(dates []time.Time, lon, zoneTimeHours float6
 // PlaneIlluminatedHourAngleIntervals 盘面受光时角区间 / plane-illuminated hour-angle intervals.
 //
 // declination 为太阳赤纬，单位度。返回的区间只考虑盘面受光，不判断太阳是否在地平线上方。
+// declination is solar declination in degrees. The returned intervals consider only whether the dial plane is illuminated and do not test whether the Sun is above the horizon.
 func (dial PlanarDial) PlaneIlluminatedHourAngleIntervals(declination float64) []HourAngleInterval {
 	if !dial.isFinite() || !isFinite(declination) {
 		return nil
@@ -277,6 +314,7 @@ func (dial PlanarDial) PlaneIlluminatedHourAngleIntervals(declination float64) [
 // IlluminatedHourAngleIntervals 可见且受光时角区间 / illuminated hour-angle intervals.
 //
 // declination 为太阳赤纬，单位度。结果可直接用于日晷绘图时筛掉无效时线。
+// declination is solar declination in degrees. The result can be used directly to discard invalid hour-line segments in sundial plotting.
 func (dial PlanarDial) IlluminatedHourAngleIntervals(declination float64) []HourAngleInterval {
 	aboveHorizon := SunAboveHorizonHourAngleIntervals(dial.Latitude, declination)
 	planeLit := dial.PlaneIlluminatedHourAngleIntervals(declination)
@@ -287,6 +325,8 @@ func (dial PlanarDial) IlluminatedHourAngleIntervals(declination float64) []Hour
 //
 // declination 为太阳赤纬，单位度；hourAngleStep 为采样步长，单位度，常用值是 15°（每小时一格）。
 // 返回值按受光区间分段，每段都带有精确的时角范围；Samples 只包含区间内部的有效采样点。
+// declination is solar declination in degrees. hourAngleStep is the sampling step in degrees; 15 degrees is a common one-hour spacing.
+// The return value is split by illuminated intervals. Each segment carries the exact hour-angle bounds, and Samples contains only valid interior sample points.
 func (dial PlanarDial) DeclinationCurve(declination, hourAngleStep float64) []DeclinationCurveSegment {
 	if !dial.isFinite() || !isFinite(declination) || !isFinite(hourAngleStep) || hourAngleStep <= 0 {
 		return nil
@@ -315,6 +355,7 @@ func (dial PlanarDial) DeclinationCurve(declination, hourAngleStep float64) []De
 // DeclinationCurveAt 瞬时赤纬曲线采样 / declination-curve samples at an instant.
 //
 // 用 date 对应瞬时太阳赤纬生成日晷分段曲线采样。
+// Builds the segmented declination-curve samples from the instantaneous solar declination at date.
 func (dial PlanarDial) DeclinationCurveAt(date time.Time, hourAngleStep float64) []DeclinationCurveSegment {
 	return dial.DeclinationCurve(sun.ApparentDec(date), hourAngleStep)
 }
@@ -323,6 +364,7 @@ func (dial PlanarDial) DeclinationCurveAt(date time.Time, hourAngleStep float64)
 //
 // latitude 为地理纬度，declination 为太阳赤纬，单位度。结果只反映太阳是否升到地平线上方，
 // 不包含盘面朝向的影响。
+// latitude is geographic latitude and declination is solar declination, both in degrees. The result reflects only whether the Sun is above the horizon and does not include dial-plane orientation.
 func SunAboveHorizonHourAngleIntervals(latitude, declination float64) []HourAngleInterval {
 	if !isFinite(latitude) || !isFinite(declination) {
 		return nil

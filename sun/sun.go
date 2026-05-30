@@ -100,6 +100,8 @@ func DownTime(date time.Time, lon, lat, height float64, aero bool) (time.Time, e
 
 // DownTimeN 截断项日落时刻别名 / deprecated truncated sunset alias.
 //
+// Deprecated: use SetTimeN instead.
+//
 // 参数与 SetTimeN 相同，仅为兼容旧接口保留。
 // Same as SetTimeN and kept only for backward compatibility.
 func DownTimeN(date time.Time, lon, lat, height float64, aero bool, n int) (time.Time, error) {

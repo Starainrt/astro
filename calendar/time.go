@@ -52,6 +52,7 @@ type Time struct {
 // Solar 公历时间 / solar time.
 //
 // 返回内部保存的公历 `time.Time`，不做时区或历法再计算。
+// Returns the stored civil `time.Time` directly, without any further time-zone or calendar conversion.
 func (t Time) Solar() time.Time {
 	return t.solarTime
 }
@@ -59,6 +60,7 @@ func (t Time) Solar() time.Time {
 // Time 公历时间 / solar time.
 //
 // 是 `Solar` 的同义接口，便于把 `calendar.Time` 当作普通时间对象使用。
+// This is an alias of `Solar`, convenient when `calendar.Time` is used as a regular time object.
 func (t Time) Time() time.Time {
 	return t.solarTime
 }
@@ -66,6 +68,7 @@ func (t Time) Time() time.Time {
 // Lunars 农历候选结果 / lunar candidates.
 //
 // 返回全部候选农历结果。
+// Returns all candidate lunar-calendar results.
 func (t Time) Lunars() []LunarTime {
 	return t.lunars
 }
@@ -73,6 +76,7 @@ func (t Time) Lunars() []LunarTime {
 // LunarDesc 农历描述 / lunar descriptions.
 //
 // 返回全部候选结果的农历描述，如开元二年正月初一；若无年号，则返回年份描述，如二零二五年正月初一。
+// Returns the lunar-date descriptions for all candidates. If no era name is available, the year is described directly.
 func (t Time) LunarDesc() []string {
 	var res []string
 	for _, v := range t.lunars {
@@ -84,6 +88,7 @@ func (t Time) LunarDesc() []string {
 // LunarDescWithEmperor 含君主信息的农历描述 / lunar descriptions with emperor.
 //
 // 返回全部候选结果中含有君主信息的农历描述，如唐玄宗 开元二年正月初一；若无年号，则返回年份描述，如二零二五年正月初一。
+// Returns the candidate descriptions with emperor names when available. If no era name is available, the year is described directly.
 func (t Time) LunarDescWithEmperor() []string {
 	var res []string
 	for _, v := range t.lunars {
@@ -95,6 +100,7 @@ func (t Time) LunarDescWithEmperor() []string {
 // LunarDescWithDynasty 含朝代信息的农历描述 / lunar descriptions with dynasty.
 //
 // 返回全部候选结果中含有朝代信息的农历描述，如唐 开元二年正月初一；若无年号，则返回年份描述，如二零二五年正月初一。
+// Returns the candidate descriptions with dynasty names when available. If no era name is available, the year is described directly.
 func (t Time) LunarDescWithDynasty() []string {
 	var res []string
 	for _, v := range t.lunars {
@@ -106,6 +112,7 @@ func (t Time) LunarDescWithDynasty() []string {
 // LunarDescWithDynastyAndEmperor 含朝代与君主信息的农历描述 / lunar descriptions with dynasty and emperor.
 //
 // 返回全部候选结果中含有朝代和君主信息的农历描述，如唐 唐玄宗 开元二年正月初一；若无年号，则返回年份描述，如二零二五年正月初一。
+// Returns the candidate descriptions with both dynasty and emperor names when available. If no era name is available, the year is described directly.
 func (t Time) LunarDescWithDynastyAndEmperor() []string {
 	var res []string
 	for _, v := range t.lunars {
@@ -117,6 +124,7 @@ func (t Time) LunarDescWithDynastyAndEmperor() []string {
 // LunarInfo 农历结构化信息 / structured lunar information.
 //
 // 返回全部候选结果对应的结构化农历信息切片。
+// Returns the structured lunar-calendar information for all candidates.
 func (t Time) LunarInfo() []LunarInfo {
 	var res []LunarInfo
 	for _, v := range t.lunars {
@@ -128,6 +136,7 @@ func (t Time) LunarInfo() []LunarInfo {
 // Eras 朝代、皇帝、年号信息 / era information.
 //
 // 返回全部候选结果对应的朝代、皇帝、年号信息。
+// Returns the dynasty, emperor, and era-name records associated with all candidates.
 func (t Time) Eras() []EraDesc {
 	var res []EraDesc
 	for _, v := range t.lunars {
@@ -139,6 +148,7 @@ func (t Time) Eras() []EraDesc {
 // Lunar 首个农历结果 / first lunar result.
 //
 // 若存在多个候选结果，只返回第一个；无结果时返回零值 `LunarTime`。
+// Returns only the first candidate when multiple results exist. A zero-value `LunarTime` is returned when no result is available.
 func (t Time) Lunar() LunarTime {
 	if len(t.lunars) > 0 {
 		return t.lunars[0]
@@ -149,6 +159,7 @@ func (t Time) Lunar() LunarTime {
 // Add 时间偏移 / add a duration.
 //
 // 返回公历时间偏移后的农历结果。
+// Returns the lunar-calendar result after applying the duration to the stored civil time.
 func (t Time) Add(d time.Duration) Time {
 	if d < time.Second {
 		newT := t.solarTime.Add(d)
@@ -236,6 +247,7 @@ func (l LunarTime) IsLeap() bool {
 // Eras 朝代、皇帝、年号信息 / era information.
 //
 // 返回该农历结果对应的朝代、皇帝、年号信息。
+// Returns the dynasty, emperor, and era-name records associated with this lunar result.
 func (l LunarTime) Eras() []EraDesc {
 	return l.eras
 }
@@ -243,6 +255,7 @@ func (l LunarTime) Eras() []EraDesc {
 // MonthDay 农历月日描述 / lunar month-day description.
 //
 // 获取农历月日描述，如正月初一。此处，十一月表示为冬月，十二月表示为腊月。
+// Returns the lunar month-day description, such as `正月初一`. In this package, month 11 is written as `冬月` and month 12 as `腊月`.
 func (l LunarTime) MonthDay() string {
 	return l.desc
 }
@@ -250,6 +263,7 @@ func (l LunarTime) MonthDay() string {
 // LunarDesc 农历描述 / lunar descriptions.
 //
 // 获取农历描述，如开元二年正月初一，若无年号，则返回年份描述，如二零二五年正月初一。
+// Returns the lunar-date descriptions for this result. If no era name is available, the year is described directly.
 func (l LunarTime) LunarDesc() []string {
 	return l.innerDescWithNianHao(false, false)
 }
@@ -258,6 +272,7 @@ func (l LunarTime) LunarDesc() []string {
 //
 // 获取含有君主信息的农历描述，如唐玄宗 开元二年正月初一，若无年号，则返回年份描述，如二零二五年正月初一。
 // 君主信息仅供参考，多个皇帝用同一个年号的场景，此处不准
+// Returns the lunar-date descriptions with emperor names when available. Emperor names are for reference only and may be ambiguous when multiple emperors used the same era name.
 func (l LunarTime) LunarDescWithEmperor() []string {
 	return l.innerDescWithNianHao(true, false)
 }
@@ -265,6 +280,7 @@ func (l LunarTime) LunarDescWithEmperor() []string {
 // LunarDescWithDynasty 含朝代信息的农历描述 / lunar descriptions with dynasty.
 //
 // 获取含有朝代信息的农历描述，如唐 开元二年正月初一，若无年号，则返回年份描述，如二零二五年正月初一。
+// Returns the lunar-date descriptions with dynasty names when available. If no era name is available, the year is described directly.
 func (l LunarTime) LunarDescWithDynasty() []string {
 	return l.innerDescWithNianHao(false, true)
 }
@@ -273,6 +289,7 @@ func (l LunarTime) LunarDescWithDynasty() []string {
 //
 // 获取含有朝代和君主信息的农历描述，如唐 唐玄宗 开元二年正月初一，若无年号，则返回年份描述，如二零二五年正月初一。
 // 君主信息仅供参考，多个皇帝用同一个年号的场景，此处不准
+// Returns the lunar-date descriptions with both dynasty and emperor names when available. Emperor names are for reference only and may be ambiguous when multiple emperors used the same era name.
 func (l LunarTime) LunarDescWithDynastyAndEmperor() []string {
 	return l.innerDescWithNianHao(true, true)
 }
@@ -299,6 +316,7 @@ func (l LunarTime) innerDescWithNianHao(withEmperor bool, withDynasty bool) []st
 // LunarInfo 农历结构化信息 / structured lunar information.
 //
 // 返回该农历结果对应的结构化农历信息切片；若存在多个并行年号，则会有多条记录。
+// Returns the structured lunar-calendar information for this result. Multiple records are returned when parallel era-name interpretations exist.
 func (l LunarTime) LunarInfo() []LunarInfo {
 	var res []LunarInfo
 	for _, v := range l.eras {

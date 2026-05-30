@@ -25,6 +25,8 @@ var icrsToGalacticMatrix = [3][3]float64{
 // 返回：
 //
 //	赤经 RA，单位度；赤纬 Dec，单位度
+//
+// Returns right ascension and declination in degrees for the supplied ecliptic longitude, latitude, and obliquity.
 func EclipticToEquatorialByObliquity(lon, lat, obliquity float64) Equatorial {
 	sinLon, cosLon := sinCosDeg(lon)
 	sinLat, cosLat := sinCosDeg(lat)
@@ -44,6 +46,8 @@ func EclipticToEquatorialByObliquity(lon, lat, obliquity float64) Equatorial {
 // 返回：
 //
 //	黄经 Lon，单位度；黄纬 Lat，单位度
+//
+// Returns ecliptic longitude and latitude in degrees for the supplied right ascension, declination, and obliquity.
 func EquatorialToEclipticByObliquity(ra, dec, obliquity float64) Ecliptic {
 	sinRA, cosRA := sinCosDeg(ra)
 	sinDec, cosDec := sinCosDeg(dec)
@@ -63,6 +67,8 @@ func EquatorialToEclipticByObliquity(ra, dec, obliquity float64) Ecliptic {
 // 返回：
 //
 //	方位角 Azimuth（正北为0，顺时针增加）、高度角 Altitude、天顶距 Zenith，均为度
+//
+// Returns azimuth, altitude, and zenith distance in degrees from the supplied hour angle, declination, and site latitude.
 func HourAngleDeclinationToHorizontal(hourAngle, declination, latitude float64) Horizontal {
 	sinLatitude, cosLatitude := sinCosDeg(latitude)
 	sinDeclination, cosDeclination := sinCosDeg(declination)
@@ -87,6 +93,8 @@ func HourAngleDeclinationToHorizontal(hourAngle, declination, latitude float64) 
 // 返回：
 //
 //	时角 HourAngle，单位度；赤纬 Declination，单位度
+//
+// Returns hour angle and declination in degrees from the supplied horizontal coordinates and site latitude.
 func HorizontalToHourAngleDeclination(azimuth, altitude, latitude float64) (hourAngle, declination float64) {
 	sinLatitude, cosLatitude := sinCosDeg(latitude)
 	sinAltitude, cosAltitude := sinCosDeg(altitude)
@@ -111,6 +119,8 @@ func HorizontalToHourAngleDeclination(azimuth, altitude, latitude float64) (hour
 //	方位角 Azimuth（正北为0，顺时针增加）、高度角 Altitude、天顶距 Zenith，均为度；
 //	附带返回对应的时角 HourAngle，单位度
 //
+// Returns horizontal coordinates in degrees from local sidereal time, right ascension, declination, and site latitude.
+//
 // 例：
 //
 //	hz := coord.EquatorialToHorizontalByLocalSiderealTime(10.5, 83.6331, 22.0145, 31.2)
@@ -130,6 +140,8 @@ func EquatorialToHorizontalByLocalSiderealTime(localSiderealTimeHours, ra, dec, 
 //
 //	赤经 RA，单位度；赤纬 Dec，单位度
 //
+// Returns right ascension and declination in degrees from local sidereal time and the supplied horizontal coordinates.
+//
 // 例：
 //
 //	eq := coord.HorizontalToEquatorialByLocalSiderealTime(10.5, 128.2, 37.6, 31.2)
@@ -147,6 +159,8 @@ func HorizontalToEquatorialByLocalSiderealTime(localSiderealTimeHours, azimuth, 
 // 返回：
 //
 //	银经 Lon，单位度；银纬 Lat，单位度
+//
+// Returns galactic longitude and latitude in degrees from ICRS right ascension and declination.
 func EquatorialToGalactic(ra, dec float64) Galactic {
 	vector := sphericalToVector(ra, dec)
 	rotated := matrixVectorMul(icrsToGalacticMatrix, vector)
@@ -162,6 +176,8 @@ func EquatorialToGalactic(ra, dec float64) Galactic {
 // 返回：
 //
 //	ICRS 赤经 RA，单位度；ICRS 赤纬 Dec，单位度
+//
+// Returns ICRS right ascension and declination in degrees from galactic longitude and latitude.
 func GalacticToEquatorial(lon, lat float64) Equatorial {
 	vector := sphericalToVector(lon, lat)
 	rotated := matrixTransposeVectorMul(icrsToGalacticMatrix, vector)

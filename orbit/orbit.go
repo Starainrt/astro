@@ -12,13 +12,17 @@ var (
 	ERR_ORBIT_NEVER_SET  = errors.New("ERROR:轨道目标今日永远在地平线上！")
 )
 
-// Elements 日心二体圆锥曲线根数，参考系为 J2000 平黄道/平春分点。
+// Elements 日心二体圆锥曲线根数 / heliocentric two-body conic elements.
+// 参考系为 J2000 平黄道/平春分点。
+// The reference frame is the J2000 mean ecliptic and mean equinox.
 // EpochJD 与 TpJD 使用 TT/TDB 对应的儒略日。
+// EpochJD and TpJD are Julian days on the TT/TDB scale.
 //
 // 经典椭圆根数：A/E/I/Omega/W/M0
 // 近日点形式：Q/E/I/Omega/W/TpJD
 //
 // 线性 rates 仅作用于经典椭圆根数，单位均为每天变化量。
+// The linear rates apply only to the classical elliptical element form and are expressed per day.
 type Elements struct {
 	EpochJD float64 // 历元儒略日（TT/TDB） / epoch Julian day in TT/TDB.
 	A       float64 // 半长径，单位 AU / semi-major axis in AU.
@@ -38,14 +42,20 @@ type Elements struct {
 	MDot     float64 // 平近点角日变化，单位 deg/day / daily rate of M.
 }
 
-// EclipticPosition 黄道球坐标结果，Lon/Lat 单位度，Distance 单位 AU。
+// EclipticPosition 黄道球坐标结果 / ecliptic spherical coordinates.
+//
+// Lon/Lat 单位度，Distance 单位 AU。
+// Lon/Lat are in degrees and Distance is in AU.
 type EclipticPosition struct {
 	Lon      float64
 	Lat      float64
 	Distance float64
 }
 
-// EquatorialPosition 赤道球坐标结果，RA/Dec 单位度，Distance 单位 AU。
+// EquatorialPosition 赤道球坐标结果 / equatorial spherical coordinates.
+//
+// RA/Dec 单位度，Distance 单位 AU。
+// RA/Dec are in degrees and Distance is in AU.
 type EquatorialPosition struct {
 	RA       float64
 	Dec      float64
@@ -55,6 +65,7 @@ type EquatorialPosition struct {
 // MeanMotion 平均角速度 / mean motion.
 //
 // 返回平均角速度，单位度/日；对抛物线和双曲线轨道返回 `NaN`。
+// Returns mean motion in degrees per day. Parabolic and hyperbolic cases return `NaN`.
 func MeanMotion(elements Elements) float64 {
 	return basic.OrbitMeanMotion(toBasicElements(elements))
 }
@@ -62,6 +73,7 @@ func MeanMotion(elements Elements) float64 {
 // MeanAnomaly 平近点角 / mean anomaly.
 //
 // 返回给定时刻的平近点角，单位度；对抛物线和双曲线轨道返回 `NaN`。
+// Returns mean anomaly in degrees for the supplied instant. Parabolic and hyperbolic cases return `NaN`.
 func MeanAnomaly(date time.Time, elements Elements) float64 {
 	return basic.OrbitMeanAnomaly(ttJulianDay(date), toBasicElements(elements))
 }
@@ -69,6 +81,7 @@ func MeanAnomaly(date time.Time, elements Elements) float64 {
 // TrueAnomaly 真近点角 / true anomaly.
 //
 // 返回给定时刻的真近点角，单位度。
+// Returns true anomaly in degrees for the supplied instant.
 func TrueAnomaly(date time.Time, elements Elements) float64 {
 	return basic.OrbitTrueAnomaly(ttJulianDay(date), toBasicElements(elements))
 }
@@ -76,6 +89,7 @@ func TrueAnomaly(date time.Time, elements Elements) float64 {
 // HeliocentricEclipticJ2000 日心 J2000 平黄道坐标 / heliocentric J2000 ecliptic coordinates.
 //
 // 返回黄经、黄纬和距离；角度单位度，距离单位 AU。
+// Returns heliocentric J2000 ecliptic longitude, latitude, and distance. Angles are in degrees and distance is in AU.
 func HeliocentricEclipticJ2000(date time.Time, elements Elements) EclipticPosition {
 	lon, lat, distance := basic.OrbitHeliocentricEclipticJ2000(ttJulianDay(date), toBasicElements(elements))
 	return EclipticPosition{Lon: lon, Lat: lat, Distance: distance}
@@ -84,6 +98,7 @@ func HeliocentricEclipticJ2000(date time.Time, elements Elements) EclipticPositi
 // HeliocentricEcliptic 日心历元黄道坐标 / heliocentric ecliptic coordinates of date.
 //
 // 返回历元黄经、黄纬和距离；角度单位度，距离单位 AU。
+// Returns heliocentric ecliptic longitude, latitude, and distance of date. Angles are in degrees and distance is in AU.
 func HeliocentricEcliptic(date time.Time, elements Elements) EclipticPosition {
 	lon, lat, distance := basic.OrbitHeliocentricEcliptic(ttJulianDay(date), toBasicElements(elements))
 	return EclipticPosition{Lon: lon, Lat: lat, Distance: distance}
@@ -92,6 +107,7 @@ func HeliocentricEcliptic(date time.Time, elements Elements) EclipticPosition {
 // GeocentricEclipticJ2000 地心 J2000 平黄道坐标 / geocentric J2000 ecliptic coordinates.
 //
 // 返回黄经、黄纬和距离；角度单位度，距离单位 AU。
+// Returns geocentric J2000 ecliptic longitude, latitude, and distance. Angles are in degrees and distance is in AU.
 func GeocentricEclipticJ2000(date time.Time, elements Elements) EclipticPosition {
 	lon, lat, distance := basic.OrbitGeocentricEclipticJ2000(ttJulianDay(date), toBasicElements(elements))
 	return EclipticPosition{Lon: lon, Lat: lat, Distance: distance}
@@ -100,6 +116,7 @@ func GeocentricEclipticJ2000(date time.Time, elements Elements) EclipticPosition
 // GeocentricEcliptic 地心历元黄道坐标 / geocentric ecliptic coordinates of date.
 //
 // 返回历元黄经、黄纬和距离；角度单位度，距离单位 AU。
+// Returns geocentric ecliptic longitude, latitude, and distance of date. Angles are in degrees and distance is in AU.
 func GeocentricEcliptic(date time.Time, elements Elements) EclipticPosition {
 	lon, lat, distance := basic.OrbitGeocentricEcliptic(ttJulianDay(date), toBasicElements(elements))
 	return EclipticPosition{Lon: lon, Lat: lat, Distance: distance}
@@ -108,6 +125,7 @@ func GeocentricEcliptic(date time.Time, elements Elements) EclipticPosition {
 // GeocentricEquatorialJ2000 地心 J2000 平赤道坐标 / geocentric J2000 equatorial coordinates.
 //
 // 返回赤经、赤纬和距离；角度单位度，距离单位 AU。
+// Returns geocentric J2000 right ascension, declination, and distance. Angles are in degrees and distance is in AU.
 func GeocentricEquatorialJ2000(date time.Time, elements Elements) EquatorialPosition {
 	ra, dec, distance := basic.OrbitGeocentricEquatorialJ2000(ttJulianDay(date), toBasicElements(elements))
 	return EquatorialPosition{RA: ra, Dec: dec, Distance: distance}
@@ -116,6 +134,7 @@ func GeocentricEquatorialJ2000(date time.Time, elements Elements) EquatorialPosi
 // GeocentricEquatorial 地心历元平赤道坐标 / geocentric equatorial coordinates of date.
 //
 // 返回历元赤经、赤纬和距离；角度单位度，距离单位 AU。
+// Returns geocentric right ascension, declination, and distance of date. Angles are in degrees and distance is in AU.
 func GeocentricEquatorial(date time.Time, elements Elements) EquatorialPosition {
 	ra, dec, distance := basic.OrbitGeocentricEquatorial(ttJulianDay(date), toBasicElements(elements))
 	return EquatorialPosition{RA: ra, Dec: dec, Distance: distance}
@@ -124,6 +143,7 @@ func GeocentricEquatorial(date time.Time, elements Elements) EquatorialPosition 
 // AstrometricGeocentricEquatorialJ2000 地心测算 J2000 赤道坐标 / astrometric geocentric J2000 equatorial coordinates.
 //
 // 返回加入光行时修正后的地心 J2000 赤经、赤纬和距离；角度单位度，距离单位 AU。
+// Returns astrometric geocentric J2000 right ascension, declination, and distance after light-time correction. Angles are in degrees and distance is in AU.
 func AstrometricGeocentricEquatorialJ2000(date time.Time, elements Elements) EquatorialPosition {
 	ra, dec, distance := basic.OrbitAstrometricGeocentricEquatorialJ2000(ttJulianDay(date), toBasicElements(elements))
 	return EquatorialPosition{RA: ra, Dec: dec, Distance: distance}
@@ -132,6 +152,7 @@ func AstrometricGeocentricEquatorialJ2000(date time.Time, elements Elements) Equ
 // ApparentGeocentricEcliptic 地心视黄道坐标 / apparent geocentric ecliptic coordinates.
 //
 // 返回加入光行时与章动修正后的地心视黄经、黄纬和距离；角度单位度，距离单位 AU。
+// Returns apparent geocentric ecliptic longitude, latitude, and distance after light-time and nutation corrections. Angles are in degrees and distance is in AU.
 func ApparentGeocentricEcliptic(date time.Time, elements Elements) EclipticPosition {
 	lon, lat, distance := basic.OrbitApparentGeocentricEcliptic(ttJulianDay(date), toBasicElements(elements))
 	return EclipticPosition{Lon: lon, Lat: lat, Distance: distance}
@@ -140,6 +161,7 @@ func ApparentGeocentricEcliptic(date time.Time, elements Elements) EclipticPosit
 // ApparentGeocentricEquatorial 地心视赤道坐标 / apparent geocentric equatorial coordinates.
 //
 // 返回加入光行时与章动修正后的地心视赤经、赤纬和距离；角度单位度，距离单位 AU。
+// Returns apparent geocentric right ascension, declination, and distance after light-time and nutation corrections. Angles are in degrees and distance is in AU.
 func ApparentGeocentricEquatorial(date time.Time, elements Elements) EquatorialPosition {
 	ra, dec, distance := basic.OrbitApparentGeocentricEquatorial(ttJulianDay(date), toBasicElements(elements))
 	return EquatorialPosition{RA: ra, Dec: dec, Distance: distance}
@@ -149,6 +171,7 @@ func ApparentGeocentricEquatorial(date time.Time, elements Elements) EquatorialP
 //
 // 返回加入光行时、章动和站心修正后的视赤经、赤纬和距离；
 // `observerLon` 东经为正，`observerLat` 北纬为正，`observerHeight` 单位米。
+// Returns apparent topocentric right ascension, declination, and distance after light-time, nutation, and topocentric corrections.
 func ApparentTopocentricEquatorial(date time.Time, elements Elements, observerLon, observerLat, observerHeight float64) EquatorialPosition {
 	ra, dec, distance := basic.OrbitApparentTopocentricEquatorial(ttJulianDay(date), observerLon, observerLat, observerHeight, toBasicElements(elements))
 	return EquatorialPosition{RA: ra, Dec: dec, Distance: distance}
@@ -157,6 +180,7 @@ func ApparentTopocentricEquatorial(date time.Time, elements Elements, observerLo
 // Altitude 视高度角 / apparent altitude.
 //
 // 返回目标在观测者所在地的视高度角，单位度；经度东正西负，纬度北正南负，海拔单位米。
+// Returns the apparent altitude of the target for the observing site, in degrees. Longitude is east-positive, latitude is north-positive, and height is in meters.
 func Altitude(date time.Time, elements Elements, observerLon, observerLat, observerHeight float64) float64 {
 	jde := basic.Date2JDE(date)
 	return basic.OrbitHeight(jde, observerLon, observerLat, observationTimezone(date), observerHeight, toBasicElements(elements))
@@ -165,6 +189,7 @@ func Altitude(date time.Time, elements Elements, observerLon, observerLat, obser
 // Zenith 天顶距 / zenith distance.
 //
 // 返回目标在观测者所在地的天顶距，单位度。
+// Returns the zenith distance of the target for the observing site, in degrees.
 func Zenith(date time.Time, elements Elements, observerLon, observerLat, observerHeight float64) float64 {
 	return 90 - Altitude(date, elements, observerLon, observerLat, observerHeight)
 }
@@ -172,6 +197,7 @@ func Zenith(date time.Time, elements Elements, observerLon, observerLat, observe
 // Azimuth 视方位角 / apparent azimuth.
 //
 // 返回目标在观测者所在地的视方位角，按正北为 0°、向东增加。
+// Returns the apparent azimuth of the target for the observing site, measured from north toward east.
 func Azimuth(date time.Time, elements Elements, observerLon, observerLat, observerHeight float64) float64 {
 	jde := basic.Date2JDE(date)
 	return basic.OrbitAzimuth(jde, observerLon, observerLat, observationTimezone(date), observerHeight, toBasicElements(elements))
@@ -180,6 +206,7 @@ func Azimuth(date time.Time, elements Elements, observerLon, observerLat, observ
 // HourAngle 站心视时角 / topocentric hour angle.
 //
 // 返回目标在观测者所在地的站心视时角，单位度。
+// Returns the apparent topocentric hour angle of the target for the observing site, in degrees.
 func HourAngle(date time.Time, elements Elements, observerLon, observerLat, observerHeight float64) float64 {
 	jde := basic.Date2JDE(date)
 	return basic.OrbitHourAngle(jde, observerLon, observerLat, observationTimezone(date), observerHeight, toBasicElements(elements))
@@ -188,6 +215,7 @@ func HourAngle(date time.Time, elements Elements, observerLon, observerLat, obse
 // CulminationTime 中天时刻 / culmination time.
 //
 // 返回目标在给定当地日期内的中天时刻，结果保持输入 `date` 的时区。
+// Returns the culmination time of the target on the supplied local civil day. The result keeps the timezone of `date`.
 func CulminationTime(date time.Time, elements Elements, observerLon, observerLat, observerHeight float64) time.Time {
 	if date.Hour() > 12 {
 		date = date.Add(-12 * time.Hour)
@@ -201,6 +229,7 @@ func CulminationTime(date time.Time, elements Elements, observerLon, observerLat
 // RiseTime 升起时刻 / rise time.
 //
 // 返回目标在给定当地日期内的升起时刻；`aero=true` 时加入标准大气折射修正。
+// Returns the rise time of the target on the supplied local civil day. When `aero` is true, standard atmospheric refraction is included.
 func RiseTime(date time.Time, elements Elements, observerLon, observerLat, observerHeight float64, aero bool) (time.Time, error) {
 	var aeroFloat float64
 	if aero {
@@ -218,6 +247,7 @@ func RiseTime(date time.Time, elements Elements, observerLon, observerLat, obser
 // SetTime 落下时刻 / set time.
 //
 // 返回目标在给定当地日期内的落下时刻；`aero=true` 时加入标准大气折射修正。
+// Returns the set time of the target on the supplied local civil day. When `aero` is true, standard atmospheric refraction is included.
 func SetTime(date time.Time, elements Elements, observerLon, observerLat, observerHeight float64, aero bool) (time.Time, error) {
 	var aeroFloat float64
 	if aero {

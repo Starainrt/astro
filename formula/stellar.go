@@ -16,6 +16,8 @@ const (
 // 返回：
 //
 //	总光度，单位瓦特
+//
+// Returns stellar luminosity in watts from radius and effective temperature.
 func LuminosityFromRadiusTemperature(radiusM, temperatureK float64) float64 {
 	if radiusM <= 0 || temperatureK <= 0 ||
 		math.IsNaN(radiusM) || math.IsInf(radiusM, 0) ||
@@ -33,6 +35,8 @@ func LuminosityFromRadiusTemperature(radiusM, temperatureK float64) float64 {
 // 返回：
 //
 //	恒星半径，单位米
+//
+// Returns stellar radius in meters from luminosity and effective temperature.
 func RadiusFromLuminosityTemperature(luminosityW, temperatureK float64) float64 {
 	if luminosityW <= 0 || temperatureK <= 0 ||
 		math.IsNaN(luminosityW) || math.IsInf(luminosityW, 0) ||
@@ -54,6 +58,8 @@ func RadiusFromLuminosityTemperature(luminosityW, temperatureK float64) float64 
 // 返回：
 //
 //	恒星有效温度，单位开尔文
+//
+// Returns stellar effective temperature in kelvin from luminosity and radius.
 func EffectiveTemperatureFromLuminosityRadius(luminosityW, radiusM float64) float64 {
 	if luminosityW <= 0 || radiusM <= 0 ||
 		math.IsNaN(luminosityW) || math.IsInf(luminosityW, 0) ||
@@ -75,6 +81,8 @@ func EffectiveTemperatureFromLuminosityRadius(luminosityW, radiusM float64) floa
 // 返回：
 //
 //	总光度，单位为太阳光度 L☉
+//
+// Returns luminosity in solar units from radius in solar radii and effective temperature.
 func LuminositySolarFromRadiusTemperature(radiusSolar, temperatureK float64) float64 {
 	if radiusSolar <= 0 || temperatureK <= 0 ||
 		math.IsNaN(radiusSolar) || math.IsInf(radiusSolar, 0) ||
@@ -92,6 +100,8 @@ func LuminositySolarFromRadiusTemperature(radiusSolar, temperatureK float64) flo
 // 返回：
 //
 //	恒星半径，单位为太阳半径 R☉
+//
+// Returns radius in solar radii from luminosity in solar units and effective temperature.
 func RadiusSolarFromLuminosityTemperature(luminositySolar, temperatureK float64) float64 {
 	if luminositySolar <= 0 || temperatureK <= 0 ||
 		math.IsNaN(luminositySolar) || math.IsInf(luminositySolar, 0) ||
@@ -109,6 +119,8 @@ func RadiusSolarFromLuminosityTemperature(luminositySolar, temperatureK float64)
 // 返回：
 //
 //	恒星有效温度，单位开尔文
+//
+// Returns stellar effective temperature in kelvin from luminosity and radius expressed in solar units.
 //
 // 例：
 //
@@ -128,6 +140,8 @@ func EffectiveTemperatureFromLuminositySolarRadius(luminositySolar, radiusSolar 
 // 返回：
 //
 //	太阳有效温度，单位开尔文
+//
+// Returns the adopted solar effective temperature constant in kelvin.
 func SolarEffectiveTemperature() float64 {
 	return solarEffectiveTempK
 }

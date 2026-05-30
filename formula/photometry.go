@@ -9,6 +9,8 @@ import "math"
 // 返回：
 //
 //	距离模数 m-M
+//
+// Returns the distance modulus m-M for the supplied distance in parsecs.
 func DistanceModulus(distanceParsec float64) float64 {
 	if distanceParsec <= 0 || math.IsNaN(distanceParsec) || math.IsInf(distanceParsec, 0) {
 		return math.NaN()
@@ -24,6 +26,8 @@ func DistanceModulus(distanceParsec float64) float64 {
 // 返回：
 //
 //	视星等 m
+//
+// Returns apparent magnitude from absolute magnitude and distance.
 func ApparentMagnitudeFromAbsolute(absoluteMagnitude, distanceParsec float64) float64 {
 	modulus := DistanceModulus(distanceParsec)
 	if math.IsNaN(modulus) {
@@ -40,6 +44,8 @@ func ApparentMagnitudeFromAbsolute(absoluteMagnitude, distanceParsec float64) fl
 // 返回：
 //
 //	绝对星等 M
+//
+// Returns absolute magnitude from apparent magnitude and distance.
 func AbsoluteMagnitudeFromApparent(apparentMagnitude, distanceParsec float64) float64 {
 	modulus := DistanceModulus(distanceParsec)
 	if math.IsNaN(modulus) {

@@ -208,6 +208,7 @@ func SetTime(date time.Time, lon, lat, height float64, aero bool) (time.Time, er
 // LastConjunction 上一次合日 / previous conjunction with the Sun.
 //
 // 返回 date 当前或之前最近一次与太阳的合日时刻，结果保持 date 的时区。
+// Returns the nearest conjunction with the Sun at or before date, keeping date's time zone.
 func LastConjunction(date time.Time) time.Time {
 	jde := basic.TD2UT(basic.Date2JDE(date.UTC()), true)
 	return basic.JDE2DateByZone(basic.LastMercuryConjunction(jde), date.Location(), false)
@@ -216,6 +217,7 @@ func LastConjunction(date time.Time) time.Time {
 // NextConjunction 下一次合日 / next conjunction with the Sun.
 //
 // 返回 date 当前或之后最近一次与太阳的合日时刻，结果保持 date 的时区。
+// Returns the nearest conjunction with the Sun at or after date, keeping date's time zone.
 func NextConjunction(date time.Time) time.Time {
 	jde := basic.TD2UT(basic.Date2JDE(date.UTC()), true)
 	return basic.JDE2DateByZone(basic.NextMercuryConjunction(jde), date.Location(), false)
@@ -224,6 +226,7 @@ func NextConjunction(date time.Time) time.Time {
 // LastInferiorConjunction 上一次下合 / previous inferior conjunction.
 //
 // 返回 date 当前或之前最近一次下合时刻，结果保持 date 的时区。
+// Returns the nearest inferior conjunction at or before date, keeping date's time zone.
 func LastInferiorConjunction(date time.Time) time.Time {
 	jde := basic.TD2UT(basic.Date2JDE(date.UTC()), true)
 	return basic.JDE2DateByZone(basic.LastMercuryInferiorConjunctionInclusive(jde), date.Location(), false)
@@ -232,6 +235,7 @@ func LastInferiorConjunction(date time.Time) time.Time {
 // NextInferiorConjunction 下一次下合 / next inferior conjunction.
 //
 // 返回 date 当前或之后最近一次下合时刻，结果保持 date 的时区。
+// Returns the nearest inferior conjunction at or after date, keeping date's time zone.
 func NextInferiorConjunction(date time.Time) time.Time {
 	jde := basic.TD2UT(basic.Date2JDE(date.UTC()), true)
 	return basic.JDE2DateByZone(basic.NextMercuryInferiorConjunctionInclusive(jde), date.Location(), false)
@@ -240,6 +244,7 @@ func NextInferiorConjunction(date time.Time) time.Time {
 // LastSuperiorConjunction 上一次上合 / previous superior conjunction.
 //
 // 返回 date 当前或之前最近一次上合时刻，结果保持 date 的时区。
+// Returns the nearest superior conjunction at or before date, keeping date's time zone.
 func LastSuperiorConjunction(date time.Time) time.Time {
 	jde := basic.TD2UT(basic.Date2JDE(date.UTC()), true)
 	return basic.JDE2DateByZone(basic.LastMercurySuperiorConjunctionInclusive(jde), date.Location(), false)
@@ -248,6 +253,7 @@ func LastSuperiorConjunction(date time.Time) time.Time {
 // NextSuperiorConjunction 下一次上合 / next superior conjunction.
 //
 // 返回 date 当前或之后最近一次上合时刻，结果保持 date 的时区。
+// Returns the nearest superior conjunction at or after date, keeping date's time zone.
 func NextSuperiorConjunction(date time.Time) time.Time {
 	jde := basic.TD2UT(basic.Date2JDE(date.UTC()), true)
 	return basic.JDE2DateByZone(basic.NextMercurySuperiorConjunctionInclusive(jde), date.Location(), false)
@@ -256,6 +262,7 @@ func NextSuperiorConjunction(date time.Time) time.Time {
 // LastRetrograde 上一次留 / previous stationary point.
 //
 // 返回 date 当前或之前最近一次留时刻，不区分顺转逆还是逆转顺，结果保持 date 的时区。
+// Returns the nearest stationary point at or before date, regardless of the direction change, keeping date's time zone.
 func LastRetrograde(date time.Time) time.Time {
 	jde := basic.TD2UT(basic.Date2JDE(date.UTC()), true)
 	return basic.JDE2DateByZone(basic.LastMercuryRetrogradeInclusive(jde), date.Location(), false)
@@ -264,6 +271,7 @@ func LastRetrograde(date time.Time) time.Time {
 // NextRetrograde 下一次留 / next stationary point.
 //
 // 返回 date 当前或之后最近一次留时刻，不区分顺转逆还是逆转顺，结果保持 date 的时区。
+// Returns the nearest stationary point at or after date, regardless of the direction change, keeping date's time zone.
 func NextRetrograde(date time.Time) time.Time {
 	jde := basic.TD2UT(basic.Date2JDE(date.UTC()), true)
 	return basic.JDE2DateByZone(basic.NextMercuryRetrogradeInclusive(jde), date.Location(), false)
@@ -272,6 +280,7 @@ func NextRetrograde(date time.Time) time.Time {
 // LastProgradeToRetrograde 上一次顺行转逆行留 / previous station from prograde to retrograde.
 //
 // 返回 date 当前或之前最近一次由顺行转为逆行的留时刻，结果保持 date 的时区。
+// Returns the nearest station at or before date where motion changes from prograde to retrograde, keeping date's time zone.
 func LastProgradeToRetrograde(date time.Time) time.Time {
 	jde := basic.TD2UT(basic.Date2JDE(date.UTC()), true)
 	return basic.JDE2DateByZone(basic.LastMercuryProgradeToRetrogradeInclusive(jde), date.Location(), false)
@@ -280,6 +289,7 @@ func LastProgradeToRetrograde(date time.Time) time.Time {
 // NextProgradeToRetrograde 下一次顺行转逆行留 / next station from prograde to retrograde.
 //
 // 返回 date 当前或之后最近一次由顺行转为逆行的留时刻，结果保持 date 的时区。
+// Returns the nearest station at or after date where motion changes from prograde to retrograde, keeping date's time zone.
 func NextProgradeToRetrograde(date time.Time) time.Time {
 	jde := basic.TD2UT(basic.Date2JDE(date.UTC()), true)
 	return basic.JDE2DateByZone(basic.NextMercuryProgradeToRetrogradeInclusive(jde), date.Location(), false)
@@ -288,6 +298,7 @@ func NextProgradeToRetrograde(date time.Time) time.Time {
 // LastRetrogradeToPrograde 上一次逆行转顺行留 / previous station from retrograde to prograde.
 //
 // 返回 date 当前或之前最近一次由逆行转为顺行的留时刻，结果保持 date 的时区。
+// Returns the nearest station at or before date where motion changes from retrograde to prograde, keeping date's time zone.
 func LastRetrogradeToPrograde(date time.Time) time.Time {
 	jde := basic.TD2UT(basic.Date2JDE(date.UTC()), true)
 	return basic.JDE2DateByZone(basic.LastMercuryRetrogradeToProgradeInclusive(jde), date.Location(), false)
@@ -296,6 +307,7 @@ func LastRetrogradeToPrograde(date time.Time) time.Time {
 // NextRetrogradeToPrograde 下一次逆行转顺行留 / next station from retrograde to prograde.
 //
 // 返回 date 当前或之后最近一次由逆行转为顺行的留时刻，结果保持 date 的时区。
+// Returns the nearest station at or after date where motion changes from retrograde to prograde, keeping date's time zone.
 func NextRetrogradeToPrograde(date time.Time) time.Time {
 	jde := basic.TD2UT(basic.Date2JDE(date.UTC()), true)
 	return basic.JDE2DateByZone(basic.NextMercuryRetrogradeToProgradeInclusive(jde), date.Location(), false)
@@ -304,6 +316,7 @@ func NextRetrogradeToPrograde(date time.Time) time.Time {
 // LastGreatestElongation 上一次大距 / previous greatest elongation.
 //
 // 返回 date 当前或之前最近一次大距时刻，不区分东西大距，结果保持 date 的时区。
+// Returns the nearest greatest elongation at or before date, regardless of east or west, keeping date's time zone.
 func LastGreatestElongation(date time.Time) time.Time {
 	jde := basic.TD2UT(basic.Date2JDE(date.UTC()), true)
 	return basic.JDE2DateByZone(basic.LastMercuryGreatestElongationInclusive(jde), date.Location(), false)
@@ -312,6 +325,7 @@ func LastGreatestElongation(date time.Time) time.Time {
 // NextGreatestElongation 下一次大距 / next greatest elongation.
 //
 // 返回 date 当前或之后最近一次大距时刻，不区分东西大距，结果保持 date 的时区。
+// Returns the nearest greatest elongation at or after date, regardless of east or west, keeping date's time zone.
 func NextGreatestElongation(date time.Time) time.Time {
 	jde := basic.TD2UT(basic.Date2JDE(date.UTC()), true)
 	return basic.JDE2DateByZone(basic.NextMercuryGreatestElongationInclusive(jde), date.Location(), false)
@@ -320,6 +334,7 @@ func NextGreatestElongation(date time.Time) time.Time {
 // LastGreatestElongationEast 上一次东大距 / previous greatest eastern elongation.
 //
 // 返回 date 当前或之前最近一次东大距时刻，结果保持 date 的时区。
+// Returns the nearest eastern greatest elongation at or before date, keeping date's time zone.
 func LastGreatestElongationEast(date time.Time) time.Time {
 	jde := basic.TD2UT(basic.Date2JDE(date.UTC()), true)
 	return basic.JDE2DateByZone(basic.LastMercuryGreatestElongationEastInclusive(jde), date.Location(), false)
@@ -328,6 +343,7 @@ func LastGreatestElongationEast(date time.Time) time.Time {
 // NextGreatestElongationEast 下一次东大距 / next greatest eastern elongation.
 //
 // 返回 date 当前或之后最近一次东大距时刻，结果保持 date 的时区。
+// Returns the nearest eastern greatest elongation at or after date, keeping date's time zone.
 func NextGreatestElongationEast(date time.Time) time.Time {
 	jde := basic.TD2UT(basic.Date2JDE(date.UTC()), true)
 	return basic.JDE2DateByZone(basic.NextMercuryGreatestElongationEastInclusive(jde), date.Location(), false)
@@ -336,6 +352,7 @@ func NextGreatestElongationEast(date time.Time) time.Time {
 // LastGreatestElongationWest 上一次西大距 / previous greatest western elongation.
 //
 // 返回 date 当前或之前最近一次西大距时刻，结果保持 date 的时区。
+// Returns the nearest western greatest elongation at or before date, keeping date's time zone.
 func LastGreatestElongationWest(date time.Time) time.Time {
 	jde := basic.TD2UT(basic.Date2JDE(date.UTC()), true)
 	return basic.JDE2DateByZone(basic.LastMercuryGreatestElongationWestInclusive(jde), date.Location(), false)
@@ -344,6 +361,7 @@ func LastGreatestElongationWest(date time.Time) time.Time {
 // NextGreatestElongationWest 下一次西大距 / next greatest western elongation.
 //
 // 返回 date 当前或之后最近一次西大距时刻，结果保持 date 的时区。
+// Returns the nearest western greatest elongation at or after date, keeping date's time zone.
 func NextGreatestElongationWest(date time.Time) time.Time {
 	jde := basic.TD2UT(basic.Date2JDE(date.UTC()), true)
 	return basic.JDE2DateByZone(basic.NextMercuryGreatestElongationWestInclusive(jde), date.Location(), false)
