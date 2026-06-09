@@ -81,13 +81,15 @@ func Solar(year, month, day int, leap bool, timezone float64) time.Time {
 // SolarToLunar 公历转农历 / solar to lunar calendar.
 // 传入 公历年月日
 // 返回 包含农历信息的Time结构体
-// 支持年份：[-103,3000]
-// [-103,1912] 按照古代历法提供的农历信息
+// 支持年份：[-721,3000]
+// [-721,-221] 按默认先秦古历，[-220,-104] 秦汉颛顼历有效日期按复原算法，-104年交接后及[-103,1912]按照古代历法提供的农历信息
 // (1912,3000]按现行农历GB/T 33661-2017算法计算
 // Input is a civil `time.Time`.
 // Returns a `Time` value carrying the lunar-calendar information.
-// Supported years are [-103, 3000].
-// Years [-103, 1912] use the historical-calendar tables included in this package.
+// Supported civil years are [-721, 3000].
+// Years [-721, -221] use the default pre-Qin ancient calendars.
+// Years [-220, -104] use the reconstructed Qin and early-Han Zhuanxu calendar where that calendar has data.
+// Late -104 and years [-103, 1912] use the historical-calendar tables included in this package.
 // Years (1912, 3000] use the current GB/T 33661-2017 lunar-calendar convention.
 func SolarToLunar(date time.Time) (Time, error) {
 	return innerSolarToLunar(date)
@@ -96,13 +98,15 @@ func SolarToLunar(date time.Time) (Time, error) {
 // SolarToLunarByYMD 公历转农历（按年月日） / solar to lunar calendar by year, month, and day.
 // 传入 公历年月日
 // 返回 包含农历信息的Time结构体
-// 支持年份：[-103,3000]
-// [-103,1912] 按照古代历法提供的农历信息
+// 支持年份：[-721,3000]
+// [-721,-221] 按默认先秦古历，[-220,-104] 秦汉颛顼历有效日期按复原算法，-104年交接后及[-103,1912]按照古代历法提供的农历信息
 // (1912,3000]按现行农历GB/T 33661-2017算法计算
 // Inputs are the civil year, month, and day.
 // Returns a `Time` value carrying the lunar-calendar information.
-// Supported years are [-103, 3000].
-// Years [-103, 1912] use the historical-calendar tables included in this package.
+// Supported civil years are [-721, 3000].
+// Years [-721, -221] use the default pre-Qin ancient calendars.
+// Years [-220, -104] use the reconstructed Qin and early-Han Zhuanxu calendar where that calendar has data.
+// Late -104 and years [-103, 1912] use the historical-calendar tables included in this package.
 // Years (1912, 3000] use the current GB/T 33661-2017 lunar-calendar convention.
 func SolarToLunarByYMD(year, month, day int) (Time, error) {
 	return innerSolarToLunarByYMD(year, month, day)
@@ -110,11 +114,31 @@ func SolarToLunarByYMD(year, month, day int) (Time, error) {
 
 func innerSolarToLunar(date time.Time) (Time, error) {
 	date = date.In(getCst())
-	if date.Year() < -103 || date.Year() > 9999 {
+	if date.Year() < ancientMinYear || date.Year() > 9999 {
 		return Time{}, fmt.Errorf("日期超出范围")
 	}
 	if err := basic.ValidateCivilDate(date.Year(), int(date.Month()), float64(date.Day())); err != nil {
 		return Time{}, fmt.Errorf("公历日期不存在")
+	}
+	if date.Year() < qinHanMinSolarYear {
+		if result, ok := innerSolarToLunarAncientByYMD(date.Year(), int(date.Month()), date.Day(), date); ok {
+			return result, nil
+		}
+		return Time{}, fmt.Errorf("无法获取农历信息")
+	}
+	if date.Year() <= qinHanMaxYear {
+		if result, ok := innerSolarToLunarQinHan(date); ok {
+			return tagCalendar(result, AncientCalendarQinHan, ancientCalendarName(AncientCalendarQinHan)), nil
+		}
+		if date.Year() == qinHanMinSolarYear {
+			if result, ok := innerSolarToLunarAncientByYMD(date.Year(), int(date.Month()), date.Day(), date); ok {
+				return result, nil
+			}
+		}
+		if date.Year() == qinHanMaxYear {
+			return innerSolarToLunarHanQing(date), nil
+		}
+		return Time{}, fmt.Errorf("无法获取农历信息")
 	}
 	if date.Year() <= 1912 {
 		return innerSolarToLunarHanQing(date), nil
@@ -131,7 +155,7 @@ func innerSolarToLunar(date time.Time) (Time, error) {
 }
 
 func innerSolarToLunarByYMD(year, month, day int) (Time, error) {
-	if year < -103 || year > 9999 {
+	if year < ancientMinYear || year > 9999 {
 		return Time{}, fmt.Errorf("日期超出范围")
 	}
 	if month < 1 || month > 12 {
@@ -142,6 +166,26 @@ func innerSolarToLunarByYMD(year, month, day int) (Time, error) {
 	}
 	if err := basic.ValidateCivilDate(year, month, float64(day)); err != nil {
 		return Time{}, fmt.Errorf("公历日期不存在")
+	}
+	if year < qinHanMinSolarYear {
+		if result, ok := innerSolarToLunarAncientByYMD(year, month, day, time.Time{}); ok {
+			return result, nil
+		}
+		return Time{}, fmt.Errorf("无法获取农历信息")
+	}
+	if year <= qinHanMaxYear {
+		if result, ok := innerSolarToLunarQinHanByYMD(year, month, day); ok {
+			return tagCalendar(result, AncientCalendarQinHan, ancientCalendarName(AncientCalendarQinHan)), nil
+		}
+		if year == qinHanMinSolarYear {
+			if result, ok := innerSolarToLunarAncientByYMD(year, month, day, time.Time{}); ok {
+				return result, nil
+			}
+		}
+		if year == qinHanMaxYear {
+			return innerSolarToLunarHanQingByYMD(year, month, day, time.Time{}), nil
+		}
+		return Time{}, fmt.Errorf("无法获取农历信息")
 	}
 	if year <= 1912 {
 		return innerSolarToLunarHanQingByYMD(year, month, day, time.Time{}), nil
@@ -184,7 +228,7 @@ func transformModenLunar2Time(date time.Time, year, month, day int, leap bool, d
 // 农历年中文描述+农历月中文描述+干支日中文描述
 // 年号+农历月中文描述+农历日中文描述
 // 年号+农历月中文描述+干支日中文描述
-// 支持年份：[-103,3000]
+// 支持年份：[-721,3000]
 // Input is a lunar-date description such as `二零二零年正月初一`, `元丰六年十月十二`, or `元嘉二十七年七月庚午日`.
 // Returns all matching `Time` results with both civil and lunar information.
 // The parser accepts these forms:
@@ -192,7 +236,7 @@ func transformModenLunar2Time(date time.Time, year, month, day int, leap bool, d
 // lunar year text + lunar month text + sexagenary day text
 // era name + lunar month text + lunar day text
 // era name + lunar month text + sexagenary day text
-// Supported years are [-103, 3000].
+// Supported civil result years are [-721, 3000]. Boundary lunar year -722 may be accepted when the result still falls inside that civil range.
 func LunarToSolar(desc string) ([]Time, error) {
 	dates, err := innerParseLunar(desc)
 	if err != nil {
@@ -214,13 +258,16 @@ func LunarToSolar(desc string) ([]Time, error) {
 // Deprecated: 推荐使用LunarToSolarByYMD
 // 传入 农历年月日，是否闰月
 // 传出 包含公里农历信息的Time结构体
-// 支持年份：[-103,3000]
-// [-103,1912] 按照古代历法提供的农历信息,注意，这里农历月份代表的是以当时的历法推定的农历月与正月的距离，正月为1，二月为2，依次类推，闰月显示所闰月
+// 支持年份：公历结果在[-721,3000]范围内，边界农历年可回溯到-722
+// [-721,-221] 按默认先秦古历，[-220,-105] 按秦汉颛顼历复原算法，-104年重叠日期按默认公历交接选择，[-103,1912] 按照古代历法提供的农历信息,注意，这里农历月份代表的是以当时的历法推定的农历月与正月的距离，正月为1，二月为2，依次类推，闰月显示所闰月
 // (1912,3000]按现行农历GB/T 33661-2017算法计算
 // Deprecated: use LunarToSolarByYMD.
 // Inputs are lunar year, month, day, and the leap-month flag.
 // Returns a `Time` value carrying both civil and lunar information.
-// Supported years are [-103, 3000].
+// Supported civil result years are [-721, 3000]. Boundary lunar year -722 may be accepted when the result still falls inside that civil range.
+// Years [-721, -221] use the default pre-Qin ancient calendars.
+// Years [-220, -105] use the reconstructed Qin and early-Han Zhuanxu calendar.
+// Ambiguous -104 lunar dates follow the default civil handoff; use LunarToSolarByYMDWithCalendar for a specific ancient calendar.
 // For years [-103, 1912], the lunar month index follows the historical calendar in force at that time, counted from the first month of that year.
 // Years (1912, 3000] use the current GB/T 33661-2017 lunar-calendar convention.
 func LunarToSolarSingle(year, month, day int, leap bool) (Time, error) {
@@ -230,17 +277,37 @@ func LunarToSolarSingle(year, month, day int, leap bool) (Time, error) {
 // LunarToSolarByYMD 农历转公历（按年月日） / lunar to solar calendar by year, month, and day.
 // 传入 农历年月日，是否闰月
 // 传出 包含公里农历信息的Time结构体
-// 支持年份：[-103,3000]
-// [-103,1912] 按照古代历法提供的农历信息,注意，这里农历月份代表的是以当时的历法推定的农历月与正月的距离，正月为1，二月为2，依次类推，闰月显示所闰月
+// 支持年份：公历结果在[-721,3000]范围内，边界农历年可回溯到-722
+// [-721,-221] 按默认先秦古历，[-220,-105] 按秦汉颛顼历复原算法，-104年重叠日期按默认公历交接选择，[-103,1912] 按照古代历法提供的农历信息,注意，这里农历月份代表的是以当时的历法推定的农历月与正月的距离，正月为1，二月为2，依次类推，闰月显示所闰月
 // (1912,3000]按现行农历GB/T 33661-2017算法计算
 // Inputs are lunar year, month, day, and the leap-month flag.
 // Returns a `Time` value carrying both civil and lunar information.
-// Supported years are [-103, 3000].
+// Supported civil result years are [-721, 3000]. Boundary lunar year -722 may be accepted when the result still falls inside that civil range.
+// Years [-721, -221] use the default pre-Qin ancient calendars.
+// Years [-220, -105] use the reconstructed Qin and early-Han Zhuanxu calendar.
+// Ambiguous -104 lunar dates follow the default civil handoff; use LunarToSolarByYMDWithCalendar for a specific ancient calendar.
 // For years [-103, 1912], the lunar month index follows the historical calendar in force at that time, counted from the first month of that year.
 // Years (1912, 3000] use the current GB/T 33661-2017 lunar-calendar convention.
 func LunarToSolarByYMD(year, month, day int, leap bool) (Time, error) {
-	if year < -103 || year > 9999 {
+	if year < ancientBoundaryMinYear || year > 9999 {
 		return Time{}, fmt.Errorf("年份超出范围")
+	}
+	if year < qinHanMinYear {
+		if result, ok := lunarToSolarAncientDefault(year, month, day, leap); ok {
+			return result, nil
+		}
+		return Time{}, fmt.Errorf("无法获取农历信息")
+	}
+	if year <= qinHanMaxYear {
+		if year == qinHanMaxYear {
+			if result, ok := lunarToSolarHanQingDefault(year, month, day, leap); ok {
+				return result, nil
+			}
+		}
+		if result, ok := lunarToSolarQinHan(year, month, day, leap); ok {
+			return tagCalendar(result, AncientCalendarQinHan, ancientCalendarName(AncientCalendarQinHan)), nil
+		}
+		return Time{}, fmt.Errorf("无法获取农历信息")
 	}
 	if year <= 1912 {
 		date := rapidSolarHan2Qing(year, month, day, leap, yearDiffLunar(year, month, day), nil)
@@ -254,6 +321,25 @@ func LunarToSolarByYMD(year, month, day int, leap bool) (Time, error) {
 	return SolarToLunar(date)
 }
 
+func lunarToSolarHanQingDefault(year, month, day int, leap bool) (Time, bool) {
+	date := rapidSolarHan2Qing(year, month, day, leap, yearDiffLunar(year, month, day), nil)
+	if date.IsZero() {
+		return Time{}, false
+	}
+	result, err := SolarToLunar(date)
+	if err != nil {
+		return Time{}, false
+	}
+	lunar := result.Lunar()
+	if lunar.CalendarSystem() == AncientCalendarQinHan {
+		return Time{}, false
+	}
+	if lunar.LunarYear() != year || lunar.LunarMonth() != month || lunar.LunarDay() != day || lunar.IsLeap() != leap {
+		return Time{}, false
+	}
+	return result, true
+}
+
 // JieQi 节气时刻（北京时间） / solar term instant in Beijing time.
 //
 // 返回传入年份、节气对应的北京时间节气时间。
@@ -262,6 +348,28 @@ func JieQi(year, term int) time.Time {
 	calcJde := basic.GetJQTime(year, term)
 	zone := time.FixedZone("CST", 8*3600)
 	return basic.JDE2DateByZone(calcJde, zone, false)
+}
+
+// CalendricalJieQi 历法相符节气日期（北京时间当天 0 点） / calendrical solar-term date at Beijing midnight.
+//
+// 返回默认历法下指定公历年、节气落在的日期，时间固定为北京时间当天 0 点。
+// 该函数沿用 `JieQi` 的节气编号，但结果是历法日期，不是现代天文学计算出的精确节气时刻。
+// Returns the date on which the requested solar term falls in the default calendrical system,
+// normalized to 00:00:00 at UTC+08:00. The term numbering is the same as `JieQi`, but the
+// result is a calendrical date rather than the exact modern astronomical instant.
+func CalendricalJieQi(year, term int) (time.Time, error) {
+	return CalendricalJieQiWithCalendar(year, term, AncientCalendarDefault)
+}
+
+// CalendricalJieQiWithCalendar 历法相符节气日期（显式历法） / calendrical solar-term date with an explicit calendar.
+//
+// 返回指定古历系统中某公历年、节气落在的日期，时间固定为北京时间当天 0 点。
+// 春秋历及缺少历法节气资料的年份会返回错误。
+// Returns the date on which the requested solar term falls in the specified ancient
+// calendar system, normalized to 00:00:00 at UTC+08:00. Calendars or years without
+// calendrical solar-term data return an error.
+func CalendricalJieQiWithCalendar(year, term int, system AncientCalendarSystem) (time.Time, error) {
+	return calendricalJieQiWithCalendar(year, term, system)
 }
 
 // WuHou 物候时刻（北京时间） / pentad instant in Beijing time.
@@ -412,7 +520,7 @@ func parseChineseDate(dateStr string) (LunarTime, error) {
 	result.desc = dateStr
 	dateStr = "公元" + dateStr
 	// 正则表达式匹配日期格式
-	re := regexp.MustCompile(`^([\p{Han}]+?)([一二三四五六七八九十零〇\d]*?元?)年([\p{Han}\d]+?)月([\p{Han}\d]+?)日?$`)
+	re := regexp.MustCompile(`^([\p{Han}]+?)([-负負一二三四五六七八九十零〇\d]*?元?)年([\p{Han}\d]+?)月([\p{Han}\d]+?)日?$`)
 	matches := re.FindStringSubmatch(dateStr)
 	if len(matches) < 5 {
 		return result, fmt.Errorf("无效的日期格式: %s", dateStr)
@@ -429,14 +537,21 @@ func parseChineseDate(dateStr string) (LunarTime, error) {
 		}
 	} else {
 		// 直接转换年份
-		if m, _ := regexp.MatchString("\\d+", matches[2]); m {
-			result.year, err = strconv.Atoi(matches[2])
+		yearStr := matches[2]
+		sign := 1
+		if strings.HasPrefix(yearStr, "负") || strings.HasPrefix(yearStr, "負") {
+			sign = -1
+			yearStr = strings.TrimPrefix(strings.TrimPrefix(yearStr, "负"), "負")
+		}
+		if m, _ := regexp.MatchString("\\d+", yearStr); m {
+			result.year, err = strconv.Atoi(yearStr)
 			if err != nil {
 				return result, fmt.Errorf("无效的年份: %s", matches[2])
 			}
 		} else {
-			result.year = transfer(matches[2], true)
+			result.year = transfer(yearStr, true)
 		}
+		result.year *= sign
 	}
 
 	// 转换月份
@@ -444,6 +559,15 @@ func parseChineseDate(dateStr string) (LunarTime, error) {
 	if strings.HasPrefix(monthStr, "闰") {
 		result.leap = true
 		monthStr = strings.TrimPrefix(monthStr, "闰")
+	}
+	if strings.HasPrefix(monthStr, "后") {
+		result.leap = true
+		result.houMonth = true
+		monthStr = strings.TrimPrefix(monthStr, "后")
+	} else if strings.HasPrefix(monthStr, "後") {
+		result.leap = true
+		result.houMonth = true
+		monthStr = strings.TrimPrefix(monthStr, "後")
 	}
 	if month, ok := chineseMonths[monthStr]; ok {
 		result.month = month
@@ -457,6 +581,9 @@ func parseChineseDate(dateStr string) (LunarTime, error) {
 		if err != nil {
 			return result, fmt.Errorf("无效的月份: %s", monthStr)
 		}
+	}
+	if result.houMonth && result.month != 9 {
+		return result, fmt.Errorf("无效的月份: %s", matches[3])
 	}
 
 	// 转换日期
@@ -499,15 +626,14 @@ func convertChineseNumber(chineseNum string) (int, error) {
 func number2Chinese(num int, isDirectTrans bool) string {
 	chs := []string{"零", "一", "二", "三", "四", "五", "六", "七", "八", "九"}
 	if isDirectTrans {
+		if num < 0 {
+			return "负" + number2Chinese(-num, true)
+		}
 		var res string
 		for i := 0; i < 4; i++ {
 			tmp := num / (int(math.Pow10(3 - i)))
 			if tmp == 0 && i == 0 {
 				continue
-			}
-			if tmp < 0 {
-				res = "负"
-				num = -num
 			}
 			res += chs[tmp]
 			num = num % (int(math.Pow10(3 - i)))
@@ -615,5 +741,5 @@ func ganZhiOfDayIndex(t time.Time) (int, int) {
 	if diff >= 0 {
 		return diff % 10, diff % 12
 	}
-	return (diff%10 + 10) % 10, (diff%12 + 12) % 10
+	return (diff%10 + 10) % 10, (diff%12 + 12) % 12
 }

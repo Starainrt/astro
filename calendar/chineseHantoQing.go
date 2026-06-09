@@ -358,9 +358,34 @@ func innerParseLunar(lunar string) ([]time.Time, error) {
 	if err != nil {
 		return []time.Time{}, err
 	}
+	if date.houMonth && date.comment != "" {
+		return nil, fmt.Errorf("未找到对应日期")
+	}
 	if date.year != 0 && date.comment == "" {
-		if date.year < -103 || date.year > 3000 {
+		if date.year < ancientBoundaryMinYear || date.year > 3000 {
 			return nil, fmt.Errorf("年份超出范围")
+		}
+		if date.houMonth && (date.year < qinHanMinYear || date.year > qinHanMaxYear) {
+			return nil, fmt.Errorf("未找到对应日期")
+		}
+		if date.year < qinHanMinYear {
+			d, ok := lunarToSolarAncientDefault(date.year, date.month, date.day, date.leap)
+			if !ok {
+				return nil, fmt.Errorf("未找到对应日期")
+			}
+			return []time.Time{d.Solar()}, nil
+		}
+		if date.year <= qinHanMaxYear {
+			if date.year == qinHanMaxYear {
+				if d, ok := lunarToSolarHanQingDefault(date.year, date.month, date.day, date.leap); ok {
+					return []time.Time{d.Solar()}, nil
+				}
+			}
+			d, ok := rapidSolarQinHan(date.year, date.month, date.day, date.leap)
+			if !ok {
+				return nil, fmt.Errorf("未找到对应日期")
+			}
+			return []time.Time{d}, nil
 		}
 		if date.year <= 1912 {
 			d := rapidSolarHan2Qing(date.year, date.month, date.day, date.leap, yearDiffLunar(date.year, date.month, date.day), nil)

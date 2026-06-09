@@ -28,6 +28,10 @@ type LunarInfo struct {
 	GanzhiMonth string `json:"ganzhiMonth"`
 	// GanzhiDay 农历日干支
 	GanzhiDay string `json:"ganzhiDay"`
+	// CalendarSystem 历法系统
+	CalendarSystem AncientCalendarSystem `json:"calendarSystem"`
+	// CalendarName 历法名称
+	CalendarName string `json:"calendarName"`
 	// Dynasty 朝代，如唐、宋、元、明、清等
 	Dynasty string `json:"dynasty"`
 	// Emperor 皇帝姓名(仅供参考，多个皇帝用同一个年号的场景，此处不准)
@@ -190,6 +194,12 @@ type LunarTime struct {
 	comment string
 	//ganzhi of month 月干支
 	ganzhiMonth string
+	//后九月
+	houMonth bool
+	//历法系统
+	calendarSystem AncientCalendarSystem
+	//历法名称
+	calendarName string
 
 	eras []EraDesc
 }
@@ -242,6 +252,16 @@ func (l LunarTime) LunarDay() int {
 // IsLeap 是否闰月 / whether the month is leap.
 func (l LunarTime) IsLeap() bool {
 	return l.leap
+}
+
+// CalendarSystem 历法系统 / calendar system.
+func (l LunarTime) CalendarSystem() AncientCalendarSystem {
+	return l.calendarSystem
+}
+
+// CalendarName 历法名称 / calendar name.
+func (l LunarTime) CalendarName() string {
+	return l.calendarName
 }
 
 // Eras 朝代、皇帝、年号信息 / era information.
@@ -331,6 +351,8 @@ func (l LunarTime) LunarInfo() []LunarInfo {
 			GanzhiYear:        GanZhiOfYear(l.year),
 			GanzhiMonth:       l.ganzhiMonth,
 			GanzhiDay:         GanZhiOfDay(l.solarDate),
+			CalendarSystem:    l.calendarSystem,
+			CalendarName:      l.calendarName,
 			Dynasty:           v.Dynasty,
 			Emperor:           v.Emperor,
 			Nianhao:           v.Nianhao,
@@ -353,6 +375,8 @@ func (l LunarTime) LunarInfo() []LunarInfo {
 			GanzhiYear:        GanZhiOfYear(l.year),
 			GanzhiMonth:       l.ganzhiMonth,
 			GanzhiDay:         GanZhiOfDay(l.solarDate),
+			CalendarSystem:    l.calendarSystem,
+			CalendarName:      l.calendarName,
 			Dynasty:           "",
 			Emperor:           "",
 			Nianhao:           "",

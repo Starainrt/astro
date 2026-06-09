@@ -8,7 +8,7 @@ A personal astronomy library developed over years for calendrical work, amateur 
 
 > This project is mainly for learning and validating astronomical algorithms. The results are intended for serious amateur use.
 
-The implementation follows *Astronomical Algorithms* and provides calendar conversion, Sun/Moon/planet positions, eclipses, rise/set/transit times, lunar phases, stars, coordinate transforms, physical ephemerides, research formulas, and generic small-body orbit propagation. The Sun and planets use built-in VSOP87-style analytical terms, while the Moon uses a built-in ELP2000/82-style series. No external JPL ephemeris files are required.
+The implementation follows *Astronomical Algorithms* and provides calendar conversion, Sun/Moon/planet positions, eclipses, rise/set/transit times, lunar phases, stars, coordinate transforms, physical ephemerides, research formulas, and generic small-body orbit propagation. The Sun and planets use built-in VSOP87-style analytical terms, while the Moon uses a built-in ELP/MPP02 DE405-style analytical series. No external JPL ephemeris files are required.
 
 Unless noted otherwise, coordinates are apparent-of-date coordinates. Angles are in degrees, apparent diameters and semidiameters are in arcseconds, and distances use the unit implied by the function name, usually `AU` or `km`.
 
@@ -41,7 +41,7 @@ go get github.com/starainrt/astro
 
 ## Highlights
 
-- Calendar conversion between Gregorian dates and the traditional Chinese lunisolar calendar, including solar terms
+- Calendar conversion between Gregorian dates and the traditional Chinese lunisolar calendar, from 721 BCE through 3000 CE or later, including solar terms
 - Solar position, rise/set, Earth distance, apparent solar time, apparent altitude, parallactic angle, solar `P/B0/L0`, apparent diameter
 - Lunar position, rise/set, Earth distance, phase, new/full/quarter times, apparent diameter, bright-limb angle, parallactic angle, geocentric/topocentric libration, apsides, nodes, maximum declination
 - `lite/sun` and `lite/moon` lightweight approximation chains for watches, frontends, mini programs, and other resource-constrained environments
@@ -103,7 +103,7 @@ This is suitable for ordinary calendrical work, observing support, outreach, and
 
 ### Moon
 
-The Moon uses a built-in truncated ELP2000/82-style series retaining the major periodic terms. The package stays lightweight and does not require external ephemeris files. It is suitable for Chinese-calendar new moons, lunar phases, rise/set, lunar eclipses, and ordinary positional work. For lunar laser ranging, long-term physical libration, or professional occultation work, use JPL or a dedicated lunar ephemeris.
+The Moon uses a built-in truncated ELP/MPP02 DE405-style analytical series retaining the major periodic terms. The package stays lightweight and does not require external ephemeris files. It is suitable for Chinese-calendar new moons, lunar phases, rise/set, lunar eclipses, and ordinary positional work. For lunar laser ranging, long-term physical libration, or professional occultation work, use JPL or a dedicated lunar ephemeris.
 
 The four principal phases keep the historical pinyin names and also expose English aliases:
 
@@ -116,7 +116,7 @@ The matching `Next*`, `Last*`, and `Closest*` helpers are available in both nami
 
 ### Lite lightweight chains
 
-`lite/sun` and `lite/moon` are independent approximation chains. They do not depend on the VSOP87 or ELP2000/82 engines used by `sun` / `moon`, and are intended for CPU- or memory-constrained environments.
+`lite/sun` and `lite/moon` are independent approximation chains. They do not depend on the VSOP87 or ELP/MPP02 DE405 engines used by `sun` / `moon`, and are intended for CPU- or memory-constrained environments.
 
 - `lite/sun`: simplified true/apparent solar longitude formulas plus lightweight equatorial conversion
 - `lite/moon`: Schlyter-style lunar approximation with about 15 perturbation terms plus lightweight topocentric correction
@@ -163,6 +163,7 @@ The following areas have been checked against JPL Horizons, NASA GSFC, IMCCE, an
 - solar physical ephemerides `P/B0/L0`
 - planetary rise, transit, and set events
 - Earth perihelion and aphelion
+- main-chain lunar position: the current algorithm is a truncated ELP/MPP02 DE405-style analytical series; across four JPL/Horizons `JDTT` samples in year `-2000`, the maximum difference from JPL/Horizons is about `219.6"` in longitude, `25.8"` in latitude, and `34.3 km` in distance
 - Moon perigee and apogee
 - maximum lunar declinations
 - solar and lunar eclipses
@@ -174,15 +175,16 @@ The README examples are illustrative. The repository tests contain the exact bas
 
 ### Calendar And Solar Terms
 
-The `calendar` package converts between Gregorian dates and the traditional Chinese lunisolar calendar, and exposes solar terms. The supported range is from the first lunisolar month of 104 BCE through year 3000. The calendar is lunisolar in the strict sense, but public function names use `Lunar` for readability and convention.
+The `calendar` package converts between Gregorian dates and the traditional Chinese lunisolar calendar, and exposes solar terms. The supported range is from 721 BCE through year 3000, with some modern algorithm paths usable beyond that. The calendar is lunisolar in the strict sense, but public function names use `Lunar` for readability and convention.
 
 For historical input, Chinese era names stay in Chinese. This is part of the API surface, because historical Chinese dates are normally written that way.
 
-#### Data sources and checks
+#### Calendar notes
 
-- **[-103, 1912]**: based on 《寿星天文历》 and corrected against the tables maintained by [Professor ytliu0](https://ytliu0.github.io/ChineseCalendar/index_simp.html). This range contains lunisolar data only, not historical solar-term records.
-- **[1913, 3000]**: uses VSOP87 for apparent solar longitude and ELP2000 for new moons, following the modern Chinese-calendar rule set in GB/T 33661-2017. Solar terms and new moons use Beijing time (UTC+08:00).
-- Solar terms before 1912 are computed with modern astronomical methods and may differ from historical almanac dates by 1-2 days.
+- **Default routing**: the package selects by year automatically. The pre-Qin range uses reconstructed Chunqiu and ancient-six-calendar systems, `-220..-104` uses the Qin/Han Zhuanxu calendar, `-103..1912` uses calendar tables, and `1913` onward uses the modern algorithm.
+- **Explicit ancient calendars**: use APIs such as `SolarToLunarWithCalendar` / `LunarToSolarWithCalendar` when a specific ancient calendar system is required.
+- **Data sources**: ancient-calendar support mainly references 《寿星天文历》; [Professor ytliu0's ChineseCalendar data](https://ytliu0.github.io/ChineseCalendar/index_simp.html) is used for validation. The modern range follows GB/T 33661-2017 and uses VSOP87/ELP computations for solar terms and new moons.
+- **Solar terms**: `JieQi` returns modern astronomical solar-term instants; `CalendricalJieQi` returns calendar-compatible solar-term dates.
 
 #### Usage notes
 
@@ -315,6 +317,8 @@ Output:
 
 #### Solar terms
 
+`JieQi(year, term)` returns the exact solar-term instant computed by the modern astronomical algorithm. `CalendricalJieQi(year, term)` returns the date on which the solar term falls under the default calendar, fixed at 00:00 Beijing time for that day. Use `CalendricalJieQiWithCalendar(year, term, system)` when a specific ancient calendar system is required.
+
 ```go
 package main
 
@@ -343,6 +347,23 @@ Output:
 2020-12-21 18:02:20.648710727 +0800 CST // Winter Solstice
 2020-03-20 11:49:37.149532735 +0800 CST // March Equinox
 2020-03-20 11:49:37.149532735 +0800 CST // same result from direct longitude input
+```
+
+Calendrical solar-term example:
+
+```go
+date, err := calendar.CalendricalJieQi(1582, calendar.JQ_冬至)
+fmt.Println(date, err)
+
+date, err = calendar.CalendricalJieQiWithCalendar(-202, calendar.JQ_冬至, calendar.AncientCalendarQinHan)
+fmt.Printf("%d-%02d-%02d %v\n", date.Year(), int(date.Month()), date.Day(), err)
+```
+
+Output:
+
+```text
+1582-12-22 00:00:00 +0800 CST <nil>
+-202-12-25 <nil>
 ```
 
 ### Sun And Moon
@@ -1829,7 +1850,7 @@ Notes:
 - Earth eccentricity, Sun-Earth distance, perihelion, aphelion
 - Apparent/mean sidereal time, constellation lookup, common coordinate transforms, refraction, airmass, parallactic angle, Galactic coordinates
 - Seven major-planet coordinates, Sun/body and Earth/body distances, special events, Mercury/Venus geocentric transits, physical ephemerides, apparent diameters, phases, parallactic angles, and nodes
-- Chinese lunisolar calendar conversion from 104 BCE to 3000 CE
+- Chinese lunisolar calendar conversion from 721 BCE to 3000 CE
 - 9100+ star catalog
 - Generic small-body orbit propagation, H-G apparent magnitude, visual-binary position angle and separation
 - Blackbody radiation, synodic periods, magnitudes, telescope formulas, airmass formulas

@@ -39,7 +39,7 @@ go get github.com/starainrt/astro
 
 ## 功能概览
 
-- 📅 **历法转换**：公历与农历互转（公元前104年-公元3000年或更久）、节气时刻
+- 📅 **历法转换**：公历与农历互转（公元前721年-公元3000年或更久）、节气时刻
 - 🌞 **太阳计算**：天球位置、日出日落、日地距离、真太阳时、视高度角、视差角、日面物理参数（`P/B0/L0`）、视直径等
 - 🌙 **月亮计算**：天球位置、月出月落、地月距离、月相、朔望时间、视直径、亮边位置角、视差角、地心/站心天平动、近远地点、交点、最大赤纬等
 - 🪶 **轻量链路**：`lite/sun` 与 `lite/moon` 提供面向手表、前端、小程序和其它资源受限环境的轻量近似太阳/月亮算法，覆盖天球位置、升落和月相
@@ -101,7 +101,7 @@ go get github.com/starainrt/astro
 
 ### 月球
 
-月球使用内置的 ELP2000/82 解析级数（截断版，保留主要周期项），库体积轻，不需要外部星历文件。它适合农历定朔、月相、升落、月食和常规位置计算；若需要极高精度月球测距、长期物理天平动或专业掩星，请以 JPL 星历或专门月球星历为准。
+月球使用内置的 ELP/MPP02 DE405 解析级数（截断版，保留主要周期项），库体积轻，不需要外部星历文件。它适合农历定朔、月相、升落、月食和常规位置计算；若需要极高精度月球测距、长期物理天平动或专业掩星，请以 JPL 星历或专门月球星历为准。
 
 ### Lite 轻量链路
 
@@ -154,6 +154,7 @@ go get github.com/starainrt/astro
 - 太阳物理星历 `P/B0/L0`：最大差异约 `0.003349° / 0.003986° / 0.047394°`
 - 行星升/中天/落：已用 JPL Horizons 电视事件（TVH, Time-Varying Hourly）做对比校验；该基线按 1 分钟步长生成，当前结果与 Horizons 事件时间在分钟级上对齐
 - 地球近日点/远日点：时刻最大差异约 `1m28.84s`，距离最大差异约 `0.000000039837 AU`
+- 月球主链位置：当前算法为 ELP/MPP02 DE405 解析级数截断版；在 `-2000` 年四个 JPL/Horizons `JDTT` 样本上，相对 JPL/Horizons 的最大差异约为黄经 `219.6"`、黄纬 `25.8"`、距离 `34.3 km`
 - 月球近地点/远地点：时刻最大差异约 `15m53.45s`，距离最大差异约 `39.758 km`
 - 月球最大赤纬：时刻最大差异约 `2.43s`，赤纬最大差异约 `0.00006431°`
 
@@ -161,14 +162,15 @@ go get github.com/starainrt/astro
 
 ### 历法转换与节气
 
-本 package 支持公历与中国传统农历日期之间的相互转换，并提供节气信息。支持年份范围为公元前104年正月至公元3000年（即公历年份 -103 到 3000）。
+本 package 支持公历与中国传统农历日期之间的相互转换，并提供节气信息。支持年份范围为公元前721年至公元3000年（部分现代算法可更久）。
 农历本质上是阴阳合历（Lunisolar Calendar），但为兼顾大众习惯与代码简洁性，相关函数命名采用 `Lunar` 而非更学术的 `Lunisolar`。
 
-#### 数据来源与校对
+#### 历法说明
 
-- **[-103, 1912] 年**：基于《寿星天文历》数据，并依据 [ytliu0 教授整理的历表](https://ytliu0.github.io/ChineseCalendar/index_simp.html) 进行修正，已完成校对，只包含农历信息，暂不包含节气信息。
-- **[1913, 3000] 年**：依据 VSOP87 计算定气（按太阳实际视位置确定节气时刻）、ELP2000 计算定朔（按月球实际位置确定合朔时刻），按照现行标准 GB/T 33661-2017 中农历算法计算；定气、定朔均使用北京时间（UTC+08:00）。
-- 公元1912年前的**节气**信息采用现代天文学方法（VSOP87）计算得到，与历书中实际记录的日期可能相差1-2天，后续将完善。
+- **默认路由**：按年份自动选择，先秦段使用春秋/古六历重建，`-220..-104` 使用秦汉颛顼历，`-103..1912` 使用历表，`1913` 年后使用现代算法。
+- **显式古历**：如果需要指定某一古历系统，请使用 `SolarToLunarWithCalendar` / `LunarToSolarWithCalendar` 这类 API。
+- **数据来源**：古历部分主要参考《寿星天文历》；使用 [ytliu0教授的网站数据](https://ytliu0.github.io/ChineseCalendar/index_simp.html)做验证；现代段依据GB/T 33661-2017编排，通过 VSOP87、ELP定气定朔 。
+- **节气**：`JieQi` 返回现代天文计算的节气时刻；`CalendricalJieQi` 返回历法相符节气日期。
 
 ---
 
@@ -379,26 +381,27 @@ func main() {
 
 #### 节气
 
-```go
+`JieQi(year, term)` 返回现代天文算法计算出的节气精确时刻；`CalendricalJieQi(year, term)` 返回默认历法下节气落在的日期，时间固定为北京时间当天 0 点。需要指定古历系统时，使用 `CalendricalJieQiWithCalendar(year, term, system)`。
 
+```go
 package main
 
 import (
 	"fmt"
+
 	"github.com/starainrt/astro/calendar"
 )
 
 func main() {
-  // 计算 2020 年立春时刻；节气常量本质上对应太阳视黄经。
+	// 计算 2020 年立春时刻；节气常量本质上对应太阳视黄经。
 	fmt.Println(calendar.JieQi(2020, calendar.JQ_立春))
-  // 计算 2020 年冬至时刻。
+	// 计算 2020 年冬至时刻。
 	fmt.Println(calendar.JieQi(2020, calendar.JQ_冬至))
-  // 计算 2020 年春分时刻。
+	// 计算 2020 年春分时刻。
 	fmt.Println(calendar.JieQi(2020, calendar.JQ_春分))
-  // 也可直接传入黄经数值；春分对应太阳视黄经 0°。
+	// 也可直接传入黄经数值；春分对应太阳视黄经 0°。
 	fmt.Println(calendar.JieQi(2020, 0))
 }
-
 ```
 
 输出结果
@@ -409,6 +412,23 @@ func main() {
 2020-03-20 11:49:37.149532735 +0800 CST
 2020-03-20 11:49:37.149532735 +0800 CST
 
+```
+
+历法相符节气示例：
+
+```go
+date, err := calendar.CalendricalJieQi(1582, calendar.JQ_冬至)
+fmt.Println(date, err)
+
+date, err = calendar.CalendricalJieQiWithCalendar(-202, calendar.JQ_冬至, calendar.AncientCalendarQinHan)
+fmt.Printf("%d-%02d-%02d %v\n", date.Year(), int(date.Month()), date.Day(), err)
+```
+
+输出结果
+
+```
+1582-12-22 00:00:00 +0800 CST <nil>
+-202-12-25 <nil>
 ```
 
 
