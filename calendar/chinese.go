@@ -518,6 +518,21 @@ func parseChineseDate(dateStr string) (LunarTime, error) {
 	var result LunarTime
 	var err error
 	result.desc = dateStr
+	if strings.HasPrefix(dateStr, "前") {
+		originDateStr := dateStr
+		dateStr = strings.TrimPrefix(dateStr, "前")
+		re := regexp.MustCompile(`^([-一二三四五六七八九十零〇\d]+?)年`)
+		matches := re.FindStringSubmatch(dateStr)
+		if len(matches) == 2 {
+			year, err := parseDirectYear(matches[1])
+			if err != nil {
+				return result, err
+			}
+			dateStr = "-" + strconv.Itoa(year-1) + strings.TrimPrefix(dateStr, matches[1])
+		} else {
+			dateStr = originDateStr
+		}
+	}
 	dateStr = "公元" + dateStr
 	// 正则表达式匹配日期格式
 	re := regexp.MustCompile(`^([\p{Han}]+?)([-负負一二三四五六七八九十零〇\d]*?元?)年([\p{Han}\d]+?)月([\p{Han}\d]+?)日?$`)
@@ -612,6 +627,21 @@ func parseChineseDate(dateStr string) (LunarTime, error) {
 		}
 	}
 	return result, nil
+}
+
+func parseDirectYear(yearStr string) (int, error) {
+	if m, _ := regexp.MatchString("\\d+", yearStr); m {
+		year, err := strconv.Atoi(yearStr)
+		if err != nil {
+			return 0, fmt.Errorf("无效的年份: %s", yearStr)
+		}
+		return year, nil
+	}
+	year := transfer(yearStr, true)
+	if year == 0 {
+		return 0, fmt.Errorf("无效的年份: %s", yearStr)
+	}
+	return year, nil
 }
 
 // convertChineseNumber 将中文数字转换为阿拉伯数字

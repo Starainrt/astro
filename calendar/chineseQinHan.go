@@ -74,6 +74,7 @@ func qinHanTime(date time.Time, month qinHanMonth) Time {
 				day:       month.day,
 				leap:      month.leap,
 				desc:      formatQinHanLunarDateString(month.month, month.day, month.leap),
+				eras:      ancientErasForLunarYear(month.lunarYear, AncientCalendarQinHan),
 			},
 		},
 	}

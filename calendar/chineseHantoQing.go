@@ -359,6 +359,16 @@ func innerParseLunar(lunar string) ([]time.Time, error) {
 		return []time.Time{}, err
 	}
 	if date.houMonth && date.comment != "" {
+		if data, known, err := lunarToSolarAncientEra(date, AncientCalendarDefault); known {
+			if err != nil {
+				return nil, err
+			}
+			var dates []time.Time
+			for _, v := range data {
+				dates = append(dates, v.Solar())
+			}
+			return dates, nil
+		}
 		return nil, fmt.Errorf("未找到对应日期")
 	}
 	if date.year != 0 && date.comment == "" {
@@ -426,6 +436,16 @@ func innerParseLunar(lunar string) ([]time.Time, error) {
 	}
 	if tmp, err := innerLunar2SolarHanQing(date, nanMingEraMap, nanMingCals); err == nil {
 		data = append(data, tmp...)
+	}
+	if date.comment != "" {
+		if ancientData, known, ancientErr := lunarToSolarAncientEra(date, AncientCalendarDefault); known {
+			if ancientErr != nil && len(data) == 0 {
+				return nil, ancientErr
+			}
+			for _, v := range ancientData {
+				data = append(data, v.Solar())
+			}
+		}
 	}
 	if len(data) == 0 {
 		if err == ERR_NIANHAO_NOT_FOUND {

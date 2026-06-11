@@ -509,10 +509,14 @@ func Test_ChineseCalendarAncientNegativeYearDescRoundtrip(t *testing.T) {
 		t.Fatal(err)
 	}
 	descs := res.LunarDesc()
-	if len(descs) != 1 || descs[0] != "负二五零年正月初一" {
+	if len(descs) != 1 || descs[0] != "前二五一年正月初一" {
 		t.Fatalf("unexpected descs: %v", descs)
 	}
-	for _, desc := range []string{descs[0], "負二五零年正月初一"} {
+	infos := res.LunarInfo()
+	if len(infos) != 1 || infos[0].LunarYearChn != "前二五一" || infos[0].EraDesc != "前二五一年" {
+		t.Fatalf("unexpected lunar info fallback: %#v", infos)
+	}
+	for _, desc := range []string{descs[0], "负二五零年正月初一", "負二五零年正月初一"} {
 		results, err := LunarToSolar(desc)
 		if err != nil {
 			t.Fatal(desc, err)
@@ -528,6 +532,80 @@ func Test_ChineseCalendarAncientNegativeYearDescRoundtrip(t *testing.T) {
 		if lunar.LunarYear() != -250 || lunar.LunarMonth() != 1 || lunar.LunarDay() != 1 || lunar.IsLeap() {
 			t.Fatal(desc, lunar.LunarYear(), lunar.LunarMonth(), lunar.LunarDay(), lunar.IsLeap())
 		}
+	}
+}
+
+func Test_ChineseCalendarAncientEra(t *testing.T) {
+	testData := []struct {
+		name    string
+		system  AncientCalendarSystem
+		lyear   int
+		lmonth  int
+		lday    int
+		leap    bool
+		want    string
+		dynasty string
+		emperor string
+		nianhao string
+		eraYear int
+	}{
+		{name: "qin er shi third year", system: AncientCalendarQinHan, lyear: -206, lmonth: 10, lday: 1, want: "秦二世三年十月初一", dynasty: "秦", emperor: "秦二世", nianhao: "秦二世", eraYear: 3},
+		{name: "han gaozu first year", system: AncientCalendarQinHan, lyear: -205, lmonth: 10, lday: 1, want: "汉高祖元年十月初一", dynasty: "西汉", emperor: "汉高祖", nianhao: "汉高祖", eraYear: 1},
+		{name: "han jingdi zhongyuan first year", system: AncientCalendarQinHan, lyear: -148, lmonth: 1, lday: 1, want: "中元元年正月初一", dynasty: "西汉", emperor: "汉景帝", nianhao: "中元", eraYear: 1},
+		{name: "yuanfeng sixth leap ninth", system: AncientCalendarQinHan, lyear: -104, lmonth: 9, lday: 19, leap: true, want: "元封六年后九月十九", dynasty: "西汉", emperor: "汉武帝", nianhao: "元封", eraYear: 6},
+		{name: "zhou an wang", system: AncientCalendarZhou, lyear: -400, lmonth: 1, lday: 1, want: "周安王元年正月初一", dynasty: "周", emperor: "周安王", nianhao: "周安王", eraYear: 1},
+		{name: "lu ding gong", system: AncientCalendarChunqiu, lyear: -500, lmonth: 1, lday: 1, want: "鲁定公九年正月初一", dynasty: "鲁", emperor: "鲁定公", nianhao: "鲁定公", eraYear: 9},
+	}
+	for _, tc := range testData {
+		t.Run(tc.name, func(t *testing.T) {
+			result, err := LunarToSolarByYMDWithCalendar(tc.lyear, tc.lmonth, tc.lday, tc.leap, tc.system)
+			if err != nil {
+				t.Fatal(err)
+			}
+			descs := result.LunarDesc()
+			if len(descs) != 1 || descs[0] != tc.want {
+				t.Fatalf("unexpected descs: %v", descs)
+			}
+			infos := result.LunarInfo()
+			if len(infos) != 1 {
+				t.Fatalf("unexpected info count: %#v", infos)
+			}
+			info := infos[0]
+			if info.Dynasty != tc.dynasty || info.Emperor != tc.emperor || info.Nianhao != tc.nianhao || info.YearOfNianhao != tc.eraYear {
+				t.Fatalf("unexpected era info: %#v", info)
+			}
+			if info.LunarWithEraDesc != tc.want {
+				t.Fatalf("unexpected lunar era desc: %q", info.LunarWithEraDesc)
+			}
+			parsed, err := LunarToSolarWithCalendar(tc.want, tc.system)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(parsed) != 1 || !parsed[0].Solar().Equal(result.Solar()) {
+				t.Fatalf("unexpected parsed result: %#v want %v", parsed, result.Solar())
+			}
+			defaultParsed, err := LunarToSolar(tc.want)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(defaultParsed) != 1 || !defaultParsed[0].Solar().Equal(result.Solar()) {
+				t.Fatalf("unexpected default parsed result: %#v want %v", defaultParsed, result.Solar())
+			}
+		})
+	}
+
+	qinWang, err := LunarToSolarWithCalendar("秦王政元年十月初一", AncientCalendarZhuanxu)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(qinWang) != 1 || qinWang[0].Lunar().LunarYear() != -245 || qinWang[0].Lunar().CalendarSystem() != AncientCalendarZhuanxu {
+		t.Fatalf("unexpected Qin Wang Zheng result: %#v", qinWang)
+	}
+	if _, err := LunarToSolar("秦王政元年十月初一"); err == nil {
+		t.Fatal("expected default parser to reject non-default Qin warring-state era")
+	}
+	if _, err := LunarToSolarWithCalendar("周安王元年后九月初一", AncientCalendarZhou); err == nil {
+		t.Fatal("expected non-Qin ancient era parser to reject hou month")
 	}
 }
 
@@ -841,6 +919,8 @@ func TestHistoricalEraRegression(t *testing.T) {
 		"祥兴元年正月初一",
 		"贞祐元年正月初一",
 		"贞佑元年正月初一",
+		"前元元年正月初一",
+		"后元元年正月初一",
 		"嘉佑元年正月初一",
 		"元佑元年正月初一",
 		"天佑元年正月初一",
@@ -852,6 +932,13 @@ func TestHistoricalEraRegression(t *testing.T) {
 		if len(res) == 0 {
 			t.Fatalf("LunarToSolar(%q) returned no candidates", tc)
 		}
+	}
+	houyuan, err := LunarToSolar("后元元年正月初一")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(houyuan) < 2 {
+		t.Fatalf("expected ancient and Han-Qing houyuan candidates, got %#v", houyuan)
 	}
 }
 

@@ -328,7 +328,7 @@ func (l LunarTime) innerDescWithNianHao(withEmperor bool, withDynasty bool) []st
 			res = append(res, tmp)
 		}
 	} else {
-		res = append(res, number2Chinese(l.year, true)+"年"+l.desc)
+		res = append(res, lunarYearDesc(l.year)+"年"+l.desc)
 	}
 	return res
 }
@@ -343,7 +343,7 @@ func (l LunarTime) LunarInfo() []LunarInfo {
 		li := LunarInfo{
 			SolarDate:         l.solarDate,
 			LunarYear:         l.year,
-			LunarYearChn:      number2Chinese(l.year, true),
+			LunarYearChn:      lunarYearDesc(l.year),
 			LunarMonth:        l.month,
 			LunarDay:          l.day,
 			IsLeap:            l.leap,
@@ -367,7 +367,7 @@ func (l LunarTime) LunarInfo() []LunarInfo {
 		li := LunarInfo{
 			SolarDate:         l.solarDate,
 			LunarYear:         l.year,
-			LunarYearChn:      number2Chinese(l.year, true),
+			LunarYearChn:      lunarYearDesc(l.year),
 			LunarMonth:        l.month,
 			LunarDay:          l.day,
 			IsLeap:            l.leap,
@@ -381,11 +381,18 @@ func (l LunarTime) LunarInfo() []LunarInfo {
 			Emperor:           "",
 			Nianhao:           "",
 			YearOfNianhao:     0,
-			EraDesc:           number2Chinese(l.year, true) + "年",
-			LunarWithEraDesc:  number2Chinese(l.year, true) + "年" + l.desc,
+			EraDesc:           lunarYearDesc(l.year) + "年",
+			LunarWithEraDesc:  lunarYearDesc(l.year) + "年" + l.desc,
 			ChineseZodiac:     l.ShengXiao(),
 		}
 		res = append(res, li)
 	}
 	return res
+}
+
+func lunarYearDesc(year int) string {
+	if year <= 0 {
+		return "前" + number2Chinese(1-year, true)
+	}
+	return number2Chinese(year, true)
 }

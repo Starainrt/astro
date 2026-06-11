@@ -101,6 +101,11 @@ func LunarToSolarWithCalendar(desc string, system AncientCalendarSystem) ([]Time
 		return nil, err
 	}
 	if date.year == 0 || date.comment != "" {
+		if date.comment != "" {
+			if result, known, err := lunarToSolarAncientEra(date, system); known {
+				return result, err
+			}
+		}
 		return nil, fmt.Errorf("显式古历暂不支持年号日期")
 	}
 	if date.houMonth && system != AncientCalendarQinHan && system != AncientCalendarZhuanxu {
@@ -616,6 +621,7 @@ func ancientTime(date time.Time, month ancientMonth) Time {
 				desc:           formatAncientLunarDateString(month.month, month.day, month.leap, month.system),
 				calendarSystem: month.system,
 				calendarName:   month.name,
+				eras:           ancientErasForLunarYear(month.lunarYear, month.system),
 			},
 		},
 	}
@@ -625,6 +631,9 @@ func tagCalendar(date Time, system AncientCalendarSystem, name string) Time {
 	for i := range date.lunars {
 		date.lunars[i].calendarSystem = system
 		date.lunars[i].calendarName = name
+		if len(date.lunars[i].eras) == 0 {
+			date.lunars[i].eras = ancientErasForLunarYear(date.lunars[i].year, system)
+		}
 	}
 	return date
 }
