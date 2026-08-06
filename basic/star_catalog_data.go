@@ -9,14 +9,22 @@ import (
 	"io"
 )
 
-// star_catalog.dat layout after gzip decompression:
-// magic[8] | version[1] | rawDataLen[4] | rawData | stringCount[2] |
-// repeated(stringLen[uvarint] + stringBytes) |
-// maxHR[2] | repeated(maxHR * 6 * stringIndex[2]) | repeated(maxHR * hip[4]).
+// star_catalog.dat gzip 解压后的布局 / star_catalog.dat layout after gzip decompression:
+// magic[8] | version[1] | rawDataLen[4] | rawData | stringCount[2]（字符串计数） |
+// repeated(stringLen[uvarint] + stringBytes)（字符串表） |
+// maxHR[2] | repeated(maxHR * 6 * stringIndex[2]) | repeated(maxHR * hip[4])（星表记录）。
 const starCatalogMagic = "STRCAT01"
 
 //go:embed star_catalog.dat
 var starCatalogCompressed []byte
+
+// supplementalStarDetails 保存嵌入载荷没有对应命名条目的星表元数据 / supplementalStarDetails contains catalog metadata that is maintained in
+// 源码形式 / source form when the embedded payload has no corresponding named entry.
+// 六个字段按编码顺序排列：中文名、别名、拜耳命名、通用名、中文星座和 IAU 星座 / The six fields follow the encoded detail order: Chinese name, alias, Bayer
+// 命名、通用名、中文星座和 IAU 星座 / designation, common name, Chinese constellation, and IAU constellation.
+var supplementalStarDetails = map[uint16][]string{
+	4799: {"进贤增九", "", "室女座25", "", "室女座", "Virgo"},
+}
 
 func initStarCatalogData() []byte {
 	reader, err := gzip.NewReader(bytes.NewReader(starCatalogCompressed))
@@ -31,6 +39,9 @@ func initStarCatalogData() []byte {
 	data, detail, hip, err := decodeStarCatalogPayload(payload)
 	if err != nil {
 		panic(err)
+	}
+	for hr, record := range supplementalStarDetails {
+		detail[hr] = record
 	}
 	hr2detail = detail
 	hr2hip = hip

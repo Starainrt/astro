@@ -64,8 +64,9 @@ func TestSolarEclipsePartialFootprintsKeepLocation(t *testing.T) {
 	footprints, ok := SolarEclipsePartialFootprints(
 		time.Date(2024, 4, 8, 12, 0, 0, 0, loc),
 		SolarEclipsePartialFootprintOptions{
-			Step:           30 * time.Minute,
-			BoundaryPoints: 72,
+			Step:              30 * time.Minute,
+			BoundaryPoints:    72,
+			CentralShadowStep: 10 * time.Minute,
 		},
 	)
 	if !ok {
@@ -80,6 +81,9 @@ func TestSolarEclipsePartialFootprintsKeepLocation(t *testing.T) {
 	if footprints.BoundaryPoints != 72 {
 		t.Fatalf("boundary points mismatch: got %d want 72", footprints.BoundaryPoints)
 	}
+	if footprints.CentralShadowStep != 10*time.Minute || len(footprints.CentralShadowFootprints) == 0 {
+		t.Fatalf("central shadow sampling mismatch: step=%s footprints=%d", footprints.CentralShadowStep, len(footprints.CentralShadowFootprints))
+	}
 
 	for _, item := range []struct {
 		name string
@@ -89,6 +93,15 @@ func TestSolarEclipsePartialFootprintsKeepLocation(t *testing.T) {
 		{name: "Footprints[0].Time", tm: footprints.Footprints[0].Time},
 		{name: "Footprints[last].Time", tm: footprints.Footprints[len(footprints.Footprints)-1].Time},
 		{name: "Boundary point", tm: footprints.Footprints[0].Boundaries[0][0].Time},
+		{name: "P1 contact", tm: footprints.P1.Time},
+		{name: "P2 contact", tm: footprints.P2.Time},
+		{name: "P3 contact", tm: footprints.P3.Time},
+		{name: "P4 contact", tm: footprints.P4.Time},
+		{name: "U1 contact", tm: footprints.U1.Time},
+		{name: "U2 contact", tm: footprints.U2.Time},
+		{name: "U3 contact", tm: footprints.U3.Time},
+		{name: "U4 contact", tm: footprints.U4.Time},
+		{name: "Central shadow", tm: footprints.CentralShadowFootprints[0].Time},
 	} {
 		if item.tm.Location() != loc {
 			t.Fatalf("%s location mismatch: got %q want %q", item.name, item.tm.Location(), loc)
@@ -106,6 +119,9 @@ func TestSolarEclipsePartialFootprintsWorkForPartialOnly(t *testing.T) {
 	}
 	if footprints.Eclipse.Type != SolarEclipsePartial {
 		t.Fatalf("unexpected eclipse type: got %s want %s", footprints.Eclipse.Type, SolarEclipsePartial)
+	}
+	if !footprints.U1.Time.IsZero() || !footprints.U4.Time.IsZero() || len(footprints.CentralShadowFootprints) != 0 {
+		t.Fatal("partial-only eclipse must not return central-shadow contacts or footprints")
 	}
 }
 

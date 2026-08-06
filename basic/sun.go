@@ -148,7 +148,17 @@ func HSunApparentRaDec(jd float64) (float64, float64) {
 }
 
 func HSunApparentRaDecN(jd float64, n int) (float64, float64) {
-	return LoBoToRaDec(jd, HSunApparentLoN(jd, n), HSunTrueBoN(jd, n))
+	ra, dec, _ := hSunApparentRaDecDistanceN(jd, n)
+	return ra, dec
+}
+
+func hSunApparentRaDecDistanceN(jd float64, n int) (ra, dec, distanceAU float64) {
+	trueLongitude := HSunTrueLoN(jd, n)
+	trueLatitude := HSunTrueBoN(jd, n)
+	distanceAU = EarthAwayN(jd, n)
+	apparentLongitude := trueLongitude + Nutation2000Bi(jd) - 20.49552/distanceAU/3600
+	ra, dec = LoBoToRaDec(jd, apparentLongitude, trueLatitude)
+	return ra, dec, distanceAU
 }
 
 func HSunApparentRa(jd float64) float64 { // '太阳视赤经

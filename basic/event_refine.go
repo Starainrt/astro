@@ -2,6 +2,125 @@ package basic
 
 import "math"
 
+const (
+	eventNewtonMaxIterations         = 24
+	eventDirectionalSearchIterations = 128
+	eventRiseSetScanStep             = 1.0 / 1440
+)
+
+func isFiniteFloat(value float64) bool {
+	return !math.IsNaN(value) && !math.IsInf(value, 0)
+}
+
+// eventNewtonRefine 执行有界牛顿迭代；修正函数返回 f(x)/f'(x)，调用者保留现有导数计算 / eventNewtonRefine performs a bounded Newton iteration. The correction
+// 对格式错误输入和不收敛迭代快速失败 / function returns f(x)/f'(x), so callers retain their existing derivative
+// 计算 / calculation while malformed input and non-convergent iterations fail fast.
+func eventNewtonRefine(seed, tolerance float64, correction func(float64) float64) (float64, bool) {
+	if !isFiniteFloat(seed) || !isFiniteFloat(tolerance) || tolerance <= 0 {
+		return math.NaN(), false
+	}
+	current := seed
+	for i := 0; i < eventNewtonMaxIterations; i++ {
+		step := correction(current)
+		if !isFiniteFloat(step) {
+			return math.NaN(), false
+		}
+		next := current - step
+		if !isFiniteFloat(next) {
+			return math.NaN(), false
+		}
+		if math.Abs(next-current) <= tolerance {
+			return next, true
+		}
+		current = next
+	}
+	return math.NaN(), false
+}
+
+func eventRiseSetCandidateValid(candidate, civilDayStart, slope float64, isRise bool) bool {
+	if !isFiniteFloat(candidate) || !isFiniteFloat(civilDayStart) || !isFiniteFloat(slope) ||
+		candidate < civilDayStart || candidate >= civilDayStart+1 {
+		return false
+	}
+	if isRise {
+		return slope > 0
+	}
+	return slope < 0
+}
+
+func eventDirectionalRiseSetSearch(civilDayStart float64, isRise bool, fallbackErr error,
+	residual func(float64) float64) (float64, error) {
+	if !isFiniteFloat(civilDayStart) {
+		return 0, ErrInvalidObservationInput
+	}
+
+	previousJD := civilDayStart
+	previousValue := residual(previousJD)
+	if !isFiniteFloat(previousValue) {
+		return 0, ErrInvalidObservationInput
+	}
+	minimum, maximum := previousValue, previousValue
+	steps := int(math.Round(1 / eventRiseSetScanStep))
+	for i := 1; i <= steps; i++ {
+		currentJD := civilDayStart + float64(i)*eventRiseSetScanStep
+		currentValue := residual(currentJD)
+		if !isFiniteFloat(currentValue) {
+			return 0, ErrInvalidObservationInput
+		}
+		minimum = math.Min(minimum, currentValue)
+		maximum = math.Max(maximum, currentValue)
+		if eventCrossesDirection(previousValue, currentValue, isRise) {
+			eventJD := eventDirectionalBracketRefine(previousJD, currentJD, previousValue, currentValue, residual)
+			if eventJD < civilDayStart+1 {
+				return eventJD, nil
+			}
+		}
+		previousJD = currentJD
+		previousValue = currentValue
+	}
+
+	switch {
+	case fallbackErr != nil:
+		return 0, fallbackErr
+	case maximum < 0:
+		return 0, ErrNeverRise
+	case minimum > 0:
+		return 0, ErrNeverSet
+	default:
+		return 0, ErrNotOnThisDate
+	}
+}
+
+func eventCrossesDirection(leftValue, rightValue float64, isRise bool) bool {
+	if isRise {
+		return leftValue <= 0 && rightValue >= 0 && leftValue != rightValue
+	}
+	return leftValue >= 0 && rightValue <= 0 && leftValue != rightValue
+}
+
+func eventDirectionalBracketRefine(leftJD, rightJD, leftValue, rightValue float64, residual func(float64) float64) float64 {
+	if leftValue == 0 {
+		return leftJD
+	}
+	if rightValue == 0 {
+		return rightJD
+	}
+	for i := 0; i < 48; i++ {
+		middleJD := (leftJD + rightJD) / 2
+		middleValue := residual(middleJD)
+		if middleValue == 0 {
+			return middleJD
+		}
+		if (leftValue < 0) == (middleValue < 0) {
+			leftJD = middleJD
+			leftValue = middleValue
+		} else {
+			rightJD = middleJD
+		}
+	}
+	return (leftJD + rightJD) / 2
+}
+
 func eventFixedScanRefine(seed, halfWindow, step float64, fn func(float64) float64) float64 {
 	start := seed - halfWindow
 	bestJD := start

@@ -59,14 +59,23 @@ func GetWuHouTime(Year, Angle int) float64 {
 	if Angle <= 5 {
 		Angle = 360 + Angle
 	}
-	for {
+	converged := false
+	for i := 0; i < eventNewtonMaxIterations; i++ {
 		JD0 := JD1
 		stDegree := JQLospec(JD0, float64(Angle)) - float64(Angle)
 		stDegreep := (JQLospec(JD0+0.000005, float64(Angle)) - JQLospec(JD0-0.000005, float64(Angle))) / 0.00001
-		JD1 = JD0 - stDegree/stDegreep
-		if math.Abs(JD1-JD0) <= 0.00001 {
+		nextJD := JD0 - stDegree/stDegreep
+		if !isFiniteFloat(nextJD) {
+			return math.NaN()
+		}
+		JD1 = nextJD
+		if math.Abs(nextJD-JD0) <= 0.00001 {
+			converged = true
 			break
 		}
+	}
+	if !converged {
+		return math.NaN()
 	}
 	return TD2UT(JD1, false)
 }

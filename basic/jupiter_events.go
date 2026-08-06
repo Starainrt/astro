@@ -64,6 +64,9 @@ func jupiterRADerivativeN(jde, delta float64, n int) float64 {
 
 func jupiterConjunctionFull(jde, degree float64, next uint8) float64 {
 	//0=last 1=next
+	if !isFiniteFloat(jde) || !isFiniteFloat(degree) {
+		return math.NaN()
+	}
 	daysPerDegree := JUPITER_S_PERIOD / 360
 	currentDelta := jupiterSunLongitudeDelta(jde, degree, false)
 	if next == 0 {
@@ -72,20 +75,29 @@ func jupiterConjunctionFull(jde, degree float64, next uint8) float64 {
 		jde += daysPerDegree * currentDelta
 	}
 	estimateJD := jde
-	for {
+	converged := false
+	for i := 0; i < eventNewtonMaxIterations; i++ {
 		prevJD := estimateJD
 		longitudeDelta := jupiterSunLongitudeDelta(prevJD, degree, true)
 		longitudeSlope := (jupiterSunLongitudeDelta(prevJD+0.000005, degree, true) - jupiterSunLongitudeDelta(prevJD-0.000005, degree, true)) / 0.00001
-		estimateJD = prevJD - longitudeDelta/longitudeSlope
-		if math.Abs(estimateJD-prevJD) <= 0.00001 {
+		nextJD := prevJD - longitudeDelta/longitudeSlope
+		estimateJD = nextJD
+		if math.Abs(nextJD-prevJD) <= 0.00001 {
+			converged = true
 			break
 		}
+	}
+	if !converged {
+		return math.NaN()
 	}
 	return TD2UT(estimateJD, false)
 }
 
 func jupiterConjunction(jde, degree float64, next uint8) float64 {
 	//0=last 1=next
+	if !isFiniteFloat(jde) || !isFiniteFloat(degree) {
+		return math.NaN()
+	}
 	daysPerDegree := JUPITER_S_PERIOD / 360
 	currentDelta := jupiterSunLongitudeDelta(jde, degree, false)
 	if next == 0 {
@@ -94,23 +106,35 @@ func jupiterConjunction(jde, degree float64, next uint8) float64 {
 		jde += daysPerDegree * currentDelta
 	}
 	estimateJD := jde
-	for {
+	converged := false
+	for i := 0; i < eventNewtonMaxIterations; i++ {
 		prevJD := estimateJD
 		longitudeDelta := jupiterSunLongitudeDeltaN(prevJD, degree, true, jupiterEventSearchN)
 		longitudeSlope := (jupiterSunLongitudeDeltaN(prevJD+0.000005, degree, true, jupiterEventSearchN) - jupiterSunLongitudeDeltaN(prevJD-0.000005, degree, true, jupiterEventSearchN)) / 0.00001
-		estimateJD = prevJD - longitudeDelta/longitudeSlope
-		if math.Abs(estimateJD-prevJD) <= jupiterPhaseCoarseTolerance {
+		nextJD := prevJD - longitudeDelta/longitudeSlope
+		estimateJD = nextJD
+		if math.Abs(nextJD-prevJD) <= jupiterPhaseCoarseTolerance {
+			converged = true
 			break
 		}
 	}
-	for {
+	if !converged {
+		return math.NaN()
+	}
+	converged = false
+	for i := 0; i < eventNewtonMaxIterations; i++ {
 		prevJD := estimateJD
 		longitudeDelta := jupiterSunLongitudeDelta(prevJD, degree, true)
 		longitudeSlope := (jupiterSunLongitudeDelta(prevJD+0.000005, degree, true) - jupiterSunLongitudeDelta(prevJD-0.000005, degree, true)) / 0.00001
-		estimateJD = prevJD - longitudeDelta/longitudeSlope
-		if math.Abs(estimateJD-prevJD) <= 0.00001 {
+		nextJD := prevJD - longitudeDelta/longitudeSlope
+		estimateJD = nextJD
+		if math.Abs(nextJD-prevJD) <= 0.00001 {
+			converged = true
 			break
 		}
+	}
+	if !converged {
+		return math.NaN()
 	}
 	return TD2UT(estimateJD, false)
 }

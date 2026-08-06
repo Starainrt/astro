@@ -64,6 +64,9 @@ func saturnRADerivativeN(jde, delta float64, n int) float64 {
 
 func saturnConjunctionFull(jde, degree float64, next uint8) float64 {
 	//0=last 1=next
+	if !isFiniteFloat(jde) || !isFiniteFloat(degree) {
+		return math.NaN()
+	}
 	daysPerDegree := SATURN_S_PERIOD / 360
 	currentDelta := saturnSunLongitudeDelta(jde, degree, false)
 	if next == 0 {
@@ -72,20 +75,29 @@ func saturnConjunctionFull(jde, degree float64, next uint8) float64 {
 		jde += daysPerDegree * currentDelta
 	}
 	estimateJD := jde
-	for {
+	converged := false
+	for i := 0; i < eventNewtonMaxIterations; i++ {
 		prevJD := estimateJD
 		longitudeDelta := saturnSunLongitudeDelta(prevJD, degree, true)
 		longitudeSlope := (saturnSunLongitudeDelta(prevJD+0.000005, degree, true) - saturnSunLongitudeDelta(prevJD-0.000005, degree, true)) / 0.00001
-		estimateJD = prevJD - longitudeDelta/longitudeSlope
-		if math.Abs(estimateJD-prevJD) <= 0.00001 {
+		nextJD := prevJD - longitudeDelta/longitudeSlope
+		estimateJD = nextJD
+		if math.Abs(nextJD-prevJD) <= 0.00001 {
+			converged = true
 			break
 		}
+	}
+	if !converged {
+		return math.NaN()
 	}
 	return TD2UT(estimateJD, false)
 }
 
 func saturnConjunction(jde, degree float64, next uint8) float64 {
 	//0=last 1=next
+	if !isFiniteFloat(jde) || !isFiniteFloat(degree) {
+		return math.NaN()
+	}
 	daysPerDegree := SATURN_S_PERIOD / 360
 	currentDelta := saturnSunLongitudeDelta(jde, degree, false)
 	if next == 0 {
@@ -94,23 +106,35 @@ func saturnConjunction(jde, degree float64, next uint8) float64 {
 		jde += daysPerDegree * currentDelta
 	}
 	estimateJD := jde
-	for {
+	converged := false
+	for i := 0; i < eventNewtonMaxIterations; i++ {
 		prevJD := estimateJD
 		longitudeDelta := saturnSunLongitudeDeltaN(prevJD, degree, true, saturnEventSearchN)
 		longitudeSlope := (saturnSunLongitudeDeltaN(prevJD+0.000005, degree, true, saturnEventSearchN) - saturnSunLongitudeDeltaN(prevJD-0.000005, degree, true, saturnEventSearchN)) / 0.00001
-		estimateJD = prevJD - longitudeDelta/longitudeSlope
-		if math.Abs(estimateJD-prevJD) <= saturnPhaseCoarseTolerance {
+		nextJD := prevJD - longitudeDelta/longitudeSlope
+		estimateJD = nextJD
+		if math.Abs(nextJD-prevJD) <= saturnPhaseCoarseTolerance {
+			converged = true
 			break
 		}
 	}
-	for {
+	if !converged {
+		return math.NaN()
+	}
+	converged = false
+	for i := 0; i < eventNewtonMaxIterations; i++ {
 		prevJD := estimateJD
 		longitudeDelta := saturnSunLongitudeDelta(prevJD, degree, true)
 		longitudeSlope := (saturnSunLongitudeDelta(prevJD+0.000005, degree, true) - saturnSunLongitudeDelta(prevJD-0.000005, degree, true)) / 0.00001
-		estimateJD = prevJD - longitudeDelta/longitudeSlope
-		if math.Abs(estimateJD-prevJD) <= 0.00001 {
+		nextJD := prevJD - longitudeDelta/longitudeSlope
+		estimateJD = nextJD
+		if math.Abs(nextJD-prevJD) <= 0.00001 {
+			converged = true
 			break
 		}
+	}
+	if !converged {
+		return math.NaN()
 	}
 	return TD2UT(estimateJD, false)
 }

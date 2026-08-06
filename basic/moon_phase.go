@@ -38,14 +38,14 @@ func SunMoonSeek(jde float64, degree float64) float64 {
 func CalcMoonSHByJDE(jde float64, phaseType int) float64 {
 	phaseType = phaseType * 180
 	estimateJD := jde
-	for {
-		prevJD := estimateJD
+	var ok bool
+	estimateJD, ok = eventNewtonRefine(estimateJD, 0.00001, func(prevJD float64) float64 {
 		stDegree := SunMoonSeek(prevJD, float64(phaseType))
 		stDegreep := (SunMoonSeek(prevJD+0.000005, float64(phaseType)) - SunMoonSeek(prevJD-0.000005, float64(phaseType))) / 0.00001
-		estimateJD = prevJD - stDegree/stDegreep
-		if math.Abs(estimateJD-prevJD) <= 0.00001 {
-			break
-		}
+		return stDegree / stDegreep
+	})
+	if !ok {
+		return math.NaN()
 	}
 	return estimateJD
 }
@@ -54,14 +54,14 @@ func CalcMoonSH(year float64, phaseType int) float64 {
 	jde := CalcMoonS(year, phaseType)
 	phaseType = phaseType * 180
 	estimateJD := jde
-	for {
-		prevJD := estimateJD
+	var ok bool
+	estimateJD, ok = eventNewtonRefine(estimateJD, 0.00001, func(prevJD float64) float64 {
 		stDegree := SunMoonSeek(prevJD, float64(phaseType))
 		stDegreep := (SunMoonSeek(prevJD+0.000005, float64(phaseType)) - SunMoonSeek(prevJD-0.000005, float64(phaseType))) / 0.00001
-		estimateJD = prevJD - stDegree/stDegreep
-		if math.Abs(estimateJD-prevJD) <= 0.00001 {
-			break
-		}
+		return stDegree / stDegreep
+	})
+	if !ok {
+		return math.NaN()
 	}
 	return estimateJD
 }
@@ -125,14 +125,14 @@ func CalcMoonXHByJDE(jde float64, quarterType int) float64 {
 		quarterType = -90
 	}
 	estimateJD := jde
-	for {
-		prevJD := estimateJD
+	var ok bool
+	estimateJD, ok = eventNewtonRefine(estimateJD, 0.00001, func(prevJD float64) float64 {
 		stDegree := SunMoonSeek(prevJD, float64(quarterType))
 		stDegreep := (SunMoonSeek(prevJD+0.000005, float64(quarterType)) - SunMoonSeek(prevJD-0.000005, float64(quarterType))) / 0.00001
-		estimateJD = prevJD - stDegree/stDegreep
-		if math.Abs(estimateJD-prevJD) <= 0.00001 {
-			break
-		}
+		return stDegree / stDegreep
+	})
+	if !ok {
+		return math.NaN()
 	}
 	return estimateJD
 }
@@ -145,14 +145,14 @@ func CalcMoonXH(year float64, quarterType int) float64 {
 		quarterType = -90
 	}
 	estimateJD := jde
-	for {
-		prevJD := estimateJD
+	var ok bool
+	estimateJD, ok = eventNewtonRefine(estimateJD, 0.00001, func(prevJD float64) float64 {
 		stDegree := SunMoonSeek(prevJD, float64(quarterType))
 		stDegreep := (SunMoonSeek(prevJD+0.000005, float64(quarterType)) - SunMoonSeek(prevJD-0.000005, float64(quarterType))) / 0.00001
-		estimateJD = prevJD - stDegree/stDegreep
-		if math.Abs(estimateJD-prevJD) <= 0.00001 {
-			break
-		}
+		return stDegree / stDegreep
+	})
+	if !ok {
+		return math.NaN()
 	}
 	return estimateJD
 }

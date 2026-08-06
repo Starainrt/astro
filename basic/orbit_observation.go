@@ -52,6 +52,9 @@ func OrbitHourAngle(jde, observerLon, observerLat, timezone, observerHeight floa
 
 // OrbitCulminationTime 返回轨道目标的中天时刻，输入输出均沿用本仓库现有观测函数的 JD 语义。
 func OrbitCulminationTime(jde, observerLon, observerLat, timezone, observerHeight float64, elements OrbitElements) float64 {
+	if !isFiniteFloat(jde) || !isFiniteFloat(observerLon) || !isFiniteFloat(observerLat) || !isFiniteFloat(timezone) || !isFiniteFloat(observerHeight) {
+		return math.NaN()
+	}
 	jde = math.Floor(jde) + 0.5
 	estimateJD := jde + Limit360(360-OrbitHourAngle(jde, observerLon, observerLat, timezone, observerHeight, elements))/15.0/24.0*0.99726851851851851851
 	normalizedHourAngle := func(jde float64) float64 {
@@ -61,14 +64,14 @@ func OrbitCulminationTime(jde, observerLon, observerLat, timezone, observerHeigh
 		}
 		return currentHourAngle
 	}
-	for {
-		prevJD := estimateJD
+	var ok bool
+	estimateJD, ok = eventNewtonRefine(estimateJD, 0.00001, func(prevJD float64) float64 {
 		hourAngleDelta := normalizedHourAngle(prevJD) - 360
 		hourAngleSlope := (normalizedHourAngle(prevJD+0.000005) - normalizedHourAngle(prevJD-0.000005)) / 0.00001
-		estimateJD = prevJD - hourAngleDelta/hourAngleSlope
-		if math.Abs(estimateJD-prevJD) <= 0.00001 {
-			break
-		}
+		return hourAngleDelta / hourAngleSlope
+	})
+	if !ok {
+		return math.NaN()
 	}
 	return estimateJD
 }
@@ -84,19 +87,33 @@ func OrbitSetTime(jde, observerLon, observerLat, timezone, aeroCorrection, obser
 }
 
 func orbitRiseDown(jde, observerLon, observerLat, timezone, aeroCorrection, observerHeight float64, elements OrbitElements, isRise bool) (float64, error) {
+	if !isFiniteFloat(jde) || !isFiniteFloat(observerLon) || !isFiniteFloat(observerLat) || !isFiniteFloat(timezone) || !isFiniteFloat(aeroCorrection) || !isFiniteFloat(observerHeight) {
+		return 0, ErrInvalidObservationInput
+	}
 	localTimezone := math.Round(observerLon / 15)
 	targetAltitude := StandardAltitudePlanet(aeroCorrection, observerHeight, observerLat)
 
 	culminationJD := OrbitCulminationTime(jde, observerLon, observerLat, localTimezone, observerHeight, elements)
-	if OrbitHeight(culminationJD, observerLon, observerLat, localTimezone, observerHeight, elements) < targetAltitude {
+	if !isFiniteFloat(culminationJD) {
+		return 0, ErrInvalidObservationInput
+	}
+	culminationHeight := OrbitHeight(culminationJD, observerLon, observerLat, localTimezone, observerHeight, elements)
+	previousHeight := OrbitHeight(culminationJD-0.5, observerLon, observerLat, localTimezone, observerHeight, elements)
+	if !isFiniteFloat(culminationHeight) || !isFiniteFloat(previousHeight) {
+		return 0, ErrInvalidObservationInput
+	}
+	if culminationHeight < targetAltitude {
 		return 0, ErrNeverRise
 	}
-	if OrbitHeight(culminationJD-0.5, observerLon, observerLat, localTimezone, observerHeight, elements) > targetAltitude {
+	if previousHeight > targetAltitude {
 		return 0, ErrNeverSet
 	}
 
 	_, dec, _ := orbitTopocentricObservation(culminationJD, observerLon, observerLat, observerHeight, localTimezone, elements)
 	cosHourAngle := (Sin(targetAltitude) - Sin(dec)*Sin(observerLat)) / (Cos(dec) * Cos(observerLat))
+	if !isFiniteFloat(dec) || !isFiniteFloat(cosHourAngle) {
+		return 0, ErrInvalidObservationInput
+	}
 
 	var eventJD float64
 	if math.Abs(cosHourAngle) <= 1 {
@@ -122,15 +139,13 @@ func orbitRiseDown(jde, observerLon, observerLat, timezone, aeroCorrection, obse
 		}
 	}
 
-	estimateJD := eventJD
-	for {
-		prevJD := estimateJD
+	estimateJD, ok := eventNewtonRefine(eventJD, 0.00001, func(prevJD float64) float64 {
 		altitudeDelta := OrbitHeight(prevJD, observerLon, observerLat, localTimezone, observerHeight, elements) - targetAltitude
 		altitudeSlope := (OrbitHeight(prevJD+0.000005, observerLon, observerLat, localTimezone, observerHeight, elements) - OrbitHeight(prevJD-0.000005, observerLon, observerLat, localTimezone, observerHeight, elements)) / 0.00001
-		estimateJD = prevJD - altitudeDelta/altitudeSlope
-		if math.Abs(estimateJD-prevJD) <= 0.00001 {
-			break
-		}
+		return altitudeDelta / altitudeSlope
+	})
+	if !ok {
+		return 0, ErrInvalidObservationInput
 	}
 	return estimateJD - localTimezone/24 + timezone/24, nil
 }

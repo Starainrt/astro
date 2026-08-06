@@ -60,3 +60,14 @@ func TestGetRaDecByDate(t *testing.T) {
 		t.Fatal("unexpected empty formatted catalog coordinates")
 	}
 }
+
+func TestRaDecByJdeUsesProjectedRightAscensionMotion(t *testing.T) {
+	star := InnerStarData{Ra: 10, Dec: 60, PmRA: 3600, PmDec: 0}
+	jde := 2451545.0 + 365.2422
+	ra, dec := star.RaDecByJde(jde)
+	// 投影坐标每年 1 度在 Dec=60 度时对应赤经每年 2 度 / 1 deg/year in the projected coordinate is 2 deg/year in RA at Dec=60.
+	wantRA, wantDec := Precess(12, 60, 2451545.0, jde)
+	if math.Abs(signedAngleDifference(ra, wantRA)) > 1e-8 || math.Abs(dec-wantDec) > 1e-8 {
+		t.Fatalf("position = %.12f %.12f, want %.12f %.12f", ra, dec, wantRA, wantDec)
+	}
+}

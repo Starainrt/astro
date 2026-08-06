@@ -195,6 +195,9 @@ func venusElongationDerivativeN(jde, val float64, n int) float64 {
 }
 
 func venusConjunction(jde float64, next uint8) float64 {
+	if !isFiniteFloat(jde) {
+		return math.NaN()
+	}
 	queryTT := jde
 	direction := -1.0
 	if next == 1 {
@@ -203,13 +206,14 @@ func venusConjunction(jde float64, next uint8) float64 {
 	left := queryTT
 	leftVal := venusSunLongitudeDeltaN(left, venusEventSearchN)
 	if math.Abs(venusSunLongitudeDelta(queryTT)) <= 30.0/86400.0 {
-		exact := eventZeroRefine(left, 1.0, 0.000005, venusSunLongitudeDelta)
-		eventUT := TD2UT(exact, false)
-		if next == 0 && eventUTQueryBeforeOrEqual(eventUT, queryTT) {
-			return eventUT
-		}
-		if next == 1 && eventUTQueryAfterOrEqual(eventUT, queryTT) {
-			return eventUT
+		if exact, ok := venusConjunctionRefine(left, 1.0); ok {
+			eventUT := TD2UT(exact, false)
+			if next == 0 && eventUTQueryBeforeOrEqual(eventUT, queryTT) {
+				return eventUT
+			}
+			if next == 1 && eventUTQueryAfterOrEqual(eventUT, queryTT) {
+				return eventUT
+			}
 		}
 	}
 	const step = 8.0
@@ -219,12 +223,36 @@ func venusConjunction(jde float64, next uint8) float64 {
 		if leftVal == 0 || rightVal == 0 || leftVal*rightVal <= 0 {
 			center := (left + right) / 2.0
 			halfWindow := math.Abs(right-left) / 2.0
-			return TD2UT(eventZeroRefine(center, halfWindow, 0.000005, venusSunLongitudeDelta), false)
+			if exact, ok := venusConjunctionRefine(center, halfWindow); ok {
+				return TD2UT(exact, false)
+			}
+			return math.NaN()
 		}
 		left = right
 		leftVal = rightVal
 	}
-	return TD2UT(eventZeroRefine(queryTT, VENUS_S_PERIOD, 0.000005, venusSunLongitudeDelta), false)
+	// 640 天已经覆盖一个金星会合周期；仍无括号通常表示输入超出解析项的可靠范围。
+	// 继续按 5 微日扫描整个周期会产生数亿次星历计算，因此在这里有界失败。
+	// The 640-day directional scan already exceeds one Venus synodic period. If it
+	// still finds no bracket, fail in a bounded way instead of scanning hundreds
+	// of millions of five-microday samples across the full fallback window.
+	return math.NaN()
+}
+
+func venusConjunctionRefine(seed, halfWindow float64) (float64, bool) {
+	leftJD := seed - halfWindow
+	centerJD := seed
+	rightJD := seed + halfWindow
+	leftVal := venusSunLongitudeDelta(leftJD)
+	centerVal := venusSunLongitudeDelta(centerJD)
+	rightVal := venusSunLongitudeDelta(rightJD)
+	if !isFiniteFloat(leftVal) || !isFiniteFloat(centerVal) || !isFiniteFloat(rightVal) {
+		return math.NaN(), false
+	}
+	if _, _, _, _, ok := eventZeroBracket(leftJD, leftVal, centerJD, centerVal, rightJD, rightVal); !ok {
+		return math.NaN(), false
+	}
+	return eventZeroRefine(seed, halfWindow, 0.000005, venusSunLongitudeDelta), true
 }
 
 func venusConjunctionTypeAt(eventUT float64) bool {
@@ -289,6 +317,9 @@ func LastVenusSuperiorConjunction(jde float64) float64 {
 
 func venusRetrograde(jde float64) float64 {
 	//0=last 1=next
+	if !isFiniteFloat(jde) {
+		return math.NaN()
+	}
 	lastHe := LastVenusConjunctionStrict(jde)
 	nextHe := NextVenusConjunctionStrict(jde)
 	nowSub := venusSunRADelta(jde)
@@ -297,23 +328,31 @@ func venusRetrograde(jde float64) float64 {
 	} else {
 		jde = lastHe + 10
 	}
-	for {
+	found := false
+	for i := 0; i < eventDirectionalSearchIterations; i++ {
 		nowSub := venusRADerivativeN(jde, 1.0/86400.0, venusEventSearchN)
+		if !isFiniteFloat(nowSub) {
+			return math.NaN()
+		}
 		if math.Abs(nowSub) > 0.5 {
 			jde += 5
 			continue
 		}
+		found = true
 		break
 	}
+	if !found {
+		return math.NaN()
+	}
 	JD1 := jde
-	for {
-		JD0 := JD1
+	var ok bool
+	JD1, ok = eventNewtonRefine(JD1, 20.0/86400.0, func(JD0 float64) float64 {
 		stDegree := venusRADerivative(JD0, 0.5/86400.0)
 		stDegreep := (venusRADerivative(JD0+10.0/86400.0, 0.5/86400.0) - venusRADerivative(JD0-10.0/86400.0, 0.5/86400.0)) / (20.0 / 86400.0)
-		JD1 = JD0 - stDegree/stDegreep
-		if math.Abs(JD1-JD0) <= 20.0/86400.0 {
-			break
-		}
+		return stDegree / stDegreep
+	})
+	if !ok {
+		return math.NaN()
 	}
 	min := eventZeroRefine(JD1, 10.0/86400.0, 0.5/86400.0, func(jd float64) float64 {
 		return venusRADerivative(jd, 0.5/86400.0)
@@ -376,46 +415,62 @@ func venusRetrogradeToProgradeAroundInferior(inferior float64) float64 {
 
 func NextVenusProgradeToRetrograde(jde float64) float64 {
 	inferior := NextVenusInferiorConjunction(jde)
-	for {
+	for i := 0; i < eventDirectionalSearchIterations; i++ {
 		date := venusProgradeToRetrogradeAroundInferior(inferior)
+		if !isFiniteFloat(date) {
+			return math.NaN()
+		}
 		if eventUTQueryAfterOrEqual(date, jde) {
 			return date
 		}
 		inferior = NextVenusInferiorConjunction(eventUTNextQueryTT(inferior))
 	}
+	return math.NaN()
 }
 
 func NextVenusRetrogradeToPrograde(jde float64) float64 {
 	inferior := LastVenusInferiorConjunction(jde)
-	for {
+	for i := 0; i < eventDirectionalSearchIterations; i++ {
 		date := venusRetrogradeToProgradeAroundInferior(inferior)
+		if !isFiniteFloat(date) {
+			return math.NaN()
+		}
 		if eventUTQueryAfterOrEqual(date, jde) {
 			return date
 		}
 		inferior = NextVenusInferiorConjunction(eventUTNextQueryTT(inferior))
 	}
+	return math.NaN()
 }
 
 func LastVenusProgradeToRetrograde(jde float64) float64 {
 	inferior := NextVenusInferiorConjunction(jde)
-	for {
+	for i := 0; i < eventDirectionalSearchIterations; i++ {
 		date := venusProgradeToRetrogradeAroundInferior(inferior)
+		if !isFiniteFloat(date) {
+			return math.NaN()
+		}
 		if eventUTQueryBeforeOrEqual(date, jde) {
 			return date
 		}
 		inferior = LastVenusInferiorConjunction(eventUTLastQueryTT(inferior))
 	}
+	return math.NaN()
 }
 
 func LastVenusRetrogradeToPrograde(jde float64) float64 {
 	inferior := LastVenusInferiorConjunction(jde)
-	for {
+	for i := 0; i < eventDirectionalSearchIterations; i++ {
 		date := venusRetrogradeToProgradeAroundInferior(inferior)
+		if !isFiniteFloat(date) {
+			return math.NaN()
+		}
 		if eventUTQueryBeforeOrEqual(date, jde) {
 			return date
 		}
 		inferior = LastVenusInferiorConjunction(eventUTLastQueryTT(inferior))
 	}
+	return math.NaN()
 }
 
 func VenusSunElongation(jde float64) float64 {
@@ -465,52 +520,77 @@ func venusWestElongationWindowContaining(jde float64) (float64, float64) {
 }
 
 func nextVenusGreatestElongationTyped(jde float64, east bool) float64 {
+	if !isFiniteFloat(jde) {
+		return math.NaN()
+	}
 	if east {
 		start, windowEnd := venusEastElongationWindowContaining(jde)
-		for {
+		for i := 0; i < eventDirectionalSearchIterations; i++ {
 			date := venusGreatestElongationInWindow(start, windowEnd)
+			if !isFiniteFloat(date) {
+				return math.NaN()
+			}
 			if eventUTQueryAfterOrEqual(date, jde) {
 				return date
 			}
 			nextInferior := NextVenusInferiorConjunction(eventUTNextQueryTT(windowEnd))
 			start, windowEnd = venusEastElongationWindowEndingAt(nextInferior)
 		}
+		return math.NaN()
 	}
 	start, windowEnd := venusWestElongationWindowContaining(jde)
-	for {
+	for i := 0; i < eventDirectionalSearchIterations; i++ {
 		date := venusGreatestElongationInWindow(start, windowEnd)
+		if !isFiniteFloat(date) {
+			return math.NaN()
+		}
 		if eventUTQueryAfterOrEqual(date, jde) {
 			return date
 		}
 		nextSuperior := NextVenusSuperiorConjunction(eventUTNextQueryTT(windowEnd))
 		start, windowEnd = venusWestElongationWindowEndingAt(nextSuperior)
 	}
+	return math.NaN()
 }
 
 func lastVenusGreatestElongationTyped(jde float64, east bool) float64 {
+	if !isFiniteFloat(jde) {
+		return math.NaN()
+	}
 	if east {
 		start, windowEnd := venusEastElongationWindowContaining(jde)
-		for {
+		for i := 0; i < eventDirectionalSearchIterations; i++ {
 			date := venusGreatestElongationInWindow(start, windowEnd)
+			if !isFiniteFloat(date) {
+				return math.NaN()
+			}
 			if eventUTQueryBeforeOrEqual(date, jde) {
 				return date
 			}
 			prevInferior := LastVenusInferiorConjunction(eventUTLastQueryTT(start))
 			start, windowEnd = venusEastElongationWindowEndingAt(prevInferior)
 		}
+		return math.NaN()
 	}
 	start, windowEnd := venusWestElongationWindowContaining(jde)
-	for {
+	for i := 0; i < eventDirectionalSearchIterations; i++ {
 		date := venusGreatestElongationInWindow(start, windowEnd)
+		if !isFiniteFloat(date) {
+			return math.NaN()
+		}
 		if eventUTQueryBeforeOrEqual(date, jde) {
 			return date
 		}
 		prevSuperior := LastVenusSuperiorConjunction(eventUTLastQueryTT(start))
 		start, windowEnd = venusWestElongationWindowEndingAt(prevSuperior)
 	}
+	return math.NaN()
 }
 
 func venusGreatestElongation(jde float64) float64 {
+	if !isFiniteFloat(jde) {
+		return math.NaN()
+	}
 	east := venusSunRADelta(jde) > 0
 	if east {
 		return nextVenusGreatestElongationTyped(jde, true)

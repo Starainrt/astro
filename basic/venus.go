@@ -173,14 +173,14 @@ func VenusCulminationTime(jde, lon, timezone float64) float64 {
 		}
 		return ha
 	}
-	for {
-		prevJD := estimateJD
+	var ok bool
+	estimateJD, ok = eventNewtonRefine(estimateJD, 0.00001, func(prevJD float64) float64 {
 		stDegree := limitHA(prevJD, lon, timezone) - 360
 		stDegreep := (limitHA(prevJD+0.000005, lon, timezone) - limitHA(prevJD-0.000005, lon, timezone)) / 0.00001
-		estimateJD = prevJD - stDegree/stDegreep
-		if math.Abs(estimateJD-prevJD) <= 0.00001 {
-			break
-		}
+		return stDegree / stDegreep
+	})
+	if !ok {
+		return math.NaN()
 	}
 	return estimateJD
 }

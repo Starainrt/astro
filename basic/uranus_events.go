@@ -64,6 +64,9 @@ func uranusRADerivativeN(jde, delta float64, n int) float64 {
 
 func uranusConjunctionFull(jde, degree float64, next uint8) float64 {
 	//0=last 1=next
+	if !isFiniteFloat(jde) || !isFiniteFloat(degree) {
+		return math.NaN()
+	}
 	daysPerDegree := URANUS_S_PERIOD / 360
 	currentDelta := uranusSunLongitudeDelta(jde, degree, false)
 	if next == 0 {
@@ -72,20 +75,29 @@ func uranusConjunctionFull(jde, degree float64, next uint8) float64 {
 		jde += daysPerDegree * currentDelta
 	}
 	estimateJD := jde
-	for {
+	converged := false
+	for i := 0; i < eventNewtonMaxIterations; i++ {
 		prevJD := estimateJD
 		longitudeDelta := uranusSunLongitudeDelta(prevJD, degree, true)
 		longitudeSlope := (uranusSunLongitudeDelta(prevJD+0.000005, degree, true) - uranusSunLongitudeDelta(prevJD-0.000005, degree, true)) / 0.00001
-		estimateJD = prevJD - longitudeDelta/longitudeSlope
-		if math.Abs(estimateJD-prevJD) <= 0.00001 {
+		nextJD := prevJD - longitudeDelta/longitudeSlope
+		estimateJD = nextJD
+		if math.Abs(nextJD-prevJD) <= 0.00001 {
+			converged = true
 			break
 		}
+	}
+	if !converged {
+		return math.NaN()
 	}
 	return TD2UT(estimateJD, false)
 }
 
 func uranusConjunction(jde, degree float64, next uint8) float64 {
 	//0=last 1=next
+	if !isFiniteFloat(jde) || !isFiniteFloat(degree) {
+		return math.NaN()
+	}
 	daysPerDegree := URANUS_S_PERIOD / 360
 	currentDelta := uranusSunLongitudeDelta(jde, degree, false)
 	if next == 0 {
@@ -94,23 +106,35 @@ func uranusConjunction(jde, degree float64, next uint8) float64 {
 		jde += daysPerDegree * currentDelta
 	}
 	estimateJD := jde
-	for {
+	converged := false
+	for i := 0; i < eventNewtonMaxIterations; i++ {
 		prevJD := estimateJD
 		longitudeDelta := uranusSunLongitudeDeltaN(prevJD, degree, true, uranusEventSearchN)
 		longitudeSlope := (uranusSunLongitudeDeltaN(prevJD+0.000005, degree, true, uranusEventSearchN) - uranusSunLongitudeDeltaN(prevJD-0.000005, degree, true, uranusEventSearchN)) / 0.00001
-		estimateJD = prevJD - longitudeDelta/longitudeSlope
-		if math.Abs(estimateJD-prevJD) <= uranusPhaseCoarseTolerance {
+		nextJD := prevJD - longitudeDelta/longitudeSlope
+		estimateJD = nextJD
+		if math.Abs(nextJD-prevJD) <= uranusPhaseCoarseTolerance {
+			converged = true
 			break
 		}
 	}
-	for {
+	if !converged {
+		return math.NaN()
+	}
+	converged = false
+	for i := 0; i < eventNewtonMaxIterations; i++ {
 		prevJD := estimateJD
 		longitudeDelta := uranusSunLongitudeDelta(prevJD, degree, true)
 		longitudeSlope := (uranusSunLongitudeDelta(prevJD+0.000005, degree, true) - uranusSunLongitudeDelta(prevJD-0.000005, degree, true)) / 0.00001
-		estimateJD = prevJD - longitudeDelta/longitudeSlope
-		if math.Abs(estimateJD-prevJD) <= 0.00001 {
+		nextJD := prevJD - longitudeDelta/longitudeSlope
+		estimateJD = nextJD
+		if math.Abs(nextJD-prevJD) <= 0.00001 {
+			converged = true
 			break
 		}
+	}
+	if !converged {
+		return math.NaN()
 	}
 	return TD2UT(estimateJD, false)
 }

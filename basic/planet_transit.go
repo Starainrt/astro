@@ -195,9 +195,23 @@ func nextPlanetTransitSeasonTT(jdTT float64, cfg planetTransitConfig, direction 
 	for nodeOffset := 0; nodeOffset <= 1; nodeOffset++ {
 		candidate := estimatePlanetTransitSeasonTT(jdTT, cfg, nodeOffset, direction)
 		candidate = refinePlanetTransitSeasonTT(candidate, cfg, nodeOffset)
-		for !planetTransitMatchesDirection(candidate, jdTT, direction, false) {
+		if !isFiniteFloat(candidate) {
+			continue
+		}
+		matchedDirection := false
+		for i := 0; i < eventDirectionalSearchIterations; i++ {
+			if planetTransitMatchesDirection(candidate, jdTT, direction, false) {
+				matchedDirection = true
+				break
+			}
 			candidate += float64(direction) * planetTransitTropicalYearDays
 			candidate = refinePlanetTransitSeasonTT(candidate, cfg, nodeOffset)
+			if !isFiniteFloat(candidate) {
+				break
+			}
+		}
+		if !matchedDirection {
+			continue
 		}
 		if !isFiniteFloat(best) || math.Abs(candidate-jdTT) < math.Abs(best-jdTT) {
 			best = candidate
@@ -513,8 +527,4 @@ func planetTransitAngleDelta(diff float64) float64 {
 		diff += 360
 	}
 	return diff
-}
-
-func isFiniteFloat(value float64) bool {
-	return !math.IsNaN(value) && !math.IsInf(value, 0)
 }

@@ -8,7 +8,7 @@
 
 >📚 本项目主要用于天文算法学习与验证，计算结果满足业余爱好级别需求。
 
-基于《天文算法》（Astronomical Algorithms）一书实现，提供历法转换、太阳/月亮/行星位置、日月食、升落、中天、月相、恒星、坐标变换、物理星历、研究公式和通用小天体轨道传播等功能。太阳和行星部分使用内置 VSOP87 解析项，月球部分使用内置 ELP2000/82 解析级数，不依赖外部 JPL 星历文件。
+基于《天文算法》（Astronomical Algorithms）一书实现，提供历法转换、太阳/月亮/行星位置、日月食、月掩、升落、中天、月相、恒星、坐标变换、物理星历、研究公式和通用小天体轨道传播等功能。太阳和行星部分使用内置 VSOP87 解析项，月球部分使用内置 ELP2000/82 解析级数，不依赖外部 JPL 星历文件。
 
 没有特殊标注时，本程序所提供的坐标均为瞬时天球坐标；角度单位默认是度，视直径/视半径单位是角秒，距离单位按函数名使用 AU 或 km。
 
@@ -23,12 +23,15 @@
    - [历法转换与节气](#历法转换与节气)
    - [太阳与月亮](#太阳与月亮)
    - [Lite 轻量太阳与月亮](#lite-轻量太阳与月亮)
+   - [月掩](#月掩)
+   - [天象地图与 GeoJSON](#天象地图与-geojson)
    - [行星](#行星)
    - [恒星](#恒星)
    - [坐标工具](#坐标工具)
    - [研究公式](#研究公式)
    - [通用小天体轨道](#通用小天体轨道)
    - [日晷与真太阳时](#日晷与真太阳时)
+- [已实现](#已实现)
 - [TODO](#todo)
 
 ## 安装
@@ -43,7 +46,9 @@ go get github.com/starainrt/astro
 - 🌞 **太阳计算**：天球位置、日出日落、日地距离、真太阳时、视高度角、视差角、日面物理参数（`P/B0/L0`）、视直径等
 - 🌙 **月亮计算**：天球位置、月出月落、地月距离、月相、朔望时间、视直径、亮边位置角、视差角、地心/站心天平动、近远地点、交点、最大赤纬等
 - 🪶 **轻量链路**：`lite/sun` 与 `lite/moon` 提供面向手表、前端、小程序和其它资源受限环境的轻量近似太阳/月亮算法，覆盖天球位置、升落和月相
-- 🌗 **日月食**：全局日食、站心日食、中心线/偏食足迹、月食、地方可见月食与 SVG 示意图
+- 🌗 **日月食**：全局日食、站心日食、中心线/偏食足迹、月食、地方可见月食，以及局地示意图和全球见食图 SVG
+- 🌘 **月掩**：按指定赤经赤纬搜索恒星月掩，按有限圆盘计算行星月掩，支持指定地点接触时刻、全球掩带、几何掩甚点和 SVG
+- 🗺️ **地理输出**：日食、月食和月掩结果可编码为带时间数据与可选时间标记的 GeoJSON；全球 SVG 使用无行政边界海岸线，并支持等经纬和南北极投影
 - 🪐 **行星计算**：七大行星天球位置、升落时间、合冲留、大距、水星/金星地心凌日等特殊天象时间、升交点/降交点、视直径/视半径、相位、视差角、节点、视星等与物理星历
 - ⭐ **恒星计算**：指定天球坐标所属星座；同时包含9100颗恒星数据库，可计算升降时间、视差角和视高度角，获取指定日期的恒星坐标信息
 - 🧭 **坐标工具**：黄道/赤道/地平坐标转换、站心坐标、恒星时、岁差、章动、角距离、大气折射、大气质量、视差角、银道坐标
@@ -58,9 +63,11 @@ go get github.com/starainrt/astro
 | `calendar` | 公历/农历互转、节气、历史朝代年号、古代历法信息 |
 | `coord` | 黄道/赤道/地平互转、恒星时、岁差、章动、站心坐标、大气折射、大气质量、视差角、银道坐标、手动黄赤交角和手动时角的研究接口 |
 | `sun` | 太阳位置、日出日落、晨昏朦影、均时差、真太阳时、视高度角、视差角、视直径、日面 `P/B0/L0` |
-| `moon` | 月亮位置、月出月落、月相、朔望弦、视高度角、视差角、视直径、亮边位置角、地心/站心天平动、近远地点、交点、最大赤纬 |
+| `moon` | 月亮位置、月出月落、月相、朔望弦、视高度角、视差角、视直径、亮边位置角、地心/站心天平动、近远地点、交点、最大赤纬，以及恒星/行星月掩和全球掩带 |
 | `lite/sun` / `lite/moon` | 轻量太阳/月亮近似链路，面向分钟级升落、轻量天球位置和月相计算 |
-| `eclipse` / `eclipse/svg` | 全局/局地日月食、日食中心线与偏食足迹、局地可见性筛选、日月食 SVG |
+| `eclipse` / `eclipse/svg` | 全局/局地日月食、日食中心线与偏食足迹、局地可见性筛选、局地示意图与全球见食图 SVG |
+| `moon/svg` | 指定地点恒星/行星月掩视圆图，以及带掩带、中心线和时间标记的全球投影 SVG |
+| `geojson` | 将日食、月食和月掩的既有地理结果编码为 RFC 7946 GeoJSON，投影与样式由应用负责 |
 | `mercury` / `venus` | 水星、金星位置、升落、合日、留、大距、地心凌日、相位、视差角、视星等、视直径、节点和物理星历 |
 | `mars` / `jupiter` / `saturn` / `uranus` / `neptune` | 外行星位置、升落、合冲、留、方照、相位、视差角、视星等、视直径、节点和物理星历 |
 | `earth` | 地球轨道偏心率、近日点、远日点 |
@@ -101,7 +108,7 @@ go get github.com/starainrt/astro
 
 ### 月球
 
-月球使用内置的 ELP/MPP02 DE405 解析级数（截断版，保留主要周期项），库体积轻，不需要外部星历文件。它适合农历定朔、月相、升落、月食和常规位置计算；若需要极高精度月球测距、长期物理天平动或专业掩星，请以 JPL 星历或专门月球星历为准。
+月球使用内置的 ELP/MPP02 DE405 解析级数（截断版，保留主要周期项），库体积轻，不需要外部星历文件。它适合农历定朔、月相、升落、月食、业余月掩预报和常规位置计算；若需要极高精度月球测距、长期物理天平动或专业掩星，请以 JPL 星历或专门月球星历为准。
 
 ### Lite 轻量链路
 
@@ -153,10 +160,15 @@ go get github.com/starainrt/astro
 - 太阳/行星/月亮视直径：与外部基线最大差异从 `0.000002"` 到 `0.194598"` 不等，月亮因视差和距离变化更敏感
 - 太阳物理星历 `P/B0/L0`：最大差异约 `0.003349° / 0.003986° / 0.047394°`
 - 行星升/中天/落：已用 JPL Horizons 电视事件（TVH, Time-Varying Hourly）做对比校验；该基线按 1 分钟步长生成，当前结果与 Horizons 事件时间在分钟级上对齐
+- 月出/月落：`aero=true` 按动态标准折射和实时月球视半径计算上缘过地平线。7 个地点、14 个海平面事件相对 JPL Horizons DE441 的平均/最大差异约 `0.30s / 0.75s`
+- 月出/月落的其他口径：相对固定 `-0.8333°` 的 MET Norway（Skyfield 1.53 + DE440s）约 `38.77s / 76.22s`；相对未公开地平线口径的 IMCCE Miriade 平均约 `2m13.46s`，`61°N` 低仰角样本最大约 `6m41.82s`
+- 月掩恒星全球路径：`2025-06-05` 月掩进贤增九（HR 4799）样例相对项目记录的参考值，掩始/掩甚/掩终差异约 `+2.30s / -1.37s / -3.12s`；掩甚经纬度差异约 `+0.0122° / +0.0105°`，掩带宽为 `3582.4 km`，与参考 `3571.9 km` 相差约 `10.5 km`
 - 地球近日点/远日点：时刻最大差异约 `1m28.84s`，距离最大差异约 `0.000000039837 AU`
 - 月球主链位置：当前算法为 ELP/MPP02 DE405 解析级数截断版；在 `-2000` 年四个 JPL/Horizons `JDTT` 样本上，相对 JPL/Horizons 的最大差异约为黄经 `219.6"`、黄纬 `25.8"`、距离 `34.3 km`
 - 月球近地点/远地点：时刻最大差异约 `15m53.45s`，距离最大差异约 `39.758 km`
 - 月球最大赤纬：时刻最大差异约 `2.43s`，赤纬最大差异约 `0.00006431°`
+
+站心时角修复后的影响边界：月出/月落、指定地点月掩、月球站心坐标，以及地方月食结果中的食甚月高和可见性判断使用修复后的 UT 时角链。日食和月食的全球接触时刻、食甚、食分等主体结果来自各自的地心/贝塞尔几何，不经过该站心转换，因此现有 NASA 精度数据无需随之改写。
 
 ## 快速开始
 
@@ -469,20 +481,20 @@ func main() {
 	// 西安市2020年1月1日民用晨朦影开始时间
 	// 民用朦影，太阳位于地平线下6度，航海朦影=地平线下12度，天文朦影=地平线下18度
 	fmt.Println(sun.MorningTwilight(date, lon, lat, -6))
-	// 西安市2020年1月1日日出时间，计算大气影响
+	// 西安市2020年1月1日日出时间，按动态标准折射和实时太阳视半径计算上缘过地平线
 	fmt.Println(sun.RiseTime(date, lon, lat, height, true))
 	// 西安市2020年1月1日太阳上中天时间
 	fmt.Println(sun.CulminationTime(date, lon))
-	// 西安市2020年1月1日日落时间，计算大气影响
+	// 西安市2020年1月1日日落时间，按动态标准折射和实时太阳视半径计算上缘过地平线
 	fmt.Println(sun.SetTime(date, lon, lat, height, true))
 	// 西安市2020年1月1日民用昏朦影结束时间
 	fmt.Println(sun.EveningTwilight(date, lon, lat, -6))
 
-	// 西安市2020年1月1日月出时间，计算大气影响
+	// 西安市2020年1月1日月出时间，按动态标准折射和实时月球视半径计算上缘过地平线
 	fmt.Println(moon.RiseTime(date, lon, lat, height, true))
 	// 西安市2020年1月1日月亮上中天时间
 	fmt.Println(moon.CulminationTime(date, lon, lat))
-	// 西安市2020年1月1日月落时间，计算大气影响
+	// 西安市2020年1月1日月落时间，按动态标准折射和实时月球视半径计算上缘过地平线
 	fmt.Println(moon.SetTime(date, lon, lat, height, true))
 }
 ```
@@ -492,13 +504,13 @@ func main() {
 
 ```
 2020-01-01 07:22:27.960488498 +0800 CST <nil>
-2020-01-01 07:50:14.530648291 +0800 CST <nil>
+2020-01-01 07:49:52.413689196 +0800 CST <nil>
 2020-01-01 12:47:35.933117866 +0800 CST
-2020-01-01 17:44:47.070974707 +0800 CST <nil>
+2020-01-01 17:45:09.188657999 +0800 CST <nil>
 2020-01-01 18:12:33.624035418 +0800 CST <nil>
-2020-01-01 11:52:45.157297253 +0800 CST <nil>
+2020-01-01 11:52:49.860912859 +0800 CST <nil>
 2020-01-01 17:38:02.510787248 +0800 CST
-2020-01-01 23:26:51.580328643 +0800 CST <nil>
+2020-01-01 23:26:49.313593804 +0800 CST <nil>
 
 
 ```
@@ -761,8 +773,12 @@ func main() {
 - `LastLocalTotalSolarEclipse` / `NextLocalTotalSolarEclipse` / `ClosestLocalTotalSolarEclipse`：搜索某地可见的日全食，返回 `(info, ok)`
 - `LastLocalAnnularSolarEclipse` / `NextLocalAnnularSolarEclipse` / `ClosestLocalAnnularSolarEclipse`：搜索某地可见的日环食，返回 `(info, ok)`
 - `SolarEclipseCentralPath`：计算中心线、南北界和食甚点
-- `SolarEclipsePartialFootprints`：计算偏食半影在地球表面的足迹
+- `SolarEclipsePartialFootprints`：计算偏食半影在地球表面的足迹；可选采样本影/反本影瞬时轮廓
 - `eclipse/svg.LocalSolarEclipseSVG`：生成某地的日面视圆 SVG
+
+`SolarEclipsePartialFootprintsInfo` 还给出影锥与地球的全球接触：`P1/P4` 是半影外切，`P2/P3` 是半影内切；`U1/U4` 是本影或反本影外切，`U2/U3` 是内切。某次日食不存在的接触保持 `time.Time` 零值。`CentralBeginOnEarth` / `CentralEndOnEarth` 仍表示影轴进入和离开地球，不等同于 `U1/U4`。
+
+需要结构化的瞬时中心影轮廓时，可在 `SolarEclipsePartialFootprintOptions` 中设置 `CentralShadowStep`；结果写入 `CentralShadowFootprints`。零值关闭该额外计算，SVG 入口则默认按 10 分钟采样。
 
 日食结果 `SolarEclipseInfo`、`LocalSolarEclipseInfo`，以及 `SolarEclipsePath` / `SolarEclipsePartialFootprintsInfo` 里的 `Eclipse` 字段还会附带沙罗序列信息：
 
@@ -1196,6 +1212,311 @@ true 19671
 - NASA 月食算法与历史说明：<https://eclipse.gsfc.nasa.gov/LEhistory/LEhistory.html>
 
 
+
+### 月掩
+
+月掩接口位于 `moon`，按用户给定的目标搜索，不会遍历恒星表。固定地点接口直接接收 `start`、`end`、经度、纬度和海拔；全球路径接口返回 WGS84 经纬度采样，可继续交给 `moon/svg` 或 `geojson`。
+
+目标和接触语义分为两类：
+
+- **恒星**按点光源处理，返回掩始 `Immersion`、掩甚 `Greatest` 和掩终 `Emersion`。
+- **行星**按有限圆盘处理，外切为 C1/C4，完全被月面覆盖时另有内切 C2/C3；偏掩和擦掩没有 C2/C3。行星半径取赤道本体半径，不含行星环、大气延伸和扁率。
+- `FindBestStarOccultations` / `FindBestPlanetOccultations` 返回全球海平面几何掩甚点，不按地平线、月高、可见时长或食分评分；`VisibleAtGreatest` 仅报告该点的可见性。
+- 搜索时间窗按掩甚时刻选择事件。命中后会返回完整接触时刻或完整全球路径，不会把结果裁剪到查询端点。
+- 接触时刻按目标与月面边缘的站心几何求解，不加入大气折射。`MoonAltitudeAtGreatest` 是月心真高度，`VisibleAtGreatest` 表示它是否不低于几何地平线。
+
+#### 恒星月掩
+
+恒星由调用者传入 `StarCoordinate`。`RA` / `Dec` 单位为度，`Epoch` 和 `Frame` 必填；自行单位为 `mas/year`，其中 `ProperMotionRACosDecMasPerYear` 使用星表常见的 `dRA*cos(Dec)` 口径。
+
+可以直接构造坐标：
+
+```go
+target := moon.StarCoordinate{
+	ID:                             "HR 4799",
+	RA:                             189.1975,
+	Dec:                            -5.831944444444,
+	Epoch:                          time.Date(2000, 1, 1, 12, 0, 0, 0, time.UTC),
+	Frame:                          moon.CoordinateFrameJ2000,
+	ProperMotionRACosDecMasPerYear: -28,
+	ProperMotionDecMasPerYear:      -18,
+}
+```
+
+也可以显式加载内置 9100 星表，再用 `StarCoordinateFromStarData` 转换。月掩搜索本身不会加载星表；只有调用 `star.InitStarDatabase`、`StarDataByName`、`StarDataByHR` 等星表接口时才会加载。
+
+```go
+package main
+
+import (
+	"fmt"
+	"time"
+
+	"github.com/starainrt/astro/moon"
+	"github.com/starainrt/astro/star"
+)
+
+func main() {
+	cst := time.FixedZone("CST", 8*3600)
+	start := time.Date(2025, 6, 5, 0, 0, 0, 0, cst)
+	end := start.Add(24 * time.Hour)
+
+	_ = star.InitStarDatabase()
+	data, _ := star.StarDataByName("进贤增九")
+	target, _ := moon.StarCoordinateFromStarData(data)
+
+	events, _ := moon.FindStarOccultations(
+		start, end, target,
+		121.56601, 6.80706, 0,
+		moon.OccultationSearchOptions{},
+	)
+	for _, event := range events {
+		fmt.Println(event.TargetID, event.Type)
+		fmt.Println(
+			event.Immersion.Format("2006-01-02 15:04:05.000 MST"),
+			event.Greatest.Format("2006-01-02 15:04:05.000 MST"),
+			event.Emersion.Format("2006-01-02 15:04:05.000 MST"),
+		)
+		fmt.Printf("altitude=%.3f visible=%v\n", event.MoonAltitudeAtGreatest, event.VisibleAtGreatest)
+	}
+
+	paths, _ := moon.FindStarOccultationPaths(
+		start, end, target,
+		moon.OccultationPathOptions{Step: 5 * time.Minute, TargetSpacingKM: 200},
+	)
+	for _, path := range paths {
+		fmt.Println(
+			path.Start.Time.Format("2006-01-02 15:04:05.000 MST"),
+			path.Greatest.Time.Format("2006-01-02 15:04:05.000 MST"),
+			path.End.Time.Format("2006-01-02 15:04:05.000 MST"),
+		)
+		fmt.Printf("greatest=%.6f %.6f width=%.1fkm center=%d\n",
+			path.Greatest.Longitude, path.Greatest.Latitude,
+			path.Greatest.WidthKM, len(path.CenterLine))
+	}
+}
+```
+
+输出结果：
+
+```text
+进贤增九 total
+2025-06-05 19:14:01.095 CST 2025-06-05 20:02:06.357 CST 2025-06-05 20:50:10.740 CST
+altitude=75.561 visible=true
+2025-06-05 17:45:28.498 CST 2025-06-05 20:02:06.332 CST 2025-06-05 22:18:49.977 CST
+greatest=121.566021 6.807046 width=3582.4km center=108
+```
+
+`OccultationSearchOptions` 的零值使用默认搜索步长和安全余量；`MaxEvents > 0` 限制返回数量。`OccultationPathOptions.Step` 控制基础时间采样，`TargetSpacingKM` 按地面距离自适应加密中心线；过密请求超出确定性预算时返回 `ErrOccultationPathSamplingLimit`。
+
+#### 行星月掩
+
+行星目标使用 `OccultationMercury` 到 `OccultationNeptune` 常量。下面以 `2025-02-01` 月掩土星为例，在靠近全球几何掩甚点的位置求 C1-C4：
+
+```go
+package main
+
+import (
+	"fmt"
+	"time"
+
+	"github.com/starainrt/astro/moon"
+)
+
+func main() {
+	cst := time.FixedZone("CST", 8*3600)
+	start := time.Date(2025, 2, 1, 0, 0, 0, 0, cst)
+	events, _ := moon.FindPlanetOccultations(
+		start, start.Add(24*time.Hour), moon.OccultationSaturn,
+		104.52219613, 55.25401991, 0,
+		moon.OccultationSearchOptions{},
+	)
+	for _, event := range events {
+		fmt.Println(event.TargetID, event.Type, event.HasInternalContacts)
+		fmt.Println(event.ExternalImmersion.Format("2006-01-02 15:04:05.000 MST")) // C1
+		fmt.Println(event.InternalImmersion.Format("2006-01-02 15:04:05.000 MST")) // C2
+		fmt.Println(event.Greatest.Format("2006-01-02 15:04:05.000 MST"))
+		fmt.Println(event.InternalEmersion.Format("2006-01-02 15:04:05.000 MST")) // C3
+		fmt.Println(event.ExternalEmersion.Format("2006-01-02 15:04:05.000 MST")) // C4
+	}
+}
+```
+
+输出结果：
+
+```text
+Saturn total true
+2025-02-01 11:29:09.692 CST
+2025-02-01 11:29:40.042 CST
+2025-02-01 12:00:48.729 CST
+2025-02-01 12:32:46.388 CST
+2025-02-01 12:33:18.285 CST
+```
+
+`FindPlanetOccultationPaths` 的全球结果同时包含任意圆盘重叠的部分掩区域和整颗行星被遮住的全掩区域。`HasTotalBand` 表示是否存在全掩带，`GreatestTotalWidthKM` 是掩甚处全掩带宽；中心线、边界和瞬时足迹都带采样时刻。
+
+#### 月掩 SVG
+
+`moon/svg` 同时提供“搜索并渲染”和“渲染已计算结果”两组入口：
+
+- `FindLocalStarOccultationSVGs` / `FindLocalPlanetOccultationSVGs`：指定地点的实际月面轨迹、白道和接触阶段图。
+- `FindStarOccultationSVGs` / `FindPlanetOccultationSVGs`：全球掩带、中心线、阶段点和时间标记图。
+- `LocalStarOccultationSVG` / `LocalPlanetOccultationSVG`：渲染已有的固定地点事件。
+- `StarOccultationPathSVG` / `PlanetOccultationPathSVG`：渲染已有的全球路径。
+
+```go
+localSVGs, err := moonsvg.FindLocalStarOccultationSVGs(
+	start, end, target,
+	121.56601, 6.80706, 0,
+	moon.OccultationSearchOptions{},
+	moonsvg.LocalStarOccultationSVGOptions{Width: 920, Height: 700, Location: cst},
+)
+fmt.Println(err, len(localSVGs))
+
+globalSVGs, err := moonsvg.FindStarOccultationSVGs(
+	start, end, target,
+	moon.OccultationPathOptions{Step: 5 * time.Minute, TargetSpacingKM: 200},
+	moonsvg.StarOccultationSVGOptions{
+		Width: 1200, Height: 800, Location: cst,
+		TimeLabelStep: 30 * time.Minute,
+	},
+)
+fmt.Println(err, len(globalSVGs))
+```
+
+本地图按指定观测者的站心几何绘制。全球图使用 Natural Earth `1:50m` 海岸线，不含行政边界；默认每 30 分钟在中心线上标记 `HH:MM`，高纬事件可自动切换极区投影。
+
+下面两张图沿用前文 `2025-06-05` 月掩进贤增九（HR 4799）的样例。局地图的观测点为 `121.56601°E, 6.80706°N`，靠近全球几何掩甚点；图中的掩始、掩甚和掩终是该地点实际看到的站心接触时刻，并同时给出月面方向、白道、月高、方位和地平可见性。
+
+![2025 月掩进贤增九指定地点见掩图](doc/lunar-occultation-hr4799-2025-06-05-local.svg)
+
+全球图展示同一事件的掩带边界、可见/几何中心线、全球阶段点以及每 30 分钟的中心线时间标记。全球掩始和掩终表示月影首次接触和最后离开地球，并不是上述指定地点的接触时刻。
+
+![2025 月掩进贤增九全球见掩图](doc/lunar-occultation-hr4799-2025-06-05-global.svg)
+
+### 天象地图与 GeoJSON
+
+#### 全球见食图 SVG
+
+`eclipse/svg` 可直接生成日食和月食全球图。日食图绘制完整偏食可见区、全食/环食中心带、中心线、全球阶段信息和中心线时间标记；同时显示食甚时的晨昏圈与日下点、影轴进出地球点、`P1-P4/U1-U4` 接触点、定时半影轮廓和本影/反本影轮廓。月食图绘制 P1/P4 可见半球、月出/月落过渡区和整场可见区。
+
+```go
+package main
+
+import (
+	"os"
+	"time"
+
+	eclipsesvg "github.com/starainrt/astro/eclipse/svg"
+)
+
+func main() {
+	cst := time.FixedZone("CST", 8*3600)
+
+	solar, ok := eclipsesvg.SolarEclipseMapSVG(
+		time.Date(2009, 7, 22, 12, 0, 0, 0, cst),
+		eclipsesvg.SolarEclipseMapSVGOptions{
+			Width: 1200, Height: 800, Location: cst,
+			TimeLabelStep:        30 * time.Minute,
+			PenumbralOutlineStep: 60 * time.Minute,
+			CentralShadowStep:    10 * time.Minute,
+		},
+	)
+	if ok {
+		_ = os.WriteFile("doc/solar-eclipse-yangshan-2009-global.svg", []byte(solar), 0o644)
+	}
+
+	lunar, ok := eclipsesvg.LunarEclipseMapSVG(
+		time.Date(2029, 1, 1, 0, 0, 0, 0, cst),
+		eclipsesvg.LunarEclipseMapSVGOptions{Width: 1200, Height: 800, Location: cst},
+	)
+	if ok {
+		_ = os.WriteFile("doc/lunar-eclipse-2029-01-01-global.svg", []byte(lunar), 0o644)
+	}
+}
+```
+
+日食图右侧事件表按时间列出可用的 `P1-P4/U1-U4`、影轴进出地球和食甚时刻，空间允许时同时显示接触点经纬度；摘要还包含沙罗序列、食带宽、食甚点太阳高度/方位和中心食持续时间。图中的橙色虚线是带 `HH:MM` 标记的瞬时半影边界，灰色虚线是食甚时晨昏圈，棕色实线是本影或反本影瞬时轮廓。
+
+`PenumbralOutlineStep` 与 `CentralShadowStep` 的零值分别使用 60 分钟和 10 分钟，负值关闭对应轮廓；显式设置仍可使用 30 分钟等其他间隔。`TimeLabelStep` 的零值为 30 分钟，负值关闭中心线时刻标记。
+
+日食和月掩的自动投影会在适合时选择北极或南极图；月食默认使用等经纬投影。投影仅影响 SVG 表达，不改变底层 WGS84 地理结果。
+
+日月食通过 `EclipseMapProjectionEquirectangular`、`EclipseMapProjectionNorthPolar`、`EclipseMapProjectionSouthPolar` 强制投影；月掩使用对应的 `MapProjection...` 常量。
+
+下面的全球图沿用前文局地 SVG 的事件日期。2009 长江大日食、2012 厦门日环食和 2035 北京日全食使用等经纬投影：
+
+![2009 长江大日食全球见食图](doc/solar-eclipse-yangshan-2009-global.svg)
+
+![2012 厦门日环食全球见食图](doc/solar-eclipse-xiamen-2012-global.svg)
+
+![2035 北京日全食全球见食图](doc/solar-eclipse-beijing-2035-global.svg)
+
+`2012-05-21` 日环食的偏食可见区覆盖北极点。下面把同一事件强制切换为北极方位等距投影，以便查看跨反经线的北极区见食范围；圆形边界是投影范围，不是行政或政治边界：
+
+![2012 日环食北极区全球见食图](doc/solar-eclipse-arctic-2012-global.svg)
+
+月食沿用前文 `2029-01-01` 跨年月全食，显示全程可见、带食月出、带食月落和不可见区域：
+
+![2029 跨年月全食全球可见图](doc/lunar-eclipse-2029-01-01-global.svg)
+
+#### GeoJSON
+
+`geojson` 接收已经计算好的日食、月食或月掩结果，返回 `[]byte`。这段字节是完整的 UTF-8 RFC 7946 `FeatureCollection` JSON，不是图片，也不是压缩数据，可以直接写入 `.geojson`、交给 `encoding/json`，或发送给前端地图组件。
+
+```go
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"time"
+
+	"github.com/starainrt/astro/eclipse"
+	"github.com/starainrt/astro/geojson"
+)
+
+func main() {
+	date := time.Date(2024, 4, 8, 0, 0, 0, 0, time.UTC)
+	partial, ok := eclipse.SolarEclipsePartialFootprints(
+		date,
+		eclipse.SolarEclipsePartialFootprintOptions{
+			Step: 10 * time.Minute, BoundaryPoints: 180,
+		},
+	)
+	if !ok {
+		return
+	}
+	central, hasCentral := eclipse.SolarEclipseCentralPath(
+		date,
+		eclipse.SolarEclipsePathOptions{Step: time.Minute, TargetSpacingKM: 20},
+	)
+	var centralPath *eclipse.SolarEclipsePath
+	if hasCentral {
+		centralPath = &central
+	}
+
+	data, err := geojson.MarshalSolarEclipseWithTimeMarkers(
+		partial, centralPath,
+		geojson.TimeMarkerOptions{
+			Step: 30 * time.Minute,
+			Location: time.FixedZone("CST", 8*3600),
+		},
+	)
+	fmt.Println(err, json.Valid(data))
+}
+```
+
+对应的无时间标记和带时间标记入口包括：
+
+- `MarshalSolarEclipse` / `MarshalSolarEclipseWithTimeMarkers`
+- `MarshalLunarEclipse` / `MarshalLunarEclipseWithTimeMarkers`
+- `MarshalStarOccultation` / `MarshalStarOccultationWithTimeMarkers`
+- `MarshalPlanetOccultation` / `MarshalPlanetOccultationWithTimeMarkers`
+
+坐标统一为 WGS84 经度、纬度，跨反经线的线和面会拆分。带时路径的 `times` 属性与各段坐标逐点对齐；`WithTimeMarkers` 另加 `role=time-marker` 的 Point Feature，本地化 `label` 用于显示，`time` 始终是 UTC RFC 3339。
+
+`TimeMarkerOptions.Step` 的零值为 30 分钟，正值至少 1 分钟，每次导出最多 1440 个标记。GeoJSON 不携带底图、国家边界、样式或投影；Web Mercator、极区图、瓦片选择和政治边界由应用自行决定。
 
 ### 行星
 
@@ -1692,7 +2013,7 @@ func main() {
 143.99353431082105 18.7404068044953
 manual az=281.869347 alt=24.489608 zen=65.510392 ha=73.866900
 gal lon=0.000047 lat=-0.000079
-apparent alt=10.092644
+apparent alt=10.093429
 ```
 
 `coord` 里的研究型接口不会自动代入当前日期的黄赤交角或恒星时，适合做“不同自转轴倾角”“手工指定时角”这类推演。常规观测计算仍建议使用 `EclipticToEquatorial`、`EquatorialToHorizontal` 等带 `time.Time` 的接口。
@@ -1925,7 +2246,8 @@ func main() {
 ## 已实现
 
 - ✅ 太阳位置、高度角、天顶距、方位角、中天、晨昏朦影、日出日落、节气、日食、日面物理参数
-- ✅ 月亮位置、高度角、天顶距、方位角、中天、升落、月相、月食、天平动、近远地点、最大赤纬
+- ✅ 月亮位置、高度角、天顶距、方位角、中天、升落、月相、月食、天平动、近远地点、最大赤纬，以及恒星/行星月掩
+- ✅ 日食、月食和月掩的全球 SVG 投影图、指定地点月掩图、GeoJSON 与可选时间标记
 - ✅ `lite/sun`、`lite/moon` 轻量太阳/月亮链路：面向分钟级升落、轻量位置和月相计算
 - ✅ 地球偏心率、日地距离、近日点、远日点
 - ✅ 真平恒星时、星座计算、常用坐标转换、大气折射、大气质量、视差角、银道坐标

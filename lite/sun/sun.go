@@ -2,6 +2,7 @@ package sun
 
 import (
 	"errors"
+	"math"
 	"time"
 
 	"github.com/starainrt/astro/basic"
@@ -101,19 +102,21 @@ func riseSetTime(date time.Time, lon, lat, height float64, aero, isRise bool) (t
 	_, offset := localMidnight.Zone()
 	timezone := float64(offset) / 3600.0
 
-	targetAltitude := -basic.HeightDegreeByLat(height, lat)
-	if aero {
-		targetAltitude -= 0.8333
-	}
+	horizonDip := basic.HeightDegreeByLat(height, lat)
 
 	altitudeFn := func(localJD float64) float64 {
 		utJD := localJD - timezone/24.0
 		ra, dec := lite.SunApparentRaDec(utJD)
 		altitude, _, _ := lite.HorizontalCoordinates(ra, dec, utJD, lon, lat)
-		return altitude
+		residual := altitude + horizonDip
+		if aero {
+			residual += basic.RefractionFromTrueAltitude(altitude, 1010, 10)
+			residual += liteSunSemidiameterDegrees(lite.SunDistanceAU(utJD))
+		}
+		return residual
 	}
 
-	eventJD, err := lite.SearchRiseSet(localJD, targetAltitude, 30, isRise, altitudeFn)
+	eventJD, err := lite.SearchRiseSet(localJD, 0, 30, isRise, altitudeFn)
 	if err != nil {
 		switch {
 		case errors.Is(err, lite.ErrNeverRise):
@@ -125,4 +128,12 @@ func riseSetTime(date time.Time, lon, lat, height float64, aero, isRise bool) (t
 		}
 	}
 	return basic.JDE2DateByZone(eventJD, date.Location(), true), nil
+}
+
+func liteSunSemidiameterDegrees(distanceAU float64) float64 {
+	const (
+		sunRadiusKM = 695700.0
+		auKM        = 149597870.7
+	)
+	return math.Asin(sunRadiusKM/(distanceAU*auKM)) * 180 / math.Pi
 }

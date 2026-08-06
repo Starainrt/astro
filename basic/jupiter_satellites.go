@@ -361,16 +361,31 @@ func jupiterGalileanElementsToPV(mu float64, elements jupiterGalileanElements) [
 	p := elements.P
 	a := elements.A
 	al := elements.L
+	invalid := func() [6]float64 {
+		nan := math.NaN()
+		return [6]float64{nan, nan, nan, nan, nan, nan}
+	}
+	if !isFiniteFloat(mu) || !isFiniteFloat(k) || !isFiniteFloat(h) || !isFiniteFloat(q) || !isFiniteFloat(p) || !isFiniteFloat(a) || !isFiniteFloat(al) || a == 0 {
+		return invalid()
+	}
 	an := math.Sqrt(mu / math.Pow(a, 3))
 	ee := al + k*math.Sin(al) - h*math.Cos(al)
-	for {
+	converged := false
+	for i := 0; i < eventNewtonMaxIterations; i++ {
 		ce := math.Cos(ee)
 		se := math.Sin(ee)
 		de := (al - ee + k*se - h*ce) / (1 - k*ce - h*se)
+		if !isFiniteFloat(de) {
+			return invalid()
+		}
 		ee += de
 		if math.Abs(de) < 1e-12 {
+			converged = true
 			break
 		}
+	}
+	if !converged {
+		return invalid()
 	}
 	ce := math.Cos(ee)
 	se := math.Sin(ee)

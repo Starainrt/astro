@@ -19,6 +19,17 @@ const (
 	solarEclipsePartialFootprintMaxBoundaryPoints     = 1440
 	solarEclipsePartialFootprintPointTolerance        = 1e-12
 	solarEclipsePartialFootprintIterationLimit        = 10
+	solarEclipsePartialFootprintTransitionIterations  = 48
+	solarEclipseShadowContactSearchStepDays           = 10.0 / 1440.0
+	solarEclipseShadowContactSearchSpanDays           = 0.75
+	solarEclipseShadowContactToleranceDays            = 1e-9
+)
+
+type solarEclipseShadowKind uint8
+
+const (
+	solarEclipsePenumbralShadow solarEclipseShadowKind = iota
+	solarEclipseCentralShadow
 )
 
 // SolarEclipsePathOptions 控制日食中心路径采样。
@@ -78,6 +89,9 @@ type SolarEclipsePartialFootprintOptions struct {
 	// BoundaryPoints 是每个瞬时半影边界的角向采样点数；<=0 时使用 180。
 	// BoundaryPoints is the angular sample count for each instantaneous penumbral boundary; values <= 0 use 180.
 	BoundaryPoints int
+	// CentralShadowStepDays 是本影/反本影瞬时足迹的时间步长，单位为日；<=0 时不计算。
+	// CentralShadowStepDays is the umbral/antumbral footprint step in days; values <= 0 disable it.
+	CentralShadowStepDays float64
 }
 
 // SolarEclipsePartialAreaOptions 是 SolarEclipsePartialFootprintOptions 的兼容别名。
@@ -104,12 +118,30 @@ type SolarEclipsePartialFootprintsResult struct {
 	Eclipse SolarEclipseResult
 	// Footprints 是按时间采样的瞬时半影足迹, sampled instantaneous penumbral footprints.
 	Footprints []SolarEclipsePartialFootprint
+	// CentralShadowFootprints 是按时间采样的本影/反本影足迹。
+	// CentralShadowFootprints are sampled umbral/antumbral footprints.
+	CentralShadowFootprints []SolarEclipsePartialFootprint
+	// P1-P4 是半影与地球的外切/内切接触点；不存在的内切点保持零值。
+	// P1-P4 are external/internal penumbral contacts; absent internal contacts remain zero.
+	P1 SolarEclipsePathPoint
+	P2 SolarEclipsePathPoint
+	P3 SolarEclipsePathPoint
+	P4 SolarEclipsePathPoint
+	// U1-U4 是本影/反本影与地球的外切/内切接触点；不存在时保持零值。
+	// U1-U4 are external/internal umbral/antumbral contacts; absent contacts remain zero.
+	U1 SolarEclipsePathPoint
+	U2 SolarEclipsePathPoint
+	U3 SolarEclipsePathPoint
+	U4 SolarEclipsePathPoint
 	// StepDays 是实际采用的基础时间采样步长，单位为日。
 	// StepDays is the effective base time step in days.
 	StepDays float64
 	// BoundaryPoints 是实际采用的边界角向采样点数。
 	// BoundaryPoints is the effective angular sample count for each boundary.
 	BoundaryPoints int
+	// CentralShadowStepDays 是本影/反本影足迹的实际采样步长；0 表示未计算。
+	// CentralShadowStepDays is the effective umbral/antumbral footprint step; zero means disabled.
+	CentralShadowStepDays float64
 }
 
 // SolarEclipsePartialAreaResult 是 SolarEclipsePartialFootprintsResult 的兼容别名。
@@ -237,9 +269,10 @@ func solarEclipsePartialFootprints(
 	options = normalizeSolarEclipsePartialFootprintOptions(options)
 	result := solarEclipse(seedJDE, model)
 	footprintsResult := SolarEclipsePartialFootprintsResult{
-		Eclipse:        result,
-		StepDays:       options.StepDays,
-		BoundaryPoints: options.BoundaryPoints,
+		Eclipse:               result,
+		StepDays:              options.StepDays,
+		BoundaryPoints:        options.BoundaryPoints,
+		CentralShadowStepDays: options.CentralShadowStepDays,
 	}
 	if !result.HasPartial {
 		return footprintsResult
@@ -247,6 +280,20 @@ func solarEclipsePartialFootprints(
 
 	newMoonJDE := CalcMoonSHByJDE(seedJDE, 0)
 	solver := newSolarEclipseSolver(newMoonJDE, model)
+	footprintsResult.P1, footprintsResult.P4, _ = solver.shadowContactPair(
+		result.GreatestEclipse, solarEclipsePenumbralShadow, false,
+	)
+	footprintsResult.P2, footprintsResult.P3, _ = solver.shadowContactPair(
+		result.GreatestEclipse, solarEclipsePenumbralShadow, true,
+	)
+	if result.Type != SolarEclipsePartial {
+		footprintsResult.U1, footprintsResult.U4, _ = solver.shadowContactPair(
+			result.GreatestEclipse, solarEclipseCentralShadow, false,
+		)
+		footprintsResult.U2, footprintsResult.U3, _ = solver.shadowContactPair(
+			result.GreatestEclipse, solarEclipseCentralShadow, true,
+		)
+	}
 	footprints, stepDays := solver.partialFootprints(
 		result.PartialBeginOnEarth,
 		result.PartialEndOnEarth,
@@ -255,6 +302,17 @@ func solarEclipsePartialFootprints(
 	)
 	footprintsResult.StepDays = stepDays
 	footprintsResult.Footprints = footprints
+	if options.CentralShadowStepDays > 0 &&
+		footprintsResult.U1.JDE != 0 && footprintsResult.U4.JDE != 0 {
+		footprintsResult.CentralShadowFootprints, footprintsResult.CentralShadowStepDays = solver.shadowFootprints(
+			footprintsResult.U1.JDE,
+			footprintsResult.U4.JDE,
+			result.GreatestEclipse,
+			options.CentralShadowStepDays,
+			options.BoundaryPoints,
+			solarEclipseCentralShadow,
+		)
+	}
 	return footprintsResult
 }
 
@@ -273,6 +331,11 @@ func normalizeSolarEclipsePartialFootprintOptions(options SolarEclipsePartialFoo
 	}
 	if options.BoundaryPoints > solarEclipsePartialFootprintMaxBoundaryPoints {
 		options.BoundaryPoints = solarEclipsePartialFootprintMaxBoundaryPoints
+	}
+	if options.CentralShadowStepDays <= 0 || math.IsNaN(options.CentralShadowStepDays) || math.IsInf(options.CentralShadowStepDays, 0) {
+		options.CentralShadowStepDays = 0
+	} else if options.CentralShadowStepDays < solarEclipsePathMinStepDays {
+		options.CentralShadowStepDays = solarEclipsePathMinStepDays
 	}
 	return options
 }
@@ -317,14 +380,29 @@ func (solver solarEclipseSolver) partialFootprints(
 	startJDE, endJDE, greatestJDE float64,
 	options SolarEclipsePartialFootprintOptions,
 ) ([]SolarEclipsePartialFootprint, float64) {
+	return solver.shadowFootprints(
+		startJDE,
+		endJDE,
+		greatestJDE,
+		options.StepDays,
+		options.BoundaryPoints,
+		solarEclipsePenumbralShadow,
+	)
+}
+
+func (solver solarEclipseSolver) shadowFootprints(
+	startJDE, endJDE, greatestJDE, requestedStepDays float64,
+	boundaryPoints int,
+	kind solarEclipseShadowKind,
+) ([]SolarEclipsePartialFootprint, float64) {
 	if endJDE < startJDE {
 		startJDE, endJDE = endJDE, startJDE
 	}
 	if startJDE == 0 || endJDE == 0 || endJDE <= startJDE {
-		return nil, options.StepDays
+		return nil, requestedStepDays
 	}
 
-	stepDays := options.StepDays
+	stepDays := requestedStepDays
 	if sampleCount := int(math.Ceil((endJDE-startJDE)/stepDays)) + 1; sampleCount > solarEclipsePathMaxSampleCount {
 		stepDays = (endJDE - startJDE) / float64(solarEclipsePathMaxSampleCount-1)
 	}
@@ -338,7 +416,7 @@ func (solver solarEclipseSolver) partialFootprints(
 
 	footprints := make([]SolarEclipsePartialFootprint, 0, len(times))
 	for _, jd := range times {
-		footprint := solver.partialFootprintAt(jd, options.BoundaryPoints)
+		footprint := solver.shadowFootprintAt(jd, boundaryPoints, kind)
 		if len(footprint.Boundaries) > 0 {
 			footprints = append(footprints, footprint)
 		}
@@ -509,18 +587,164 @@ func solarEclipsePathPointFromBesselXY(jd, x, y float64, axis solarEclipseAxis) 
 	}, true
 }
 
+func (solver solarEclipseSolver) shadowContactPair(
+	greatestJDE float64,
+	kind solarEclipseShadowKind,
+	internal bool,
+) (SolarEclipsePathPoint, SolarEclipsePathPoint, bool) {
+	middleResidual, ok := solver.shadowContactResidual(greatestJDE, kind, internal)
+	if !ok || middleResidual > 0 {
+		return SolarEclipsePathPoint{}, SolarEclipsePathPoint{}, false
+	}
+	firstJDE, firstOK := solver.shadowContactRoot(greatestJDE, -1, middleResidual, kind, internal)
+	lastJDE, lastOK := solver.shadowContactRoot(greatestJDE, 1, middleResidual, kind, internal)
+	if !firstOK || !lastOK {
+		return SolarEclipsePathPoint{}, SolarEclipsePathPoint{}, false
+	}
+	first, firstOK := solver.shadowContactPointAt(firstJDE, kind)
+	last, lastOK := solver.shadowContactPointAt(lastJDE, kind)
+	if !firstOK || !lastOK {
+		return SolarEclipsePathPoint{}, SolarEclipsePathPoint{}, false
+	}
+	return first, last, true
+}
+
+func (solver solarEclipseSolver) shadowContactRoot(
+	greatestJDE float64,
+	direction float64,
+	middleResidual float64,
+	kind solarEclipseShadowKind,
+	internal bool,
+) (float64, bool) {
+	insideJDE := greatestJDE
+	insideResidual := middleResidual
+	for span := solarEclipseShadowContactSearchStepDays; span <= solarEclipseShadowContactSearchSpanDays; span += solarEclipseShadowContactSearchStepDays {
+		outsideJDE := greatestJDE + direction*span
+		outsideResidual, ok := solver.shadowContactResidual(outsideJDE, kind, internal)
+		if !ok {
+			continue
+		}
+		if outsideResidual >= 0 {
+			leftJDE, rightJDE := outsideJDE, insideJDE
+			leftResidual, rightResidual := outsideResidual, insideResidual
+			if leftJDE > rightJDE {
+				leftJDE, rightJDE = rightJDE, leftJDE
+				leftResidual, rightResidual = rightResidual, leftResidual
+			}
+			for rightJDE-leftJDE > solarEclipseShadowContactToleranceDays {
+				middleJDE := (leftJDE + rightJDE) / 2
+				residual, valid := solver.shadowContactResidual(middleJDE, kind, internal)
+				if !valid {
+					return 0, false
+				}
+				if (residual >= 0) == (leftResidual >= 0) {
+					leftJDE, leftResidual = middleJDE, residual
+				} else {
+					rightJDE, rightResidual = middleJDE, residual
+				}
+			}
+			return (leftJDE + rightJDE) / 2, true
+		}
+		insideJDE, insideResidual = outsideJDE, outsideResidual
+	}
+	return 0, false
+}
+
+func (solver solarEclipseSolver) shadowContactResidual(
+	jd float64,
+	kind solarEclipseShadowKind,
+	internal bool,
+) (float64, bool) {
+	moon := solver.besselMoonAt(jd)
+	distanceSquared := moon[0]*moon[0] + moon[1]*moon[1]
+	if distanceSquared <= 0 {
+		return 0, false
+	}
+	radius := solver.shadowRadiusAt(moon[2], kind)
+	if radius <= 0 {
+		return 0, false
+	}
+	earthRadius := 1 - (1/solarEclipseEarthPolarRatioSquared-1)*moon[1]*moon[1]/distanceSquared/2
+	limit := earthRadius + radius
+	if internal {
+		limit = earthRadius - radius
+	}
+	if limit <= 0 {
+		return 0, false
+	}
+	return math.Sqrt(distanceSquared) - limit, true
+}
+
+func (solver solarEclipseSolver) shadowContactPointAt(
+	jd float64,
+	kind solarEclipseShadowKind,
+) (SolarEclipsePathPoint, bool) {
+	moon := solver.besselMoonAt(jd)
+	distance := math.Hypot(moon[0], moon[1])
+	if distance <= 0 || solver.shadowRadiusAt(moon[2], kind) <= 0 {
+		return SolarEclipsePathPoint{}, false
+	}
+	axis := solver.besselAxisAt(jd)
+	unitX, unitY := moon[0]/distance, moon[1]/distance
+	insideScale, outsideScale := 0.0, 1.1
+	var intersection solarEclipseLineIntersection
+	for iteration := 0; iteration < 48; iteration++ {
+		scale := (insideScale + outsideScale) / 2
+		candidate := solarEclipseLineEar2(
+			scale*unitX, scale*unitY, 2,
+			scale*unitX, scale*unitY, 0,
+			solarEclipseEarthPolarRatio, 1, axis,
+		)
+		if candidate.valid {
+			insideScale = scale
+			intersection = candidate
+		} else {
+			outsideScale = scale
+		}
+	}
+	if !intersection.valid {
+		return SolarEclipsePathPoint{}, false
+	}
+	longitude, latitude := solarEclipseIntersectionGeodetic(intersection, axis)
+	sunAltitudeRad := solarEclipseSunAltitudeAtGreatest(jd, longitude, latitude, axis.gst)
+	return SolarEclipsePathPoint{
+		JDE:         jd,
+		Longitude:   longitude,
+		Latitude:    latitude,
+		SunAltitude: sunAltitudeRad / rad,
+	}, true
+}
+
+func (solver solarEclipseSolver) shadowRadiusAt(moonBesselZ float64, kind solarEclipseShadowKind) float64 {
+	radii := solver.shadowRadiiAt(moonBesselZ)
+	if kind == solarEclipseCentralShadow {
+		return radii.absUmbraRadius
+	}
+	return radii.penumbraRadius
+}
+
 func (solver solarEclipseSolver) partialFootprintAt(jd float64, boundaryPoints int) SolarEclipsePartialFootprint {
+	return solver.shadowFootprintAt(jd, boundaryPoints, solarEclipsePenumbralShadow)
+}
+
+func (solver solarEclipseSolver) shadowFootprintAt(
+	jd float64,
+	boundaryPoints int,
+	kind solarEclipseShadowKind,
+) SolarEclipsePartialFootprint {
 	moon := solver.besselMoonAt(jd)
 	axis := solver.besselAxisAt(jd)
 	samples := make([]solarEclipsePartialBoundarySample, boundaryPoints)
 	for i := range samples {
 		angle := 2 * math.Pi * float64(i) / float64(boundaryPoints)
-		point, ok := solver.partialFootprintPointAt(jd, moon, axis, angle)
+		point, ok := solver.shadowFootprintPointAt(jd, moon, axis, angle, kind)
 		samples[i] = solarEclipsePartialBoundarySample{
 			point: point,
 			ok:    ok,
+			angle: angle,
 		}
 	}
+	samples = solver.refineShadowFootprintTransitions(jd, moon, axis, samples, kind)
 
 	boundaries, closed := solarEclipsePartialBoundarySegments(samples)
 	return SolarEclipsePartialFootprint{
@@ -533,17 +757,83 @@ func (solver solarEclipseSolver) partialFootprintAt(jd float64, boundaryPoints i
 type solarEclipsePartialBoundarySample struct {
 	point SolarEclipsePathPoint
 	ok    bool
+	angle float64
 }
 
-func (solver solarEclipseSolver) partialFootprintPointAt(
+func (solver solarEclipseSolver) refineShadowFootprintTransitions(
+	jd float64,
+	moon [3]float64,
+	axis solarEclipseAxis,
+	samples []solarEclipsePartialBoundarySample,
+	kind solarEclipseShadowKind,
+) []solarEclipsePartialBoundarySample {
+	if len(samples) < 2 {
+		return samples
+	}
+	result := make([]solarEclipsePartialBoundarySample, 0, len(samples)+4)
+	for index, sample := range samples {
+		result = append(result, sample)
+		next := samples[(index+1)%len(samples)]
+		if sample.ok == next.ok {
+			continue
+		}
+		nextAngle := next.angle
+		if index == len(samples)-1 {
+			nextAngle += 2 * math.Pi
+		}
+		refined := solver.refineShadowFootprintTransition(jd, moon, axis, sample, next, nextAngle, kind)
+		result = append(result, refined)
+	}
+	return result
+}
+
+func (solver solarEclipseSolver) refineShadowFootprintTransition(
+	jd float64,
+	moon [3]float64,
+	axis solarEclipseAxis,
+	first, second solarEclipsePartialBoundarySample,
+	secondAngle float64,
+	kind solarEclipseShadowKind,
+) solarEclipsePartialBoundarySample {
+	leftAngle := first.angle
+	rightAngle := secondAngle
+	leftOK := first.ok
+	best := first
+	if second.ok {
+		best = second
+		best.angle = secondAngle
+	}
+	for iteration := 0; iteration < solarEclipsePartialFootprintTransitionIterations; iteration++ {
+		middleAngle := (leftAngle + rightAngle) / 2
+		evaluationAngle := math.Mod(middleAngle, 2*math.Pi)
+		point, ok := solver.shadowFootprintPointAt(jd, moon, axis, evaluationAngle, kind)
+		middle := solarEclipsePartialBoundarySample{point: point, ok: ok, angle: middleAngle}
+		if ok {
+			best = middle
+		}
+		if ok == leftOK {
+			leftAngle = middleAngle
+		} else {
+			rightAngle = middleAngle
+		}
+		if rightAngle-leftAngle <= solarEclipsePartialFootprintPointTolerance {
+			break
+		}
+	}
+	best.angle = math.Mod(best.angle, 2*math.Pi)
+	return best
+}
+
+func (solver solarEclipseSolver) shadowFootprintPointAt(
 	jd float64,
 	moon [3]float64,
 	axis solarEclipseAxis,
 	angle float64,
+	kind solarEclipseShadowKind,
 ) (SolarEclipsePathPoint, bool) {
 	cosAngle := math.Cos(angle)
 	sinAngle := math.Sin(angle)
-	radius := solver.shadowRadiiAt(moon[2]).penumbraRadius
+	radius := solver.shadowRadiusAt(moon[2], kind)
 	if radius <= 0 {
 		return SolarEclipsePathPoint{}, false
 	}
@@ -567,7 +857,7 @@ func (solver solarEclipseSolver) partialFootprintPointAt(
 			return SolarEclipsePathPoint{}, false
 		}
 
-		nextRadius := solver.shadowRadiiAt(moon[2] - intersection.r2).penumbraRadius
+		nextRadius := solver.shadowRadiusAt(moon[2]-intersection.r2, kind)
 		if nextRadius <= 0 {
 			return SolarEclipsePathPoint{}, false
 		}
@@ -608,8 +898,10 @@ func (solver solarEclipseSolver) partialFootprintPointAt(
 func solarEclipsePartialBoundarySegments(samples []solarEclipsePartialBoundarySample) ([][]SolarEclipsePathPoint, bool) {
 	segments := make([][]SolarEclipsePathPoint, 0, 2)
 	var current []SolarEclipsePathPoint
+	allSamplesValid := len(samples) > 0
 	for _, sample := range samples {
 		if !sample.ok {
+			allSamplesValid = false
 			segments = appendSolarEclipsePartialSegment(segments, current)
 			current = nil
 			continue
@@ -623,11 +915,20 @@ func solarEclipsePartialBoundarySegments(samples []solarEclipsePartialBoundarySa
 	segments = appendSolarEclipsePartialSegment(segments, current)
 	segments = mergeSolarEclipsePartialWrapSegment(segments, samples)
 
-	if len(segments) == 1 && len(segments[0]) > 2 && !solarEclipsePathCrossesAntimeridian(segments[0][len(segments[0])-1], segments[0][0]) {
-		segments[0] = append(segments[0], segments[0][0])
-		return segments, true
+	if !allSamplesValid {
+		return segments, false
 	}
-	return segments, false
+	totalPoints := 0
+	for _, segment := range segments {
+		totalPoints += len(segment)
+	}
+	if totalPoints < 3 {
+		return segments, false
+	}
+	if len(segments) == 1 && !solarEclipsePathCrossesAntimeridian(segments[0][len(segments[0])-1], segments[0][0]) {
+		segments[0] = append(segments[0], segments[0][0])
+	}
+	return segments, true
 }
 
 func appendSolarEclipsePartialSegment(

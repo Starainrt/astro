@@ -23,7 +23,7 @@ const (
 // LocalSolarEclipseSVGOptions 控制站心日食视圆 SVG 输出。
 // LocalSolarEclipseSVGOptions controls local solar eclipse disk SVG output.
 type LocalSolarEclipseSVGOptions struct {
-	// Width / Height 是 SVG 画布尺寸；<=0 时使用默认尺寸。
+	// Width 和 Height 是 SVG 画布尺寸；<=0 时使用默认尺寸。
 	// Width/Height are SVG canvas size; values <= 0 use defaults.
 	Width  int
 	Height int

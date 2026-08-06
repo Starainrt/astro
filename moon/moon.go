@@ -1,8 +1,8 @@
 package moon
 
 import (
-	"github.com/starainrt/astro/tools"
 	"errors"
+	"github.com/starainrt/astro/tools"
 	"math"
 	"time"
 
@@ -216,9 +216,10 @@ func CulminationTime(date time.Time, lon, lat float64) time.Time {
 // RiseTime 月出时刻 / moonrise time.
 //
 // date 取其所在时区的当地日期，返回值保持相同时区；lon/lat 为观测者经纬度，东正西负、北正南负；
-// height 为海拔高度，单位米；aero 为 true 时加入标准大气折射。
+// height 为海拔高度，单位米；aero 为 true 时按动态标准大气折射和实时月球视半径计算上缘过地平线。
 // date is interpreted on its local civil day and the result keeps the same time zone. lon/lat are east-positive and north-positive;
-// height is observer elevation in meters, and aero enables standard atmospheric refraction.
+// height 为观测者海拔，单位米；aero 使用动态标准折射和实时月球视半径计算上缘过地平线。
+// height is observer elevation in meters; aero uses dynamic standard refraction and the instantaneous lunar semidiameter for an upper-limb crossing.
 func RiseTime(date time.Time, lon, lat, height float64, aero bool) (time.Time, error) {
 	if date.Hour() > 12 {
 		date = date.Add(time.Hour * -12)

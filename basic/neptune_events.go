@@ -64,6 +64,9 @@ func neptuneRADerivativeN(jde, delta float64, n int) float64 {
 
 func neptuneConjunctionFull(jde, degree float64, next uint8) float64 {
 	//0=last 1=next
+	if !isFiniteFloat(jde) || !isFiniteFloat(degree) {
+		return math.NaN()
+	}
 	daysPerDegree := NEPTUNE_S_PERIOD / 360
 	currentDelta := neptuneSunLongitudeDelta(jde, degree, false)
 	if next == 0 {
@@ -72,20 +75,29 @@ func neptuneConjunctionFull(jde, degree float64, next uint8) float64 {
 		jde += daysPerDegree * currentDelta
 	}
 	estimateJD := jde
-	for {
+	converged := false
+	for i := 0; i < eventNewtonMaxIterations; i++ {
 		prevJD := estimateJD
 		longitudeDelta := neptuneSunLongitudeDelta(prevJD, degree, true)
 		longitudeSlope := (neptuneSunLongitudeDelta(prevJD+0.000005, degree, true) - neptuneSunLongitudeDelta(prevJD-0.000005, degree, true)) / 0.00001
-		estimateJD = prevJD - longitudeDelta/longitudeSlope
-		if math.Abs(estimateJD-prevJD) <= 0.00001 {
+		nextJD := prevJD - longitudeDelta/longitudeSlope
+		estimateJD = nextJD
+		if math.Abs(nextJD-prevJD) <= 0.00001 {
+			converged = true
 			break
 		}
+	}
+	if !converged {
+		return math.NaN()
 	}
 	return TD2UT(estimateJD, false)
 }
 
 func neptuneConjunction(jde, degree float64, next uint8) float64 {
 	//0=last 1=next
+	if !isFiniteFloat(jde) || !isFiniteFloat(degree) {
+		return math.NaN()
+	}
 	daysPerDegree := NEPTUNE_S_PERIOD / 360
 	currentDelta := neptuneSunLongitudeDelta(jde, degree, false)
 	if next == 0 {
@@ -94,23 +106,35 @@ func neptuneConjunction(jde, degree float64, next uint8) float64 {
 		jde += daysPerDegree * currentDelta
 	}
 	estimateJD := jde
-	for {
+	converged := false
+	for i := 0; i < eventNewtonMaxIterations; i++ {
 		prevJD := estimateJD
 		longitudeDelta := neptuneSunLongitudeDeltaN(prevJD, degree, true, neptuneEventSearchN)
 		longitudeSlope := (neptuneSunLongitudeDeltaN(prevJD+0.000005, degree, true, neptuneEventSearchN) - neptuneSunLongitudeDeltaN(prevJD-0.000005, degree, true, neptuneEventSearchN)) / 0.00001
-		estimateJD = prevJD - longitudeDelta/longitudeSlope
-		if math.Abs(estimateJD-prevJD) <= neptunePhaseCoarseTolerance {
+		nextJD := prevJD - longitudeDelta/longitudeSlope
+		estimateJD = nextJD
+		if math.Abs(nextJD-prevJD) <= neptunePhaseCoarseTolerance {
+			converged = true
 			break
 		}
 	}
-	for {
+	if !converged {
+		return math.NaN()
+	}
+	converged = false
+	for i := 0; i < eventNewtonMaxIterations; i++ {
 		prevJD := estimateJD
 		longitudeDelta := neptuneSunLongitudeDelta(prevJD, degree, true)
 		longitudeSlope := (neptuneSunLongitudeDelta(prevJD+0.000005, degree, true) - neptuneSunLongitudeDelta(prevJD-0.000005, degree, true)) / 0.00001
-		estimateJD = prevJD - longitudeDelta/longitudeSlope
-		if math.Abs(estimateJD-prevJD) <= 0.00001 {
+		nextJD := prevJD - longitudeDelta/longitudeSlope
+		estimateJD = nextJD
+		if math.Abs(nextJD-prevJD) <= 0.00001 {
+			converged = true
 			break
 		}
+	}
+	if !converged {
+		return math.NaN()
 	}
 	return TD2UT(estimateJD, false)
 }

@@ -4,13 +4,14 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 )
 
-// this file contains bright 9100 stars
+// 本文件包含约 9100 颗亮星 / this file contains bright 9100 stars
 // 9100颗亮星列表
 
 type InnerStarData struct {
@@ -20,8 +21,8 @@ type InnerStarData struct {
 	Ra     float64 //Ra J2000;J2000历元赤经
 	Dec    float64 //De J2000;J2000历元赤纬
 	Mag    float64 //视星等
-	PmRA   float64 //赤经年自行
-	PmDec  float64 //赤纬年自行
+	PmRA   float64 //赤经投影年自行 cos(赤纬)*d赤经/dt，单位角秒/年
+	PmDec  float64 //赤纬年自行，单位角秒/年
 	RadVel float64 //径向速度 km/s
 	RotVel float64 //自行速度 km/s
 	Pc     float64 //秒差距
@@ -252,9 +253,15 @@ func StarDataByHR(hr int) (StarData, error) {
 }
 
 func (s InnerStarData) RaDecByJde(jde float64) (float64, float64) {
-	//计算自行
+	// BSC 的 pmRA 是投影自行 cos(Dec)*dRA/dt，而不是 dRA/dt / BSC pmRA is the projected motion cos(Dec)*dRA/dt, not dRA/dt.
 	year := ((jde - 2451545.0) / 365.2422)
-	return Precess(s.Ra+(year*s.PmRA/3600), s.Dec+(year*s.PmDec/3600), 2451545.0, jde)
+	dec := s.Dec + year*s.PmDec/3600
+	cosDec := math.Cos(s.Dec * math.Pi / 180)
+	ra := s.Ra
+	if math.Abs(cosDec) > 1e-12 {
+		ra += year * s.PmRA / (3600 * cosDec)
+	}
+	return Precess(ra, dec, 2451545.0, jde)
 }
 
 func (s StarData) RaDecByDate(date time.Time) (float64, float64) {

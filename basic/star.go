@@ -130,6 +130,9 @@ func StarSetTime(jde, ra, dec, lon, lat, height, timezone float64, aero bool) (f
 }
 
 func StarRiseSetTime(jde, ra, dec, lon, lat, height, timezone float64, aero, isRise bool) (float64, error) {
+	if !isFiniteFloat(jde) || !isFiniteFloat(ra) || !isFiniteFloat(dec) || !isFiniteFloat(lon) || !isFiniteFloat(lat) || !isFiniteFloat(height) || !isFiniteFloat(timezone) {
+		return 0, ErrInvalidObservationInput
+	}
 	//jde 世界时，非力学时，当地时区 0时，无需转换力学时
 	//ra,dec 瞬时天球座标，非J2000等时间天球坐标
 	jde = math.Floor(jde) + 0.5
@@ -148,19 +151,22 @@ func StarRiseSetTime(jde, ra, dec, lon, lat, height, timezone float64, aero, isR
 	} else {
 		estimateJD = sct + ArcCos(tmp)/15.0/24.0
 	}
-	for {
-		prevJD := estimateJD
+	var ok bool
+	estimateJD, ok = eventNewtonRefine(estimateJD, 0.00001, func(prevJD float64) float64 {
 		stDegree := StarHeight(prevJD, ra, dec, lon, lat, timezone) - targetAltitude
 		stDegreep := (StarHeight(prevJD+0.000005, ra, dec, lon, lat, timezone) - StarHeight(prevJD-0.000005, ra, dec, lon, lat, timezone)) / 0.00001
-		estimateJD = prevJD - stDegree/stDegreep
-		if math.Abs(estimateJD-prevJD) <= 0.00001 {
-			break
-		}
+		return stDegree / stDegreep
+	})
+	if !ok {
+		return 0, ErrInvalidObservationInput
 	}
 	return estimateJD, nil
 }
 
 func StarCulminationTime(jde, ra, lon, timezone float64) float64 {
+	if !isFiniteFloat(jde) || !isFiniteFloat(ra) || !isFiniteFloat(lon) || !isFiniteFloat(timezone) {
+		return math.NaN()
+	}
 	//jde 世界时，非力学时，当地时区 0时，无需转换力学时
 	//ra,dec 瞬时天球座标，非J2000等时间天球坐标
 	jde = math.Floor(jde) + 0.5
@@ -172,14 +178,14 @@ func StarCulminationTime(jde, ra, lon, timezone float64) float64 {
 		}
 		return ha
 	}
-	for {
-		prevJD := estimateJD
+	var ok bool
+	estimateJD, ok = eventNewtonRefine(estimateJD, 0.00001, func(prevJD float64) float64 {
 		stDegree := limitStarHA(prevJD, ra, lon, timezone) - 360
 		stDegreep := (limitStarHA(prevJD+0.000005, ra, lon, timezone) - limitStarHA(prevJD-0.000005, ra, lon, timezone)) / 0.00001
-		estimateJD = prevJD - stDegree/stDegreep
-		if math.Abs(estimateJD-prevJD) <= 0.00001 {
-			break
-		}
+		return stDegree / stDegreep
+	})
+	if !ok {
+		return math.NaN()
 	}
 	return estimateJD
 }

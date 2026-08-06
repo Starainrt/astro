@@ -79,16 +79,14 @@ func GetJQTime(year, angle int) float64 {
 
 	// Newton-Raphson iteration to find precise Julian date
 	currentJD := initialJD
-	for {
-		previousJD := currentJD
+	var ok bool
+	currentJD, ok = eventNewtonRefine(currentJD, 0.00001, func(previousJD float64) float64 {
 		errorValue := JQLospec(previousJD, targetAngle) - targetAngle
 		derivative := (JQLospec(previousJD+0.000005, targetAngle) - JQLospec(previousJD-0.000005, targetAngle)) / 0.00001
-		currentJD = previousJD - errorValue/derivative
-
-		// Check for convergence
-		if math.Abs(currentJD-previousJD) <= 0.00001 {
-			break
-		}
+		return errorValue / derivative
+	})
+	if !ok {
+		return math.NaN()
 	}
 
 	// Convert to UT and return

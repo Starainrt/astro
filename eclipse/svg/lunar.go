@@ -9,6 +9,7 @@ import (
 
 	"github.com/starainrt/astro/basic"
 	eclipsecore "github.com/starainrt/astro/eclipse"
+	"github.com/starainrt/astro/internal/svgasset"
 )
 
 const (
@@ -23,7 +24,7 @@ const (
 // LunarEclipseSVGOptions 控制月食穿影 SVG 输出。
 // LunarEclipseSVGOptions controls lunar eclipse shadow-path SVG output.
 type LunarEclipseSVGOptions struct {
-	// Width / Height 是 SVG 画布尺寸；<=0 时使用默认尺寸。
+	// Width 和 Height 是 SVG 画布尺寸；<=0 时使用默认尺寸。
 	// Width/Height are SVG canvas size; values <= 0 use defaults.
 	Width  int
 	Height int
@@ -168,7 +169,7 @@ func renderLunarEclipseSVG(
 	var b strings.Builder
 	fmt.Fprintf(&b, `<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" viewBox="0 0 %d %d">`, options.Width, options.Height, options.Width, options.Height)
 	b.WriteString(`<defs>`)
-	b.WriteString(lunarEclipseSVGMoonSymbol)
+	b.WriteString(svgasset.MoonFaceSymbol())
 	b.WriteString(`</defs>`)
 	b.WriteString(`<rect width="100%" height="100%" fill="#efefed"/>`)
 	fmt.Fprintf(&b, `<rect x="22" y="18" width="%.3f" height="%.3f" fill="#ffffff" stroke="#c9c9c6" stroke-width="1.2"/>`,

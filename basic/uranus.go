@@ -173,14 +173,14 @@ func UranusCulminationTime(jde, lon, timezone float64) float64 {
 		}
 		return currentHourAngle
 	}
-	for {
-		prevJD := estimateJD
+	var ok bool
+	estimateJD, ok = eventNewtonRefine(estimateJD, 0.00001, func(prevJD float64) float64 {
 		hourAngleDelta := normalizedHourAngle(prevJD, lon, timezone) - 360
 		hourAngleSlope := (normalizedHourAngle(prevJD+0.000005, lon, timezone) - normalizedHourAngle(prevJD-0.000005, lon, timezone)) / 0.00001
-		estimateJD = prevJD - hourAngleDelta/hourAngleSlope
-		if math.Abs(estimateJD-prevJD) <= 0.00001 {
-			break
-		}
+		return hourAngleDelta / hourAngleSlope
+	})
+	if !ok {
+		return math.NaN()
 	}
 	return estimateJD
 }

@@ -92,6 +92,9 @@ func planetHourAngleN(jd, lon, timezone float64, n int, apparentRa func(float64,
 }
 
 func planetCulminationTimeN(jde, lon, timezone float64, n int, hourAngle func(float64, float64, float64, int) float64) float64 {
+	if !isFiniteFloat(jde) || !isFiniteFloat(lon) || !isFiniteFloat(timezone) {
+		return math.NaN()
+	}
 	jde = math.Floor(jde) + 0.5
 	estimateJD := jde + Limit360(360-hourAngle(jde, lon, timezone, n))/15.0/24.0*0.99726851851851851851
 	normalizedHourAngle := func(jde, lon, timezone float64) float64 {
@@ -101,31 +104,45 @@ func planetCulminationTimeN(jde, lon, timezone float64, n int, hourAngle func(fl
 		}
 		return currentHourAngle
 	}
-	for {
-		prevJD := estimateJD
+	var ok bool
+	estimateJD, ok = eventNewtonRefine(estimateJD, 0.00001, func(prevJD float64) float64 {
 		hourAngleDelta := normalizedHourAngle(prevJD, lon, timezone) - 360
 		hourAngleSlope := (normalizedHourAngle(prevJD+0.000005, lon, timezone) - normalizedHourAngle(prevJD-0.000005, lon, timezone)) / 0.00001
-		estimateJD = prevJD - hourAngleDelta/hourAngleSlope
-		if math.Abs(estimateJD-prevJD) <= 0.00001 {
-			break
-		}
+		return hourAngleDelta / hourAngleSlope
+	})
+	if !ok {
+		return math.NaN()
 	}
 	return estimateJD
 }
 
 func planetRiseDownN(jd, lon, lat, timezone, aeroCorrection, observerHeight float64, isRise bool, n int, culmination func(float64, float64, float64, int) float64, height func(float64, float64, float64, float64, int) float64, declination planetDeclinationFuncN) (float64, error) {
+	if !isFiniteFloat(jd) || !isFiniteFloat(lon) || !isFiniteFloat(lat) || !isFiniteFloat(timezone) || !isFiniteFloat(aeroCorrection) || !isFiniteFloat(observerHeight) {
+		return 0, ErrInvalidObservationInput
+	}
 	jd = math.Floor(jd) + 0.5
 	localTimezone := math.Round(lon / 15)
 	targetAltitude := StandardAltitudePlanet(aeroCorrection, observerHeight, lat)
 	culminationJD := culmination(jd, lon, localTimezone, n)
-	if height(culminationJD, lon, lat, localTimezone, n) < targetAltitude {
+	if !isFiniteFloat(culminationJD) {
+		return 0, ErrInvalidObservationInput
+	}
+	culminationHeight := height(culminationJD, lon, lat, localTimezone, n)
+	previousHeight := height(culminationJD-0.5, lon, lat, localTimezone, n)
+	if !isFiniteFloat(culminationHeight) || !isFiniteFloat(previousHeight) {
+		return 0, ErrInvalidObservationInput
+	}
+	if culminationHeight < targetAltitude {
 		return 0, ErrNeverRise
 	}
-	if height(culminationJD-0.5, lon, lat, localTimezone, n) > targetAltitude {
+	if previousHeight > targetAltitude {
 		return 0, ErrNeverSet
 	}
 	dec := declination(TD2UT(culminationJD-localTimezone/24, true), n)
 	cosHourAngle := (Sin(targetAltitude) - Sin(dec)*Sin(lat)) / (Cos(dec) * Cos(lat))
+	if !isFiniteFloat(dec) || !isFiniteFloat(cosHourAngle) {
+		return 0, ErrInvalidObservationInput
+	}
 	var eventJD float64
 	if math.Abs(cosHourAngle) <= 1 {
 		hourOffset := ArcCos(cosHourAngle) / 15
@@ -149,15 +166,13 @@ func planetRiseDownN(jd, lon, lat, timezone, aeroCorrection, observerHeight floa
 			}
 		}
 	}
-	estimateJD := eventJD
-	for {
-		prevJD := estimateJD
+	estimateJD, ok := eventNewtonRefine(eventJD, 0.00001, func(prevJD float64) float64 {
 		altitudeDelta := height(prevJD, lon, lat, localTimezone, n) - targetAltitude
 		altitudeSlope := (height(prevJD+0.000005, lon, lat, localTimezone, n) - height(prevJD-0.000005, lon, lat, localTimezone, n)) / 0.00001
-		estimateJD = prevJD - altitudeDelta/altitudeSlope
-		if math.Abs(estimateJD-prevJD) <= 0.00001 {
-			break
-		}
+		return altitudeDelta / altitudeSlope
+	})
+	if !ok {
+		return 0, ErrInvalidObservationInput
 	}
 	return estimateJD - localTimezone/24 + timezone/24, nil
 }

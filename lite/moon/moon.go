@@ -2,6 +2,7 @@ package moon
 
 import (
 	"errors"
+	"math"
 	"time"
 
 	"github.com/starainrt/astro/basic"
@@ -114,19 +115,21 @@ func riseSetTime(date time.Time, lon, lat, height float64, aero, isRise bool) (t
 	_, offset := localMidnight.Zone()
 	timezone := float64(offset) / 3600.0
 
-	targetAltitude := -basic.HeightDegreeByLat(height, lat)
-	if aero {
-		targetAltitude -= 0.83333
-	}
+	horizonDip := basic.HeightDegreeByLat(height, lat)
 
 	altitudeFn := func(localJD float64) float64 {
 		utJD := localJD - timezone/24.0
 		state := lite.MoonTopocentric(utJD, lon, lat, height)
 		altitude, _, _ := lite.HorizontalCoordinates(state.RightAscension, state.Declination, utJD, lon, lat)
-		return altitude
+		residual := altitude + horizonDip
+		if aero {
+			residual += basic.RefractionFromTrueAltitude(altitude, 1010, 10)
+			residual += liteMoonSemidiameterDegrees(state.DistanceEarthRadii)
+		}
+		return residual
 	}
 
-	eventJD, err := lite.SearchRiseSet(localJD, targetAltitude, 15, isRise, altitudeFn)
+	eventJD, err := lite.SearchRiseSet(localJD, 0, 15, isRise, altitudeFn)
 	if err != nil {
 		switch {
 		case errors.Is(err, lite.ErrNeverRise):
@@ -140,4 +143,9 @@ func riseSetTime(date time.Time, lon, lat, height float64, aero, isRise bool) (t
 		}
 	}
 	return basic.JDE2DateByZone(eventJD, date.Location(), true), nil
+}
+
+func liteMoonSemidiameterDegrees(distanceEarthRadii float64) float64 {
+	const moonRadiusEarthRadii = 1737.4 / 6378.137
+	return math.Asin(moonRadiusEarthRadii/distanceEarthRadii) * 180 / math.Pi
 }

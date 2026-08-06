@@ -1,0 +1,162 @@
+{
+  "schema_version": 1,
+  "generated_utc": "2026-08-02T15:47:59Z",
+  "sources": {
+    "imcce_miriade": {
+      "provider": "IMCCE/LTE Miriade RTS",
+      "url": "https://ssp.imcce.fr/webservices/miriade/api/rts.php",
+      "definition": "direct rise and set service; the RTS API does not expose its horizon, refraction, or ephemeris-theory settings",
+      "resolution": "0.1-second display precision; not an uncertainty estimate"
+    },
+    "jpl_horizons": {
+      "provider": "NASA/JPL Horizons",
+      "url": "https://ssd.jpl.nasa.gov/api/horizons.api",
+      "model": "DE441",
+      "definition": "refracted apparent upper limb crossing the reference-ellipsoid visual horizon at sea level",
+      "resolution": "linear zero interpolation from 1-minute refracted center elevation and angular diameter"
+    },
+    "met_norway": {
+      "provider": "MET Norway Sunrise API",
+      "url": "https://api.met.no/weatherapi/sunrise/3.0/moon",
+      "model": "Skyfield 1.53 with JPL DE440s",
+      "definition": "fixed 0.5666-degree refraction plus 0.2667-degree lunar radius; queried by local solar date and returned in UTC",
+      "resolution": "1 minute",
+      "license_url": "https://api.met.no/license_data.html"
+    }
+  },
+  "samples": [
+    {
+      "site": "greenwich",
+      "date_utc": "2026-04-28",
+      "longitude": 0,
+      "latitude": 51.4779,
+      "observer_height_m": 0,
+      "jpl_horizons": {
+        "rise_utc": "2026-04-28T16:01:21Z",
+        "set_utc": "2026-04-28T03:19:32Z"
+      },
+      "met_norway": {
+        "rise_utc": "2026-04-28T16:01:00Z",
+        "set_utc": "2026-04-28T03:19:00Z"
+      },
+      "imcce_miriade": {
+        "rise_utc": "2026-04-28T16:03:10.4Z",
+        "set_utc": "2026-04-28T03:17:47.1Z"
+      }
+    },
+    {
+      "site": "beijing",
+      "date_utc": "2025-06-05",
+      "longitude": 116.4074,
+      "latitude": 39.9042,
+      "observer_height_m": 0,
+      "jpl_horizons": {
+        "rise_utc": "2025-06-05T06:01:29Z",
+        "set_utc": "2025-06-05T17:41:15Z"
+      },
+      "met_norway": {
+        "rise_utc": "2025-06-05T06:01:00Z",
+        "set_utc": "2025-06-05T17:41:00Z"
+      },
+      "imcce_miriade": {
+        "rise_utc": "2025-06-05T06:02:54.6Z",
+        "set_utc": "2025-06-05T17:39:51.3Z"
+      }
+    },
+    {
+      "site": "singapore",
+      "date_utc": "2025-01-15",
+      "longitude": 103.8198,
+      "latitude": 1.3521,
+      "observer_height_m": 0,
+      "jpl_horizons": {
+        "rise_utc": "2025-01-15T12:36:30Z",
+        "set_utc": "2025-01-15T00:15:05Z"
+      },
+      "met_norway": {
+        "rise_utc": "2025-01-15T12:36:00Z",
+        "set_utc": "2025-01-15T00:14:00Z"
+      },
+      "imcce_miriade": {
+        "rise_utc": "2025-01-15T12:37:41.8Z",
+        "set_utc": "2025-01-15T00:13:51.3Z"
+      }
+    },
+    {
+      "site": "sydney",
+      "date_utc": "2025-07-16",
+      "longitude": 151.2093,
+      "latitude": -33.8688,
+      "observer_height_m": 0,
+      "jpl_horizons": {
+        "rise_utc": "2025-07-16T12:40:33Z",
+        "set_utc": "2025-07-16T00:09:02Z"
+      },
+      "met_norway": {
+        "rise_utc": "2025-07-16T12:40:00Z",
+        "set_utc": "2025-07-16T00:08:00Z"
+      },
+      "imcce_miriade": {
+        "rise_utc": "2025-07-16T12:41:59.3Z",
+        "set_utc": "2025-07-16T00:07:38.7Z"
+      }
+    },
+    {
+      "site": "new_york",
+      "date_utc": "2025-10-15",
+      "longitude": -74.006,
+      "latitude": 40.7128,
+      "observer_height_m": 0,
+      "jpl_horizons": {
+        "rise_utc": "2025-10-15T04:57:44Z",
+        "set_utc": "2025-10-15T19:47:14Z"
+      },
+      "met_norway": {
+        "rise_utc": "2025-10-15T04:58:00Z",
+        "set_utc": "2025-10-15T19:46:00Z"
+      },
+      "imcce_miriade": {
+        "rise_utc": "2025-10-15T04:59:27.6Z",
+        "set_utc": "2025-10-15T19:45:38.0Z"
+      }
+    },
+    {
+      "site": "anchorage",
+      "date_utc": "2025-03-20",
+      "longitude": -149.9003,
+      "latitude": 61.2181,
+      "observer_height_m": 0,
+      "jpl_horizons": {
+        "rise_utc": "2025-03-20T12:53:14Z",
+        "set_utc": "2025-03-20T16:04:16Z"
+      },
+      "met_norway": {
+        "rise_utc": "2025-03-20T12:54:00Z",
+        "set_utc": "2025-03-20T16:03:00Z"
+      },
+      "imcce_miriade": {
+        "rise_utc": "2025-03-20T12:59:56.0Z",
+        "set_utc": "2025-03-20T15:57:34.4Z"
+      }
+    },
+    {
+      "site": "rio_de_janeiro",
+      "date_utc": "2026-01-15",
+      "longitude": -43.1729,
+      "latitude": -22.9068,
+      "observer_height_m": 0,
+      "jpl_horizons": {
+        "rise_utc": "2026-01-15T05:13:59Z",
+        "set_utc": "2026-01-15T19:26:42Z"
+      },
+      "met_norway": {
+        "rise_utc": "2026-01-15T05:14:00Z",
+        "set_utc": "2026-01-15T19:26:00Z"
+      },
+      "imcce_miriade": {
+        "rise_utc": "2026-01-15T05:15:20.6Z",
+        "set_utc": "2026-01-15T19:25:19.4Z"
+      }
+    }
+  ]
+}

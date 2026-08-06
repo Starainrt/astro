@@ -84,7 +84,7 @@ func TopocentricRaDec(ra, dec, lat, lon, jd, au, h float64) (float64, float64) {
 	sinpi := Sin(0.0024427777777) / au
 	pcosi := pcosi(lat, h)
 	psini := psini(lat, h)
-	tH := Limit360(TD2UT(ApparentSiderealTime(jd), false)*15 + lon - ra)
+	tH := Limit360(ApparentSiderealTime(jd)*15 + lon - ra)
 	nra := math.Atan2(-pcosi*sinpi*Sin(tH), (Cos(dec)-pcosi*sinpi*Cos(tH))) * 180 / math.Pi
 
 	ndec := math.Atan2((Sin(dec)-psini*sinpi)*Cos(nra), (Cos(dec)-pcosi*sinpi*Cos(tH))) * 180 / math.Pi
@@ -92,22 +92,12 @@ func TopocentricRaDec(ra, dec, lat, lon, jd, au, h float64) (float64, float64) {
 }
 
 func TopocentricRa(ra, dec, lat, lon, jd, au, h float64) float64 { //jd为格林尼治标准时
-	sinpi := Sin(0.0024427777777) / au
-	pcosi := pcosi(lat, h)
-	tH := Limit360(TD2UT(ApparentSiderealTime(jd), false)*15 + lon - ra)
-	nra := math.Atan2(-pcosi*sinpi*Sin(tH), (Cos(dec)-pcosi*sinpi*Cos(tH))) * 180 / math.Pi
-	return ra + nra
+	topocentricRA, _ := TopocentricRaDec(ra, dec, lat, lon, jd, au, h)
+	return topocentricRA
 }
 func TopocentricDec(ra, dec, lat, lon, jd, au, h float64) float64 { //jd为格林尼治标准时
-
-	sinpi := Sin(0.0024427777777) / au
-	pcosi := pcosi(lat, h)
-	psini := psini(lat, h)
-	tH := Limit360(TD2UT(ApparentSiderealTime(jd), false)*15 + lon - ra)
-	nra := math.Atan2(-pcosi*sinpi*Sin(tH), (Cos(dec)-pcosi*sinpi*Cos(tH))) * 180 / math.Pi
-
-	ndec := math.Atan2((Sin(dec)-psini*sinpi)*Cos(nra), (Cos(dec)-pcosi*sinpi*Cos(tH))) * 180 / math.Pi
-	return ndec
+	_, topocentricDec := TopocentricRaDec(ra, dec, lat, lon, jd, au, h)
+	return topocentricDec
 }
 
 func TopocentricLo(lo, bo, lat, lon, jd, au, h float64) float64 { //jd为格林尼治标准时
@@ -115,7 +105,7 @@ func TopocentricLo(lo, bo, lat, lon, jd, au, h float64) float64 { //jd为格林�
 	s := psini(lat, h)
 	sinpi := Sin(0.0024427777777) / au
 	ra := LoToRa(jd, lo, bo)
-	tH := Limit360(TD2UT(ApparentSiderealTime(jd), false)*15 + lon - ra)
+	tH := Limit360(ApparentSiderealTime(jd)*15 + lon - ra)
 	n := Cos(lo)*Cos(bo) - c*sinpi*Cos(tH)
 	nlo := math.Atan2(Sin(lo)*Cos(bo)-sinpi*(s*Sin(TrueObliquity(jd))+c*Cos(TrueObliquity(jd))*Sin(tH)), n) * 180 / math.Pi
 	return nlo
@@ -126,7 +116,7 @@ func TopocentricBo(lo, bo, lat, lon, jd, au, h float64) float64 { //jd为格林�
 	s := psini(lat, h)
 	sinpi := Sin(0.0024427777777) / au
 	ra := LoToRa(jd, lo, bo)
-	tH := Limit360(TD2UT(ApparentSiderealTime(jd), false)*15 + lon - ra)
+	tH := Limit360(ApparentSiderealTime(jd)*15 + lon - ra)
 	n := Cos(lo)*Cos(bo) - c*sinpi*Cos(tH)
 	nlo := math.Atan2(Sin(lo)*Cos(bo)-sinpi*(s*Sin(TrueObliquity(jd))+c*Cos(TrueObliquity(jd))*Sin(tH)), n) * 180 / math.Pi
 	nbo := math.Atan2(Cos(nlo)*(Sin(bo)-sinpi*(s*Cos(TrueObliquity(jd))-c*Sin(TrueObliquity(jd))*Sin(tH))), n) * 180 / math.Pi

@@ -19,7 +19,7 @@ func TestSun(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if d.Format("2006-01-02 15:04:05") != "2020-01-01 08:41:45" {
+	if d.Format("2006-01-02 15:04:05") != "2020-01-01 08:41:20" {
 		t.Fatal(d.Format("2006-01-02 15:04:05"))
 	}
 	bo := TrueBo(now)

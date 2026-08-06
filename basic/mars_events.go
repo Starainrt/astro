@@ -9,9 +9,12 @@ import (
 // Pos
 
 const (
-	MARS_S_PERIOD            = 1 / ((1 / 365.256363004) - (1 / 686.98))
-	marsEventSearchN         = 16
-	marsPhaseCoarseTolerance = 30.0 / 86400.0
+	MARS_S_PERIOD                = 1 / ((1 / 365.256363004) - (1 / 686.98))
+	marsEventSearchN             = 16
+	marsPhaseCoarseTolerance     = 30.0 / 86400.0
+	marsStationDerivativeStepDay = 0.01
+	marsStationCoarseStepDay     = 6.0
+	marsStationHalfWindowDay     = 6.0
 )
 
 func marsSunLongitudeDelta(jde, degree float64, filter bool) float64 {
@@ -64,6 +67,9 @@ func marsRADerivativeN(jde, val float64, n int) float64 {
 
 func marsConjunctionFull(jde, degree float64, next uint8) float64 {
 	//0=last 1=next
+	if !isFiniteFloat(jde) || !isFiniteFloat(degree) {
+		return math.NaN()
+	}
 	daysPerDegree := MARS_S_PERIOD / 360
 	currentDelta := marsSunLongitudeDelta(jde, degree, false)
 	if next == 0 {
@@ -72,20 +78,29 @@ func marsConjunctionFull(jde, degree float64, next uint8) float64 {
 		jde += daysPerDegree * currentDelta
 	}
 	estimateJD := jde
-	for {
+	converged := false
+	for i := 0; i < eventNewtonMaxIterations; i++ {
 		prevJD := estimateJD
 		longitudeDelta := marsSunLongitudeDelta(prevJD, degree, true)
 		longitudeSlope := (marsSunLongitudeDelta(prevJD+0.000005, degree, true) - marsSunLongitudeDelta(prevJD-0.000005, degree, true)) / 0.00001
-		estimateJD = prevJD - longitudeDelta/longitudeSlope
-		if math.Abs(estimateJD-prevJD) <= 0.00001 {
+		nextJD := prevJD - longitudeDelta/longitudeSlope
+		estimateJD = nextJD
+		if math.Abs(nextJD-prevJD) <= 0.00001 {
+			converged = true
 			break
 		}
+	}
+	if !converged {
+		return math.NaN()
 	}
 	return TD2UT(estimateJD, false)
 }
 
 func marsConjunction(jde, degree float64, next uint8) float64 {
 	//0=last 1=next
+	if !isFiniteFloat(jde) || !isFiniteFloat(degree) {
+		return math.NaN()
+	}
 	daysPerDegree := MARS_S_PERIOD / 360
 	currentDelta := marsSunLongitudeDelta(jde, degree, false)
 	if next == 0 {
@@ -94,23 +109,35 @@ func marsConjunction(jde, degree float64, next uint8) float64 {
 		jde += daysPerDegree * currentDelta
 	}
 	estimateJD := jde
-	for {
+	converged := false
+	for i := 0; i < eventNewtonMaxIterations; i++ {
 		prevJD := estimateJD
 		longitudeDelta := marsSunLongitudeDeltaN(prevJD, degree, true, marsEventSearchN)
 		longitudeSlope := (marsSunLongitudeDeltaN(prevJD+0.000005, degree, true, marsEventSearchN) - marsSunLongitudeDeltaN(prevJD-0.000005, degree, true, marsEventSearchN)) / 0.00001
-		estimateJD = prevJD - longitudeDelta/longitudeSlope
-		if math.Abs(estimateJD-prevJD) <= marsPhaseCoarseTolerance {
+		nextJD := prevJD - longitudeDelta/longitudeSlope
+		estimateJD = nextJD
+		if math.Abs(nextJD-prevJD) <= marsPhaseCoarseTolerance {
+			converged = true
 			break
 		}
 	}
-	for {
+	if !converged {
+		return math.NaN()
+	}
+	converged = false
+	for i := 0; i < eventNewtonMaxIterations; i++ {
 		prevJD := estimateJD
 		longitudeDelta := marsSunLongitudeDelta(prevJD, degree, true)
 		longitudeSlope := (marsSunLongitudeDelta(prevJD+0.000005, degree, true) - marsSunLongitudeDelta(prevJD-0.000005, degree, true)) / 0.00001
-		estimateJD = prevJD - longitudeDelta/longitudeSlope
-		if math.Abs(estimateJD-prevJD) <= 0.00001 {
+		nextJD := prevJD - longitudeDelta/longitudeSlope
+		estimateJD = nextJD
+		if math.Abs(nextJD-prevJD) <= 0.00001 {
+			converged = true
 			break
 		}
+	}
+	if !converged {
+		return math.NaN()
 	}
 	return TD2UT(estimateJD, false)
 }
@@ -148,122 +175,60 @@ func LastMarsWesternQuadrature(jde float64) float64 {
 }
 
 func marsRetrogradeAroundOpposition(oppositionJD float64, searchBeforeOpposition bool) float64 {
-	jde := oppositionJD
+	oppositionTT := TD2UT(oppositionJD, true)
+	startTT := oppositionTT
+	endTT := oppositionTT
 	if searchBeforeOpposition {
-		jde -= 60
+		easternQuadratureUT := marsConjunction(oppositionTT, 90, 0)
+		startTT = TD2UT(easternQuadratureUT, true)
 	} else {
-		jde += 60
+		westernQuadratureUT := marsConjunction(oppositionTT, 270, 1)
+		endTT = TD2UT(westernQuadratureUT, true)
 	}
-	for {
-		currentRate := marsRADerivative(jde, 1.0/86400.0)
-		if math.Abs(currentRate) > 0.55 {
-			jde += 2
-			continue
-		}
-		break
-	}
-	estimateJD := jde
-	for {
-		prevJD := estimateJD
-		rateValue := marsRADerivative(prevJD, 2.0/86400.0)
-		rateSlope := (marsRADerivative(prevJD+15.0/86400.0, 2.0/86400.0) - marsRADerivative(prevJD-15.0/86400.0, 2.0/86400.0)) / (30.0 / 86400.0)
-		estimateJD = prevJD - rateValue/rateSlope
-		if math.Abs(estimateJD-prevJD) <= 30.0/86400.0 {
-			break
-		}
-	}
-	bestJD := eventZeroRefine(estimateJD, 15.0/86400.0, 0.5/86400.0, func(jd float64) float64 {
-		return marsRADerivative(jd, 0.5/86400.0)
+	bestJD := zeroEventInWindow(startTT, endTT, marsStationCoarseStepDay, marsStationHalfWindowDay, 30.0/86400.0, func(jd float64) float64 {
+		return marsRADerivativeN(jd, marsStationDerivativeStepDay, marsEventSearchN)
+	}, func(jd float64) float64 {
+		return marsRADerivative(jd, marsStationDerivativeStepDay)
 	})
 	return TD2UT(bestJD, false)
-}
-
-func marsOppositionFromBefore(oppositionJD float64) float64 {
-	return marsConjunctionFull(eventUTLastQueryTT(oppositionJD), 180, 1)
-}
-
-func marsOppositionFromAfter(oppositionJD float64) float64 {
-	return marsConjunctionFull(eventUTNextQueryTT(oppositionJD), 180, 0)
-}
-
-func stabilizeMarsStationNearQuery(jde, date float64, searchBeforeOpposition bool) float64 {
-	if math.Abs(eventUTQueryTTDelta(date, jde)) > exactEventTolerance {
-		return date
-	}
-	if searchBeforeOpposition {
-		stableOppositionJD := NextMarsOpposition(jde)
-		sameOppositionJD := marsOppositionFromAfter(stableOppositionJD)
-		return closestEventUTToQueryTT(jde, date, marsRetrogradeAroundOpposition(stableOppositionJD, true), marsRetrogradeAroundOpposition(sameOppositionJD, true))
-	}
-	stableOppositionJD := LastMarsOpposition(jde)
-	sameOppositionJD := marsOppositionFromBefore(stableOppositionJD)
-	return closestEventUTToQueryTT(jde, date, marsRetrogradeAroundOpposition(stableOppositionJD, false), marsRetrogradeAroundOpposition(sameOppositionJD, false))
 }
 
 func NextMarsRetrogradeToPrograde(jde float64) float64 {
 	lastOppositionJD := marsConjunctionFull(jde, 180, 0)
 	date := marsRetrogradeAroundOpposition(lastOppositionJD, false)
-	date = stabilizeMarsStationNearQuery(jde, date, false)
-	if sameEventUTQueryTT(date, jde) {
-		stableOppositionJD := LastMarsOpposition(jde)
-		stableDate := marsRetrogradeAroundOpposition(stableOppositionJD, false)
-		sameOppositionJD := marsOppositionFromBefore(stableOppositionJD)
-		return closestEventUTToQueryTT(jde, date, stableDate, marsRetrogradeAroundOpposition(sameOppositionJD, false))
+	if sameEventUTQueryTT(date, jde) || eventUTQueryAfterOrEqual(date, jde) {
+		return date
 	}
-	if !eventUTQueryAfterOrEqual(date, jde) {
-		nextOppositionJD := marsConjunctionFull(jde, 180, 1)
-		return marsRetrogradeAroundOpposition(nextOppositionJD, false)
-	}
-	return date
+	nextOppositionJD := marsConjunctionFull(jde, 180, 1)
+	return marsRetrogradeAroundOpposition(nextOppositionJD, false)
 }
 
 func LastMarsRetrogradeToPrograde(jde float64) float64 {
 	lastOppositionJD := marsConjunctionFull(jde, 180, 0)
 	date := marsRetrogradeAroundOpposition(lastOppositionJD, false)
-	date = stabilizeMarsStationNearQuery(jde, date, false)
-	if sameEventUTQueryTT(date, jde) {
-		stableOppositionJD := LastMarsOpposition(jde)
-		stableDate := marsRetrogradeAroundOpposition(stableOppositionJD, false)
-		sameOppositionJD := marsOppositionFromBefore(stableOppositionJD)
-		return closestEventUTToQueryTT(jde, date, stableDate, marsRetrogradeAroundOpposition(sameOppositionJD, false))
+	if sameEventUTQueryTT(date, jde) || eventUTQueryBeforeOrEqual(date, jde) {
+		return date
 	}
-	if !eventUTQueryBeforeOrEqual(date, jde) {
-		previousOppositionJD := marsConjunctionFull(eventUTLastQueryTT(lastOppositionJD), 180, 0)
-		return marsRetrogradeAroundOpposition(previousOppositionJD, false)
-	}
-	return date
+	previousOppositionJD := marsConjunctionFull(eventUTLastQueryTT(lastOppositionJD), 180, 0)
+	return marsRetrogradeAroundOpposition(previousOppositionJD, false)
 }
 
 func NextMarsProgradeToRetrograde(jde float64) float64 {
 	nextOppositionJD := marsConjunctionFull(jde, 180, 1)
 	date := marsRetrogradeAroundOpposition(nextOppositionJD, true)
-	date = stabilizeMarsStationNearQuery(jde, date, true)
-	if sameEventUTQueryTT(date, jde) {
-		stableOppositionJD := NextMarsOpposition(jde)
-		stableDate := marsRetrogradeAroundOpposition(stableOppositionJD, true)
-		sameOppositionJD := marsOppositionFromAfter(stableOppositionJD)
-		return closestEventUTToQueryTT(jde, date, stableDate, marsRetrogradeAroundOpposition(sameOppositionJD, true))
+	if sameEventUTQueryTT(date, jde) || eventUTQueryAfterOrEqual(date, jde) {
+		return date
 	}
-	if !eventUTQueryAfterOrEqual(date, jde) {
-		followingOppositionJD := marsConjunctionFull(eventUTNextQueryTT(nextOppositionJD), 180, 1)
-		return marsRetrogradeAroundOpposition(followingOppositionJD, true)
-	}
-	return date
+	followingOppositionJD := marsConjunctionFull(eventUTNextQueryTT(nextOppositionJD), 180, 1)
+	return marsRetrogradeAroundOpposition(followingOppositionJD, true)
 }
 
 func LastMarsProgradeToRetrograde(jde float64) float64 {
 	nextOppositionJD := marsConjunctionFull(jde, 180, 1)
 	date := marsRetrogradeAroundOpposition(nextOppositionJD, true)
-	date = stabilizeMarsStationNearQuery(jde, date, true)
-	if sameEventUTQueryTT(date, jde) {
-		stableOppositionJD := NextMarsOpposition(jde)
-		stableDate := marsRetrogradeAroundOpposition(stableOppositionJD, true)
-		sameOppositionJD := marsOppositionFromAfter(stableOppositionJD)
-		return closestEventUTToQueryTT(jde, date, stableDate, marsRetrogradeAroundOpposition(sameOppositionJD, true))
+	if sameEventUTQueryTT(date, jde) || eventUTQueryBeforeOrEqual(date, jde) {
+		return date
 	}
-	if !eventUTQueryBeforeOrEqual(date, jde) {
-		lastOppositionJD := marsConjunctionFull(jde, 180, 0)
-		return marsRetrogradeAroundOpposition(lastOppositionJD, true)
-	}
-	return date
+	lastOppositionJD := marsConjunctionFull(jde, 180, 0)
+	return marsRetrogradeAroundOpposition(lastOppositionJD, true)
 }

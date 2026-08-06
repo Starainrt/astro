@@ -3,6 +3,7 @@ package basic
 import (
 	"math"
 	"testing"
+	"time"
 )
 
 func TestSolarEclipseCentralPathMatchesGlobalGreatest(t *testing.T) {
@@ -128,6 +129,9 @@ func TestSolarEclipsePartialFootprintsIncludeGreatest(t *testing.T) {
 	if !foundGreatest {
 		t.Fatalf("partial footprints should include greatest eclipse JDE %.12f", global.GreatestEclipse)
 	}
+	if footprints.Footprints[0].Closed {
+		t.Fatal("grazing first footprint must remain open for horizon closure")
+	}
 }
 
 func TestSolarEclipsePartialFootprintsWorkForPartialOnlyEclipse(t *testing.T) {
@@ -144,6 +148,101 @@ func TestSolarEclipsePartialFootprintsWorkForPartialOnlyEclipse(t *testing.T) {
 	}
 	if len(footprints.Footprints) == 0 {
 		t.Fatalf("expected partial footprints for partial-only eclipse")
+	}
+}
+
+func TestSolarEclipseShadowContactsAgainstNASA2012Baseline(t *testing.T) {
+	result := SolarEclipsePartialFootprints(
+		solarEclipseUTToTTJDE(time.Date(2012, 5, 20, 0, 0, 0, 0, time.UTC)),
+		SolarEclipsePartialFootprintOptions{
+			StepDays:              30.0 / 1440.0,
+			BoundaryPoints:        72,
+			CentralShadowStepDays: 10.0 / 1440.0,
+		},
+	)
+	baseline := []struct {
+		name  string
+		point SolarEclipsePathPoint
+		want  time.Time
+	}{
+		{"P1", result.P1, time.Date(2012, 5, 20, 20, 56, 7, 0, time.UTC)},
+		{"P4", result.P4, time.Date(2012, 5, 21, 2, 49, 21, 500000000, time.UTC)},
+		{"U1", result.U1, time.Date(2012, 5, 20, 22, 6, 16, 600000000, time.UTC)},
+		{"U2", result.U2, time.Date(2012, 5, 20, 22, 11, 46, 400000000, time.UTC)},
+		{"U3", result.U3, time.Date(2012, 5, 21, 1, 33, 42, 800000000, time.UTC)},
+		{"U4", result.U4, time.Date(2012, 5, 21, 1, 39, 11, 200000000, time.UTC)},
+	}
+	for _, contact := range baseline {
+		if contact.point.JDE == 0 {
+			t.Fatalf("%s contact is absent", contact.name)
+		}
+		assertLocalSolarEclipseJDEClose(
+			t,
+			contact.name,
+			contact.point.JDE,
+			solarEclipseUTToTTJDE(contact.want),
+			3*time.Second,
+		)
+		if math.Abs(contact.point.SunAltitude) > 0.01 {
+			t.Fatalf("%s Sun altitude = %.9f degrees, want horizon contact", contact.name, contact.point.SunAltitude)
+		}
+	}
+	if result.P2.JDE != 0 || result.P3.JDE != 0 {
+		t.Fatalf("2012 eclipse unexpectedly has P2/P3 contacts: P2=%+v P3=%+v", result.P2, result.P3)
+	}
+	if len(result.CentralShadowFootprints) == 0 {
+		t.Fatal("expected sampled central-shadow footprints")
+	}
+	if math.Abs(result.CentralShadowStepDays-10.0/1440.0) > 1e-12 {
+		t.Fatalf("central shadow step = %.12f days, want ten minutes", result.CentralShadowStepDays)
+	}
+	for _, footprint := range result.CentralShadowFootprints {
+		if len(footprint.Boundaries) == 0 {
+			t.Fatalf("central-shadow footprint at %.12f has no boundary", footprint.JDE)
+		}
+	}
+}
+
+func TestSolarEclipseShadowContactsIncludeP2P3WhenPenumbraEntersEarthDisk(t *testing.T) {
+	result := SolarEclipsePartialFootprints(
+		solarEclipseUTToTTJDE(time.Date(2024, 4, 8, 0, 0, 0, 0, time.UTC)),
+		SolarEclipsePartialFootprintOptions{StepDays: 30.0 / 1440.0, BoundaryPoints: 36},
+	)
+	for name, contacts := range map[string][]SolarEclipsePathPoint{
+		"penumbral": {result.P1, result.P2, result.P3, result.P4},
+		"central":   {result.U1, result.U2, result.U3, result.U4},
+	} {
+		for index, contact := range contacts {
+			if contact.JDE == 0 {
+				t.Fatalf("%s contact %d is absent", name, index)
+			}
+			if index > 0 && !(contacts[index-1].JDE < contact.JDE) {
+				t.Fatalf("%s contacts out of order at %d: %.12f >= %.12f", name, index, contacts[index-1].JDE, contact.JDE)
+			}
+		}
+	}
+	if !(result.P1.JDE < result.U1.JDE && result.U4.JDE < result.P4.JDE) {
+		t.Fatalf("central shadow contacts must lie inside partial phase: P1=%v U1=%v U4=%v P4=%v",
+			result.P1.JDE, result.U1.JDE, result.U4.JDE, result.P4.JDE)
+	}
+	if result.CentralShadowFootprints != nil || result.CentralShadowStepDays != 0 {
+		t.Fatal("central-shadow footprints must remain disabled by default")
+	}
+}
+
+func TestSolarEclipsePartialBoundarySegmentsRemainClosedAcrossAntimeridian(t *testing.T) {
+	samples := []solarEclipsePartialBoundarySample{
+		{point: SolarEclipsePathPoint{Longitude: 170, Latitude: 20}, ok: true},
+		{point: SolarEclipsePathPoint{Longitude: -170, Latitude: 25}, ok: true},
+		{point: SolarEclipsePathPoint{Longitude: -160, Latitude: 10}, ok: true},
+		{point: SolarEclipsePathPoint{Longitude: 160, Latitude: 5}, ok: true},
+	}
+	boundaries, closed := solarEclipsePartialBoundarySegments(samples)
+	if !closed {
+		t.Fatal("complete spherical boundary must remain closed after antimeridian splitting")
+	}
+	if len(boundaries) < 2 {
+		t.Fatalf("expected antimeridian split, got %d boundary segment(s)", len(boundaries))
 	}
 }
 
@@ -180,8 +279,11 @@ func assertSolarEclipseFootprintClosedFlag(t *testing.T, footprint SolarEclipseP
 	if !footprint.Closed {
 		return
 	}
-	if len(footprint.Boundaries) != 1 {
-		t.Fatalf("closed footprint should have one boundary: got %d", len(footprint.Boundaries))
+	if len(footprint.Boundaries) == 0 {
+		t.Fatal("closed footprint has no boundaries")
+	}
+	if len(footprint.Boundaries) > 1 {
+		return
 	}
 	boundary := footprint.Boundaries[0]
 	if len(boundary) < 2 {
