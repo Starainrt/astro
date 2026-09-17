@@ -10,7 +10,7 @@ A personal astronomy library developed over years for calendrical-astronomy hobb
 
 The implementation follows *Astronomical Algorithms*; the covered scope is listed in [Highlights](#highlights) below.
 
-The Sun and planets use built-in VSOP87-style analytical terms, while the Moon uses a built-in ELP/MPP02 DE405-fitted analytical series. No external JPL ephemeris files are required.
+The Sun and planets use built-in VSOP87-style analytical terms, while the Moon uses a built-in truncated ELP2000/82-style analytical series. No external JPL ephemeris files are required.
 
 Unless noted otherwise, coordinates are apparent-of-date coordinates. Angles are in degrees, apparent diameters and semidiameters are in arcseconds, and distances use the unit implied by the function name, usually `AU` or `km`.
 
@@ -104,7 +104,7 @@ This is suitable for ordinary calendrical work, observing support, outreach, and
 
 ### Moon
 
-The Moon uses a built-in truncated ELP/MPP02 DE405-fitted analytical series retaining the major periodic terms. The package stays lightweight and does not require external ephemeris files.
+The Moon uses a built-in truncated ELP2000/82-style analytical series. The package stays lightweight and does not require external ephemeris files.
 
 It is suitable for Chinese-calendar new moons, lunar phases, rise/set, lunar eclipses, amateur occultation prediction, and ordinary positional work; extremely high-precision lunar laser ranging, long-term physical libration, and professional occultation work fall outside that range and are best served by JPL or a dedicated lunar ephemeris.
 
@@ -119,7 +119,7 @@ The matching `Next*`, `Last*`, and `Closest*` helpers are available in both nami
 
 ### Lite lightweight chains
 
-`lite/sun` and `lite/moon` are independent approximation chains. They do not depend on the VSOP87 or ELP/MPP02 DE405 engines used by `sun` / `moon`, and are intended for CPU- or memory-constrained environments.
+`lite/sun` and `lite/moon` are independent approximation chains. They do not depend on the VSOP87 or ELP2000/82 series used by `sun` / `moon`, and are intended for CPU- or memory-constrained environments.
 
 - `lite/sun`: simplified true/apparent solar longitude formulas plus lightweight equatorial conversion
 - `lite/moon`: Schlyter-style lunar approximation with about 15 perturbation terms plus lightweight topocentric correction
@@ -172,7 +172,7 @@ The following entry points have been checked against JPL Horizons, NASA GSFC, IM
 - Moon rise/set: `aero=true` uses dynamic standard refraction and the instantaneous lunar semidiameter for an upper-limb crossing. Across 14 sea-level events at 7 sites, the current mean/maximum differences against JPL Horizons DE441 are about `0.30s / 0.75s`.
 - Moon rise/set with other conventions: mean/maximum differences are about `38.77s / 76.22s` against MET Norway's fixed `-0.8333°` convention. Against IMCCE Miriade, whose horizon convention is not exposed, the mean is about `2m13.46s`; the grazing `61°N` sample reaches about `6m41.82s`.
 - Earth perihelion and aphelion: maximum time difference about `1m28.84s`, maximum distance difference about `0.000000039837 AU`
-- main-chain lunar position: the current algorithm is a truncated ELP/MPP02 DE405-fitted analytical series; across four JPL/Horizons `JDTT` samples in year `-2000`, the maximum difference from JPL/Horizons is about `219.6"` in longitude, `25.8"` in latitude, and `34.3 km` in distance
+- main-chain lunar position: the current algorithm is a truncated ELP2000/82-style analytical series; across four JPL/Horizons `JDTT` samples in year `-2000`, the maximum difference from JPL/Horizons is about `219.6"` in longitude, `25.8"` in latitude, and `34.3 km` in distance
 - Moon perigee and apogee: maximum time difference about `15m53.45s`, maximum distance difference about `39.758 km`
 - maximum lunar declination: maximum time difference about `2.43s`, maximum declination difference about `0.00006431°`
 
