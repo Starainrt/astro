@@ -24,7 +24,7 @@ func Earthe(JD float64) float64 {
 
 func EarthPI(JD float64) float64 {
 	T := (JD - 2451545) / 36525
-	return 102.93735 + 1.71953*T + 000046*T*T
+	return 102.93735 + 1.71953*T + 0.00046*T*T
 }
 
 func SunMidFun(JD float64) float64 {

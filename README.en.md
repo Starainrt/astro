@@ -4,13 +4,13 @@
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/starainrt/astro.svg)](https://pkg.go.dev/github.com/starainrt/astro)
 
-A personal astronomy library developed over years for calendrical work, amateur observing, outreach demos, and lightweight research.
+A personal astronomy library developed over years for calendrical-astronomy hobby work.
 
-> This project is mainly for learning and validating astronomical algorithms. The results are intended for serious amateur use.
+> 📚 This project is mainly for learning and validating astronomical algorithms. The results are intended for serious amateur use.
 
-The implementation follows *Astronomical Algorithms*. It covers calendar conversion, Sun/Moon/planet positions, eclipses, lunar occultations, rise/set/transit times, lunar phases, stars, coordinate transforms, physical ephemerides, research formulas, and generic small-body orbit propagation.
+The implementation follows *Astronomical Algorithms*; the covered scope is listed in [Highlights](#highlights) below.
 
-The Sun and planets use built-in VSOP87-style analytical terms, while the Moon uses a built-in ELP/MPP02 DE405-style analytical series. No external JPL ephemeris files are required.
+The Sun and planets use built-in VSOP87-style analytical terms, while the Moon uses a built-in ELP/MPP02 DE405-fitted analytical series. No external JPL ephemeris files are required.
 
 Unless noted otherwise, coordinates are apparent-of-date coordinates. Angles are in degrees, apparent diameters and semidiameters are in arcseconds, and distances use the unit implied by the function name, usually `AU` or `km`.
 
@@ -24,8 +24,6 @@ Unless noted otherwise, coordinates are apparent-of-date coordinates. Angles are
   - [Calendar And Solar Terms](#calendar-and-solar-terms)
   - [Sun And Moon](#sun-and-moon)
   - [Lite Sun And Moon](#lite-sun-and-moon)
-  - [Solar Eclipse](#solar-eclipse)
-  - [Lunar Eclipse](#lunar-eclipse)
   - [Lunar Occultations](#lunar-occultations)
   - [Event Maps And GeoJSON](#event-maps-and-geojson)
   - [Planets](#planets)
@@ -45,19 +43,19 @@ go get github.com/starainrt/astro
 
 ## Highlights
 
-- Calendar conversion between Gregorian dates and the traditional Chinese lunisolar calendar, from 721 BCE through 3000 CE or later, including solar terms
-- Solar position, rise/set, Earth distance, apparent solar time, apparent altitude, parallactic angle, solar `P/B0/L0`, apparent diameter
-- Lunar position, rise/set, Earth distance, phase, new/full/quarter times, apparent diameter, bright-limb angle, parallactic angle, geocentric/topocentric libration, apsides, nodes, maximum declination
-- `lite/sun` and `lite/moon` lightweight approximation chains for watches, frontends, mini programs, and other resource-constrained environments
-- Global and local solar/lunar eclipses, solar central paths, partial footprints, visible local lunar eclipses, Saros metadata, local diagrams, and global visibility-map SVGs
-- Point-source stellar and finite-disk planetary lunar occultations, with fixed-site contacts, global paths, geometric greatest points, and SVG output
-- GeoJSON for solar eclipses, lunar eclipses, and lunar occultations, including timed paths and optional time-marker points; border-free global SVG maps support equirectangular and polar projections
-- Seven major planets with positions, rise/set, conjunction/opposition/station events, quadratures, elongations, Mercury/Venus geocentric transits, nodes, phase, apparent magnitude, apparent diameter, parallactic angle, and physical ephemerides
-- 9100+ star catalog entries, constellation lookup, proper-motion propagation, rise/set, parallactic angle, and apparent altitude
-- Coordinate transforms, topocentric coordinates, sidereal time, precession, nutation, angular distance, refraction, airmass, parallactic angle, and Galactic coordinates
-- Standalone formulas for blackbody radiation, synodic periods, photometry, telescope limiting magnitude, stellar radius/temperature/luminosity relations, and airmass models
-- Generic heliocentric two-body orbit propagation for asteroids, comets, dwarf planets, and hypothetical objects, including phase/photometry helpers and visual-binary position solving
-- Apparent/mean solar time, solar hour angle, mean-time/zone-time hour-angle helpers, planar-sundial geometry, and equatorial/horizontal/vertical dial helpers
+- 📅 Calendar conversion between Gregorian dates and the traditional Chinese lunisolar calendar, from 721 BCE through 3000 CE, including solar terms
+- 🌞 Solar position, rise/set, Earth distance, apparent solar time, apparent altitude, parallactic angle, solar `P/B0/L0`, apparent diameter
+- 🌙 Lunar position, rise/set, Earth distance, phase, new/full/quarter times, apparent diameter, bright-limb angle, parallactic angle, geocentric/topocentric libration, apsides, nodes, maximum declination
+- 🪶 `lite/sun` and `lite/moon` lightweight approximation chains for watches, frontends, mini programs, and other resource-constrained environments, covering sky position, rise/set, and phase
+- 🌗 Global and local solar/lunar eclipses, solar central paths, partial footprints, visible local lunar eclipses, Saros metadata, local diagrams, and global visibility-map SVGs
+- 🌘 Point-source stellar and finite-disk planetary lunar occultations, with fixed-site contacts, global paths, geometric greatest points, and SVG output
+- 🗺️ GeoJSON for solar eclipses, lunar eclipses, and lunar occultations, including timed paths and optional time-marker points; border-free global SVG maps support equirectangular and polar projections
+- 🪐 Seven major planets with positions, rise/set, conjunction/opposition/station events, quadratures, elongations, Mercury/Venus geocentric transits, nodes, phase, apparent magnitude, apparent diameter, parallactic angle, and physical ephemerides
+- ⭐ A built-in catalog of 9100 stars plus constellation lookup, proper-motion propagation, rise/set, parallactic angle, and apparent altitude
+- 🧭 Coordinate transforms, topocentric coordinates, sidereal time, precession, nutation, angular distance, refraction, airmass, parallactic angle, and Galactic coordinates
+- 🔭 Standalone formulas for blackbody radiation, synodic periods, photometry, telescope limiting magnitude, stellar radius/temperature/luminosity relations, and airmass models
+- ☄️ Generic heliocentric two-body orbit propagation for asteroids, comets, and hypothetical objects, including phase/photometry helpers and visual-binary position solving
+- 🕰️ Apparent/mean solar time, solar hour angle, mean-time/zone-time hour-angle helpers, planar-sundial geometry, and equatorial/horizontal/vertical dial helpers
 
 ## Package Overview
 
@@ -70,7 +68,7 @@ go get github.com/starainrt/astro
 | `lite/sun` / `lite/moon` | Lightweight Sun/Moon approximation chains for minute-level rise/set, lightweight sky position, and lunar-phase work |
 | `eclipse` / `eclipse/svg` | Global/local solar and lunar eclipses, solar central paths, partial footprints, local visibility filtering, Saros metadata, local diagrams, and global visibility-map SVGs |
 | `moon/svg` | Fixed-site stellar/planetary lunar-occultation disk charts and projected global maps with bands, center lines, and time labels |
-| `geojson` | RFC 7946 encoding for existing solar-eclipse, lunar-eclipse, and lunar-occultation geographic results; projection and styling remain application concerns |
+| `geojson` | RFC 7946 encoding for existing solar-eclipse, lunar-eclipse, and lunar-occultation geographic results |
 | `mercury` / `venus` | Positions, rise/set, conjunctions, stations, elongations, geocentric transits, phase, parallactic angle, magnitude, diameter, nodes, physical ephemerides |
 | `mars` / `jupiter` / `saturn` / `uranus` / `neptune` | Positions, rise/set, conjunction/opposition, stations, quadratures, phase, parallactic angle, magnitude, diameter, nodes, physical ephemerides |
 | `earth` | Earth orbital eccentricity, perihelion, aphelion |
@@ -79,23 +77,18 @@ go get github.com/starainrt/astro
 | `orbit` | Generic heliocentric conic propagation for elliptical, near-parabolic, parabolic, and hyperbolic orbits, plus phase/photometry helpers and a lightweight visual-binary solver |
 | `sundial` | Apparent/mean solar time, solar hour angle, mean-time/zone-time hour-angle helpers, planar geometry, time-line and declination-curve sampling, equatorial/horizontal/vertical dial helpers |
 
-Many position APIs also provide `...N` variants:
+Some entry points also provide `...N` truncated variants:
 
 - `n < 0`: use all built-in terms embedded in this repository
 - `n >= 0`: truncate the series, useful for performance comparisons, rough estimates, or algorithm studies
 
 "All built-in terms" means the table entries shipped inside this package. It does not mean the complete original external VSOP/ELP long tables.
 
-Airmass API distinction:
-
-- `coord.Airmass...` is the observing-oriented layer. It can start from apparent altitude directly, or first estimate refraction from true altitude and then compute airmass.
-- `formula.Airmass...` is the raw formula layer. It does not apply refraction.
-
 ## Scope And Accuracy
 
 ### Sun and planets
 
-The Sun and planets use built-in VSOP87-style analytical terms. The current embedded tables cover roughly 4000 years around J2000.
+The Sun and planets use built-in VSOP87 analytical terms. The current table entries cover roughly 4000 years around J2000. The table below lists truncation errors relative to the complete VSOP87 tables:
 
 | Target | Longitude / latitude | Distance |
 | --- | --- | --- |
@@ -107,13 +100,13 @@ The Sun and planets use built-in VSOP87-style analytical terms. The current embe
 | Uranus | about `1"` | about `20 x 10^-6 AU` |
 | Neptune | about `1"` | about `40 x 10^-6 AU` |
 
-This is suitable for ordinary calendrical work, observing support, outreach, and personal research. For spacecraft navigation, occultation prediction, or strict dynamical integration, use JPL DE or another professional ephemeris.
+This is suitable for ordinary calendrical work, observing support, outreach, and personal research; spacecraft navigation, precise occultation prediction, and strict dynamical integration fall outside that range and usually need a professional ephemeris such as JPL DE.
 
 ### Moon
 
-The Moon uses a built-in truncated ELP/MPP02 DE405-style analytical series retaining the major periodic terms. The package stays lightweight and does not require external ephemeris files.
+The Moon uses a built-in truncated ELP/MPP02 DE405-fitted analytical series retaining the major periodic terms. The package stays lightweight and does not require external ephemeris files.
 
-It is suitable for Chinese-calendar new moons, lunar phases, rise/set, lunar eclipses, amateur occultation prediction, and ordinary positional work. For lunar laser ranging, long-term physical libration, or professional occultation work, use JPL or a dedicated lunar ephemeris.
+It is suitable for Chinese-calendar new moons, lunar phases, rise/set, lunar eclipses, amateur occultation prediction, and ordinary positional work; extremely high-precision lunar laser ranging, long-term physical libration, and professional occultation work fall outside that range and are best served by JPL or a dedicated lunar ephemeris.
 
 The four principal phases keep the historical pinyin names and also expose English aliases:
 
@@ -131,14 +124,14 @@ The matching `Next*`, `Last*`, and `Closest*` helpers are available in both nami
 - `lite/sun`: simplified true/apparent solar longitude formulas plus lightweight equatorial conversion
 - `lite/moon`: Schlyter-style lunar approximation with about 15 perturbation terms plus lightweight topocentric correction
 - rise/set search: fixed-step scanning plus bisection, without the high-precision nutation iteration used by the main chain
-- zero heap allocation in the computation path; lunar position is about 1 microsecond and 20-60x faster than the main chain
+- zero heap allocation in the computation path (0 allocs/op); against the main chain, pure evaluation entry points such as position and phase run about `8.3-27.3x` faster, and rise/set entry points about `1.0-3.7x`
 
 | Package | Position model | Rise/set search | Main use |
 | --- | --- | --- | --- |
 | `lite/sun` | simplified true/apparent solar longitude plus lightweight equatorial conversion | `30 min` scan plus bisection | sunrise/sunset, solar altitude, watch faces, frontend refresh loops |
 | `lite/moon` | Schlyter / vFPS lunar approximation plus lightweight topocentric correction | `15 min` scan plus bisection | moonrise/moonset, lunar phase, lunar age, lightweight lunar observing helpers |
 
-Error against the main `sun` / `moon` chains (year 2026, 8 observing sites; rise/set sampled every 7 or 15 days, phase/age/position every 6 hours):
+Error against the `sun` / `moon` packages (year 2026, 8 observing sites; rise/set sampled every 7 or 15 days, phase/age every 6 hours):
 
 | Capability | Mean absolute error | P95 | Max absolute error | Notes |
 | --- | --- | --- | --- | --- |
@@ -151,41 +144,37 @@ Error against the main `sun` / `moon` chains (year 2026, 8 observing sites; rise
 | `lite/moon` geocentric longitude | `2.41'` | `6.82'` | `9.91'` | relative to the main lunar chain |
 | `lite/moon` geocentric latitude | `0.87'` | `1.83'` | `2.92'` | relative to the main lunar chain |
 
-Local `Go testing.Benchmark` reference values (absolute timings vary by machine, relative pattern is stable):
+`Go testing.Benchmark` reference values (single-machine measurements, for reference only; absolute values vary with hardware):
+
+The measurements use 2026-01-01 20:00 CST, Shanghai (`121.4737°E, 31.2304°N`), `height=0`, `aero=true`, and take the median of 3 runs; each benchmark is warmed up once, so lazy-loading caches and first-call allocations stay out of the steady-state per-call cost.
 
 | Entry point | Main chain | `lite` | Speedup | Main-chain allocation | `lite` allocation |
 | --- | --- | --- | --- | --- | --- |
-| `Sun ApparentRaDec` | `13.392 µs/op` | `231.0 ns/op` | `57.97x` | `0 B/op, 0 allocs/op` | `0 B/op, 0 allocs/op` |
-| `Sun Altitude` | `16.405 µs/op` | `681.5 ns/op` | `24.09x` | `0 B/op, 0 allocs/op` | `0 B/op, 0 allocs/op` |
-| `Sun RiseTime` | `202.994 µs/op` | `18.823 µs/op` | `10.78x` | `0 B/op, 0 allocs/op` | `0 B/op, 0 allocs/op` |
-| `Moon ApparentRaDec` | `65.273 µs/op` | `1.035 µs/op` | `63.06x` | `297202 B/op, 70 allocs/op` | `0 B/op, 0 allocs/op` |
-| `Moon Phase` | `40.264 µs/op` | `940.6 ns/op` | `42.83x` | `178321 B/op, 42 allocs/op` | `0 B/op, 0 allocs/op` |
-| `Moon Altitude` | `44.883 µs/op` | `2.275 µs/op` | `19.73x` | `178321 B/op, 42 allocs/op` | `0 B/op, 0 allocs/op` |
-| `Moon RiseTime` | `659.886 µs/op` | `77.600 µs/op` | `8.50x` | `2377613 B/op, 560 allocs/op` | `0 B/op, 0 allocs/op` |
+| `Sun ApparentRaDec` | `5.888 µs/op` | `215.6 ns/op` | `27.3x` | `0 B/op, 0 allocs/op` | `0 B/op, 0 allocs/op` |
+| `Sun Altitude` | `5.955 µs/op` | `625.9 ns/op` | `9.5x` | `0 B/op, 0 allocs/op` | `0 B/op, 0 allocs/op` |
+| `Sun RiseTime` | `95.847 µs/op` | `25.648 µs/op` | `3.7x` | `0 B/op, 0 allocs/op` | `0 B/op, 0 allocs/op` |
+| `Moon ApparentRaDec` | `16.520 µs/op` | `1.006 µs/op` | `16.4x` | `0 B/op, 0 allocs/op` | `0 B/op, 0 allocs/op` |
+| `Moon Phase` | `15.139 µs/op` | `917.7 ns/op` | `16.5x` | `0 B/op, 0 allocs/op` | `0 B/op, 0 allocs/op` |
+| `Moon Altitude` | `9.533 µs/op` | `1.150 µs/op` | `8.3x` | `0 B/op, 0 allocs/op` | `0 B/op, 0 allocs/op` |
+| `Moon RiseTime` | `120.545 µs/op` | `118.037 µs/op` | `1.0x` | `0 B/op, 0 allocs/op` | `0 B/op, 0 allocs/op` |
+
+The main-chain/`lite` gap depends on the scenario: pure evaluation entry points (position, phase) run about `8.3-27.3x` faster in `lite`, while rise/set entry points narrow to `1.0-3.7x` because both sides perform a time search (`Moon RiseTime` is nearly level). The speedup ratios come from a same-machine comparison and are affected by hardware less than the absolute values are.
 
 Use the main `sun` / `moon` chains for eclipses, physical libration, or high-latitude edge cases.
 
-### Regression references
+### Accuracy references
 
-The following areas have been checked against JPL Horizons, NASA GSFC, IMCCE, and other public references:
+The following entry points have been checked against JPL Horizons, NASA GSFC, IMCCE, and other public references; use them to judge the order of magnitude to expect:
 
-- apparent diameters of the Sun, planets, and Moon
-- solar physical ephemerides `P/B0/L0`
-- planetary rise, transit, and set events
+- apparent diameters of the Sun, planets, and Moon: maximum differences from the external baseline range from `0.000002"` to `0.194598"` depending on the body; the Moon is the most sensitive because of parallax and distance changes
+- solar physical ephemerides `P/B0/L0`: maximum differences are about `0.003349° / 0.003986° / 0.047394°`
+- planetary rise, transit, and set: checked against JPL Horizons Time-Varying Hourly (TVH) events; that baseline is generated at a 1-minute step, and current results align with the Horizons event times at the minute level
 - Moon rise/set: `aero=true` uses dynamic standard refraction and the instantaneous lunar semidiameter for an upper-limb crossing. Across 14 sea-level events at 7 sites, the current mean/maximum differences against JPL Horizons DE441 are about `0.30s / 0.75s`.
 - Moon rise/set with other conventions: mean/maximum differences are about `38.77s / 76.22s` against MET Norway's fixed `-0.8333°` convention. Against IMCCE Miriade, whose horizon convention is not exposed, the mean is about `2m13.46s`; the grazing `61°N` sample reaches about `6m41.82s`.
-- Global stellar-occultation path: for the `2025-06-05` occultation of HR 4799, start/greatest/end differences from the project's recorded reference are about `+2.30s / -1.37s / -3.12s`.
-- HR 4799 path geometry: greatest-point longitude/latitude differ by about `+0.0122° / +0.0105°`. The computed `3582.4 km` band width differs from the `3571.9 km` reference by about `10.5 km`.
-- Earth perihelion and aphelion
-- main-chain lunar position: the current algorithm is a truncated ELP/MPP02 DE405-style analytical series; across four JPL/Horizons `JDTT` samples in year `-2000`, the maximum difference from JPL/Horizons is about `219.6"` in longitude, `25.8"` in latitude, and `34.3 km` in distance
-- Moon perigee and apogee
-- maximum lunar declinations
-- solar and lunar eclipses
-- Galilean satellite events
-
-Impact boundary of the topocentric hour-angle fix: Moon rise/set, fixed-site lunar occultations, topocentric lunar coordinates, and the greatest-event Moon altitude/visibility fields of local lunar eclipses use the corrected UT hour-angle chain.
-
-Global solar/lunar eclipse contacts, greatest times, and magnitudes use their own geocentric or Besselian geometry. Their existing NASA accuracy figures therefore do not change because of this fix.
+- Earth perihelion and aphelion: maximum time difference about `1m28.84s`, maximum distance difference about `0.000000039837 AU`
+- main-chain lunar position: the current algorithm is a truncated ELP/MPP02 DE405-fitted analytical series; across four JPL/Horizons `JDTT` samples in year `-2000`, the maximum difference from JPL/Horizons is about `219.6"` in longitude, `25.8"` in latitude, and `34.3 km` in distance
+- Moon perigee and apogee: maximum time difference about `15m53.45s`, maximum distance difference about `39.758 km`
+- maximum lunar declination: maximum time difference about `2.43s`, maximum declination difference about `0.00006431°`
 
 The README examples are illustrative. The repository tests contain the exact baselines.
 
@@ -193,7 +182,7 @@ The README examples are illustrative. The repository tests contain the exact bas
 
 ### Calendar And Solar Terms
 
-The `calendar` package converts between Gregorian dates and the traditional Chinese lunisolar calendar, and exposes solar terms. The supported range is from 721 BCE through year 3000, with some modern algorithm paths usable beyond that. The calendar is lunisolar in the strict sense, but public function names use `Lunar` for readability and convention.
+The `calendar` package converts between Gregorian dates and the traditional Chinese lunisolar calendar, and exposes solar terms. The supported range is from 721 BCE through 3000 CE; 104 BCE is the calendar-table switch point. The calendar is lunisolar in the strict sense, but public function names use `Lunar` for readability and convention.
 
 For historical input, Chinese era names stay in Chinese. This is part of the API surface, because historical Chinese dates are normally written that way.
 
@@ -206,27 +195,137 @@ For historical input, Chinese era names stay in Chinese. This is part of the API
 
 #### Usage notes
 
-1. A single Gregorian date may map to multiple lunisolar dates in periods with parallel regimes and calendars, such as the Three Kingdoms period.
-2. A single lunisolar date may map to multiple Gregorian dates when a regime changed calendar rules. For example, during Wu Zetian's calendar reform, year 3 of Shengli had two twelfth months.
-3. Gregorian handling is based on Julian Day:
+##### 1. One Gregorian date may map to several lunisolar dates
+In periods when several regimes coexisted with different calendars (the Three Kingdoms, for example), one Gregorian date can map to several lunisolar dates. The package returns every conversion it can determine.
+
+##### 2. One lunisolar date may map to several Gregorian dates
+Rival calendars are not the only cause: one regime can produce the same effect during a calendar reform. After Wu Zetian's reform, for example, the third year of Shengli had two twelfth months.
+
+##### 3. Gregorian calendar rules
+All computation goes through Julian Days. The Gregorian side follows these rules:
 - after `1582-10-15`: Gregorian calendar
 - before `1582-10-04`: Julian calendar
 - before year 8 CE: proleptic Julian calendar
 - the day after `1582-10-04` is `1582-10-15`
-- dates from `1582-10-05` through `1582-10-14` are invalid and rejected
-- year `0` means 1 BCE, year `-1` means 2 BCE, and so on
+- `1582-10-05` through `1582-10-14` do not exist and the corresponding entry points reject them
+- year numbering: year `0` is 1 BCE, year `-1` is 2 BCE, and so on
 
-Time zone note: standard wrappers such as `SolarToLunar` and `LunarToSolar` use Beijing time. Lower-level `Solar` and `Lunar` allow custom time zones for research under the modern Chinese-calendar algorithm.
+##### 4. Time zone
+The package targets the Chinese calendar, so solar terms and new moons are computed in Beijing time (UTC+8) by default. Applying Chinese lunisolar rules in another time zone can shift dates.
 
-Go-specific note: before `1582-10-15`, Go's `time.Time` uses the proleptic Gregorian calendar, so `time.Time.Weekday()` does not match this library's Julian/Gregorian handling. To get the weekday used here:
+For exploration and research, the lower-level `Solar` and `Lunar` methods convert between the Gregorian and lunisolar calendars under a **custom time zone**, following the **current Chinese calendar algorithm (GB/T 33661-2017)**.
+For standard conversions in Beijing time, use the wrapped `SolarToLunar` and `LunarToSolar` methods.
+
+**Example**: the calendar rules require the winter solstice to fall in the eleventh lunisolar month. For the 1984 winter solstice:
+```go
+ws := calendar.JieQi(1984, 270)
+fmt.Println(ws)
+fmt.Println(moon.ClosestShuoYue(ws))
+```
+
+| Event | UTC+8 | UTC+7 |
+| --- | --- | --- |
+| Winter solstice | 1984-12-22 | 1984-12-21 |
+| New moon | 1984-12-22 | 1984-12-22 |
+
+In UTC+8 (China), 1984-12-22 is both the winter solstice and the new moon, so it is the first day of the eleventh lunisolar month; in UTC+7 the solstice moves up to 12-21, which makes 12-22 the first day of the twelfth month.
+
+Chinese New Year shifts the same way. The Gregorian date of the first day of the first lunisolar month of 1985 is February 20 in UTC+8 and January 21 in UTC+7:
+```go
+fmt.Println(calendar.Solar(1985, 1, 1, false, 8.0))
+fmt.Println(calendar.Solar(1985, 1, 1, false, 7.0))
+```
+
+##### 5. Go-specific note
+
+⚠️ Go's standard-library `time.Time` differs from this package in calendar handling:
+
+- Before 1582-10-15 Go uses the proleptic Gregorian calendar rather than the Julian calendar. Without `Add`, it generally works as expected.
+- So **before 1582-10-15, `time.Time.Weekday()` does not agree with this package**:
+  for 1582-10-04 this package reports Thursday, Go reports Monday.
+
+#### Suggested solutions
+To obtain the weekday this package uses:
 
 ```go
 // date should be the local midnight of the target day.
 weekday := int(calendar.Date2JDE(date)+1.5) % 7
 // 0 means Sunday, 1 means Monday, ..., 6 means Saturday.
 ```
+Using `Add` or `AddDate` on a `time.Time` before 1582 runs through the proleptic Gregorian calendar and lands one day away from the Julian calendar whenever it crosses a leap day that only the Julian calendar has.
+For example, 700 is a leap year in the Julian calendar but not in Go's proleptic Gregorian calendar.
+
+##### 6. Julian-only leap days (for example 700-02-29)
+Before 1582, years divisible by 100 but not 400 (such as 100, 700 or 1500) have a 29 February in the Julian calendar,
+while Go's `time.Time` uses the proleptic Gregorian calendar and has no such day (`time.Date(700, 2, 29, ...)` normalises to 700-03-01). The library accepts 700-02-29 as an existing day, with these constraints:
+
+- `Time.Solar()` / `LunarTime.SolarDate`: the library's canonical label, always the **following day**
+  (700-03-01 for 700-02-29), matching `basic.JDE2DateByZone`;
+- `Time.JulianOnly()`: whether the lunar date exists only in the Julian calendar (JSON field `julianOnly`);
+- `Time.JDE()`: the exact Julian day; for a Julian-only leap day it is one day earlier than `Solar()`,
+  otherwise the two agree (JSON field `jde`).
+
+```go
+julian, _ := calendar.SolarToLunarByYMD(700, 2, 29)
+fmt.Println(julian.Solar().Format("2006-01-02"), julian.JulianOnly(), julian.JDE(), julian.Lunar().MonthDay())
+// 0700-03-01 true 1.9767915e+06 二月初五
+```
+
+> Two kinds of entry point keep this leap day: the integer year/month/day entry points `SolarToLunarByYMD` / `LunarToSolarByYMD`, and a direct
+> `basic.JDECalc(700, 2, 29)` call returning the exact Julian day `1976791.5`; building a `time.Time` first is the step that loses it.
+
+##### 7. Several Gregorian candidates for one lunar date
+
+The dual-numbering reforms (Wang Mang 9-23 CE, Emperor Ming of Wei 237-240 CE, Wu Zetian 689-700 CE, Emperor Suzong of Tang 761-762 CE)
+and the Taichu calendar handoff (104 BCE) give one lunar date two legal Gregorian days. `Solar()` remains the library default, and
+`SolarCandidates()` returns every candidate with the first element always equal to `Solar()`:
+
+```go
+res, _ := calendar.LunarToSolarByYMD(700, 11, 1, false)
+fmt.Println(res.Solar().Format("2006-01-02"))
+fmt.Println(len(res.SolarCandidates()))
+// 0700-12-15
+// 2
+```
+
+Outside the reform windows there is a single candidate and `SolarCandidates()` returns a one-element
+slice; a Julian-only leap day also reports only its canonical label, because its single legal day
+cannot be expressed as a `time.Time` - use `JDE()` for the exact date.
 
 #### Calendar conversion
+
+##### Gregorian to lunar
+
+- **Input**: a Gregorian date, as `time.Time`
+- **Output**: a `calendar.Time` object, holding one or more matching lunisolar dates
+- **The result carries**:
+  - a full lunisolar date description
+  - sexagenary (ganzhi) year, month, and day
+  - dynasty, emperor, and era name
+  - the complete structured lunisolar record
+
+##### Lunar to Gregorian
+
+Two calling styles:
+
+###### Style 1: pass a lunisolar string
+Formats:
+1. `era name + year + month + day`, for example **`"元丰六年十月十二"`** (prefix a leap month with `闰`; day names read `初一`, `二十`, and so on)
+2. `era name + year + month + ganzhi day`, for example **`"元嘉二十七年七月庚午"`**
+3. `year + month + day`, for example **`"二零二五年正月初一"`** (prefix a leap month with `闰`; suits modern dates)
+4. `year + month + ganzhi day`, for example **`"二零二五年正月戊戌日"`**
+5. `Arabic digits + month + day`: Chinese numerals may be written as Arabic digits, for example **`"2025年1月1日"`**, which stands for `二零二五年正月初一`
+6. Historical cases: month names could differ from modern usage (under Wu Zetian, `正月` and `一月` denoted different months); such month names are read as Chinese numerals
+
+> ⚠️ A lunisolar year and a Gregorian year do not line up exactly. 2025-01-28, Chinese New Year's Eve, is the 29th day of the 12th lunisolar month of 2024, so its string is `"二零二四年腊月廿九"`.
+
+###### Style 2: pass numeric fields
+- **Parameters**: year (`int`), month (`int`), day (`int`), leap-month flag (`bool`)
+- **Semantics**: locate the date by lunisolar year, month, day, and the leap-month flag; for modern conversions
+
+One lunisolar day can have several legal Gregorian candidates: `Solar()` takes the first, `SolarCandidates()` returns all of them (see note 7 above).
+
+##### Code example
 
 ```go
 package main
@@ -281,6 +380,9 @@ Output:
     "ganzhiYear": "己未",
     "ganzhiMonth": "丙子",
     "ganzhiDay": "辛未",
+    "calendarSystem": "",
+    "calendarName": "",
+    "jde": 1808717.8389814815,
     "dynasty": "魏",
     "emperor": "魏明帝",
     "nianhao": "景初",
@@ -300,7 +402,10 @@ Output:
     "ganzhiYear": "己未",
     "ganzhiMonth": "丙子",
     "ganzhiDay": "辛未",
-    "dynasty": "",
+    "calendarSystem": "",
+    "calendarName": "",
+    "jde": 1808717.8389814815,
+    "dynasty": "蜀",
     "emperor": "蜀后主",
     "nianhao": "延熙",
     "yearOfNianhao": 2,
@@ -319,6 +424,9 @@ Output:
     "ganzhiYear": "己未",
     "ganzhiMonth": "丙子",
     "ganzhiDay": "辛未",
+    "calendarSystem": "",
+    "calendarName": "",
+    "jde": 1808717.8389814815,
     "dynasty": "吴",
     "emperor": "吴大帝",
     "nianhao": "赤乌",
@@ -390,11 +498,15 @@ Output:
 
 - `Altitude`: altitude angle; horizon is `0°`, zenith is `+90°`
 - `Zenith`: zenith distance; zenith is `0°`, horizon is `90°`
-- In older versions, `Zenith` incorrectly returned altitude. Current versions return zenith distance.
+- `Zenith` and `Altitude` are complements; the two add up to `90°`
 
 #### Sunrise/sunset and moonrise/moonset
 
-Moon rise/set times are date-based. Rise and set events on the same civil day are not guaranteed to form one continuous observing cycle. For example, the Moon may set at 01:00 and rise again at noon; in that case, the evening moonset belongs to the following date's query.
+> ⚠️ Moon rise/set times are computed for the queried civil date, so the rise and set instants need not be continuous.
+>
+> For example, the Moon may set at 01:00 and rise again at noon, in which case the rise time is later than the set time; the evening moonset in that scenario corresponds to the next day's date.
+>
+> The full rise/set cycle follows from the order of the two instants: check whether the rise time falls after the set time to pick the correct subsequent instants.
 
 ```go
 package main
@@ -443,8 +555,8 @@ Output:
 2020-01-01 17:45:09.188657999 +0800 CST <nil> // sunset
 2020-01-01 18:12:33.624035418 +0800 CST <nil> // civil evening twilight ends
 2020-01-01 11:52:49.860912859 +0800 CST <nil> // moonrise
-2020-01-01 17:38:02.510787248 +0800 CST // lunar upper culmination
-2020-01-01 23:26:49.313593804 +0800 CST <nil> // moonset
+2020-01-01 17:36:48.811488747 +0800 CST // lunar upper culmination
+2020-01-01 23:26:49.313553571 +0800 CST <nil> // moonset
 ```
 
 #### Sun and Moon position
@@ -504,9 +616,9 @@ RA: 18h43m34.82s Dec: -23°3′30.27″ // apparent RA and Dec of the Sun
 Sagittarius // English constellation containing the Sun
 Azimuth: 120.19477090015224 Altitude: 2.4014437419430097 Zenith: 87.59855625805699 // solar horizontal coordinates at Xi'an
 0.983292937163176 // Sun-Earth distance, AU
-RA: 23h17m53.15s Dec: -10°19′18.57″ // topocentric apparent RA and Dec of the Moon
+RA: 23h18m56.24s Dec: -10°20′54.42″ // topocentric apparent RA and Dec of the Moon
 Aquarius // English constellation containing the Moon
-Azimuth: 67.84050700509859 Altitude: -45.13425530765482 Zenith: 135.13425530765483 // lunar horizontal coordinates at Xi'an
+Azimuth: 67.63889332004852 Altitude: -45.34916937173283 Zenith: 135.34916937173284 // lunar horizontal coordinates at Xi'an
 404238.6096080479 // Earth-Moon distance, km
 ```
 
@@ -582,8 +694,8 @@ north=2026-01-02T08:10:49Z dec=28.266373 // maximum northern lunar declination
 south=2026-01-16T05:15:14Z dec=-28.304184 // maximum southern lunar declination
 libration lon=-1.278902 lat=-6.531444 pa=-9.967050 // geocentric libration longitude, latitude, and axis position angle
 bright limb=267.364849 // geocentric bright-limb position angle
-topo libration lon=-2.010562 lat=-5.912181 pa=-10.184664 // topocentric libration and axis position angle from Shanghai
-topo bright limb=266.045494 // topocentric bright-limb position angle from Shanghai
+topo libration lon=-1.736754 lat=-5.780730 pa=-10.072846 // topocentric libration and axis position angle from Shanghai
+topo bright limb=266.038258 // topocentric bright-limb position angle from Shanghai
 ```
 
 Earth orbital eccentricity at an instant:
@@ -608,7 +720,7 @@ Here:
 Output:
 
 ```text
-340.9570862454423 160.95708624544227 // lunar ascending-node and descending-node longitudes, degrees
+340.95708624505863 160.9570862450587 // lunar ascending-node and descending-node longitudes, degrees
 ```
 
 #### Lunar phases
@@ -645,7 +757,7 @@ func main() {
 Output:
 
 ```text
-0.300041309608744 // about 30% of the lunar disk is illuminated
+0.30004130960877884 // about 30% of the lunar disk is illuminated
 上峨眉月 // Chinese phase description
 2020-01-25 05:41:58.271192908 +0800 CST // next new moon
 2020-01-03 12:45:23.229190707 +0800 CST // next first quarter
@@ -700,7 +812,7 @@ Exported functions:
 - `lite/sun`: `TrueLo`, `ApparentLo`, `Distance`, `TrueRaDec`, `ApparentRaDec`, `HourAngle`, `Azimuth`, `Altitude`, `Zenith`, `RiseTime`, `SetTime`
 - `lite/moon`: `TrueLo`, `TrueBo`, `TrueRaDec`, `ApparentRaDec`, `HourAngle`, `Azimuth`, `Altitude`, `Zenith`, `SunMoonLoDiff`, `Phase`, `PhaseAge`, `RiseTime`, `SetTime`
 
-### Solar Eclipse
+#### Solar eclipse
 
 Solar-eclipse calculation lives in `eclipse`; SVG generation lives in `eclipse/svg`. The default lunar-radius convention follows NASA bulletin split-`k`. IAU single-`k` variants are available through same-named `...IAUSingleK` functions.
 
@@ -718,23 +830,30 @@ Common entry points:
 
 `SolarEclipsePartialFootprintsInfo` also reports global shadow contacts. `P1/P4` are the external penumbral contacts and `P2/P3` are the internal penumbral contacts; `U1/U4` are the external umbral or antumbral contacts and `U2/U3` are the internal contacts. Contacts that do not occur remain zero `time.Time` values. `CentralBeginOnEarth` / `CentralEndOnEarth` retain their existing meaning of the shadow axis entering and leaving Earth; they are not aliases for `U1/U4`.
 
-Set `CentralShadowStep` in `SolarEclipsePartialFootprintOptions` when structured instantaneous central-shadow outlines are needed; samples are returned in `CentralShadowFootprints`. Zero disables this extra calculation in the data API, while the SVG entry point samples it every 10 minutes by default.
+Set `CentralShadowStep` in `SolarEclipsePartialFootprintOptions` when structured instantaneous central-shadow outlines are needed; samples are returned in `CentralShadowFootprints`. Zero disables this extra calculation in the data API; the SVG entry points follow the same rule and sample only for positive values (rounded up to one minute).
+
+The same options struct takes `GreatestTimeValues` or `GreatestTimeStep` when the isochrones are wanted straight from the data layer. `GreatestTimeValues []time.Time` holds the **greatest-eclipse time levels** as absolute instants (their `Location` does not affect the computation); at most 64 are kept, duplicates and levels outside the partial-eclipse window are skipped, the rest are sorted, and anything beyond the earliest 64 is dropped; a level with no usable branch produces no entry. When it is empty, `GreatestTimeStep` generates the levels instead; only a positive step applies, and the grid aligns to UTC ticks. A display-timezone grid has to be generated by the caller and passed through `GreatestTimeValues`.
+
+Contours come back in `SolarEclipsePartialFootprintsInfo.GreatestTimeContours`. `JDE` is the matching TT Julian ephemeris day, `Time` is that level in the input timezone (an explicit level is echoed back unchanged, a step-derived one is converted from `JDE` and rounded to the millisecond so the round trip cannot truncate a whole minute into the previous one), and `Segments` are the isochrone branches at that instant. Isochrones exist only where the solar and lunar disks actually overlap and the Sun is above the geometric horizon (no refraction or semidiameter correction), each branch ends at the horizon or the partial-visibility boundary, nothing is continued beyond ±88° latitude, and one instant may carry several disconnected branches. When they are not requested, existing output is unchanged.
 
 `SolarEclipseInfo`, `LocalSolarEclipseInfo`, and the embedded `Eclipse` field in `SolarEclipsePath` / `SolarEclipsePartialFootprintsInfo` include Saros metadata:
 
 - `HasSaros`: whether a Saros series was matched
-- `Saros.Series`: NASA Saros series number
+- `Saros.Series`: NASA Saros series number when `Verified=true`, otherwise a provisional derived series number
 - `Saros.Member`: 1-based member number within that series
 - `Saros.Count`: total member count of that series
+- `Saros.Verified`: whether the result matches an embedded authoritative catalog anchor; extension-table and extrapolated results are `false`
 
 Saros note:
 
-- One Saros is about `6585.321` days, or `223` synodic months, commonly described as about `18 years 11 days 8 hours`.
+- One Saros is about `6585.321` days, that is `223` synodic months or about `18 years 11 days 8 hours`; series members are ordered by this period.
 - A Saros series is a sequence of eclipses separated by one Saros period. `Series` identifies the sequence, while `Member` / `Count` describe the event's position in it.
 - Saros metadata belongs to the eclipse event, not to the observing site. Global, local, path, and footprint results for the same eclipse should report the same Saros.
+- Embedded NASA anchors take precedence. Unmatched events in astronomical years `-3000` through `+6000` use a precomputed extension table, including both end years; year `0` is 1 BCE. Only events outside that interval use live extrapolation. Precomputed and live results have `Verified=false` and are not official NASA assignments.
+- Extended numbers follow NASA's [Saros/Inex numbering relations](https://eclipse.gsfc.nasa.gov/SEsaros/SEperiodicity.html). Members are computed with the Split-K model across the complete series, without clipping at the precomputed year limits. The computed result for `3288-11-15` is series `202`, member `1/71`.
 - For example, the `2024-04-08` North American total solar eclipse is member `30/71` of Solar Saros `139`.
 
-#### Timing checks against NASA material
+##### Timing checks against NASA material
 
 Solar-eclipse timing is checked in two forms:
 
@@ -747,11 +866,11 @@ Solar-eclipse timing is checked in two forms:
 | Local solar eclipse | 3 observing sites | greatest eclipse, first contact, last contact | NASA local-circumstance public values are often rounded to whole minutes; current results match those rounded minute values |
 | Local central eclipse | 2 central-eclipse points | totality/annularity duration | second-level agreement, current samples are within a `5 s` threshold |
 
-Global eclipse references often publish seconds, so second-level checks are meaningful there. Many local-circumstance pages publish contact times only to whole minutes, so minute-level agreement is the correct interpretation for those fields.
+Global eclipse references often publish seconds, so second-level checks are meaningful there. Many local-circumstance pages publish contact times only to whole minutes, so minute-level agreement is the correct interpretation for those fields. The 2009 Yangshan and 2012 Xiamen examples below only demonstrate API calls and SVG output and claim no publication-grade accuracy for local contact times; check them item by item against NASA/IMCCE local circumstances when that matters.
 
-#### 2009 Yangtze River total eclipse near Yangshan
+##### 2009 Yangtze River total eclipse near Yangshan
 
-`2009-07-22` is the well-known Yangtze River total eclipse. The example below uses a site near Yangshan at the Yangtze River estuary southeast of Shanghai, close to the center line. At greatest eclipse the Sun and Moon centers are very close, and totality lasts about 5 minutes 57 seconds.
+`2009-07-22` is the Great Yangtze Eclipse. The example below uses a site near Yangshan at the Yangtze River estuary southeast of Shanghai, close to the center line; totality lasts about 5 minutes 57 seconds.
 
 ```go
 package main
@@ -797,18 +916,18 @@ Output:
 
 ```text
 true total // Yangshan site has a local total solar eclipse
-true {136 37 71} // Solar Saros 136, member 37/71
-2009-07-22 08:23:54.85276848 +0800 CST // first contact
-2009-07-22 09:37:22.978325486 +0800 CST // totality begins
-2009-07-22 09:40:20.771768689 +0800 CST // greatest eclipse
-2009-07-22 09:43:19.611152708 +0800 CST // totality ends
-2009-07-22 11:03:13.974365293 +0800 CST // last contact
-5m56.632827222s // totality duration
+true {136 37 71 true} // Solar Saros 136, member 37/71, verified
+2009-07-22 08:23:54.852366149 +0800 CST // first contact
+2009-07-22 09:37:22.978486418 +0800 CST // totality begins
+2009-07-22 09:40:20.771366357 +0800 CST // greatest eclipse
+2009-07-22 09:43:19.610750377 +0800 CST // totality ends
+2009-07-22 11:03:13.974526226 +0800 CST // last contact
+5m56.632263959s // totality duration
 magnitude=1.076997 obscuration=1.000000 altitude=57.292 // magnitude, obscuration, solar altitude at greatest eclipse
-greatest lon=144.1177 lat=24.2193 width=258.3km center=268 // global greatest point, path width, center-line sample count
+greatest lon=144.1177 lat=24.2193 width=258.3km center=289 // global greatest point, path width, center-line sample count
 ```
 
-#### 2012 Xiamen annular eclipse
+##### 2012 Xiamen annular eclipse
 
 The `2012-05-21` annular eclipse was visible from the southeast coast of China. The Xiamen example has the Sun about 9.6 degrees above the horizon at greatest eclipse, and annularity lasts about 4 minutes 19 seconds.
 
@@ -843,17 +962,17 @@ Output:
 
 ```text
 true annular // Xiamen site has a local annular solar eclipse
-true {128 58 73} // Solar Saros 128, member 58/73
-2012-05-21 05:08:12.683185637 +0800 CST // first contact
-2012-05-21 06:08:15.570583641 +0800 CST // annularity begins
-2012-05-21 06:10:25.164288282 +0800 CST // greatest eclipse
-2012-05-21 06:12:34.763746261 +0800 CST // annularity ends
-2012-05-21 07:20:55.029697716 +0800 CST // last contact
-4m19.19316262s // annularity duration
+true {128 58 73 true} // Solar Saros 128, member 58/73, verified
+2012-05-21 05:08:12.683024704 +0800 CST // first contact
+2012-05-21 06:08:15.570422708 +0800 CST // annularity begins
+2012-05-21 06:10:25.156724452 +0800 CST // greatest eclipse
+2012-05-21 06:12:34.764188826 +0800 CST // annularity ends
+2012-05-21 07:20:55.029536783 +0800 CST // last contact
+4m19.193766118s // annularity duration
 magnitude=0.933290 obscuration=0.872480 altitude=9.567 // magnitude, obscuration, solar altitude at greatest eclipse
 ```
 
-#### Solar-eclipse SVG
+##### Solar-eclipse SVG
 
 The modern city example uses the `2035-09-02` total solar eclipse in Beijing. With approximate downtown coordinates (`116.4074E`, `39.9042N`), this event belongs to Solar Saros `145` as member `23/77`, and local totality lasts about `1m33s`.
 
@@ -944,8 +1063,8 @@ Output:
 true 13433 // Yangshan total-eclipse SVG generated, 13433 bytes
 true 13362 // Xiamen annular-eclipse SVG generated, 13362 bytes
 true total // Beijing site has a local total solar eclipse
-true {145 23 77} // Solar Saros 145, member 23/77
-1m33.329527975s // totality duration near downtown Beijing
+true {145 23 77 true} // Solar Saros 145, member 23/77, verified
+1m33.329527974s // totality duration near downtown Beijing
 true 13394 // Beijing total-eclipse SVG generated, 13394 bytes
 ```
 
@@ -957,13 +1076,13 @@ Rendered examples:
 
 ![2035 Beijing total solar eclipse](doc/solar-eclipse-beijing-2035-en.svg)
 
-### Lunar Eclipse
+#### Lunar eclipse
 
 Lunar-eclipse detection and search live in `eclipse`; returned times preserve the input `time.Time` location.
 
 Common entry points:
 
-- `LunarEclipseOnDate`: detect whether a local date overlaps a global lunar eclipse
+- `LunarEclipseOnDate`: detect whether a lunar eclipse occurs on a local date
 - `LastLunarEclipse` / `NextLunarEclipse` / `ClosestLunarEclipse`: search global lunar eclipses
 - `LocalLunarEclipseOnDate`: detect whether a visible lunar eclipse is visible from a site on a local date
 - `LastLocalLunarEclipse` / `NextLocalLunarEclipse` / `ClosestLocalLunarEclipse`: search visible local lunar eclipses
@@ -981,25 +1100,30 @@ Common entry points:
 
 `Saros` has the same meaning as in the solar-eclipse section:
 
-- `Saros.Series`: NASA lunar Saros series number
+- `Saros.Series`: NASA lunar Saros series number when `Verified=true`, otherwise a provisional derived series number
 - `Saros.Member`: 1-based member number within that series
 - `Saros.Count`: total member count of that series
+- `Saros.Verified`: whether the result matches an embedded authoritative catalog anchor; extension-table and extrapolated results are `false`
+
+Lunar metadata also uses NASA anchors first, the extension table for astronomical years `-3000` through `+6000`, and live extrapolation outside that interval. Computed members include the union of events detected by Danjon and Chauvenet, so metadata is independent of the requested lunar model and observing site. Very shallow members may differ from the NASA catalog; `Verified` remains `false`.
+
+Run `go generate ./eclipse` from the repository root to regenerate both extension tables. The generator scans years `-5000` through `+8000` to include complete lifetimes of series at the range limits, checking numbering in both directions from NASA anchors. Ordinary queries and tests do not generate tables.
 
 For example, the cross-year total lunar eclipse on `2028-12-31 / 2029-01-01` is member `49/72` of Lunar Saros `125`.
 
 Two shadow-radius conventions are retained:
 
-- **Danjon**, default and recommended: multiplies only the lunar horizontal-parallax term by `1.01`, then combines it with the solar semidiameter and solar parallax. NASA GSFC's current lunar-eclipse catalogs and diagram pages use this style.
+- **Danjon** (default): multiplies only the lunar horizontal-parallax term by `1.01`, then combines it with the solar semidiameter and solar parallax. NASA GSFC's current lunar-eclipse catalogs and diagram pages use the same route, as do the library defaults `LunarEclipseOnDate`, `LastLunarEclipse`, `NextLunarEclipse`, and `ClosestLunarEclipse`.
 - **Chauvenet**, compatibility convention: starts with `0.99834 x Earth equatorial radius` and then multiplies the full shadow radii by `51/50`. This is closer to older traditional tables and is useful for compatibility checks.
 
 Differences:
 
 - `Chauvenet` gives larger penumbral and umbral shadows. Penumbral magnitude is usually about `0.025` larger, and umbral magnitude about `0.005` larger.
 - For edge cases, `Chauvenet` can push an eclipse toward a deeper type.
-- Use the default `Danjon` APIs for NASA catalogs, modern ephemeris software, and current public eclipse material.
-- Use explicit `Chauvenet` functions only for old-baseline compatibility.
+- Against NASA catalogs, modern ephemeris software, or current mainstream lunar-eclipse material, the matching convention is the default `Danjon`.
+- For compatibility with existing historical baselines, the matching convention is the explicitly-called `Chauvenet`.
 
-#### Code example
+##### Code example
 
 ```go
 package main
@@ -1044,22 +1168,22 @@ Output:
 
 ```text
 total // eclipse type
-true {125 49 72} // Lunar Saros 125, member 49/72
+true {125 49 72 true} // Lunar Saros 125, member 49/72, verified
 2028-12-31 16:52:05.566135346 +0000 UTC // greatest eclipse
-2.273989043382249 1.2461142882946992 // penumbral and umbral magnitudes
+2.2739890433790566 1.2461142882915068 // penumbral and umbral magnitudes
 2028-12-31 14:03:54.219463169 +0000 UTC // P1
 2028-12-31 15:07:42.115980684 +0000 UTC // U1
 2028-12-31 16:16:27.24464178 +0000 UTC // U2
 2028-12-31 17:27:46.214954853 +0000 UTC // U3
 2028-12-31 18:36:32.251235246 +0000 UTC // U4
 2028-12-31 19:40:11.52023971 +0000 UTC // P4
-2.2996033397593934 1.2511710895700923 // Chauvenet penumbral and umbral magnitudes
+2.2996033397562012 1.2511710895669002 // Chauvenet penumbral and umbral magnitudes
 true // local date overlaps an eclipse
 total // local eclipse type
 2029-01-01 00:52:05.566135346 +0800 CST // greatest eclipse in UTC+8
 ```
 
-#### Checks against NASA data
+##### Checks against NASA data
 
 The following values are compared against NASA GSFC lunar-eclipse catalogs and single-eclipse diagram pages. Time errors are in seconds.
 
@@ -1087,7 +1211,9 @@ For the `2026-03-03` total lunar eclipse, current default `Danjon` differences a
 
 For pure penumbral eclipses, NASA may publish negative `umbral magnitude`, meaning the Moon's disk center remains outside the umbral boundary by that amount. This library preserves that negative value, so pure penumbral cases are compared in the same convention.
 
-#### Lunar-eclipse SVG
+##### Lunar-eclipse SVG
+
+`LunarEclipseSVG`, `LunarEclipseDetailedSVG`, and `LunarEclipseMapSVG` share one default model: Danjon with a Chauvenet fallback for ultra-shallow penumbral cases, matching `LunarEclipseOnDate`; the `Danjon` / `Chauvenet` variants keep forcing their model.
 
 The default lunar-eclipse SVG header includes Saros metadata. `LunarEclipseSVGOptions` can override:
 
@@ -1128,14 +1254,14 @@ func main() {
 Output:
 
 ```text
-true 19666 // lunar-eclipse SVG generated, 19666 bytes
+true 20274 // lunar-eclipse SVG generated, 20274 bytes
 ```
 
 Rendered example:
 
 ![2029 cross-year total lunar eclipse shadow path](doc/lunar-eclipse-2029-01-01-en.svg)
 
-#### References
+##### References
 
 - NASA lunar eclipse decade catalog: <https://eclipse.gsfc.nasa.gov/LEdecade/LEdecade2021.html?pubDate=20250222>
 - NASA 2026-03-03 total lunar eclipse diagram: <https://eclipse.gsfc.nasa.gov/LEplot/LEplot2001/LE2026Mar03T.pdf>
@@ -1239,15 +1365,30 @@ Output:
 
 ```text
 HR 4799 total
-2025-06-05 19:14:01.095 CST 2025-06-05 20:02:06.357 CST 2025-06-05 20:50:10.740 CST
+2025-06-05 19:14:01.062 CST 2025-06-05 20:02:06.296 CST 2025-06-05 20:50:10.697 CST
 altitude=75.561 visible=true
-2025-06-05 17:45:28.498 CST 2025-06-05 20:02:06.332 CST 2025-06-05 22:18:49.977 CST
-greatest=121.566021 6.807046 width=3582.4km center=108
+2025-06-05 17:45:28.475 CST 2025-06-05 20:02:06.300 CST 2025-06-05 22:18:49.945 CST
+greatest=121.566140 6.807079 width=3582.4km center=108
 ```
 
 Zero-valued `OccultationSearchOptions` select the default search step and safety margin; `MaxEvents > 0` limits output.
 
-`OccultationPathOptions.Step` controls base time sampling, while `TargetSpacingKM` adaptively refines the center line. Requests exceeding the deterministic budget return `ErrOccultationPathSamplingLimit`.
+`OccultationPathOptions.Step` controls base time sampling, while `TargetSpacingKM` adaptively refines the center line. Requests exceeding the deterministic budget return `ErrOccultationPathSamplingLimit`. `RiseSetStep` independently samples the six boundaries where local start, greatest, or end coincides with moonrise or moonset; zero uses five minutes, and `DisableRiseSet` omits them. `DisableFootprints` omits the much larger dense instantaneous visible-region features and merges sparse support samples into compact bands while retaining the center line, limits, and six rise/set phase curves, which is useful for ordinary GeoJSON maps. `IncludeFootprintTimeline` retains independently sampled instantaneous footprints alongside the compact band, using `FootprintTimelineStep` for time-axis selection of the currently visible region.
+
+`OccultationPathOptions.Algorithm` selects the stellar/planetary global-path ephemeris branch. Its zero value or `moon.OccultationPathAlgorithmOptimized` uses checked Cartesian interpolation at 30-minute nodes while retaining the station equations, continuous envelopes, and rise/set curves. `moon.OccultationPathAlgorithmExact` retains the original branch: interpolated candidates, with full-term ephemerides for final solving. Failed table checks fall back to the original branch; evaluations outside the interpolation window use exact ephemerides. Checks are sampled safeguards, not a rigorous error bound at every instant. The branches share the geometric definition, but sample points and GeoJSON bytes need not be identical. Event-only searches, fixed-site contacts, independent instant-footprint APIs, and eclipses are unaffected.
+
+Both branches retain full-term evaluation of global start/end/greatest markers and center-line widths. Render the complete returned path, including visibility contours; discarding those contours invokes the legacy sampled-footprint fallback, whose boundary is not interchangeable with the analytic visible set.
+
+In a returned path, `BandContours` are the static contact envelopes, `VisibilityContours` are the time envelope where the Moon is above the horizon, and `Footprints` are instantaneous samples for time-axis detail. They serve different geometry layers and should not be used as substitutes for one another.
+
+`OccultationPathOptions.GreatestTimeValues` / `GreatestTimeStep` request **greatest-occultation time isolines**. Unlike the solar case, `GreatestTimeValues []float64` carries TT Julian ephemeris days; at most 64 are kept — deduplicated, sorted, and cut to the earliest 64 — and a level outside the visibility window or without a usable branch produces no entry. When it is empty, `GreatestTimeStep` takes over, again only for a positive value, aligned to UTC ticks. Contours land in `StarOccultationPath.GreatestTimeContours` (the planetary path has the same field) as `OccultationGreatestTimeContour` values whose `JDE`, `Time`, and `Segments` mean the same as in the solar case: `Time` keeps the original aligned instant for step-derived levels, while an explicit level is converted from `JDE` and rounded to the millisecond; both carry the UTC zone, whereas branch point times use the path timezone (the solar public layer instead reports `Time` in the input timezone). The boundary rules match as well: curves exist only where the target disk truly overlaps the lunar disk and the Moon is above the geometric horizon (no refraction or semidiameter correction), each branch ends at the horizon or the occultation-visibility boundary, nothing is continued beyond ±88° latitude, one instant may carry several disconnected branches, and output is unchanged when they are not requested.
+
+```go
+options := moon.OccultationPathOptions{
+	Algorithm: moon.OccultationPathAlgorithmExact, // Original branch; omit for optimized.
+	DisableFootprints: true,
+}
+```
 
 #### Planetary occultations
 
@@ -1286,16 +1427,14 @@ Output:
 
 ```text
 Saturn total true
-2025-02-01 11:29:09.692 CST
-2025-02-01 11:29:40.042 CST
-2025-02-01 12:00:48.729 CST
-2025-02-01 12:32:46.388 CST
-2025-02-01 12:33:18.285 CST
+2025-02-01 11:29:09.710 CST
+2025-02-01 11:29:40.069 CST
+2025-02-01 12:00:48.747 CST
+2025-02-01 12:32:46.415 CST
+2025-02-01 12:33:18.312 CST
 ```
 
-Global `FindPlanetOccultationPaths` results contain the region where any part of the planetary disk overlaps the Moon and, when present, the narrower full-coverage region.
-
-`HasTotalBand` reports the latter, and `GreatestTotalWidthKM` is its width at greatest occultation. Center lines, limits, and instantaneous footprints all carry sample times.
+Global `FindPlanetOccultationPaths` results contain both the region where any part of the planetary disk overlaps the Moon and the region where the whole planet is hidden. `HasTotalBand` reports whether a total band exists, and `GreatestTotalWidthKM` is its width at greatest occultation; center lines, limits, and enabled instantaneous footprints all carry sample times.
 
 #### Lunar-occultation SVG
 
@@ -1314,37 +1453,19 @@ localSVGs, err := moonsvg.FindLocalStarOccultationSVGs(
 	moonsvg.LocalStarOccultationSVGOptions{Width: 920, Height: 700, Location: cst},
 )
 fmt.Println(err, len(localSVGs))
-
-globalSVGs, err := moonsvg.FindStarOccultationSVGs(
-	start, end, target,
-	moon.OccultationPathOptions{Step: 5 * time.Minute, TargetSpacingKM: 200},
-	moonsvg.StarOccultationSVGOptions{
-		Width: 1200, Height: 800, Location: cst,
-		TimeLabelStep: 30 * time.Minute,
-	},
-)
-fmt.Println(err, len(globalSVGs))
 ```
 
-Local charts use the selected observer's topocentric geometry. Global maps use Natural Earth `1:50m` coastlines without administrative boundaries.
-
-Center-line labels default to 30-minute intervals, and high-latitude events can automatically switch to a polar projection.
-
-The following diagrams reuse the `2025-06-05` occultation of HR 4799 from the preceding example. The fixed site is `121.56601°E, 6.80706°N`, near the global geometric greatest point. Its immersion, greatest, and emersion times are the actual topocentric contacts at that site. The diagram also shows lunar orientation, the lunar path, Moon altitude, azimuth, and horizon visibility.
+Local charts use the selected observer's topocentric geometry; the diagram below reuses the `2025-06-05` occultation of HR 4799 from the preceding example. The fixed site is `121.56601°E, 6.80706°N`, near the global geometric greatest point. Its immersion, greatest, and emersion times are the actual topocentric contacts at that site. The diagram also shows lunar orientation, the lunar path, Moon altitude, azimuth, and horizon visibility.
 
 ![2025 fixed-site occultation of HR 4799](doc/lunar-occultation-hr4799-2025-06-05-local-en.svg)
-
-The global diagram shows the band limits, visible/geometric center line, global event points, and 30-minute center-line labels. Global start and end are the instants when the lunar shadow first touches and finally leaves Earth; they are not the fixed site's contact times.
-
-![2025 global path of the HR 4799 lunar occultation](doc/lunar-occultation-hr4799-2025-06-05-global-en.svg)
 
 ### Event Maps And GeoJSON
 
 #### Global visibility-map SVG
 
-`eclipse/svg` can directly render global solar- and lunar-eclipse maps. A solar map includes the partial-visibility sweep, total/annular central band, center line, global stages, and center-line time labels. It also shows the greatest-eclipse day/night terminator and subsolar point, shadow-axis entry/exit, `P1-P4/U1-U4` contacts, sampled penumbral outlines, and sampled umbral/antumbral outlines.
+`eclipse/svg` can directly render global solar- and lunar-eclipse maps. A solar map includes the partial-visibility sweep, total/annular central band, center line, global stages, and center-line time labels. It also shows the sunrise/sunset lines for eclipse start, greatest eclipse, and eclipse end; the subsolar point; shadow-axis entry/exit; `P1-P4/U1-U4` contacts; and the timed penumbral and umbral/antumbral outlines that are off by default and drawn on request. A lunar map shows P1/P4 visible hemispheres, moonrise/moonset transition regions, and the region that sees the entire event.
 
-A lunar map shows P1/P4 visible hemispheres, moonrise/moonset transition regions, and the region that sees the entire event.
+`LunarEclipseDetailedSVG` merges both lunar charts into one detailed page: a centred summary (greatest eclipse, penumbral/umbral magnitude, gamma, penumbral/umbral radius, Moon distance, Saros series), geocentric Sun and Moon blocks on either side, the shadow-path diagram, a three-column row of durations / arc-minute scale bar / contacts, and the world visibility map with its legend underneath. The shadow geometry comes from `basic.LunarEclipseShadowGeometryAt`, where **gamma is in Earth equatorial radii while the penumbral and umbral radii are in degrees** - multiply a radius by the Earth's parallax at the Moon to get Earth radii.
 
 ```go
 package main
@@ -1364,9 +1485,7 @@ func main() {
 		eclipsesvg.SolarEclipseMapSVGOptions{
 			Width: 1200, Height: 800, Location: cst,
 			Language: "en",
-			TimeLabelStep:        30 * time.Minute,
-			PenumbralOutlineStep: 60 * time.Minute,
-			CentralShadowStep:    10 * time.Minute,
+			TimeLabelStep: 30 * time.Minute,
 		},
 	)
 	if ok {
@@ -1380,20 +1499,55 @@ func main() {
 	if ok {
 		_ = os.WriteFile("doc/lunar-eclipse-2029-01-01-global-en.svg", []byte(lunar), 0o644)
 	}
+
+	detailed, ok := eclipsesvg.LunarEclipseDetailedSVG(
+		time.Date(2029, 1, 1, 0, 0, 0, 0, cst),
+		eclipsesvg.LunarEclipseDetailedSVGOptions{Language: "en", Location: cst},
+	)
+	if ok {
+		_ = os.WriteFile("doc/lunar-eclipse-2029-01-01-detailed-en.svg", []byte(detailed), 0o644)
+	}
 }
 ```
 
-The right-hand event table lists available `P1-P4/U1-U4` contacts, shadow-axis entry/exit, and greatest eclipse in time order; contact coordinates are included when the layout has enough room. The summary also includes the Saros series, path width, Sun altitude/azimuth at the greatest point, and central-phase duration. Orange dashed lines are instantaneous penumbral boundaries with `HH:MM` labels, the gray dashed line is the day/night terminator at greatest eclipse, and solid brown lines are instantaneous umbral or antumbral outlines.
+The long orange dashes are the six phase lines where eclipse start, greatest eclipse, and eclipse end coincide with sunrise or sunset. **Instantaneous penumbral and umbral outlines are off by default**; a positive `PenumbralOutlineStep` / `CentralShadowStep` turns them on. Short purple dashes are the local greatest-magnitude contours given by `MagnitudeValues` (0.2/0.4/0.6/0.8 by default), and solid blue lines are greatest-eclipse time isochrones.
 
-Zero `PenumbralOutlineStep` and `CentralShadowStep` values use 60-minute and 10-minute defaults respectively; negative values disable the corresponding outlines. Explicit values such as 30 minutes remain supported. A zero `TimeLabelStep` uses 30 minutes, while a negative value disables center-line time labels.
+**Greatest-eclipse time isochrones** (solid blue lines) are off by default: every place on one line sees greatest eclipse at the same instant, and a positive `GreatestTimeStep` turns them on, with 30 minutes as the NASA world-map spacing. This `GreatestTimeStep` belongs to the SVG layer and aligns to ticks of the **display timezone** (`Location`), unlike the UTC alignment of the data layer; `eclipse/svg` exposes no explicit-level entry point, so call the data layer directly and pass the instants through `GreatestTimeValues` when another alignment is needed.
+
+```go
+solar, _ := eclipsesvg.SolarEclipseMapSVG(date, eclipsesvg.SolarEclipseMapSVGOptions{
+	Width: 1200, Height: 800, Location: cst,
+	GreatestTimeStep: 30 * time.Minute,
+})
+```
+
+They are not produced by evaluating greatest eclipse on a latitude/longitude grid and contouring it. The instant is fixed first and the zero set of `d(centre-separation squared)/dt = 0` is continued along the curve instead, so the cost scales with curve length rather than with the visible area. Isochrones are drawn only where the solar and lunar disks actually overlap and the Sun is above the geometric horizon (no refraction or semidiameter correction), each branch ending at the horizon or the partial-visibility boundary; nothing is continued beyond ±88° latitude, and one instant may carry several disconnected branches.
+
+A zero `TimeLabelStep` uses 30 minutes, while a negative value disables center-line time labels. A zero or negative `GreatestTimeStep` draws no greatest-eclipse isochrones (they must be requested explicitly, as in the core layer and `moon/svg`); positive values align to the display timezone, values below one minute use one minute, and at most 64 are generated per request. The recommended NASA world-map spacing is 30 minutes. `MagnitudeValues` uses 0.2/0.4/0.6/0.8 when nil, is disabled by an explicitly empty slice, and otherwise draws exactly the given levels.
+
+`SolarEclipseMapSVGOptions.EventsTitle` replaces the title of the global-phases block that carries the greatest-eclipse coordinates and the earth-wide central begin/end, falling back to a localized default when empty; `MapTitle` and `Title` cover the map section title and the main title.
+
+The documented minimum solar-map canvas is **800x560**: a width below 800 or a height below 560 falls back to 960x640, because on a narrower landscape canvas the map frame overlaps the right-hand data grid and the panel row spacing collapses below 1 px. A `PartialStep` below two minutes is treated as two minutes: the partial region is a union of instantaneous footprints whose cost grows with the sample count, and that union needs one self-consistent sweep, so a denser request does not change the product (a one-second step measured 36.8 s / 951 MB and becomes 1.1 s / 30 MB, byte-identical to the default request). The detailed lunar chart derives its page stack from `Height`: 640x420 and 800x600 cannot hold the diagram and map minima and return `false`, while 1000x1414 and 1414x1000 render normally.
+
+The three suffix-free lunar entries (`LunarEclipseSVG`, `LunarEclipseDetailedSVG`, `LunarEclipseMapSVG`) share one default model: Danjon with a Chauvenet fallback for ultra-shallow penumbral cases, matching `LunarEclipseOnDate`; the `Danjon` / `Chauvenet` variants keep forcing their model.
+
+Degradable layers tag their actual geometry source in `data-source`, using exactly the vocabulary documented in the `eclipse/svg` package comment: `partial-band-union`, `sampled-footprint-sweep`, `partial-band-contours`, `rise-set-phase-lines`, `magnitude-contours`, `greatest-time-isochrones`, `besselian-critical-envelope`, `paired-limit-chords`, `sampled-open-sweep`, `central-path-limits`, `penumbral-outlines`, `central-shadow-outlines`, `p1-p4-visibility-regions`, `p1-p4-horizon-boundaries`. `PenumbralOutlineStep` and `CentralShadowStep` are **off by default** (zero or negative draws no instantaneous penumbral/umbral outlines, which hide the globe and are absent from NASA world maps); a positive value gives the sampling interval, with values below one minute treated as one minute.
 
 Solar-eclipse and occultation automatic projection can select a north- or south-polar map when appropriate. Lunar-eclipse maps default to equirectangular. Projection affects SVG presentation only, not the underlying WGS84 result.
 
-Eclipse maps use `EclipseMapProjectionEquirectangular`, `EclipseMapProjectionNorthPolar`, or `EclipseMapProjectionSouthPolar` to force a projection. Lunar-occultation maps use the corresponding `MapProjection...` constants.
+Eclipse maps use `EclipseMapProjectionEquirectangular`, `EclipseMapProjectionNorthPolar`, or `EclipseMapProjectionSouthPolar` to force a projection. Lunar-occultation maps use the corresponding `MapProjection...` constants. `EclipseMapProjectionOrthographic` adds a **detailed orthographic globe**: the view point is the greatest-eclipse point, only the facing hemisphere is drawn, and the map boundary is the great circle of that hemisphere.
+
+The globe needs neither extra data nor a projection library. Land is rebuilt at run time by decoding the embedded equirectangular base map back to longitude/latitude and projecting it orthographically; clipping to the limb intersects great circles in geographic coordinates and closes each cut ring along the limb arc; the graticule is sampled on the sphere and clipped the same way.
+
+The orthographic projection also switches to the **NASA composition**: the globe is centred and enlarged, a scale bar sits directly below it, the phase information becomes three panels (penumbral contacts / local circumstances at greatest / umbral contacts), and the legend and footer follow underneath. Other projections keep the original composition. The cost is roughly 1.0 s per map (about 0.85 s for the equirectangular view), and a 1000x1414 globe SVG is about 530 KB.
 
 The following global maps reuse the dates from the earlier local SVG examples. The 2009 Yangtze River total eclipse, 2012 Xiamen annular eclipse, and 2035 Beijing total eclipse use the equirectangular projection:
 
 ![2009 Yangtze River total solar eclipse global visibility](doc/solar-eclipse-yangshan-2009-global-en.svg)
+
+The same eclipse as an orthographic globe (`EclipseMapProjectionOrthographic`):
+
+![2009 Yangtze River total solar eclipse orthographic globe](doc/solar-eclipse-yangshan-2009-globe-en.svg)
 
 ![2012 Xiamen annular solar eclipse global visibility](doc/solar-eclipse-xiamen-2012-global-en.svg)
 
@@ -1407,11 +1561,61 @@ The lunar-eclipse example reuses the cross-year total eclipse on `2029-01-01`, s
 
 ![2029 cross-year total lunar eclipse global visibility](doc/lunar-eclipse-2029-01-01-global-en.svg)
 
+The lunar-eclipse map also has a detailed layout that merges the two charts above into one page: a centred summary (greatest eclipse, penumbral/umbral magnitude, gamma, penumbral/umbral radius, Moon distance, Saros series), geocentric Sun and Moon blocks on either side, the shadow-path diagram, a three-column row of durations / arc-minute scale bar / contacts, and the world visibility map with its legend underneath, on one `1000x1414` page:
+
+![2029 cross-year total lunar eclipse detailed layout](doc/lunar-eclipse-2029-01-01-detailed-en.svg)
+
+#### Lunar-occultation detailed SVG
+
+`moon/svg` composes a whole occultation into one `1000x1414` page through `StarOccultationDetailedSVG` / `PlanetOccultationDetailedSVG`: a centred summary, geocentric/topocentric data blocks for the Sun, Moon, and target body, an **orthographic globe** of the global band (northern and southern limits, visible/geometric center lines, the greatest point, immersion/greatest/emersion stage points, and 30-minute time labels), and a footer note. The globe view point is the event centre and only the facing hemisphere is drawn; this layout is fixed to the orthographic sphere and accepts no other projection, and the standalone global band map is `StarOccultationPathSVG` / `FindStarOccultationSVGs` from the "Lunar-occultation SVG" section above. Page data falls into six blocks: geocentric Moon coordinates, target body, band path points, contact times, ephemeris and constants, and libration. A landscape canvas places the blocks to the right of the map in two columns by three rows; a portrait canvas places them below the globe in three columns by two rows. The diagram below is the `2025-06-05` occultation of HR 4799:
+
+```go
+package main
+
+import (
+	"os"
+	"time"
+
+	"github.com/starainrt/astro/moon"
+	moonsvg "github.com/starainrt/astro/moon/svg"
+)
+
+func main() {
+	cst := time.FixedZone("CST", 8*3600)
+	star := moon.StarCoordinate{
+		ID: "HR 4799", RA: 189.1975, Dec: -5.831944444444,
+		Epoch: time.Date(2000, 1, 1, 12, 0, 0, 0, time.UTC), Frame: moon.CoordinateFrameJ2000,
+		ProperMotionRACosDecMasPerYear: -28, ProperMotionDecMasPerYear: -18,
+	}
+	paths, err := moon.FindStarOccultationPaths(
+		time.Date(2025, 6, 5, 0, 0, 0, 0, cst),
+		time.Date(2025, 6, 6, 0, 0, 0, 0, cst),
+		star,
+		moon.OccultationPathOptions{Step: 5 * time.Minute, TargetSpacingKM: 200},
+	)
+	if err == nil && len(paths) > 0 {
+		detailed, renderErr := moonsvg.StarOccultationDetailedSVG(
+			paths[0], star,
+			moonsvg.OccultationDetailedSVGOptions{Width: 1000, Height: 1414, Language: "en", Location: cst},
+		)
+		if renderErr == nil {
+			_ = os.WriteFile("doc/lunar-occultation-hr4799-2025-06-05-detailed-en.svg", []byte(detailed), 0o644)
+		}
+	}
+}
+```
+
+![2025 detailed layout of the HR 4799 lunar occultation](doc/lunar-occultation-hr4799-2025-06-05-detailed-en.svg)
+
+The globe on this page uses Natural Earth `1:50m` coastlines without administrative boundaries. Setting `GreatestTimeStep` on `moon.OccultationPathOptions` additionally requests **greatest-occultation time isochrones**, with the same meaning as the blue isochrones on solar-eclipse maps: the instant is fixed and the zero set of the separation derivative is continued along the curve. They are opt-in too, and output is unchanged when the option is not set. An occultation is visible worldwide for only a few hours (the HR 4799 sample on this page spans 4 h 33 m), so the spacing is usually tighter than for a solar eclipse, in the 15-30 minute range, and a larger spacing leaves fewer lines on the band; point-source stars define greatest by center separation while finite planetary disks use the outer-contact metric, matching `StarOccultationInfo.Greatest` and `PlanetOccultationInfo.Greatest` respectively. `moon/svg` has no isochrone switch of its own; it only draws the `GreatestTimeContours` already present in the path, so the request has to be made through `OccultationPathOptions` while the path is computed, and line placement follows the core rules (`GreatestTimeStep` aligns to UTC ticks). For a display-timezone grid, convert the instants to TT Julian ephemeris days and pass them as `GreatestTimeValues`. Global immersion and emersion are the instants when the lunar shadow first touches and finally leaves Earth; they are not the fixed site's contact times.
+
+- Canvas and errors: the detailed layout needs at least `480x320` and derives its layout from the canvas, returning `ErrInvalidOccultationDetailedSVGOptions` when the map and data blocks cannot fit (`800x600`, `1000x1414`, and `1414x1000` render, while `640x420` and `900x400` are rejected); the standalone global band map needs at least `640x480` and returns `ErrInvalidStarOccultationSVGOptions` on a smaller canvas.
+
+The "band width" label on the diagram is the ground separation of the northern and southern limits at greatest occultation, `GreatestLimitSeparationKM` (about `3666.6 km` here), which is a different convention from the across-center-line width `Greatest.WidthKM` (about `3582.4 km`); the two are not interchangeable. Greatest-time isochrones must be requested explicitly at the path layer through `OccultationPathOptions.GreatestTimeStep`; a compact band using `DisableFootprints` merges once on the first render and then caches for the same path. See the "Lunar-occultation SVG" section above for the detailed layout and the fixed-site charts.
+
 #### GeoJSON
 
-`geojson` accepts an already computed solar-eclipse, lunar-eclipse, or lunar-occultation result and returns `[]byte`. Those bytes are one complete UTF-8 RFC 7946 `FeatureCollection`, not an image or compressed payload.
-
-They can be written to `.geojson`, passed to `encoding/json`, or served directly to a map client.
+`geojson` accepts an already computed solar-eclipse, lunar-eclipse, or lunar-occultation result and returns `[]byte`. Those bytes are one complete UTF-8 RFC 7946 `FeatureCollection`, not an image or compressed payload: they can be written to `.geojson`, passed to `encoding/json`, or served directly to a map client.
 
 ```go
 package main
@@ -1463,13 +1667,23 @@ Each event type has plain and time-marker variants:
 - `MarshalStarOccultation` / `MarshalStarOccultationWithTimeMarkers`
 - `MarshalPlanetOccultation` / `MarshalPlanetOccultationWithTimeMarkers`
 
-Coordinates are WGS84 longitude and latitude; lines and polygons are split at the antimeridian. Timed paths have `times` arrays aligned point-for-point with coordinate segments.
+Coordinates are WGS84 longitude and latitude; lines and polygons are split at the antimeridian. Timed paths have `times` arrays aligned point-for-point with coordinate segments; `WithTimeMarkers` additionally adds Point Features with `role=time-marker`, whose localized `label` is for display while `time` stays UTC RFC 3339.
 
-`WithTimeMarkers` adds Point Features with `role=time-marker`. Localized `label` values are for display, while `time` remains UTC RFC 3339.
+Single-instant primitives (timeline dragging, "exact the moment you stop") and station search horizons:
 
-A zero `TimeMarkerOptions.Step` means 30 minutes. A positive step must be at least one minute, and one export is limited to 1440 markers.
+- `eclipse.NewSolarEclipseShadowSolver(eclipse.SolarEclipseShadowSolverOptions{...})` returns a reusable handle. `ShadowAt(time.Time)` (interpreted as UTC) or `ShadowAtJDE(jdeTT)` (TT) returns the **global umbral footprint** at that instant, and `StationStateAt` / `StationStateAtJDE` returns the **topocentric Sun/Moon geometry** for one station (magnitude, obscuration, center separation, apparent radii, solar altitude/azimuth, total/annular phase flags). Both compute only that: no visibility band, magnitude contours, rise/set boundaries, limits or center line, and an instant without an umbra yields an empty result instead of an error.
+- `geojson.MarshalSolarEclipseShadowInstant(instant)` exports only that instant's shadow region plus its physical boundary when the horizon cuts it, with `time`, `source_boundary_closed`, `geometry_role`, `closure`, `delta_t_seconds`, `model` and `interp_signature` properties. The umbra uses `central-shadow-footprint` + `central-shadow-boundary`; setting `Kind` to `SolarEclipseShadowPenumbra` exports the penumbra (partial-eclipse region) as `partial-footprint` + `partial-footprint-boundary` with the same defaults as the packaged partial sampling (96 points plus 200 km refinement), so the same instant matches the sample to about 1e-12 degrees. No shadow yields an empty FeatureCollection.
+- Packaged `partial-footprint` features also carry `source_boundary_closed`, `geometry_role`, `closure` and `interp_signature`, and their horizon-cut endpoints are extended to the horizon grazing points, where an endpoint would otherwise deviate by on the order of `36–41 km`. The partial-band fill hints keep the previous closure so the polar face selection does not move.
+- Measured cost (native build, single-machine reference values; absolute timings vary with hardware): about **64 µs** per 96-point instant footprint and **20 µs** per station state; constructing the public handle only clamps options (≈0), the first query builds the internal state for the nearest new moon in 39 µs with a 130 µs anchor lookup, cached per event afterwards; batches run at about 75 µs per instant.
+- ΔT: an explicit `DeltaTSeconds` applies to that handle only and only changes Earth rotation — the TT geometry stays fixed while the ground footprint shifts by `0.4651 * |ΔΔT| * cos(latitude)` km (see `basic.DeltaTGroundShiftKM`); `<=0` uses the process-wide model. Either way the result reports the ΔT actually used. The library ships no ΔT uncertainty model; use that helper to convert an external σ into a geometric uncertainty.
+- Interpolation: both the packaged `central-shadow-footprint` features and the single-instant export carry `interp_signature` (for example `umbra-closed-seg1-pt97`, derived from the physical boundary's vertex count, segment count, closure flag and pole flag); neighbours may be interpolated vertex-wise only while it is identical; a flipped `closed` flag, a changed segment count (antimeridian), a changed vertex count, or empty↔non-empty (near U1/U4) all require the exact instant instead. Measured over two-minute steps, the centroid moves 78–232 km mid-event and up to about 520 km near the contacts.
+- Batches: `ShadowBetween(start, end, step)` and `StationStatesBetween(...)` return a timeline-aligned slice whose entries are empty where no shadow exists.
+- Single-instant occultation footprints (`moon.StarOccultationFootprintAt` / `moon.PlanetOccultationFootprintsAt` through `geojson.MarshalStarOccultationFootprint` / `MarshalPlanetOccultationFootprints`) also carry `delta_t_seconds`, `source_boundary_closed`, `geometry_role` and `interp_signature`; when the Moon's horizon cuts them the `closure` has `kind` `target-horizon`, `body` `moon` and a `sublunar` reference instead of the subsolar point. The occultation subsystem keeps the process-wide ΔT and only reports the value used.
+- Station searches: `SearchLocalCentralSolarEclipse(date, lon, lat, height, eclipse.SolarEclipseLocalSearchOptions{Kind, MaxYears, Backward, Geometric, Model})` returns `(info, status)` where `status.Exhausted` separates "none within the horizon" from "found"; `MaxYears<=0` uses the legacy-equivalent default horizon (6000 candidate steps, about 992 years because candidates skip non-eclipse seasons). `SolarEclipseCandidates(start, end, options)` returns a geometry-free timetable (greatest time, type, centrality, magnitude, gamma, optional Saros).
 
-GeoJSON contains no basemap, national boundaries, styling, or projection. Web Mercator, polar views, tile selection, and political-boundary policy belong to the application.
+The central-shadow roles in solar-eclipse GeoJSON are a stable contract: `role=central-shadow-footprint` is either absent or a `Polygon`/`MultiPolygon` and never a line. When the horizon cuts the shadow it still describes the full region covered on the ground that instant: the physical boundary is extended to both horizon grazing points and closed by the horizon arc between them, `source_boundary_closed` is `false`, and `closure` (`kind`, `time`, `subsolar`) declares that synthetic arc. The physical boundary alone is exported as `role=central-shadow-boundary`, so callers can stroke it and fill the region without drawing a fake horizon edge. A footprint that has shrunk to nothing at U1/U4 is omitted entirely instead of degrading into a line, and `source_boundary_closed=true` means the ring is closed by the shadow itself and carries no synthetic segment.
+
+A zero `TimeMarkerOptions.Step` means 30 minutes, a positive step must be at least one minute, and one export is limited to 1440 markers. GeoJSON contains no basemap, national boundaries, styling, or projection; Web Mercator, polar views, tile selection, and political-boundary policy belong to the application.
 
 ### Planets
 
@@ -1524,18 +1738,18 @@ func main() {
 Output:
 
 ```text
-2019-11-11 23:21:42.048057317 +0800 CST // previous inferior conjunction of Mercury
-2021-03-26 14:57:43.01215589 +0800 CST // next superior conjunction of Venus
-2019-11-01 04:31:38.999851942 +0800 CST // previous Mercury station from prograde to retrograde
-2020-06-25 02:07:41.549940705 +0800 CST // next Venus station from retrograde to prograde
-2019-10-20 11:50:28.734245896 +0800 CST // previous greatest eastern elongation of Mercury
-2020-08-13 07:59:17.123789191 +0800 CST // next greatest western elongation of Venus
-2020-01-01 10:02:34.172194004 +0800 CST <nil> // Venus rise time in Xi'an; no error
-2020-01-01 20:25:37.363712489 +0800 CST <nil> // Venus set time in Xi'an; no error
+2019-11-11 23:21:41.971051096 +0800 CST // previous inferior conjunction of Mercury
+2021-03-26 14:57:42.052354216 +0800 CST // next superior conjunction of Venus
+2019-11-01 04:31:49.749019145 +0800 CST // previous Mercury station from prograde to retrograde
+2020-06-25 02:07:41.599749326 +0800 CST // next Venus station from retrograde to prograde
+2019-10-20 12:01:37.740152478 +0800 CST // previous greatest eastern elongation of Mercury
+2020-08-13 08:14:46.304587125 +0800 CST // next greatest western elongation of Venus
+2020-01-01 10:02:34.172435402 +0800 CST <nil> // Venus rise time in Xi'an; no error
+2020-01-01 20:25:37.36411482 +0800 CST <nil> // Venus set time in Xi'an; no error
 -4 // Venus apparent magnitude
 49.98145049145023 // Venus phase angle, degrees
 0.8215177914415865 // illuminated fraction of Venus
-255.63802093000768 // bright-limb position angle of Venus, degrees
+255.63802053541346 // bright-limb position angle of Venus, degrees
 1.2778819631550336 // Earth-Venus distance, AU
 0.7262651056423838 // Sun-Venus distance, AU
 ```
@@ -1549,7 +1763,7 @@ fmt.Println(mars.Diameter(date), mars.Semidiameter(date))                 // Mar
 fmt.Println(venus.AscendingNode(date), venus.DescendingNode(date))         // Venus ascending-node and descending-node ecliptic longitudes, degrees
 ```
 
-Here:
+Ascending node / descending node here means the two intersections of the body's orbital plane with the ecliptic:
 
 - `AscendingNode`: ecliptic longitude where the body crosses from south of the ecliptic to north of it
 - `DescendingNode`: ecliptic longitude where the body crosses from north of the ecliptic to south of it
@@ -1605,21 +1819,21 @@ Output:
 
 ```text
 true // a valid geocentric Mercury transit was found
-2019-11-11 12:35:31.617325544 +0000 UTC // first contact: Mercury externally enters the solar disk
-2019-11-11 12:37:13.078211545 +0000 UTC // second contact: Mercury is fully inside the solar disk
-2019-11-11 15:19:48.410291075 +0000 UTC // greatest transit: Mercury center is closest to the Sun center
-2019-11-11 18:02:29.2267102 +0000 UTC // third contact: Mercury starts leaving the solar disk
-2019-11-11 18:04:10.687676668 +0000 UTC // fourth contact: Mercury externally leaves the solar disk
+2019-11-11 12:35:31.567597389 +0000 UTC // first contact: Mercury externally enters the solar disk
+2019-11-11 12:37:12.817581295 +0000 UTC // second contact: Mercury is fully inside the solar disk
+2019-11-11 15:19:48.36056292 +0000 UTC // greatest transit: Mercury center is closest to the Sun center
+2019-11-11 18:02:29.176982045 +0000 UTC // third contact: Mercury starts leaving the solar disk
+2019-11-11 18:04:10.637948513 +0000 UTC // fourth contact: Mercury externally leaves the solar disk
 5h28m39.070351124s // geocentric transit duration from first to fourth contact
-75.92506897631685 // minimum Mercury-Sun center separation at greatest transit, arcseconds
-968.8881520858397 // solar semidiameter at greatest transit, arcseconds
-4.978442860728242 // Mercury semidiameter at greatest transit, arcseconds
+75.92400059923187 // minimum Mercury-Sun center separation at greatest transit, arcseconds
+968.8881519533047 // solar semidiameter at greatest transit, arcseconds
+4.978442871670873 // Mercury semidiameter at greatest transit, arcseconds
 true // a valid geocentric Venus transit was found
-2012-06-05 22:09:47.514281272 +0000 UTC // first contact: Venus externally enters the solar disk
-2012-06-05 22:27:35.701768398 +0000 UTC // second contact: Venus is fully inside the solar disk
-2012-06-06 01:29:35.408823788 +0000 UTC // greatest transit: Venus center is closest to the Sun center
-2012-06-06 04:31:34.90493685 +0000 UTC // third contact: Venus starts leaving the solar disk
-2012-06-06 04:49:23.303366303 +0000 UTC // fourth contact: Venus externally leaves the solar disk
+2012-06-05 22:09:47.466886639 +0000 UTC // first contact: Venus externally enters the solar disk
+2012-06-05 22:27:35.865356326 +0000 UTC // second contact: Venus is fully inside the solar disk
+2012-06-06 01:29:35.572371482 +0000 UTC // greatest transit: Venus center is closest to the Sun center
+2012-06-06 04:31:35.068444311 +0000 UTC // third contact: Venus starts leaving the solar disk
+2012-06-06 04:49:23.25597167 +0000 UTC // fourth contact: Venus externally leaves the solar disk
 6h39m35.789085031s // geocentric transit duration from first to fourth contact
 ```
 
@@ -1683,15 +1897,15 @@ func main() {
 Output:
 
 ```text
-2020-10-14 07:25:50.262777507 +0800 CST // next opposition of Mars
-2021-01-29 09:39:33.565426468 +0800 CST // next conjunction of Jupiter
-2019-04-30 10:27:41.606289446 +0800 CST // previous Saturn station from prograde to retrograde
-saturn B=23.577026 Bp=23.266930 P=6.629811 dU=1.171016 major=34.133852 minor=13.652911 // Saturn ring B, B', P, dU, major axis, minor axis
-2020-01-11 15:23:07.378419935 +0800 CST // next Uranus station from retrograde to prograde
-2019-12-08 17:00:15.328663587 +0800 CST // previous eastern quadrature of Neptune
-2020-06-07 03:10:59.356176853 +0800 CST // next western quadrature of Mars
-2020-01-01 04:41:29.622089266 +0800 CST <nil> // Mars rise time in Xi'an; no error
-2020-01-01 14:55:32.963870465 +0800 CST <nil> // Mars set time in Xi'an; no error
+2020-10-14 07:25:50.441412627 +0800 CST // next opposition of Mars
+2021-01-29 09:39:33.697994649 +0800 CST // next conjunction of Jupiter
+2019-04-30 10:28:00.187439918 +0800 CST // previous Saturn station from prograde to retrograde
+saturn B=23.577025 Bp=23.266930 P=6.629811 dU=1.171016 major=34.133852 minor=13.652911 // Saturn ring B, B', P, dU, major axis, minor axis
+2020-01-11 15:23:23.360308706 +0800 CST // next Uranus station from retrograde to prograde
+2019-12-08 17:00:15.517960488 +0800 CST // previous eastern quadrature of Neptune
+2020-06-07 03:11:00.026179254 +0800 CST // next western quadrature of Mars
+2020-01-01 04:41:29.621566236 +0800 CST <nil> // Mars rise time in Xi'an; no error
+2020-01-01 14:55:32.963508367 +0800 CST <nil> // Mars set time in Xi'an; no error
 1.57 // Mars apparent magnitude
 2.1844284956325937 // Earth-Mars distance, AU
 1.5897860004265403 // Sun-Mars distance, AU
@@ -1744,7 +1958,7 @@ Output:
 
 ```text
 jupiter DS=54.342153 DE=1.436485 CMI=292.712909 CMII=276.309048 CMIII=147.241811 // Jupiter DS/DE and System I/II/III central meridians, degrees
-saturn B=-0.608046 Bp=-2.675677 P=4.480276 major=42.709920 minor=0.453246 // Saturn ring B, B', minor-axis position angle, outer major/minor axes
+saturn B=-0.608048 Bp=-2.675677 P=4.480276 major=42.709920 minor=0.453248 // Saturn ring B, B', minor-axis position angle, outer major/minor axes
 ```
 
 If only Jupiter central meridians are needed:
@@ -1780,6 +1994,8 @@ Two conventions matter:
 - `GalileanPhenomenonContactEvent` includes the finite disk of the satellite and splits disappearance and reappearance contact windows. It is the better match for IMCCE tables such as `TR.D/TR.F/OC.D/OC.F/EC.D/EC.F/SH.D/SH.F`.
 
 The two conventions may differ by up to about 7 minutes in duration. This is a definition difference, not a timing-accuracy failure. Use `GalileanPhenomenonContactEvent` for observing predictions and direct comparison with public almanacs.
+
+##### Code example
 
 ```go
 package main
@@ -1828,15 +2044,15 @@ func main() {
 Output:
 
 ```text
-io x=-0.658543 y=-0.035608 front=true // Io X/Y offset from Jupiter center, in Jupiter radii; in front of Jupiter
-europa ra=110.769323 dec=22.335800 // Europa apparent RA and Dec, degrees
+io x=-0.675026 y=-0.032798 front=true // Io X/Y offset from Jupiter center, in Jupiter radii; in front of Jupiter
+europa ra=110.769133 dec=22.335828 // Europa apparent RA and Dec, degrees
 io transit=true occultation=false eclipse=false shadow=true // Io is transiting, and its shadow is also transiting
 europa transit=false occultation=false eclipse=false shadow=false // Europa has no transit, occultation, eclipse, or shadow transit at this instant
 event valid=true sat=1 type=transit // next valid event is an Io transit
-2026-01-16 16:32:47.785289883 +0000 UTC // Io transit begins
-2026-01-16 17:40:43.882995843 +0000 UTC // midpoint of the Io transit
-2026-01-16 18:48:40.519664883 +0000 UTC // Io transit ends
-2h15m52.734375s // Io transit duration
+2026-01-16 16:32:47.552742362 +0000 UTC // Io transit begins
+2026-01-16 17:40:44.189371168 +0000 UTC // midpoint of the Io transit
+2026-01-16 18:48:40.287077128 +0000 UTC // Io transit ends
+2h15m52.734334766s // Io transit duration
 contact valid=true sat=2 type=occultation // next valid contact event is a Europa occultation
 2026-01-17 01:00:34.99533087 +0000 UTC // Europa occultation disappearance starts
 2026-01-17 01:02:31.714070141 +0000 UTC // model center crossing during disappearance
@@ -1847,16 +2063,23 @@ contact valid=true sat=2 type=occultation // next valid contact event is a Europ
 2026-01-17 03:54:39.68275398 +0000 UTC // reappearance ends
 ```
 
-External baseline summary:
+##### External baselines
 
-- `Satellites` positions relative to Jupiter center: maximum sample difference against JPL Horizons about `X=0.252"`, `Y=0.108"`.
+The Galilean-satellite implementation was checked against two external baselines:
+
+- **JPL Horizons**: apparent positions of the four satellites relative to Jupiter's center, and shadow-center offsets from Jupiter's disk during shadow transits.
+- **IMCCE 2026 tables**: transits, occultations, Jupiter eclipses, shadow transits, and D/F contact windows.
+
+Current test results in summary:
+
+- `Satellites` positions relative to Jupiter center: maximum sample difference against JPL Horizons about `X=0.054"`, `Y=0.048"`.
 - `SatellitePhenomena` shadow-transit shadow-center offsets: maximum sample difference against JPL Horizons about `X=0.051"`, `Y=0.016"`; boolean phenomenon flags match in the samples.
-- `GalileanPhenomenonContactEvent` against IMCCE 2026 tables: maximum contact-time difference in current samples about `72 s`; maximum contact-duration difference about `17 s`.
+- `GalileanPhenomenonContactEvent` against IMCCE 2026 tables (8 samples, all four D1/D2/F1/F2 contacts compared): maximum contact-time difference about `79 s`, maximum contact-duration difference about `17 s`, pinned by a regression test with `120 s` / `25 s` ceilings.
 - `GalileanPhenomenonEvent` is not the IMCCE D/F contact convention. Direct comparison of its start/end times with IMCCE contact tables can differ by up to about `7 min` because the event definitions are different.
 
 ### Stars
 
-The built-in star database contains 9100+ stars and supports proper-motion propagation.
+The built-in star database holds 9100 stars (BSC / HR numbers `1–9110`, apparent magnitudes `-1.46` to `7.96`) and propagates proper motion automatically.
 
 ```go
 package main
@@ -1876,7 +2099,7 @@ func main() {
 
 	// Initialize the star catalog.
 	star.InitStarDatabase()
-	sirius, _ := star.StarDataByName("天狼")
+	sirius, _ := star.StarDataByHR(2491) // Sirius
 	ra, dec := sirius.RaDecByDate(date)
 	// Rise time of Sirius.
 	riseDate, _ := star.RiseTime(date, ra, dec, 115, 40, 0, true)
@@ -1888,7 +2111,7 @@ func main() {
 	fmt.Println(star.ConstellationEN(ra, dec, date))
 
 	// Vega.
-	vega, _ := star.StarDataByName("织女一")
+	vega, _ := star.StarDataByHR(7001) // Vega
 	ra, dec = vega.RaDecByDate(time.Date(13600, 1, 1, 0, 0, 0, 0, time.Local))
 	// Right ascension of Vega in year 13600.
 	fmt.Println(tools.Format(ra/15, 1))
@@ -1897,19 +2120,19 @@ func main() {
 
 	// First entry in the brightest-star list.
 	bright, _ := star.TopBrightStars()
-	fmt.Println(bright[0].ChineseName, bright[0].CommonName, bright[0].Mag)
+	fmt.Println(bright[0].CommonName, bright[0].HR, bright[0].Mag)
 }
 ```
 
 Output:
 
 ```text
-2019-12-31 19:22:56.176710426 +0800 CST // rise time of Sirius
-2020-01-01 05:30:39.834894239 +0800 CST // set time of Sirius
+2019-12-31 19:22:56.144202053 +0800 CST // rise time of Sirius
+2020-01-01 05:30:39.802506566 +0800 CST // set time of Sirius
 Canis Major // English constellation containing Sirius
-5h58m5.71s // right ascension of Vega in year 13600
-84°19′26.13″ // declination of Vega in year 13600
-天狼 Sirius -1.46 // first brightest-star entry: Chinese name, common English name, apparent magnitude
+6h3m46.61s // right ascension of Vega in year 13600
+84°18′27.15″ // declination of Vega in year 13600
+Sirius 2491 -1.46 // first brightest-star entry: common English name, HR number, apparent magnitude
 ```
 
 ### Coordinate Tools
@@ -1961,10 +2184,10 @@ Output:
 ```text
 143.72223158223719 19.53512536790277 // RA and Dec converted from ecliptic coordinates
 43.46959597099446 -17.686623571613737 107.68662357161374 // azimuth, altitude, zenith distance
-143.99353431082105 18.7404068044953 // topocentric RA and Dec
+144.2551242046188 18.790254631841993 // topocentric RA and Dec
 manual az=281.869347 alt=24.489608 zen=65.510392 ha=73.866900 // manual-LST horizontal result and hour angle
 gal lon=0.000047 lat=-0.000079 // Galactic longitude and latitude
-apparent alt=10.093429 // apparent altitude after refraction estimate
+apparent alt=10.093428 // apparent altitude after refraction estimate
 ```
 
 Research-style `coord` helpers do not automatically substitute the current obliquity or sidereal time. They are useful for experiments with custom axial tilts or manually specified hour angles. For ordinary observing calculations, use the `time.Time` based APIs such as `EclipticToEquatorial` and `EquatorialToHorizontal`.
@@ -2129,6 +2352,8 @@ rise, _ := orbit.RiseTime(time.Date(2025, 11, 21, 0, 0, 0, 0, site), ceres, 121.
 fmt.Printf("alt=%.6f az=%.6f rise=%s\n", alt, az, rise.Format(time.RFC3339))
 ```
 
+These observing helpers work on topocentric apparent coordinates and suit rise/set and pointing support for asteroids, comets, or custom two-body targets.
+
 `orbit` also includes a lightweight visual-binary solver using the classical apparent-orbit formula from chapter 55 of *Astronomical Algorithms*:
 
 ```go
@@ -2194,21 +2419,21 @@ Notes:
 
 ## Implemented
 
-- Sun position, altitude, zenith distance, azimuth, culmination, twilight, rise/set, solar terms, solar eclipses, solar physical ephemerides
-- Moon position, altitude, zenith distance, azimuth, culmination, rise/set, phases, lunar eclipses, libration, apsides, maximum declination, and stellar/planetary lunar occultations
-- Global projected SVG maps for solar eclipses, lunar eclipses, and lunar occultations; fixed-site occultation charts; GeoJSON with optional time markers
-- `lite/sun` and `lite/moon` lightweight Sun/Moon chains for minute-level rise/set, lightweight position, and lunar-phase work
-- Earth eccentricity, Sun-Earth distance, perihelion, aphelion
-- Apparent/mean sidereal time, constellation lookup, common coordinate transforms, refraction, airmass, parallactic angle, Galactic coordinates
-- Seven major-planet coordinates, Sun/body and Earth/body distances, special events, Mercury/Venus geocentric transits, physical ephemerides, apparent diameters, phases, parallactic angles, and nodes
-- Chinese lunisolar calendar conversion from 721 BCE to 3000 CE
-- 9100+ star catalog
-- Generic small-body orbit propagation, H-G apparent magnitude, visual-binary position angle and separation
-- Blackbody radiation, synodic periods, magnitudes, telescope formulas, airmass formulas
-- Apparent solar time, planar-sundial geometry, horizontal sundial hour-line angle
+- ✅ Sun position, altitude, zenith distance, azimuth, culmination, twilight, rise/set, solar terms, solar eclipses, solar physical ephemerides
+- ✅ Moon position, altitude, zenith distance, azimuth, culmination, rise/set, phases, lunar eclipses, libration, apsides, maximum declination, and stellar/planetary lunar occultations
+- ✅ Global projected SVG maps for solar eclipses, lunar eclipses, and lunar occultations; fixed-site occultation charts; GeoJSON with optional time markers
+- ✅ `lite/sun` and `lite/moon` lightweight Sun/Moon chains for minute-level rise/set, lightweight position, and lunar-phase work
+- ✅ Earth eccentricity, Sun-Earth distance, perihelion, aphelion
+- ✅ Apparent/mean sidereal time, constellation lookup, common coordinate transforms, refraction, airmass, parallactic angle, Galactic coordinates
+- ✅ Seven major-planet coordinates, Sun/body and Earth/body distances, special events, Mercury/Venus geocentric transits, physical ephemerides, apparent diameters, phases, parallactic angles, and nodes
+- ✅ Chinese lunisolar calendar conversion from 721 BC to AD 3000
+- ✅ 9100-star catalog
+- ✅ Generic small-body orbit propagation, H-G apparent magnitude, visual-binary position angle and separation
+- ✅ Blackbody radiation, synodic periods, magnitudes, telescope formulas, airmass formulas
+- ✅ Apparent solar time, planar-sundial geometry, horizontal sundial hour-line angle
 
 ## TODO
 
-- Code normalization and performance optimization
-- More external baselines and fuller notes on physical-ephemeris conventions
-- More stellar and deep-sky helper functionality
+- 🔄 Code normalization and performance optimization
+- 🔄 More external baselines and fuller notes on physical-ephemeris conventions
+- 🔄 More stellar and deep-sky helper functionality

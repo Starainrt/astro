@@ -3,12 +3,14 @@ package svg
 import (
 	"encoding/xml"
 	"errors"
+	"fmt"
 	"io"
 	"math"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/starainrt/astro/internal/occultationgeo"
 	"github.com/starainrt/astro/internal/svgmap"
 	"github.com/starainrt/astro/moon"
 )
@@ -33,17 +35,76 @@ func TestFindStarOccultationSVGsHR4799(t *testing.T) {
 		`<svg`, `width="720"`, `height="520"`, "2025-06-05", "HR 4799",
 		"全球掩带", "掩始", "掩甚", "掩终", "掩带宽", "UTC+8",
 		`class="occultation-band"`, `class="center-line"`, `class="northern-limit"`,
-		`class="southern-limit"`, `class="event-marker event-greatest"`, `class="land"`,
+		`class="southern-limit"`, "掩带范围与边界",
+		`class="occultation-rise-set-boundary occultation-start-rise"`, `stroke="#d97706"`, "初掩/掩甚/终掩月升月落线",
+		`class="event-marker event-greatest"`, `class="land"`,
 	} {
 		if !strings.Contains(diagram, want) {
 			t.Fatalf("SVG missing %q", want)
 		}
 	}
-	if got := strings.Count(diagram, `class="occultation-band"`); got != 2 {
-		t.Fatalf("HR 4799 occultation-band segment count = %d, want two antimeridian-clipped fragments", got)
+	if got := strings.Count(diagram, `class="occultation-band"`); got != 1 {
+		t.Fatalf("HR 4799 occultation-band sweep count = %d, want one compound path", got)
+	}
+	bandIndex := strings.Index(diagram, `class="occultation-band"`)
+	curveIndex := strings.Index(diagram, `class="occultation-rise-set-boundary occultation-start-rise"`)
+	if bandIndex < 0 || curveIndex < 0 || curveIndex < bandIndex {
+		t.Fatalf("stellar SVG draws rise/set curves before the filled band: band=%d curve=%d", bandIndex, curveIndex)
 	}
 	if err := validateXML(diagram); err != nil {
 		t.Fatalf("generated SVG is not valid XML: %v", err)
+	}
+	curveIndex = strings.Index(diagram, `class="occultation-rise-set-boundary occultation-start-rise"`)
+	curveEnd := -1
+	if curveIndex >= 0 {
+		curveEnd = strings.Index(diagram[curveIndex:], "/>")
+	}
+	if curveIndex < 0 || curveEnd < 0 || strings.Contains(diagram[curveIndex:curveIndex+curveEnd], "stroke-dasharray") {
+		t.Fatal("stellar rise/set phase line is rendered with a gap-producing dash pattern")
+	}
+}
+
+func TestStarOccultationAutoProjectionIncludesFootprints(t *testing.T) {
+	path := sampleStarOccultationPath()
+	path.Greatest.Latitude = 70
+	for index := range path.CenterLine {
+		path.CenterLine[index].Latitude = 65
+		path.NorthernLimit[index].Latitude = 70
+		path.SouthernLimit[index].Latitude = 60
+	}
+	path.Start.Latitude = 70
+	path.End.Latitude = 70
+	footprintTime := path.Start.Time.Add(90 * time.Minute)
+	path.Footprints = []moon.OccultationFootprint{{
+		Time: footprintTime,
+		Polygons: [][]moon.OccultationPathPoint{{
+			{Time: footprintTime, Longitude: -10, Latitude: -10},
+			{Time: footprintTime, Longitude: 10, Latitude: -10},
+			{Time: footprintTime, Longitude: 0, Latitude: 10},
+		}},
+	}}
+
+	if projection := resolveStarOccultationMapProjection(path, MapProjectionAuto); projection != svgmap.ProjectionEquirectangular {
+		t.Fatalf("auto projection = %q, want equirectangular for cross-hemisphere footprint", projection)
+	}
+	diagram, err := StarOccultationPathSVG(path, StarOccultationSVGOptions{})
+	if err != nil {
+		t.Fatalf("StarOccultationPathSVG() error = %v", err)
+	}
+	if !strings.Contains(diagram, "等经纬投影") {
+		t.Fatal("auto-projected SVG clipped a cross-hemisphere footprint into a polar map")
+	}
+}
+
+func TestStarOccultationLegendOmitsDisabledRiseSetCurves(t *testing.T) {
+	path := sampleStarOccultationPath()
+	path.RiseSetCurves = nil
+	diagram, err := StarOccultationPathSVG(path, StarOccultationSVGOptions{})
+	if err != nil {
+		t.Fatalf("StarOccultationPathSVG: %v", err)
+	}
+	if strings.Contains(diagram, "初掩/掩甚/终掩月升月落线") || strings.Contains(diagram, "Rise/set phase lines") {
+		t.Fatal("stellar SVG legend claims disabled rise/set curves are present")
 	}
 }
 
@@ -52,10 +113,150 @@ func TestPolarOccultationLayoutSeparatesLegendAndFooter(t *testing.T) {
 		StarOccultationSVGOptions{Width: 900, Height: 760},
 		110,
 		svgmap.ProjectionNorthPolar,
+		svgmap.GeoPoint{},
 	)
 	legendY := layout.mapY + layout.mapHeight + 30
 	if gap := layout.footerY - legendY; gap < 24 {
 		t.Fatalf("polar legend/footer gap = %.1f px, want at least 24 px", gap)
+	}
+}
+
+func TestPolarStarOccultationSVGSplitsGrazingBoundaryBranchChanges(t *testing.T) {
+	tests := []struct {
+		name       string
+		date       time.Time
+		star       moon.StarCoordinate
+		projection MapProjection
+	}{
+		{
+			name: "Antares south polar",
+			date: time.Date(2026, time.February, 11, 0, 0, 0, 0, time.UTC),
+			star: moon.StarCoordinate{
+				ID: "Antares", RA: 247.3516666666667, Dec: -26.431944444444444,
+				Epoch: time.Date(2000, time.January, 1, 12, 0, 0, 0, time.UTC), Frame: moon.CoordinateFrameJ2000,
+				ProperMotionRACosDecMasPerYear: -10, ProperMotionDecMasPerYear: -20, ParallaxMas: 24,
+			},
+			projection: MapProjectionSouthPolar,
+		},
+		{
+			name: "Regulus north polar",
+			date: time.Date(2025, time.August, 23, 0, 0, 0, 0, time.UTC),
+			star: moon.StarCoordinate{
+				ID: "Regulus", RA: 152.09291666666667, Dec: 11.967222222222222,
+				Epoch: time.Date(2000, time.January, 1, 12, 0, 0, 0, time.UTC), Frame: moon.CoordinateFrameJ2000,
+				ProperMotionRACosDecMasPerYear: -248, ProperMotionDecMasPerYear: 6, ParallaxMas: 45,
+			},
+			projection: MapProjectionNorthPolar,
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			paths, err := moon.FindStarOccultationPaths(
+				test.date, test.date.Add(24*time.Hour), test.star,
+				moon.OccultationPathOptions{Step: 5 * time.Minute, TargetSpacingKM: 200},
+			)
+			if err != nil || len(paths) != 1 {
+				t.Fatalf("FindStarOccultationPaths() paths=%d err=%v, want one", len(paths), err)
+			}
+			path := paths[0]
+			if len(path.Footprints) == 0 {
+				t.Fatal("stellar path has no instantaneous footprints")
+			}
+			if ranges := occultationgeo.ContinuousPairedBoundaryRanges(path.NorthernLimit, path.SouthernLimit); len(ranges) < 2 {
+				t.Fatalf("continuous band ranges = %d, want branch change to be split", len(ranges))
+			}
+			projection := internalMapProjection(test.projection)
+			for _, limit := range [][]moon.OccultationPathPoint{path.NorthernLimit, path.SouthernLimit} {
+				for _, segment := range starOccultationBoundarySegmentsForProjection(limit, svgmap.ClipView{Projection: projection}) {
+					for index := 1; index < len(segment); index++ {
+						if distance := occultationgeo.DistanceKM(segment[index-1], segment[index]); distance > occultationgeo.BoundaryBranchJumpKM+1e-6 {
+							t.Fatalf("rendered boundary segment still spans %.1f km branch change", distance)
+						}
+					}
+				}
+			}
+			diagram, err := StarOccultationPathSVG(path, StarOccultationSVGOptions{
+				Width: 1200, Height: 800, Location: time.UTC, Projection: test.projection,
+			})
+			if err != nil {
+				t.Fatalf("StarOccultationPathSVG() error = %v", err)
+			}
+			if strings.Count(diagram, `class="occultation-band"`) != 1 {
+				t.Fatal("instantaneous footprints were not rendered as one compound sweep")
+			}
+			for _, className := range []string{`class="northern-limit"`, `class="southern-limit"`} {
+				if !strings.Contains(diagram, className) {
+					t.Fatalf("footprint sweep SVG missing split boundary %s", className)
+				}
+			}
+			if err := validateXML(diagram); err != nil {
+				t.Fatalf("generated SVG is not valid XML: %v", err)
+			}
+		})
+	}
+}
+
+func TestStarOccultationPathSVGPreservesEndpointBranchFragments(t *testing.T) {
+	start := time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC)
+	for _, count := range []int{2, 3} {
+		t.Run(fmt.Sprintf("%d points", count), func(t *testing.T) {
+			path := svgEndpointBranchJumpPath(start, count)
+			segments := starOccultationBoundarySegmentsForProjection(
+				path.NorthernLimit, svgmap.ClipView{Projection: svgmap.ProjectionEquirectangular},
+			)
+			if len(segments) != 2 {
+				t.Fatalf("north-limit segment count = %d, want two discontinuous fragments", len(segments))
+			}
+			if !segments[0][0].Time.Equal(path.Start.Time) ||
+				!segments[len(segments)-1][len(segments[len(segments)-1])-1].Time.Equal(path.End.Time) {
+				t.Fatal("split SVG boundary does not retain start and end samples")
+			}
+			for _, segment := range segments {
+				for index := 1; index < len(segment); index++ {
+					if distance := occultationgeo.DistanceKM(segment[index-1], segment[index]); distance > occultationgeo.BoundaryBranchJumpKM+1e-6 {
+						t.Fatalf("endpoint fragment spans an impossible %.1f km jump", distance)
+					}
+				}
+			}
+
+			diagram, err := StarOccultationPathSVG(path, StarOccultationSVGOptions{
+				Projection: MapProjectionEquirectangular,
+			})
+			if err != nil {
+				t.Fatalf("StarOccultationPathSVG: %v", err)
+			}
+			if got := strings.Count(diagram, `class="occultation-band"`); got != 2 {
+				t.Fatalf("endpoint-band section count = %d, want 2", got)
+			}
+			if got := strings.Count(diagram, `class="northern-limit"`); got != 2 {
+				t.Fatalf("north-limit path count = %d, want 2", got)
+			}
+			if err := validateXML(diagram); err != nil {
+				t.Fatalf("generated SVG is not valid XML: %v", err)
+			}
+		})
+	}
+}
+
+func svgEndpointBranchJumpPath(start time.Time, count int) moon.StarOccultationPath {
+	north := make([]moon.OccultationPathPoint, count)
+	south := make([]moon.OccultationPathPoint, count)
+	for index := range north {
+		when := start.Add(time.Duration(index) * time.Second)
+		longitude := 30.0 + float64(index)/10
+		if index == 0 {
+			longitude = 0
+		}
+		north[index] = moon.OccultationPathPoint{
+			Time: when, Longitude: longitude, Latitude: 10, MoonAltitude: 20,
+		}
+		south[index] = moon.OccultationPathPoint{
+			Time: when, Longitude: longitude, Latitude: -10, MoonAltitude: 20,
+		}
+	}
+	return moon.StarOccultationPath{
+		TargetID: "endpoint-jump", Start: north[0], Greatest: north[0], End: north[count-1],
+		Complete: true, NorthernLimit: north, SouthernLimit: south, Step: time.Second,
 	}
 }
 
@@ -273,6 +474,95 @@ func TestStarOccultationPathSVGRejectsInvalidPath(t *testing.T) {
 	}
 }
 
+func TestStarOccultationPathSVGRejectsMalformedRiseSetCurves(t *testing.T) {
+	tests := []struct {
+		name   string
+		mutate func(*moon.OccultationRiseSetCurve)
+	}{
+		{name: "phase", mutate: func(curve *moon.OccultationRiseSetCurve) {
+			curve.Phase = moon.RiseSetPhase("bogus")
+		}},
+		{name: "direction", mutate: func(curve *moon.OccultationRiseSetCurve) {
+			curve.Direction = moon.RiseSetDirection("bogus")
+		}},
+		{name: "coordinate", mutate: func(curve *moon.OccultationRiseSetCurve) {
+			curve.Segments[0][1].Longitude = math.NaN()
+		}},
+		{name: "time order", mutate: func(curve *moon.OccultationRiseSetCurve) {
+			curve.Segments[0][1].Time = curve.Segments[0][0].Time
+		}},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			path := sampleStarOccultationPath()
+			curve := sampleOccultationRiseSetCurve(path.Start.Time)
+			test.mutate(&curve)
+			path.RiseSetCurves = []moon.OccultationRiseSetCurve{curve}
+			_, err := StarOccultationPathSVG(path, StarOccultationSVGOptions{})
+			if !errors.Is(err, ErrInvalidStarOccultationPath) {
+				t.Fatalf("StarOccultationPathSVG() error = %v, want ErrInvalidStarOccultationPath", err)
+			}
+		})
+	}
+}
+
+func TestStarOccultationPathSVGRejectsMalformedFootprint(t *testing.T) {
+	path := sampleStarOccultationPath()
+	path.Footprints = []moon.OccultationFootprint{{Time: path.Start.Time}}
+	_, err := StarOccultationPathSVG(path, StarOccultationSVGOptions{})
+	if !errors.Is(err, ErrInvalidStarOccultationPath) {
+		t.Fatalf("StarOccultationPathSVG() error = %v, want ErrInvalidStarOccultationPath", err)
+	}
+}
+
+func TestStarOccultationPathSVGCompactBandUsesClosedOutlineWithoutRawLimits(t *testing.T) {
+	path := sampleStarOccultationPath()
+	makeFootprint := func(when time.Time, west, east float64) moon.OccultationFootprint {
+		return moon.OccultationFootprint{
+			Time: when,
+			Polygons: [][]moon.OccultationPathPoint{{
+				{Time: when, Longitude: west, Latitude: -10},
+				{Time: when, Longitude: east, Latitude: -10},
+				{Time: when, Longitude: east, Latitude: 10},
+				{Time: when, Longitude: west, Latitude: 10},
+			}},
+		}
+	}
+	path.BandFootprints = []moon.OccultationFootprint{
+		makeFootprint(path.Start.Time.Add(time.Hour), -20, 5),
+		makeFootprint(path.Start.Time.Add(2*time.Hour), -5, 20),
+	}
+	diagram, err := StarOccultationPathSVG(path, StarOccultationSVGOptions{})
+	if err != nil {
+		t.Fatalf("StarOccultationPathSVG: %v", err)
+	}
+	if strings.Contains(diagram, `class="northern-limit"`) || strings.Contains(diagram, `class="southern-limit"`) {
+		t.Fatal("compact stellar SVG still overlays discontinuous raw limits")
+	}
+	pathData := planetOccultationSVGPathData(t, diagram, "occultation-band")
+	if !strings.Contains(pathData, "Z") {
+		t.Fatal("compact stellar SVG band is not explicitly closed")
+	}
+}
+
+func TestStarOccultationPathSVGAllowsDenseAndCompactFootprints(t *testing.T) {
+	path := sampleStarOccultationPath()
+	when := path.Greatest.Time
+	footprint := moon.OccultationFootprint{
+		Time: when,
+		Polygons: [][]moon.OccultationPathPoint{{
+			{Time: when, Longitude: -10, Latitude: -10},
+			{Time: when, Longitude: 10, Latitude: -10},
+			{Time: when, Longitude: 0, Latitude: 10},
+		}},
+	}
+	path.Footprints = []moon.OccultationFootprint{footprint}
+	path.BandFootprints = []moon.OccultationFootprint{footprint}
+	if _, err := StarOccultationPathSVG(path, StarOccultationSVGOptions{}); err != nil {
+		t.Fatalf("StarOccultationPathSVG() rejected coexisting static and timed footprints: %v", err)
+	}
+}
+
 func TestStarOccultationPathSVGRejectsMisalignedLimits(t *testing.T) {
 	path := sampleStarOccultationPath()
 	path.SouthernLimit[1].Time = path.SouthernLimit[1].Time.Add(time.Second)
@@ -329,6 +619,17 @@ func sampleStarOccultationPath() moon.StarOccultationPath {
 		NorthernLimit: northern,
 		SouthernLimit: southern,
 		Step:          time.Hour,
+	}
+}
+
+func sampleOccultationRiseSetCurve(start time.Time) moon.OccultationRiseSetCurve {
+	return moon.OccultationRiseSetCurve{
+		Phase:     moon.RiseSetPhaseStart,
+		Direction: moon.RiseSetDirectionRise,
+		Segments: [][]moon.OccultationPathPoint{{
+			{Time: start.Add(20 * time.Minute), Longitude: 10, Latitude: 20, MoonAltitude: 0},
+			{Time: start.Add(40 * time.Minute), Longitude: 12, Latitude: 21, MoonAltitude: 0},
+		}},
 	}
 }
 

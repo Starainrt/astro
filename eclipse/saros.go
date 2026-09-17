@@ -2,7 +2,7 @@ package eclipse
 
 import (
 	"math"
-	"time"
+	"sync"
 
 	"github.com/starainrt/astro/basic"
 )
@@ -10,7 +10,10 @@ import (
 const (
 	sarosCycleLunations = 223
 	sarosCycleDays      = float64(sarosCycleLunations) * solarEclipseSynodicMonthDays
-	sarosWalkLimit      = 100
+	// The generated tables show at most 90 members in one series. A window of
+	// 90 returns therefore covers a complete series without evaluating remote
+	// samples whose ancient ephemeris drift can reject an otherwise valid event.
+	sarosExtrapolationWindow = 90
 
 	sarosMagicYearOffset    = 3000
 	sarosMagicCountMask     = 0x7f
@@ -27,8 +30,8 @@ const (
 
 // SarosInfo 沙罗序列信息, Saros series metadata.
 type SarosInfo struct {
-	// Series 是 NASA 沙罗系列编号；太阳食可能出现 0 号系列。
-	// Series is the NASA Saros series number; solar eclipses may use series 0.
+	// Series 是权威目录系列编号；Verified=false 时为根据周期外推得到的暂定编号。
+	// Series is the authoritative catalog series number, or a provisional number when Verified is false.
 	Series int
 	// Member 是本次食在该系列中的序号，从 1 开始计数。
 	// Member is the 1-based index of this eclipse within the series.
@@ -36,6 +39,88 @@ type SarosInfo struct {
 	// Count 是该系列的总成员数。
 	// Count is the total number of eclipses in the series.
 	Count int
+	// Verified 表示系列头和成员范围已与内置权威目录锚点核验。
+	// Verified reports whether the series head and member range match an authoritative catalog anchor.
+	Verified bool
+}
+
+// sarosAnchorRange is the authoritative member window of one series as
+// published in the anchor catalog. Extended (provisional) tables may enumerate
+// one or two extra members at the head and tail of a series, which collides
+// with the anchored numbering: the same member index then appears twice and the
+// series count changes mid-series. Reconciling against the anchor keeps the
+// member numbering and the total count consistent for every event.
+type sarosAnchorRange struct {
+	headTT float64
+	count  int
+	offset int
+}
+
+var (
+	sarosAnchorRangesOnce sync.Once
+	sarosAnchorRanges     [2]map[int]sarosAnchorRange
+)
+
+func sarosAnchorRangeFor(phase, series int) (sarosAnchorRange, bool) {
+	sarosAnchorRangesOnce.Do(buildSarosAnchorRanges)
+	if phase < 0 || phase >= len(sarosAnchorRanges) {
+		return sarosAnchorRange{}, false
+	}
+	value, ok := sarosAnchorRanges[phase][series]
+	return value, ok
+}
+
+func buildSarosAnchorRanges() {
+	anchors := solarSarosAnchors[:]
+	base := 0
+	overrides := solarSarosHeadOverrides[:]
+	for phase := 0; phase < 2; phase++ {
+		if phase == 1 {
+			anchors = lunarSarosAnchors[:]
+			base = 1
+			overrides = lunarSarosHeadOverrides[:]
+		}
+		ranges := make(map[int]sarosAnchorRange, len(anchors)+len(overrides))
+		for index, magic := range anchors {
+			anchor := decodeSarosMagic(magic, base+index)
+			headTT := basic.JDECalc(int(anchor.Year), int(anchor.Month), float64(anchor.Day))
+			if math.IsNaN(headTT) {
+				continue
+			}
+			ranges[int(anchor.Series)] = sarosAnchorRange{headTT: headTT, count: int(anchor.Count)}
+		}
+		for _, override := range overrides {
+			headTT := basic.JDECalc(int(override.HeadYear), int(override.HeadMonth), float64(override.HeadDay))
+			if math.IsNaN(headTT) {
+				continue
+			}
+			ranges[int(override.Series)] = sarosAnchorRange{
+				headTT: headTT,
+				count:  int(override.Count),
+				offset: int(override.MemberOffset),
+			}
+		}
+		sarosAnchorRanges[phase] = ranges
+	}
+}
+
+// reconcileSarosSpan anchors a provisional member to the authoritative series
+// window. Members outside that window are not part of the catalog series, so
+// they report no Saros metadata instead of a conflicting provisional number.
+// The member index uses the same relation as the anchor matcher, which keeps a
+// provisional event and an anchored event of one series in step.
+func reconcileSarosSpan(info SarosInfo, ttJDE float64, phase int) (SarosInfo, bool) {
+	anchor, ok := sarosAnchorRangeFor(phase, info.Series)
+	if !ok {
+		return info, true
+	}
+	member := int(math.Round((ttJDE-anchor.headTT)/sarosCycleDays)) + 1 + anchor.offset
+	if member < 1 || member > anchor.count {
+		return SarosInfo{}, false
+	}
+	info.Member = member
+	info.Count = anchor.count
+	return info, true
 }
 
 type sarosMagic uint32
@@ -62,6 +147,8 @@ var solarSarosHeadOverrides = [...]sarosHeadOverride{
 }
 
 var lunarSarosHeadOverrides = [...]sarosHeadOverride{
+	// 4 号锚表头提前了一个分支：目录成员 1 落在本模型认不出的浅半影回次上，
+	// 头按目录记作第 3 个成员，尾部最后一场才与目录的 Count 对齐。
 	{Series: 4, Count: 78, HeadYear: -2483, HeadMonth: 1, HeadDay: 12, MemberOffset: 2},
 	{Series: 8, Count: 86, HeadYear: -2494, HeadMonth: 8, HeadDay: 7, MemberOffset: 0},
 	{Series: 61, Count: 78, HeadYear: -762, HeadMonth: 12, HeadDay: 24, MemberOffset: 1},
@@ -71,92 +158,42 @@ func solarSarosInfo(ttJDE float64) (SarosInfo, bool) {
 	if info, ok := matchSarosMagic(solarSarosAnchors[:], 0, solarSarosHeadOverrides[:], ttJDE); ok {
 		return info, true
 	}
-	return solarSarosInfoByWalk(ttJDE)
+	return reconciledSarosInfo(extendedSarosInfo, ttJDE, 0)
 }
 
 func lunarSarosInfo(ttJDE float64) (SarosInfo, bool) {
 	if info, ok := matchSarosMagic(lunarSarosAnchors[:], 1, lunarSarosHeadOverrides[:], ttJDE); ok {
 		return info, true
 	}
-	return lunarSarosInfoByWalk(ttJDE)
+	return reconciledSarosInfo(extendedSarosInfo, ttJDE, 1)
 }
 
-func solarSarosInfoByWalk(ttJDE float64) (SarosInfo, bool) {
-	headTT, member, ok := solarSarosHead(ttJDE)
+// reconciledSarosInfo applies the anchor window to a provisional lookup so the
+// public metadata never mixes two numbering baselines for one series.
+func reconciledSarosInfo(
+	provisional func(float64, int) (SarosInfo, bool),
+	ttJDE float64,
+	phase int,
+) (SarosInfo, bool) {
+	info, ok := provisional(ttJDE, phase)
 	if !ok {
 		return SarosInfo{}, false
 	}
-	if info, ok := matchSarosHeadOverride(solarSarosHeadOverrides[:], headTT, member); ok {
-		return info, true
-	}
-	anchor, ok := matchSarosAnchor(solarSarosAnchors[:], 0, headTT)
-	if !ok || member > int(anchor.Count) {
-		return SarosInfo{}, false
-	}
-	return SarosInfo{
-		Series: int(anchor.Series),
-		Member: member,
-		Count:  int(anchor.Count),
-	}, true
-}
-
-func lunarSarosInfoByWalk(ttJDE float64) (SarosInfo, bool) {
-	headTT, member, ok := lunarSarosHead(ttJDE)
-	if !ok {
-		return SarosInfo{}, false
-	}
-	if info, ok := matchSarosHeadOverride(lunarSarosHeadOverrides[:], headTT, member); ok {
-		return info, true
-	}
-	anchor, ok := matchSarosAnchor(lunarSarosAnchors[:], 1, headTT)
-	if !ok || member > int(anchor.Count) {
-		return SarosInfo{}, false
-	}
-	return SarosInfo{
-		Series: int(anchor.Series),
-		Member: member,
-		Count:  int(anchor.Count),
-	}, true
-}
-
-func solarSarosHead(ttJDE float64) (float64, int, bool) {
-	currentTT := ttJDE
-	member := 1
-	for step := 0; step < sarosWalkLimit; step++ {
-		previousSeed := basic.CalcMoonSHByJDE(currentTT-sarosCycleDays, 0)
-		previous := basic.SolarEclipseNASABulletinSplitK(previousSeed)
-		if previous.Type == basic.SolarEclipseNone {
-			return currentTT, member, true
-		}
-		currentTT = previous.GreatestEclipse
-		member++
-	}
-	return 0, 0, false
-}
-
-func lunarSarosHead(ttJDE float64) (float64, int, bool) {
-	currentTT := ttJDE
-	member := 1
-	for step := 0; step < sarosWalkLimit; step++ {
-		previousSeed := basic.CalcMoonSHByJDE(currentTT-sarosCycleDays, 1)
-		previous := basic.LunarEclipseDanjon(previousSeed)
-		if previous.Type == basic.LunarEclipseNone {
-			return currentTT, member, true
-		}
-		currentTT = previous.Maximum
-		member++
-	}
-	return 0, 0, false
+	return reconcileSarosSpan(info, ttJDE, phase)
 }
 
 func matchSarosMagic(anchors []sarosMagic, seriesBase int, overrides []sarosHeadOverride, ttJDE float64) (SarosInfo, bool) {
 	if info, ok := matchSarosMagicOverrides(overrides, ttJDE); ok {
 		return info, true
 	}
+	// 带 override 的序列只认 override 头，与 buildSarosAnchorRanges 的覆盖语义一致。
 	bestDistance := math.Inf(1)
 	best := SarosInfo{}
 	for index, magic := range anchors {
 		anchor := decodeSarosMagic(magic, seriesBase+index)
+		if sarosSeriesOverridden(overrides, int(anchor.Series)) {
+			continue
+		}
 		info, distance, ok := matchSarosMagicCandidate(ttJDE, anchor, 0)
 		if !ok {
 			continue
@@ -170,6 +207,16 @@ func matchSarosMagic(anchors []sarosMagic, seriesBase int, overrides []sarosHead
 		return best, true
 	}
 	return SarosInfo{}, false
+}
+
+// sarosSeriesOverridden 报告该序列是否带有 override 头。
+func sarosSeriesOverridden(overrides []sarosHeadOverride, series int) bool {
+	for _, override := range overrides {
+		if int(override.Series) == series {
+			return true
+		}
+	}
+	return false
 }
 
 func matchSarosMagicOverrides(overrides []sarosHeadOverride, ttJDE float64) (SarosInfo, bool) {
@@ -209,9 +256,10 @@ func matchSarosMagicCandidate(ttJDE float64, anchor sarosAnchor, memberOffset in
 	}
 	expectedTT := headTT + float64(member-1-memberOffset)*sarosCycleDays
 	return SarosInfo{
-		Series: int(anchor.Series),
-		Member: member,
-		Count:  int(anchor.Count),
+		Series:   int(anchor.Series),
+		Member:   member,
+		Count:    int(anchor.Count),
+		Verified: true,
 	}, math.Abs(ttJDE - expectedTT), true
 }
 
@@ -237,38 +285,4 @@ func decodeSarosMagic(magic sarosMagic, series int) sarosAnchor {
 		Month:  uint8((value >> sarosMagicMonthShift) & sarosMagicMonthMask),
 		Day:    uint8((value >> sarosMagicDayShift) & sarosMagicDayMask),
 	}
-}
-
-func matchSarosAnchor(anchors []sarosMagic, seriesBase int, headTT float64) (sarosAnchor, bool) {
-	headDate := basic.JDE2DateByZone(headTT, time.UTC, true)
-	year, month, day := headDate.Date()
-	monthNumber := int(month)
-	for index, magic := range anchors {
-		anchor := decodeSarosMagic(magic, seriesBase+index)
-		if int(anchor.Year) == year && int(anchor.Month) == monthNumber && int(anchor.Day) == day {
-			return anchor, true
-		}
-	}
-	return sarosAnchor{}, false
-}
-
-func matchSarosHeadOverride(overrides []sarosHeadOverride, headTT float64, member int) (SarosInfo, bool) {
-	headDate := basic.JDE2DateByZone(headTT, time.UTC, true)
-	year, month, day := headDate.Date()
-	monthNumber := int(month)
-	for _, override := range overrides {
-		if int(override.HeadYear) != year || int(override.HeadMonth) != monthNumber || int(override.HeadDay) != day {
-			continue
-		}
-		adjustedMember := member + int(override.MemberOffset)
-		if adjustedMember < 1 || adjustedMember > int(override.Count) {
-			return SarosInfo{}, false
-		}
-		return SarosInfo{
-			Series: int(override.Series),
-			Member: adjustedMember,
-			Count:  int(override.Count),
-		}, true
-	}
-	return SarosInfo{}, false
 }

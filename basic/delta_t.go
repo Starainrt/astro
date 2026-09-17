@@ -1,26 +1,60 @@
 package basic
 
-import "math"
+import (
+	"math"
+	"sync"
+)
 
 var defDeltaTFn = DefaultDeltaTv2
+var deltaTFnMu sync.RWMutex
+
+// deltaTGeneration 随每次 ΔT 覆盖递增，供依赖 ΔT 的只读记忆表判断自身是否过期。
+// 起始为 1，使零值缓存条目（世代 0）天然视为未命中。
+// deltaTGeneration increments on every ΔT override so ΔT-dependent memo tables can detect
+// staleness. It starts at 1 so a zero-valued cache entry (generation 0) is never a hit.
+var deltaTGeneration uint64 = 1
 
 func DeltaT(date float64, isJDE bool) float64 {
-	return defDeltaTFn(date, isJDE)
+	deltaTFnMu.RLock()
+	fn := defDeltaTFn
+	deltaTFnMu.RUnlock()
+	return fn(date, isJDE)
 }
 
 func SetDeltaTFn(fn func(float64, bool) float64) {
 	if fn != nil {
+		deltaTFnMu.Lock()
 		defDeltaTFn = fn
+		deltaTGeneration++
+		deltaTFnMu.Unlock()
 	}
 }
 
+// deltaTGenerationValue 返回当前 ΔT 世代，用于让只读记忆表在 ΔT 改变后整体失效。
+// deltaTGenerationValue returns the current ΔT generation so memo tables can be invalidated.
+func deltaTGenerationValue() uint64 {
+	deltaTFnMu.RLock()
+	value := deltaTGeneration
+	deltaTFnMu.RUnlock()
+	return value
+}
+
 func GetDeltaTFn() func(float64, bool) float64 {
-	return defDeltaTFn
+	deltaTFnMu.RLock()
+	fn := defDeltaTFn
+	deltaTFnMu.RUnlock()
+	return fn
 }
 
 func DefaultDeltaTv2(date float64, isJd bool) float64 { //传入年或儒略日，传出为秒
+	if math.IsNaN(date) || math.IsInf(date, 0) {
+		return math.NaN()
+	}
 	if !isJd {
-		date = JDECalc(int(date), int((date-math.Floor(date))*12)+1, (date-math.Floor(date))*365.25+1)
+		year := math.Floor(date)
+		start := JDECalc(int(year), 1, 1)
+		end := JDECalc(int(year)+1, 1, 1)
+		date = start + (date-year)*(end-start)
 	}
 	return DeltaTv2(date)
 }
@@ -30,6 +64,9 @@ func DefaultDeltaTv2(date float64, isJd bool) float64 { //传入年或儒略日�
 // 2010年后的系数已修改以包含2019年后的数据
 // 返回Delta T，单位为秒
 func DeltaTSplineY(y float64) float64 {
+	if math.IsNaN(y) || math.IsInf(y, 0) {
+		return math.NaN()
+	}
 	// 积分lod（平均太阳日偏离86400秒的偏差）方程：
 	// 来自 http://astro.ukho.gov.uk/nao/lvm/：
 	// lod = 1.72 t − 3.5 sin(2*pi*(t+0.75)/14) 单位ms/day，其中 t = (y - 1825)/100
@@ -76,6 +113,9 @@ func DeltaTSplineY(y float64) float64 {
 }
 
 func DeltaTv2(jd float64) float64 {
+	if math.IsNaN(jd) || math.IsInf(jd, 0) {
+		return math.NaN()
+	}
 	if jd > 2461041.5 || jd < 2441317.5 {
 		var y float64
 		if jd >= 2299160.5 {
@@ -97,7 +137,7 @@ func DeltaTv2(jd float64) float64 {
 	n := len(jdLeaps)
 	deltaTSeconds := 42.184
 	for i := 0; i < n; i++ {
-		if jd > jdLeaps[i] {
+		if jd >= jdLeaps[i] {
 			deltaTSeconds += float64(n - i - 1)
 			break
 		}
@@ -105,11 +145,59 @@ func DeltaTv2(jd float64) float64 {
 	return deltaTSeconds
 }
 
+// DeltaTSecondsAt 返回某个 TT 时刻实际使用的 ΔT（秒）：overrideSeconds 是有限值时直接采用
+// （含 0，可显式要求 ΔT=0），为 NaN/±Inf 时改用进程级模型。模型按 UT 键控，因此这里先解
+// TT−ΔT(UT) 再求值，不把 TT 直接当作 UT 送进模型（差约 2e-6 s）。
+// DeltaTSecondsAt returns the ΔT in seconds used at one TT instant: a finite override wins
+// (including 0, which requests ΔT = 0 explicitly), while NaN or ±Inf selects the process-wide
+// model. The model is keyed by UT, so the equation TT - ΔT(UT) is solved instead of feeding TT.
+func DeltaTSecondsAt(jdeTT, overrideSeconds float64) float64 {
+	if !math.IsNaN(overrideSeconds) && !math.IsInf(overrideSeconds, 0) {
+		return overrideSeconds
+	}
+	return deltaTModelSecondsAtTT(jdeTT)
+}
+
+func deltaTModelSecondsAtTT(jdeTT float64) float64 {
+	ut := jdeTT - DeltaT(jdeTT, true)/86400.0
+	for iteration := 0; iteration < 4; iteration++ {
+		next := jdeTT - DeltaT(ut, true)/86400.0
+		if next == ut {
+			break
+		}
+		ut = next
+	}
+	return DeltaT(ut, true)
+}
+
+// DeltaTGroundShiftKM 把 ΔT 误差换算为站点相对影子的地面横移距离（千米）。
+// 地球赤道自转线速度 465.1 m/s，因此 ΔT 相差 Δ 秒时，地面点相对影子横移
+// 0.4651·|Δ|·cos(纬度) 千米；±400 年跨度上 ΔT 外推差几百到几千秒，足以挪动本影
+// 边界数百千米，调用方可用本函数把外部给出的 ΔT 不确定度换算成几何不确定度。
+// DeltaTGroundShiftKM converts a ΔT error into the ground displacement of a station
+// relative to the shadow, in kilometres: 0.4651 * |ΔT| * cos(latitude).
+func DeltaTGroundShiftKM(deltaTSeconds, latitudeDeg float64) float64 {
+	if math.IsNaN(deltaTSeconds) || math.IsInf(deltaTSeconds, 0) ||
+		math.IsNaN(latitudeDeg) || math.IsInf(latitudeDeg, 0) {
+		return math.NaN()
+	}
+	return solarEclipseEarthEquatorialRotationKMPerSecond * math.Abs(deltaTSeconds) * math.Cos(latitudeDeg*rad)
+}
+
 func TD2UT(jde float64, utToTD bool) float64 { // true 世界时转力学时CC，false 力学时转世界时VV
 	deltaTSeconds := DeltaT(jde, true)
 	if utToTD {
 		return jde + deltaTSeconds/3600/24
-	} else {
-		return jde - deltaTSeconds/3600/24
 	}
+	// Delta T is evaluated at UT in the forward conversion. Solve the same
+	// equation in reverse so distant-epoch contact times survive a round trip.
+	ut := jde - deltaTSeconds/3600/24
+	for iteration := 0; iteration < 4; iteration++ {
+		next := jde - DeltaT(ut, true)/3600/24
+		if next == ut {
+			break
+		}
+		ut = next
+	}
+	return ut
 }

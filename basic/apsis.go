@@ -145,14 +145,26 @@ func moonApsisSeedTT(k float64) float64 {
 }
 
 func refineDistanceExtremum(seed float64, cfg apsisSearchConfig, distanceFn func(float64) float64) (float64, float64) {
+	if !finite(seed) || !finite(cfg.bracketHalfWidth) || !finite(cfg.sampleStep) || cfg.sampleStep <= 0 {
+		return seed, math.NaN()
+	}
 	best := seed
 	bestDistance := distanceFn(seed)
-	for sample := seed - cfg.bracketHalfWidth; sample <= seed+cfg.bracketHalfWidth+1e-12; sample += cfg.sampleStep {
+	// seed 幅度很大时 sample += sampleStep 可能小于一个 ULP（浮点间隔）而永不推进，
+	// 因此显式检测步长是否真的改变了采样点，避免无界循环。
+	// At a large |seed| the step can fall below one ULP, so `sample += step` would never
+	// advance; detect a step that does not move the sample and stop the sweep instead.
+	for sample, end := seed-cfg.bracketHalfWidth, seed+cfg.bracketHalfWidth+1e-12; sample <= end; {
 		dist := distanceFn(sample)
 		if distanceBetter(dist, bestDistance, cfg.maximize) {
 			best = sample
 			bestDistance = dist
 		}
+		next := sample + cfg.sampleStep
+		if next == sample {
+			break
+		}
+		sample = next
 	}
 
 	left, right, ok := apsisDerivativeBracket(best, seed, cfg, distanceFn)

@@ -39,8 +39,10 @@ type JupiterGalileanPhenomenonEvent struct {
 }
 
 type jupiterGalileanMetricSample struct {
-	active     bool
-	metric     float64
+	active bool
+	metric float64
+	// signed 是该现象相对木星视面中心线的有符号偏移（木星半径），每次过零对应一次现象；未定义时为 NaN。
+	signed     float64
 	phenomenon JupiterGalileanPhenomenon
 }
 
@@ -55,18 +57,24 @@ type jupiterGalileanShadowPoint struct {
 }
 
 // LastJupiterGalileanPhenomenonEvent 上一次伽利略卫星现象 / previous Galilean-satellite event.
+//
+// jd 与返回时刻都是 UTC/UT 儒略日；需要瞬时状态时先用 TD2UT(jd, true) 换成 TT。
 func LastJupiterGalileanPhenomenonEvent(jd float64, satellite int, phenomenonType JupiterGalileanPhenomenonType) JupiterGalileanPhenomenonEvent {
 	event, _ := searchJupiterGalileanPhenomenonEvent(jd, satellite, phenomenonType, -1, true)
 	return event
 }
 
 // NextJupiterGalileanPhenomenonEvent 下一次伽利略卫星现象 / next Galilean-satellite event.
+//
+// jd 与返回时刻都是 UTC/UT 儒略日；需要瞬时状态时先用 TD2UT(jd, true) 换成 TT。
 func NextJupiterGalileanPhenomenonEvent(jd float64, satellite int, phenomenonType JupiterGalileanPhenomenonType) JupiterGalileanPhenomenonEvent {
 	event, _ := searchJupiterGalileanPhenomenonEvent(jd, satellite, phenomenonType, 1, false)
 	return event
 }
 
 // ClosestJupiterGalileanPhenomenonEvent 最近一次伽利略卫星现象 / closest Galilean-satellite event.
+//
+// jd 与返回时刻都是 UTC/UT 儒略日；需要瞬时状态时先用 TD2UT(jd, true) 换成 TT。
 func ClosestJupiterGalileanPhenomenonEvent(jd float64, satellite int, phenomenonType JupiterGalileanPhenomenonType) JupiterGalileanPhenomenonEvent {
 	last, hasLast := searchJupiterGalileanPhenomenonEvent(jd, satellite, phenomenonType, -1, true)
 	next, hasNext := searchJupiterGalileanPhenomenonEvent(jd, satellite, phenomenonType, 1, false)
@@ -121,20 +129,143 @@ func searchJupiterGalileanPhenomenonEvent(
 	for i := 2; i <= maxSteps; i++ {
 		nextTime := jd + sign*float64(i)*stepDays
 		nextSample := jupiterGalileanPhenomenonMetricAt(nextTime, satellite, phenomenonType)
-		if isFinite(midSample.metric) &&
-			midSample.metric <= prevSample.metric &&
-			midSample.metric <= nextSample.metric {
-			candidate := refineJupiterGalileanMetricMinimum(prevTime, nextTime, satellite, phenomenonType)
-			event := findJupiterGalileanPhenomenonEventAround(candidate, satellite, phenomenonType)
-			if event.Valid && jupiterGalileanEventMatchesDirection(event.Greatest, jd, direction, includeCurrent) {
-				return event, true
-			}
+		if event, ok := jupiterGalileanIntervalCandidate(
+			prevTime, nextTime, prevSample, midSample, nextSample,
+			jd, satellite, phenomenonType, direction, includeCurrent,
+		); ok {
+			return event, true
 		}
 		prevTime, prevSample = midTime, midSample
 		midTime, midSample = nextTime, nextSample
 	}
 
 	return invalidJupiterGalileanPhenomenonEvent(), false
+}
+
+// jupiterGalileanIntervalCandidate 在粗扫区间内确认现象：度量局部极小，或有符号偏移过零。
+func jupiterGalileanIntervalCandidate(
+	prevTime, nextTime float64,
+	prevSample, midSample, nextSample jupiterGalileanMetricSample,
+	jd float64,
+	satellite int,
+	phenomenonType JupiterGalileanPhenomenonType,
+	direction int,
+	includeCurrent bool,
+) (JupiterGalileanPhenomenonEvent, bool) {
+	var best JupiterGalileanPhenomenonEvent
+	found := false
+	consider := func(event JupiterGalileanPhenomenonEvent) {
+		if !event.Valid ||
+			!jupiterGalileanEventMatchesDirection(event.Greatest, jd, direction, includeCurrent) {
+			return
+		}
+		if !found ||
+			(direction > 0 && event.Greatest < best.Greatest) ||
+			(direction < 0 && event.Greatest > best.Greatest) {
+			best, found = event, true
+		}
+	}
+	if isFinite(midSample.metric) &&
+		midSample.metric <= prevSample.metric &&
+		midSample.metric <= nextSample.metric {
+		consider(findJupiterGalileanPhenomenonEventAround(
+			refineJupiterGalileanMetricMinimum(prevTime, nextTime, satellite, phenomenonType),
+			satellite, phenomenonType,
+		))
+	}
+	if jupiterGalileanSignedCrosses(prevSample.signed, nextSample.signed) &&
+		jupiterGalileanNearDisk(prevSample, midSample, nextSample) {
+		crossing := refineJupiterGalileanSignedCrossing(prevTime, nextTime, satellite, phenomenonType)
+		// 过零点只说明"靠近木星"，只在它已贴近视面时按事件尺度细扫一次。
+		if sample := jupiterGalileanPhenomenonMetricAt(crossing, satellite, phenomenonType); isFinite(sample.metric) &&
+			sample.metric <= jupiterGalileanCrossingProbeMetric {
+			if event, ok := jupiterGalileanFineScanAround(crossing, satellite, phenomenonType); ok {
+				consider(event)
+			}
+		}
+	}
+	return best, found
+}
+
+const (
+	// jupiterGalileanCrossingProbeMetric 是细扫门限（椭球度量，1 为视面边缘）。
+	jupiterGalileanCrossingProbeMetric = 2.5
+	// jupiterGalileanCrossingProbeDays 是过零点两侧的细扫半宽。
+	jupiterGalileanCrossingProbeDays = 15.0 / 1440.0
+	// jupiterGalileanCrossingProbeStepDays 是细扫步长（30 秒），短于最短的擦边事件。
+	jupiterGalileanCrossingProbeStepDays = 0.5 / 1440.0
+)
+
+// jupiterGalileanNearDisk 报告区间内是否已有贴近木星视面的采样点。
+func jupiterGalileanNearDisk(prevSample, midSample, nextSample jupiterGalileanMetricSample) bool {
+	for _, metric := range [3]float64{prevSample.metric, midSample.metric, nextSample.metric} {
+		if isFinite(metric) && metric <= jupiterGalileanCrossingProbeMetric {
+			return true
+		}
+	}
+	return false
+}
+
+// jupiterGalileanFineScanAround 在过零点邻域按事件尺度取样，命中后交给事件求解。
+func jupiterGalileanFineScanAround(
+	jd float64,
+	satellite int,
+	phenomenonType JupiterGalileanPhenomenonType,
+) (JupiterGalileanPhenomenonEvent, bool) {
+	// 从过零点向两侧交替外扩，通常几步内就能落进事件窗口。
+	steps := int(math.Round(jupiterGalileanCrossingProbeDays / jupiterGalileanCrossingProbeStepDays))
+	for step := 0; step <= steps; step++ {
+		for _, sign := range [2]float64{1, -1} {
+			if step == 0 && sign < 0 {
+				continue
+			}
+			candidate := jd + sign*float64(step)*jupiterGalileanCrossingProbeStepDays
+			if !jupiterGalileanPhenomenonMetricAt(candidate, satellite, phenomenonType).active {
+				continue
+			}
+			if event := findJupiterGalileanPhenomenonEventAround(candidate, satellite, phenomenonType); event.Valid {
+				return event, true
+			}
+		}
+	}
+	return JupiterGalileanPhenomenonEvent{}, false
+}
+
+// jupiterGalileanSignedCrosses 判断两次采样的有符号偏移是否变号（端点为 0 也算）。
+func jupiterGalileanSignedCrosses(first, second float64) bool {
+	if !isFinite(first) || !isFinite(second) {
+		return false
+	}
+	if first == 0 || second == 0 {
+		return true
+	}
+	return (first < 0) != (second < 0)
+}
+
+// refineJupiterGalileanSignedCrossing 用二分把过零时刻收敛到事件容差内。
+func refineJupiterGalileanSignedCrossing(
+	left, right float64,
+	satellite int,
+	phenomenonType JupiterGalileanPhenomenonType,
+) float64 {
+	leftValue := jupiterGalileanPhenomenonMetricAt(left, satellite, phenomenonType).signed
+	rightValue := jupiterGalileanPhenomenonMetricAt(right, satellite, phenomenonType).signed
+	if !isFinite(leftValue) || !isFinite(rightValue) || (leftValue < 0) == (rightValue < 0) {
+		return (left + right) / 2
+	}
+	for i := 0; i < 80 && right-left > jupiterGalileanEventEpsilonDays; i++ {
+		middle := (left + right) / 2
+		value := jupiterGalileanPhenomenonMetricAt(middle, satellite, phenomenonType).signed
+		if !isFinite(value) {
+			return middle
+		}
+		if (value < 0) == (leftValue < 0) {
+			left, leftValue = middle, value
+		} else {
+			right, rightValue = middle, value
+		}
+	}
+	return (left + right) / 2
 }
 
 func findJupiterGalileanPhenomenonEventAround(jd float64, satellite int, phenomenonType JupiterGalileanPhenomenonType) JupiterGalileanPhenomenonEvent {
@@ -292,6 +423,7 @@ func jupiterGalileanPhenomenonMetricAt(
 	if !isFinite(jd) || satellite < 1 || satellite > 4 || !isValidJupiterGalileanPhenomenonType(phenomenonType) {
 		return jupiterGalileanMetricSample{
 			metric:     math.Inf(1),
+			signed:     math.NaN(),
 			phenomenon: invalidJupiterGalileanPhenomenon(),
 		}
 	}
@@ -301,6 +433,7 @@ func jupiterGalileanPhenomenonMetricAt(
 	if context.jupiterDistance == 0 {
 		return jupiterGalileanMetricSample{
 			metric:     math.Inf(1),
+			signed:     math.NaN(),
 			phenomenon: invalidJupiterGalileanPhenomenon(),
 		}
 	}
@@ -360,27 +493,41 @@ func jupiterGalileanPhenomenonMetricAt(
 		if !observation.InFrontOfJupiter {
 			metric += 4
 		}
-		return jupiterGalileanMetricSample{active: phenomenon.Transit, metric: metric, phenomenon: phenomenon}
+		return jupiterGalileanMetricSample{
+			active: phenomenon.Transit, metric: metric, signed: xEarth, phenomenon: phenomenon,
+		}
 	case JupiterGalileanOccultation:
 		metric := earthMetric
 		if observation.InFrontOfJupiter {
 			metric += 4
 		}
-		return jupiterGalileanMetricSample{active: phenomenon.Occultation, metric: metric, phenomenon: phenomenon}
+		return jupiterGalileanMetricSample{
+			active: phenomenon.Occultation, metric: metric, signed: xEarth, phenomenon: phenomenon,
+		}
 	case JupiterGalileanEclipse:
 		metric := sunMetric
 		if zSunAU <= 0 {
 			metric += 4
 		}
-		return jupiterGalileanMetricSample{active: phenomenon.Eclipse, metric: metric, phenomenon: phenomenon}
+		return jupiterGalileanMetricSample{
+			active: phenomenon.Eclipse, metric: metric, signed: xSun, phenomenon: phenomenon,
+		}
 	case JupiterGalileanShadowTransit:
 		metric := shadowMetric
 		if shadowPoint.hasIntersection && !shadowPoint.visible {
 			metric += 4
 		}
-		return jupiterGalileanMetricSample{active: phenomenon.ShadowTransit, metric: metric, phenomenon: phenomenon}
+		signed := math.NaN()
+		if shadowPoint.hasIntersection {
+			signed = shadowPoint.xJupiterRadii
+		}
+		return jupiterGalileanMetricSample{
+			active: phenomenon.ShadowTransit, metric: metric, signed: signed, phenomenon: phenomenon,
+		}
 	default:
-		return jupiterGalileanMetricSample{metric: math.Inf(1), phenomenon: invalidJupiterGalileanPhenomenon()}
+		return jupiterGalileanMetricSample{
+			metric: math.Inf(1), signed: math.NaN(), phenomenon: invalidJupiterGalileanPhenomenon(),
+		}
 	}
 }
 

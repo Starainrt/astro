@@ -2,9 +2,12 @@ package moon
 
 import (
 	"math"
+	"math/rand"
 	"testing"
 	"time"
 
+	"github.com/starainrt/astro/basic"
+	lite "github.com/starainrt/astro/lite/internal"
 	fullmoon "github.com/starainrt/astro/moon"
 )
 
@@ -90,5 +93,85 @@ func assertTimeWithinMinutes(t *testing.T, name string, got, want time.Time, lim
 	t.Helper()
 	if math.Abs(got.Sub(want).Minutes()) > limitMinutes {
 		t.Fatalf("%s = %s, want %s", name, got, want)
+	}
+}
+
+// 四个地平入口须只求一次站心位置：参考实现按旧口径对同一时刻重复求值，逐位对照。
+func TestHorizontalEntriesMatchDuplicatedEvaluation(t *testing.T) {
+	type site struct {
+		name     string
+		lon, lat float64
+	}
+	sites := []site{
+		{"shanghai", 121.4737, 31.2304},
+		{"sydney", 151.2093, -33.8688},
+		{"north-pole", 0, 89.9999},
+		{"south-pole", 0, -89.9999},
+		{"dateline-west", -179.99, 12},
+		{"dateline-east", 179.99, -12},
+		{"equator", 0, 0},
+	}
+	zones := []*time.Location{
+		time.UTC,
+		time.FixedZone("CST", 8*3600),
+		time.FixedZone("EST", -5*3600),
+		time.FixedZone("LMT", -7*3600-52*60-58),
+	}
+	years := []int{-500, 1000, 1582, 2025, 2100, 3000, 4000}
+	hours := []int{0, 5, 12, 20, 23}
+
+	type sample struct {
+		label string
+		date  time.Time
+		lon   float64
+		lat   float64
+	}
+	samples := make([]sample, 0, len(sites)*len(zones)*len(years)*len(hours)+200)
+	for _, st := range sites {
+		for _, zone := range zones {
+			for _, year := range years {
+				for _, hour := range hours {
+					samples = append(samples, sample{
+						label: st.name + "/" + zone.String(),
+						date:  time.Date(year, 3, 17, hour, 43, 21, 123456789, zone),
+						lon:   st.lon,
+						lat:   st.lat,
+					})
+				}
+			}
+		}
+	}
+	rng := rand.New(rand.NewSource(20260915))
+	for i := 0; i < 200; i++ {
+		zone := time.FixedZone("random", (rng.Intn(97)-48)*1800)
+		samples = append(samples, sample{
+			label: "random",
+			date: time.Date(
+				rng.Intn(8000)-2000, time.Month(1+rng.Intn(12)), 1+rng.Intn(28),
+				rng.Intn(24), rng.Intn(60), rng.Intn(60), rng.Intn(1000000000), zone,
+			),
+			lon: rng.Float64()*360 - 180,
+			lat: rng.Float64()*179.8 - 89.9,
+		})
+	}
+
+	for _, s := range samples {
+		jd := basic.Date2JDE(s.date.UTC())
+		altitude, azimuth, hourAngle := lite.HorizontalCoordinates(ApparentRa(s.date, s.lon, s.lat), ApparentDec(s.date, s.lon, s.lat), jd, s.lon, s.lat)
+		checks := []struct {
+			name string
+			got  float64
+			want float64
+		}{
+			{"HourAngle", HourAngle(s.date, s.lon, s.lat), hourAngle},
+			{"Azimuth", Azimuth(s.date, s.lon, s.lat), azimuth},
+			{"Altitude", Altitude(s.date, s.lon, s.lat), altitude},
+			{"Zenith", Zenith(s.date, s.lon, s.lat), 90 - altitude},
+		}
+		for _, check := range checks {
+			if check.got != check.want {
+				t.Fatalf("%s %s %s: got %.17g want %.17g", check.name, s.label, s.date.Format(time.RFC3339Nano), check.got, check.want)
+			}
+		}
 	}
 }

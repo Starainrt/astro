@@ -2,6 +2,7 @@ package svg
 
 import (
 	"errors"
+	"fmt"
 	"math"
 	"strings"
 	"testing"
@@ -49,6 +50,26 @@ func TestFindLocalPlanetOccultationSVGsSaturnFiveContacts(t *testing.T) {
 	}
 	if err := validateXML(diagram); err != nil {
 		t.Fatalf("generated local planetary SVG is not valid XML: %v", err)
+	}
+}
+
+func TestLocalPlanetOccultationSVGUsesGreatestMoonPhase(t *testing.T) {
+	info := localSaturnOccultation(t)
+	diagram, err := LocalPlanetOccultationSVG(info, LocalPlanetOccultationSVGOptions{
+		Location: time.UTC,
+	})
+	if err != nil {
+		t.Fatalf("LocalPlanetOccultationSVG() error = %v", err)
+	}
+	appearance := localOccultationMoonAppearanceAt(info.Greatest, info.Observer)
+	want := fmt.Sprintf(`data-illumination="%.6f" data-bright-limb-position-angle="%.3f"`,
+		appearance.illumination, appearance.brightLimbPA)
+	if !strings.Contains(diagram, want) {
+		t.Fatalf("local planetary SVG does not carry greatest-time Moon appearance %q", want)
+	}
+	if appearance.illumination > 1e-6 && appearance.illumination < 1-1e-6 &&
+		!strings.Contains(diagram, `<clipPath id="local-planet-occultation-moon-overview">`) {
+		t.Fatal("non-full Moon overview is missing its phase clip path")
 	}
 }
 

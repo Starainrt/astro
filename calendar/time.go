@@ -32,6 +32,10 @@ type LunarInfo struct {
 	CalendarSystem AncientCalendarSystem `json:"calendarSystem"`
 	// CalendarName 历法名称
 	CalendarName string `json:"calendarName"`
+	// JDE 该农历日精确的儒略日 / exact Julian day.
+	JDE float64 `json:"jde"`
+	// JulianOnly 是否只存在于儒略历 / Julian-calendar-only date.
+	JulianOnly bool `json:"julianOnly,omitempty"`
 	// Dynasty 朝代，如唐、宋、元、明、清等
 	Dynasty string `json:"dynasty"`
 	// Emperor 皇帝姓名(仅供参考，多个皇帝用同一个年号的场景，此处不准)
@@ -51,6 +55,8 @@ type LunarInfo struct {
 type Time struct {
 	solarTime time.Time
 	lunars    []LunarTime
+	// solarCandidates 是该农历日的全部合法公历候选，首个元素恒等于 solarTime；单候选时为 nil。
+	solarCandidates []time.Time
 }
 
 // Solar 公历时间 / solar time.
@@ -162,20 +168,27 @@ func (t Time) Lunar() LunarTime {
 
 // Add 时间偏移 / add a duration.
 //
-// 返回公历时间偏移后的农历结果。
-// Returns the lunar-calendar result after applying the duration to the stored civil time.
+// 按公历时间轴精确相加；区间跨过 1582 改历空窗时改走儒略日轴，跳过不存在的 10 天。
+// Adds exactly along the civil timeline; when the interval crosses the 1582 reform gap it moves
+// along the Julian-day axis instead, skipping the ten days that do not exist.
 func (t Time) Add(d time.Duration) Time {
-	if d < time.Second {
-		newT := t.solarTime.Add(d)
-		rT, _ := SolarToLunar(newT)
-		return rT
+	newT := t.solarTime.Add(d)
+	if crossesGregorianReformGap(t.solarTime, newT) {
+		jde := Date2JDE(t.solarTime) + d.Seconds()/86400.0
+		newT = basic.JDE2DateByZone(jde, t.solarTime.Location(), true)
 	}
-	sec := d.Seconds()
-	jde := Date2JDE(t.solarTime)
-	jde += sec / 86400.0
-	newT := basic.JDE2DateByZone(jde, t.solarTime.Location(), true)
 	rT, _ := SolarToLunar(newT)
 	return rT
+}
+
+// crossesGregorianReformGap 报告两个时刻之间是否包含 1582 改历跳过的 10 天（公历 1582-10-05..14）。
+func crossesGregorianReformGap(from, to time.Time) bool {
+	start := time.Date(1582, 10, 5, 0, 0, 0, 0, from.Location())
+	end := time.Date(1582, 10, 15, 0, 0, 0, 0, from.Location())
+	if to.Before(from) {
+		from, to = to, from
+	}
+	return from.Before(end) && !to.Before(start)
 }
 
 type LunarTime struct {
@@ -200,8 +213,51 @@ type LunarTime struct {
 	calendarSystem AncientCalendarSystem
 	//历法名称
 	calendarName string
+	// julianOnly 该农历日是否只存在于儒略历（如 700-02-29）；Solar 取后继日作为标签。
+	julianOnly bool
+	// jde 该农历日精确的儒略日，仅在 julianOnly 时显式保存。
+	jde float64
 
 	eras []EraDesc
+}
+
+// JulianOnly 该农历日是否只存在于儒略历 / whether the date exists only in the Julian calendar.
+func (l LunarTime) JulianOnly() bool {
+	return l.julianOnly
+}
+
+// JDE 该农历日精确的儒略日；儒略历独有闰日比 Solar() 早一天 / exact Julian day.
+func (l LunarTime) JDE() float64 {
+	if l.julianOnly && l.jde > 0 {
+		return l.jde
+	}
+	return Date2JDE(l.solarDate)
+}
+
+// JulianOnly 主历法农历日是否只存在于儒略历 / whether the primary date is Julian-calendar-only.
+func (t Time) JulianOnly() bool {
+	if len(t.lunars) == 0 {
+		return false
+	}
+	return t.lunars[0].JulianOnly()
+}
+
+// JDE 主历法农历日精确的儒略日 / exact Julian day of the primary lunar date.
+func (t Time) JDE() float64 {
+	if len(t.lunars) == 0 {
+		return Date2JDE(t.solarTime)
+	}
+	return t.lunars[0].JDE()
+}
+
+// SolarCandidates 该农历日的全部合法公历候选，首个恒等于 Solar() / every legal civil date, Solar() first.
+func (t Time) SolarCandidates() []time.Time {
+	if len(t.solarCandidates) == 0 {
+		return []time.Time{t.solarTime}
+	}
+	out := make([]time.Time, len(t.solarCandidates))
+	copy(out, t.solarCandidates)
+	return out
 }
 
 // ShengXiao 生肖 / Chinese zodiac.
@@ -231,6 +287,9 @@ func (l LunarTime) GanZhiMonth() string {
 
 // GanZhiDay 日干支 / sexagenary day name.
 func (l LunarTime) GanZhiDay() string {
+	if l.julianOnly && l.jde > 0 {
+		return ganZhiOfJDE(l.jde)
+	}
 	return GanZhiOfDay(l.solarDate)
 }
 
@@ -350,7 +409,7 @@ func (l LunarTime) LunarInfo() []LunarInfo {
 			LunarMonthDayDesc: l.desc,
 			GanzhiYear:        GanZhiOfYear(l.year),
 			GanzhiMonth:       l.ganzhiMonth,
-			GanzhiDay:         GanZhiOfDay(l.solarDate),
+			GanzhiDay:         l.GanZhiDay(),
 			CalendarSystem:    l.calendarSystem,
 			CalendarName:      l.calendarName,
 			Dynasty:           v.Dynasty,
@@ -360,6 +419,8 @@ func (l LunarTime) LunarInfo() []LunarInfo {
 			EraDesc:           v.String(),
 			LunarWithEraDesc:  v.String() + l.desc,
 			ChineseZodiac:     l.ShengXiao(),
+			JDE:               l.JDE(),
+			JulianOnly:        l.julianOnly,
 		}
 		res = append(res, li)
 	}
@@ -374,7 +435,7 @@ func (l LunarTime) LunarInfo() []LunarInfo {
 			LunarMonthDayDesc: l.desc,
 			GanzhiYear:        GanZhiOfYear(l.year),
 			GanzhiMonth:       l.ganzhiMonth,
-			GanzhiDay:         GanZhiOfDay(l.solarDate),
+			GanzhiDay:         l.GanZhiDay(),
 			CalendarSystem:    l.calendarSystem,
 			CalendarName:      l.calendarName,
 			Dynasty:           "",
@@ -384,6 +445,8 @@ func (l LunarTime) LunarInfo() []LunarInfo {
 			EraDesc:           lunarYearDesc(l.year) + "年",
 			LunarWithEraDesc:  lunarYearDesc(l.year) + "年" + l.desc,
 			ChineseZodiac:     l.ShengXiao(),
+			JDE:               l.JDE(),
+			JulianOnly:        l.julianOnly,
 		}
 		res = append(res, li)
 	}

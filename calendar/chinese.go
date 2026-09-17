@@ -155,6 +155,18 @@ func innerSolarToLunar(date time.Time) (Time, error) {
 }
 
 func innerSolarToLunarByYMD(year, month, day int) (Time, error) {
+	result, err := innerSolarToLunarByYMDRaw(year, month, day)
+	if err != nil {
+		return result, err
+	}
+	// 输入为儒略历独有闰日时补记 JulianOnly/JDE。
+	if phantom, ok := julianOnlyPhantomJDE(year, month, day); ok {
+		result = markJulianOnly(result, phantom)
+	}
+	return result, nil
+}
+
+func innerSolarToLunarByYMDRaw(year, month, day int) (Time, error) {
 	if year < ancientMinYear || year > 9999 {
 		return Time{}, fmt.Errorf("日期超出范围")
 	}
@@ -250,6 +262,14 @@ func LunarToSolar(desc string) ([]Time, error) {
 		}
 		results = append(results, date)
 	}
+	// 字符串入口先把描述解析成 time.Time，儒略历独有闰日会偏一天，这里按闰日复核一次。
+	if parsed, perr := parseChineseDate(desc); perr == nil && parsed.LunarMonth() != 0 && parsed.LunarDay() != 0 {
+		for i := range results {
+			if fixed, ok := julianOnlyTextResult(results[i], parsed.LunarMonth(), parsed.LunarDay(), parsed.IsLeap()); ok {
+				results[i] = fixed
+			}
+		}
+	}
 	return results, nil
 }
 
@@ -289,6 +309,39 @@ func LunarToSolarSingle(year, month, day int, leap bool) (Time, error) {
 // For years [-103, 1912], the lunar month index follows the historical calendar in force at that time, counted from the first month of that year.
 // Years (1912, 3000] use the current GB/T 33661-2017 lunar-calendar convention.
 func LunarToSolarByYMD(year, month, day int, leap bool) (Time, error) {
+	result, err := lunarToSolarByYMD(year, month, day, leap)
+	if err != nil {
+		return result, err
+	}
+	return finalizeLunarToSolarResult(result, year, month, day, leap), nil
+}
+
+// finalizeLunarToSolarResult 补记儒略历独有闰日与多公历候选。
+func finalizeLunarToSolarResult(result Time, year, month, day int, leap bool) Time {
+	if lunarDateMatches(result, year, month, day, leap) {
+		result.solarCandidates = lunarToSolarCandidates(year, month, day, leap, result)
+		return result
+	}
+	// 主答案对不上请求：儒略历独有的 2 月 29 日（正向序列在那里缺一号），或改历双纪年里
+	// 主偏移落在了另一套纪年上（王莽 23/24 年交界）。
+	if phantom, ok := julianOnlyPhantomJDE(result.Solar().Year(), 2, 29); ok {
+		return markJulianOnlyLunar(result, year, month, day, leap, phantom)
+	}
+	alternates := lunarToSolarAlternates(year, month, day, leap)
+	if len(alternates) == 0 {
+		return result
+	}
+	primary, err := SolarToLunar(alternates[0])
+	if err != nil {
+		return result
+	}
+	if len(alternates) > 1 {
+		primary.solarCandidates = alternates
+	}
+	return primary
+}
+
+func lunarToSolarByYMD(year, month, day int, leap bool) (Time, error) {
 	if year < ancientBoundaryMinYear || year > 9999 {
 		return Time{}, fmt.Errorf("年份超出范围")
 	}
@@ -319,6 +372,186 @@ func LunarToSolarByYMD(year, month, day int, leap bool) (Time, error) {
 	}
 	date := Solar(year, month, day, leap, 8.0)
 	return SolarToLunar(date)
+}
+
+// julianOnlyCivilDay 报告该日期是否只存在于儒略历（ 1582 年前百年非 400 闰年的 2 月 29 日）。
+func julianOnlyCivilDay(year, month, day int) bool {
+	if month != 2 || day != 29 {
+		return false
+	}
+	if basic.ValidateCivilDate(year, month, float64(day)) != nil {
+		return false
+	}
+	return time.Date(year, time.February, 29, 0, 0, 0, 0, time.UTC).Month() != time.February
+}
+
+// julianOnlyPhantomJDE 返回儒略历独有闰日的儒略日。
+func julianOnlyPhantomJDE(year, month, day int) (float64, bool) {
+	if !julianOnlyCivilDay(year, month, day) {
+		return 0, false
+	}
+	return basic.JDECalc(year, month, float64(day)), true
+}
+
+// julianOnlyTextResult 复核字符串入口的结果是否落在儒略历独有闰日上，是则返回该闰日的结果。
+func julianOnlyTextResult(result Time, month, day int, leap bool) (Time, bool) {
+	solar := result.Solar()
+	year := solar.Year()
+	if !julianOnlyCivilDay(year, 2, 29) {
+		return result, false
+	}
+	diff := Date2JDE(solar) - basic.JDECalc(year, 2, 29)
+	switch diff {
+	case 1, -1:
+		// +1 表示结果是闰日的标签日，-1 表示结果是闰日的前一天。
+	default:
+		return result, false
+	}
+	forward, err := innerSolarToLunarByYMD(year, 2, 29)
+	if err != nil {
+		return result, false
+	}
+	lunar := forward.Lunar()
+	// 只比日号与闰月标志（改历期间描述用年号月序、记录存规范月序），且与结果的农历日号相差一天。
+	if lunar.LunarDay() != day || lunar.IsLeap() != leap {
+		return result, false
+	}
+	resultDay := result.Lunar().LunarDay()
+	if diff > 0 {
+		// 结果是闰日的标签日，农历上比闰日晚一天。
+		if resultDay != day+1 && !(resultDay == 1 && day >= 29) {
+			return result, false
+		}
+	} else {
+		// 结果是闰日的前一天，农历上比闰日早一天。
+		if resultDay != day-1 && !(day == 1 && resultDay >= 29) {
+			return result, false
+		}
+	}
+	return forward, true
+}
+
+// markJulianOnly 补记儒略历独有闰日：Solar 取规范标签（后继日），精确日期放入 JDE。
+func markJulianOnly(result Time, phantomJDE float64) Time {
+	label := basic.JDE2DateByZone(phantomJDE, getCst(), true)
+	result.solarTime = label
+	for i := range result.lunars {
+		result.lunars[i].solarDate = label
+		result.lunars[i].julianOnly = true
+		result.lunars[i].jde = phantomJDE
+	}
+	return result
+}
+
+// markJulianOnlyLunar 反向路径用：用正向记录改写停在标签日的农历身份，并补记闰日标志。
+func markJulianOnlyLunar(result Time, year, month, day int, leap bool, phantomJDE float64) Time {
+	label := basic.JDE2DateByZone(phantomJDE, getCst(), true)
+	result = markJulianOnly(result, phantomJDE)
+	forward, err := innerSolarToLunarByYMD(label.Year(), 2, 29)
+	if err != nil || !lunarDateMatches(forward, year, month, day, leap) {
+		return result
+	}
+	lunars := make([]LunarTime, len(forward.lunars))
+	copy(lunars, forward.lunars)
+	for i := range lunars {
+		lunars[i].julianOnly = true
+		lunars[i].jde = phantomJDE
+	}
+	result.lunars = lunars
+	return result
+}
+
+// markJulianOnlyJDN 在 JDN 层面判定儒略历独有闰日（古历与秦汉反向直接由 JDN 造记录）。
+func markJulianOnlyJDN(result Time, jdn int) Time {
+	label := basic.JDE2DateByZone(float64(jdn)-0.5, getCst(), true)
+	phantom, ok := julianOnlyPhantomJDE(label.Year(), 2, 29)
+	if !ok || int(math.Floor(phantom+0.5)) != jdn {
+		return result
+	}
+	return markJulianOnly(result, phantom)
+}
+
+// lunarDateMatches 报告结果里是否有记录正是该农历日。
+func lunarDateMatches(result Time, year, month, day int, leap bool) bool {
+	for _, l := range result.Lunars() {
+		if l.LunarYear() == year && l.LunarMonth() == month && l.LunarDay() == day && l.IsLeap() == leap {
+			return true
+		}
+	}
+	return false
+}
+
+// lunarReformYear 报告该年是否处于改历双纪年窗口（王莽/魏明帝/武则天/唐肃宗）。
+func lunarReformYear(year int) bool {
+	return (year >= 9 && year <= 23) || (year >= 237 && year <= 240) ||
+		(year >= 689 && year <= 700) || (year >= 761 && year <= 762)
+}
+
+// lunarToSolarCandidates 收集该农历日的全部合法公历候选，主答案在前；单候选返回 nil。
+func lunarToSolarCandidates(year, month, day int, leap bool, primary Time) []time.Time {
+	candidates := []time.Time{primary.Solar()}
+	for _, date := range lunarToSolarAlternates(year, month, day, leap) {
+		duplicated := false
+		for _, existing := range candidates {
+			if existing.Equal(date) {
+				duplicated = true
+				break
+			}
+		}
+		if !duplicated {
+			candidates = append(candidates, date)
+		}
+	}
+	if len(candidates) == 1 {
+		return nil
+	}
+	return candidates
+}
+
+// lunarToSolarAlternates 收集另一套改历月序（或颛顼历）口径下能正向回到该农历日的公历日。
+func lunarToSolarAlternates(year, month, day int, leap bool) []time.Time {
+	var alternates []time.Time
+	appendIfLegal := func(result Time, ok bool) {
+		if !ok || !lunarDateMatches(result, year, month, day, leap) {
+			return
+		}
+		date := result.Solar()
+		for _, existing := range alternates {
+			if existing.Equal(date) {
+				return
+			}
+		}
+		alternates = append(alternates, date)
+	}
+	switch {
+	case year <= qinHanMaxYear:
+		// 太初改历交接：颛顼历与默认（太初）口径各是一个候选。
+		result, ok := lunarToSolarQinHan(year, month, day, leap)
+		if ok {
+			appendIfLegal(tagCalendar(result, AncientCalendarQinHan, ancientCalendarName(AncientCalendarQinHan)), true)
+		}
+	case year <= 1912:
+		// 改历双纪年：换另一套月序偏移（0/1/2，255 在 rapidSolarHan2Qing 内部等价于 2）再算一次。
+		if !lunarReformYear(year) {
+			break
+		}
+		primaryDiff := yearDiffLunar(year, month, day)
+		if primaryDiff == 255 {
+			primaryDiff = 2
+		}
+		for _, diff := range []int{0, 1, 2} {
+			if diff == primaryDiff {
+				continue
+			}
+			date := rapidSolarHan2Qing(year, month, day, leap, diff, nil)
+			if date.IsZero() {
+				continue
+			}
+			result, err := SolarToLunar(date)
+			appendIfLegal(result, err == nil)
+		}
+	}
+	return alternates
 }
 
 func lunarToSolarHanQingDefault(year, month, day int, leap bool) (Time, bool) {
@@ -514,6 +747,12 @@ var chineseMonths = map[string]int{
 	"七": 7, "八": 8, "九": 9, "十": 10,
 }
 
+// 两个正则提到包级：文本入口每次解析都会用到，每次重编译会白花几十微秒。
+var (
+	chineseDatePrefixYearPattern = regexp.MustCompile(`^([-一二三四五六七八九十零〇\d]+?)年`)
+	chineseDatePattern           = regexp.MustCompile(`^([\p{Han}]+?)([-负負一二三四五六七八九十零〇\d]*?元?)年([\p{Han}\d]+?)月([\p{Han}\d]+?)日?$`)
+)
+
 func parseChineseDate(dateStr string) (LunarTime, error) {
 	var result LunarTime
 	var err error
@@ -521,7 +760,7 @@ func parseChineseDate(dateStr string) (LunarTime, error) {
 	if strings.HasPrefix(dateStr, "前") {
 		originDateStr := dateStr
 		dateStr = strings.TrimPrefix(dateStr, "前")
-		re := regexp.MustCompile(`^([-一二三四五六七八九十零〇\d]+?)年`)
+		re := chineseDatePrefixYearPattern
 		matches := re.FindStringSubmatch(dateStr)
 		if len(matches) == 2 {
 			year, err := parseDirectYear(matches[1])
@@ -535,7 +774,7 @@ func parseChineseDate(dateStr string) (LunarTime, error) {
 	}
 	dateStr = "公元" + dateStr
 	// 正则表达式匹配日期格式
-	re := regexp.MustCompile(`^([\p{Han}]+?)([-负負一二三四五六七八九十零〇\d]*?元?)年([\p{Han}\d]+?)月([\p{Han}\d]+?)日?$`)
+	re := chineseDatePattern
 	matches := re.FindStringSubmatch(dateStr)
 	if len(matches) < 5 {
 		return result, fmt.Errorf("无效的日期格式: %s", dateStr)
@@ -741,7 +980,11 @@ func GanZhiOfYear(year int) string {
 
 // GanZhiOfDay 日干支 / sexagenary day name.
 func GanZhiOfDay(t time.Time) string {
-	jde := Date2JDE(time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, getCst()))
+	return ganZhiOfJDE(Date2JDE(time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, getCst())))
+}
+
+// ganZhiOfJDE 由儒略日直接求日干支（儒略历独有闰日无法表示为 time.Time）。
+func ganZhiOfJDE(jde float64) string {
 	diff := int(jde - 2451550.5)
 	if diff >= 0 {
 		return tiangan[diff%10] + dizhi[diff%12]

@@ -175,6 +175,9 @@ func LastMarsWesternQuadrature(jde float64) float64 {
 }
 
 func marsRetrogradeAroundOpposition(oppositionJD float64, searchBeforeOpposition bool) float64 {
+	if !isFiniteFloat(oppositionJD) {
+		return math.NaN()
+	}
 	oppositionTT := TD2UT(oppositionJD, true)
 	startTT := oppositionTT
 	endTT := oppositionTT
@@ -194,41 +197,90 @@ func marsRetrogradeAroundOpposition(oppositionJD float64, searchBeforeOpposition
 }
 
 func NextMarsRetrogradeToPrograde(jde float64) float64 {
+	if !isFiniteFloat(jde) {
+		return math.NaN()
+	}
 	lastOppositionJD := marsConjunctionFull(jde, 180, 0)
 	date := marsRetrogradeAroundOpposition(lastOppositionJD, false)
-	if sameEventUTQueryTT(date, jde) || eventUTQueryAfterOrEqual(date, jde) {
+	if isFiniteFloat(date) && stationUTQueryAfterOrEqual(date, jde) {
 		return date
 	}
 	nextOppositionJD := marsConjunctionFull(jde, 180, 1)
-	return marsRetrogradeAroundOpposition(nextOppositionJD, false)
+	if !isFiniteFloat(nextOppositionJD) {
+		return math.NaN()
+	}
+	date = marsRetrogradeAroundOpposition(nextOppositionJD, false)
+	if !isFiniteFloat(date) || !stationUTQueryAfterOrEqual(date, jde) {
+		return math.NaN()
+	}
+	return date
 }
 
 func LastMarsRetrogradeToPrograde(jde float64) float64 {
+	if !isFiniteFloat(jde) {
+		return math.NaN()
+	}
 	lastOppositionJD := marsConjunctionFull(jde, 180, 0)
 	date := marsRetrogradeAroundOpposition(lastOppositionJD, false)
-	if sameEventUTQueryTT(date, jde) || eventUTQueryBeforeOrEqual(date, jde) {
+	if isFiniteFloat(date) && stationUTQueryBeforeOrEqual(date, jde) {
 		return date
 	}
+	if !isFiniteFloat(lastOppositionJD) {
+		return math.NaN()
+	}
 	previousOppositionJD := marsConjunctionFull(eventUTLastQueryTT(lastOppositionJD), 180, 0)
-	return marsRetrogradeAroundOpposition(previousOppositionJD, false)
+	if !isFiniteFloat(previousOppositionJD) {
+		return math.NaN()
+	}
+	date = marsRetrogradeAroundOpposition(previousOppositionJD, false)
+	if !isFiniteFloat(date) || !stationUTQueryBeforeOrEqual(date, jde) {
+		return math.NaN()
+	}
+	return date
 }
 
 func NextMarsProgradeToRetrograde(jde float64) float64 {
+	if !isFiniteFloat(jde) {
+		return math.NaN()
+	}
 	nextOppositionJD := marsConjunctionFull(jde, 180, 1)
 	date := marsRetrogradeAroundOpposition(nextOppositionJD, true)
-	if sameEventUTQueryTT(date, jde) || eventUTQueryAfterOrEqual(date, jde) {
+	if isFiniteFloat(date) && stationUTQueryAfterOrEqual(date, jde) {
 		return date
 	}
+	if !isFiniteFloat(nextOppositionJD) {
+		return math.NaN()
+	}
 	followingOppositionJD := marsConjunctionFull(eventUTNextQueryTT(nextOppositionJD), 180, 1)
-	return marsRetrogradeAroundOpposition(followingOppositionJD, true)
+	if !isFiniteFloat(followingOppositionJD) {
+		return math.NaN()
+	}
+	date = marsRetrogradeAroundOpposition(followingOppositionJD, true)
+	if !isFiniteFloat(date) || !stationUTQueryAfterOrEqual(date, jde) {
+		return math.NaN()
+	}
+	return date
 }
 
 func LastMarsProgradeToRetrograde(jde float64) float64 {
+	if !isFiniteFloat(jde) {
+		return math.NaN()
+	}
 	nextOppositionJD := marsConjunctionFull(jde, 180, 1)
 	date := marsRetrogradeAroundOpposition(nextOppositionJD, true)
-	if sameEventUTQueryTT(date, jde) || eventUTQueryBeforeOrEqual(date, jde) {
+	if isFiniteFloat(date) && stationUTQueryBeforeOrEqual(date, jde) {
 		return date
 	}
+	if !isFiniteFloat(nextOppositionJD) {
+		return math.NaN()
+	}
 	lastOppositionJD := marsConjunctionFull(jde, 180, 0)
-	return marsRetrogradeAroundOpposition(lastOppositionJD, true)
+	if !isFiniteFloat(lastOppositionJD) {
+		return math.NaN()
+	}
+	date = marsRetrogradeAroundOpposition(lastOppositionJD, true)
+	if !isFiniteFloat(date) || !stationUTQueryBeforeOrEqual(date, jde) {
+		return math.NaN()
+	}
+	return date
 }

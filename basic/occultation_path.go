@@ -3,21 +3,31 @@ package basic
 import (
 	"math"
 	"sort"
+	"sync"
 	"time"
 )
 
 const (
-	occultationPathDefaultStepDays    = 1.0 / 1440.0
-	occultationPathMinStepDays        = 1.0 / 86400.0
-	occultationPathMaxSampleCount     = 30000
-	occultationPathMaxAdaptiveDepth   = 20
-	occultationPathBoundarySpacingKM  = 500.0
-	occultationPathVelocityStepDays   = 1.0 / 1440.0
-	occultationPathBoundaryScanPoints = 720
-	occultationPathRootToleranceDays  = occultationEventSelectionToleranceDays
-	occultationPathRangeStepDays      = 5.0 / 1440.0
-	occultationPathSearchSpanDays     = 2.0
-	occultationPathWidthToleranceKM   = 0.005
+	// occultationPathThetaIntervalCacheMaximumEntries 限制每个 frame 记忆的中心角数量；一次求解只会用到个位数个。
+	// occultationPathThetaIntervalCacheMaximumEntries bounds the memory of center angles per frame; a solve uses only a handful.
+	occultationPathThetaIntervalCacheMaximumEntries = 8
+	occultationPathDefaultStepDays                  = 1.0 / 1440.0
+	occultationPathMinStepDays                      = 1.0 / 86400.0
+	occultationPathMaxSampleCount                   = 30000
+	occultationPathMaxAdaptiveDepth                 = 20
+	occultationPathBoundarySpacingKM                = 500.0
+	occultationPathContourSpacingKM                 = 40.0
+	occultationPathBoundaryMergeKM                  = 1.0
+	occultationPathVelocityStepDays                 = 1.0 / 1440.0
+	occultationPathBoundaryScanPoints               = 720
+	occultationPathRootToleranceDays                = occultationEventSelectionToleranceDays
+	occultationPathRangeStepDays                    = 5.0 / 1440.0
+	occultationPathSearchSpanDays                   = 2.0
+	occultationPathWidthToleranceKM                 = 0.005
+	occultationPathMaxOutputPointCount              = 2000000
+	occultationPathFootprintPointBudget             = 2048
+	occultationPathBoundaryBranchJumpKM             = 120.0
+	occultationPathBoundaryBranchSpeedKMPerSecond   = 10.0
 
 	occultationPathEarthEquatorialRadiusKM = 6378.1366
 	occultationPathEarthPolarRatio         = 0.99664719
@@ -54,14 +64,11 @@ func FindStarOccultationPaths(start, end time.Time, star StarCoordinate, options
 	)
 	paths := make([]StarOccultationPath, 0, len(candidates))
 	for _, seedTT := range candidates {
-		path, ok, err := starOccultationPathAtSeed(seedTT, star, options, start.Location())
+		path, ok, err := starOccultationPathAtSeed(seedTT, star, options, start, end)
 		if err != nil {
 			return nil, err
 		}
 		if !ok {
-			continue
-		}
-		if !occultationTimeInSelectionWindow(path.Greatest.Time, start, end) {
 			continue
 		}
 		if len(paths) > 0 && math.Abs(paths[len(paths)-1].Greatest.Time.Sub(path.Greatest.Time).Seconds()) <= 60 {
@@ -76,6 +83,9 @@ func FindStarOccultationPaths(start, end time.Time, star StarCoordinate, options
 }
 
 func normalizeOccultationPathOptions(options OccultationPathOptions) OccultationPathOptions {
+	if options.Algorithm == "" {
+		options.Algorithm = OccultationPathAlgorithmOptimized
+	}
 	if options.Step <= 0 {
 		options.Step = time.Duration(occultationPathDefaultStepDays * float64(24*time.Hour))
 	}
@@ -85,6 +95,26 @@ func normalizeOccultationPathOptions(options OccultationPathOptions) Occultation
 	if options.TargetSpacingKM <= 0 || math.IsNaN(options.TargetSpacingKM) || math.IsInf(options.TargetSpacingKM, 0) {
 		options.TargetSpacingKM = 0
 	}
+	if len(options.GreatestTimeValues) > 0 {
+		values := make([]float64, 0, len(options.GreatestTimeValues))
+		for _, value := range options.GreatestTimeValues {
+			if !finite(value) {
+				continue
+			}
+			duplicate := false
+			for _, existing := range values {
+				if math.Abs(existing-value) <= 1e-9 {
+					duplicate = true
+					break
+				}
+			}
+			if !duplicate {
+				values = append(values, value)
+			}
+		}
+		sort.Float64s(values)
+		options.GreatestTimeValues = values
+	}
 	return options
 }
 
@@ -92,38 +122,67 @@ func starOccultationPathAtSeed(
 	seedTT float64,
 	star StarCoordinate,
 	options OccultationPathOptions,
-	location *time.Location,
+	selectionStart, selectionEnd time.Time,
 ) (StarOccultationPath, bool, error) {
+	location := selectionStart.Location()
+	cache := newStarOccultationEventCache(star)
+	cache.prepareLocalEphemeris(seedTT)
+	frameAt := cache.frameAt
+	candidateFrameAt := cache.candidateFrameAt
 	searchStart := seedTT - occultationPathSearchSpanDays
 	searchEnd := seedTT + occultationPathSearchSpanDays
-	outerStart, outerEnd, ok := starOccultationPathWindow(seedTT, searchStart, searchEnd, star, false)
+	outerStart, outerEnd, ok := starOccultationPathWindowWithCandidateFrames(
+		seedTT, searchStart, searchEnd, candidateFrameAt, frameAt, false,
+	)
 	if !ok {
 		return StarOccultationPath{}, false, nil
 	}
 
-	centerStart, centerEnd, hasCenter := starOccultationPathWindow(seedTT, searchStart, searchEnd, star, true)
-	greatestTT := starOccultationPathGreatest(seedTT, outerStart, outerEnd, star)
-	greatest, greatestOK := starOccultationPathCenterPoint(greatestTT, star, location)
+	centerStart, centerEnd, hasCenter := starOccultationPathWindowWithCandidateFrames(
+		seedTT, searchStart, searchEnd, candidateFrameAt, frameAt, true,
+	)
+	// Global markers retain the same full-term ephemerides as event-only
+	// queries. The optimized path cache is selected after these markers.
+	greatestTT := starOccultationPathGreatestWithFrame(seedTT, outerStart, outerEnd, frameAt)
+	greatest, greatestOK := starOccultationPathCenterPointWithFrame(greatestTT, frameAt, location)
 	if !greatestOK {
 		if hasCenter {
 			greatestTT = math.Max(centerStart, math.Min(centerEnd, greatestTT))
-			greatest, greatestOK = starOccultationPathCenterPoint(greatestTT, star, location)
+			greatest, greatestOK = starOccultationPathCenterPointWithFrame(greatestTT, frameAt, location)
 		}
 	}
 	if !greatestOK {
-		frameAt := func(tt float64) (occultationPathFrame, bool) {
-			return starOccultationPathFrameAt(tt, star)
-		}
-		greatest, greatestOK = occultationPathBoundaryPointForFrame(greatestTT, frameAt, location)
+		// For a non-central path the shadow axis misses the ellipsoid. Greatest
+		// is the nearest point on the ellipsoid to that axis, not an outer
+		// contact tangent; the latter is a band edge and shifts the marker.
+		greatest, greatestOK = occultationPathTrackPointForFrame(greatestTT, frameAt, location)
 	}
 	if !greatestOK {
 		return StarOccultationPath{}, false, nil
+	}
+	if !occultationTimeInSelectionWindow(greatest.Time, selectionStart, selectionEnd) {
+		return StarOccultationPath{}, false, nil
+	}
+	if occultationPathEstimatedPointCount(
+		outerStart, outerEnd, centerStart, centerEnd, hasCenter,
+		0, 0, false, greatestTT, options,
+	) > occultationPathMaxOutputPointCount {
+		return StarOccultationPath{}, false, ErrOccultationPathSamplingLimit
 	}
 
-	start := starOccultationPathBoundaryEndpoint(outerStart, star, location, 1)
-	end := starOccultationPathBoundaryEndpoint(outerEnd, star, location, -1)
+	start := starOccultationPathBoundaryEndpointWithFrame(outerStart, frameAt, location, 1)
+	end := starOccultationPathBoundaryEndpointWithFrame(outerEnd, frameAt, location, -1)
 	if !start.valid || !end.valid {
 		return StarOccultationPath{}, false, nil
+	}
+	exactFrameAt := frameAt
+	if options.Algorithm != OccultationPathAlgorithmExact {
+		optimized := newStarOccultationEventCache(star)
+		optimized.preparePathEphemeris(seedTT, options.Algorithm)
+		if optimized.local.dense {
+			cache = optimized
+			frameAt = cache.frameAt
+		}
 	}
 
 	path := StarOccultationPath{
@@ -135,45 +194,306 @@ func starOccultationPathAtSeed(
 		Step:            options.Step,
 		TargetSpacingKM: options.TargetSpacingKM,
 	}
-	centerLine, northern, southern, err := starOccultationPathSamples(
+	centerLine, northern, southern, err := starOccultationPathSamplesWithFrame(
 		outerStart,
 		outerEnd,
 		centerStart,
 		centerEnd,
 		hasCenter,
 		greatestTT,
-		star,
+		frameAt,
 		options,
 		location,
 	)
 	if err != nil {
 		return StarOccultationPath{}, false, err
 	}
+	if cache.local.dense {
+		correctOccultationCenterWidths(centerLine, exactFrameAt)
+	}
 	path.CenterLine = centerLine
 	path.NorthernLimit = occultationPathWithEndpoints(start.point, end.point, northern)
 	path.SouthernLimit = occultationPathWithEndpoints(start.point, end.point, southern)
+	path.NorthernLimit = occultationStationCorrectLimitSeries(
+		path.NorthernLimit, frameAt, cache.riseSetContextAt, false, location,
+	)
+	path.SouthernLimit = occultationStationCorrectLimitSeries(
+		path.SouthernLimit, frameAt, cache.riseSetContextAt, false, location,
+	)
+	path.GreatestLimitSeparationKM, _ = occultationPathLimitSeparations(
+		path.NorthernLimit, path.SouthernLimit, greatestTT,
+	)
+	if !options.DisableFootprints {
+		path.Footprints = planetOccultationFootprints(outerStart, outerEnd, greatestTT, frameAt, options, location)
+	}
+	path.RiseSetCurves = occultationRiseSetCurvesWithCache(
+		outerStart, outerEnd, greatestTT, options, location, cache.riseSetCache,
+	)
+	path.GreatestTimeContours = occultationGreatestTimeContours(
+		occultationGreatestTimeLevels(options, outerStart, outerEnd), outerStart, outerEnd, cache.riseSetCache,
+		[][]OccultationPathPoint{path.CenterLine, path.NorthernLimit, path.SouthernLimit},
+		false, location,
+	)
+	bandContourTimes := occultationRiseSetEndpointTimes(path.RiseSetCurves)
+	path.BandContours = occultationContactBandContoursWithAdditionalTimes(
+		start.point, end.point, outerStart, outerEnd, greatestTT, frameAt, options, location, bandContourTimes,
+	)
+	if options.DisableFootprints {
+		path.BandFootprints = planetOccultationBandFootprints(
+			outerStart, outerEnd, greatestTT, frameAt, location, bandContourTimes,
+		)
+		if options.IncludeFootprintTimeline {
+			path.Footprints = planetOccultationTimelineFootprints(
+				outerStart, outerEnd, greatestTT, frameAt, options, location,
+			)
+		}
+	}
+	if len(path.Footprints) > 0 {
+		path.Footprints = occultationStationCorrectFootprintEdges(
+			path.Footprints, frameAt, cache.riseSetContextAt, false, location,
+		)
+	}
+	if len(path.BandFootprints) > 0 {
+		path.BandFootprints = occultationStationCorrectFootprintEdges(
+			path.BandFootprints, frameAt, cache.riseSetContextAt, false, location,
+		)
+	}
+	path.BandContours = occultationStationCorrectContours(
+		path.BandContours, path.RiseSetCurves, cache.riseSetCache, location,
+	)
+	path.VisibilityContours = occultationStationVisibilityEnvelopeContours(
+		path.RiseSetCurves, cache.riseSetCache, location,
+	)
 	return path, true, nil
+}
+
+func occultationPathEstimatedPointCount(
+	outerStart, outerEnd, centerStart, centerEnd float64,
+	hasCenter bool,
+	totalStart, totalEnd float64,
+	hasTotal bool,
+	greatestTT float64,
+	options OccultationPathOptions,
+) int {
+	stepDays := float64(options.Step) / float64(24*time.Hour)
+	if stepDays <= 0 {
+		stepDays = occultationPathDefaultStepDays
+	}
+	estimate := 0
+	add := func(value int) {
+		estimate = occultationPathAccumulatePointEstimate(estimate, value)
+	}
+	add(3 * len(occultationPathSampleTimes(outerStart, outerEnd, greatestTT, stepDays)))
+	contourStepDays := occultationPathContourStepDays(options)
+	add(2 * len(occultationPathSampleTimes(outerStart, outerEnd, greatestTT, contourStepDays)))
+	if hasCenter {
+		add(3 * len(occultationPathSampleTimes(centerStart, centerEnd, greatestTT, stepDays)))
+	}
+	if hasTotal {
+		add(3 * len(occultationPathSampleTimes(totalStart, totalEnd, greatestTT, stepDays)))
+		add(2 * len(occultationPathSampleTimes(totalStart, totalEnd, greatestTT, contourStepDays)))
+	}
+	footprintStep := planetOccultationFootprintSampleStepDays(options)
+	footprintLimit := planetOccultationFootprintMaxSamples
+	if options.DisableFootprints && !options.IncludeFootprintTimeline {
+		footprintStep = planetOccultationBandSampleStepDays()
+		footprintLimit = planetOccultationBandMaxSamples
+	}
+	add(len(occultationPathSampleTimesWithLimit(outerStart, outerEnd, greatestTT, footprintStep, footprintLimit)) * occultationPathFootprintPointBudget)
+	if options.DisableFootprints && options.IncludeFootprintTimeline {
+		add(len(planetOccultationBandSampleTimes(
+			outerStart, outerEnd, greatestTT, planetOccultationBandSampleStepDays(), planetOccultationBandMaxSamples,
+		)) * occultationPathFootprintPointBudget)
+	}
+	if hasTotal {
+		add(len(occultationPathSampleTimesWithLimit(totalStart, totalEnd, greatestTT, footprintStep, footprintLimit)) * occultationPathFootprintPointBudget)
+		if options.DisableFootprints && options.IncludeFootprintTimeline {
+			add(len(planetOccultationBandSampleTimes(
+				totalStart, totalEnd, greatestTT, planetOccultationBandSampleStepDays(), planetOccultationBandMaxSamples,
+			)) * occultationPathFootprintPointBudget)
+		}
+	}
+	if !options.DisableRiseSet {
+		riseSetStep := 5 * time.Minute
+		if options.RiseSetStep > 0 {
+			riseSetStep = options.RiseSetStep
+		}
+		riseSetCount := len(occultationPathSampleTimes(
+			outerStart, outerEnd, greatestTT,
+			float64(riseSetStep)/float64(24*time.Hour),
+		))
+		add(6 * riseSetCount)
+	}
+	return estimate
+}
+
+func occultationPathAccumulatePointEstimate(estimate, value int) int {
+	if value <= 0 || estimate > occultationPathMaxOutputPointCount {
+		return estimate
+	}
+	if value > occultationPathMaxOutputPointCount-estimate {
+		return occultationPathMaxOutputPointCount + 1
+	}
+	return estimate + value
 }
 
 func occultationPathWithEndpoints(start, end OccultationPathPoint, points []OccultationPathPoint) []OccultationPathPoint {
 	result := make([]OccultationPathPoint, 0, len(points)+2)
 	result = append(result, start)
 	for _, point := range points {
-		if point.Time.After(start.Time) && point.Time.Before(end.Time) {
+		if point.Time.After(result[len(result)-1].Time) && point.Time.Before(end.Time) {
 			result = append(result, point)
 		}
 	}
 	return append(result, end)
 }
 
-func starOccultationPathWindow(seedTT, startTT, endTT float64, star StarCoordinate, center bool) (float64, float64, bool) {
-	left := math.Max(startTT, seedTT-occultationPathSearchSpanDays)
-	right := math.Min(endTT, seedTT+occultationPathSearchSpanDays)
-	if right <= left {
-		return 0, 0, false
+// occultationPathLimitSeparations 在同一时刻的南北限采样对上填写地面间距，并返回最接近掩甚的那一对的间距。
+func occultationPathLimitSeparations(
+	north, south []OccultationPathPoint,
+	greatestTT float64,
+) (float64, bool) {
+	if len(north) == 0 || len(north) != len(south) {
+		return 0, false
 	}
-	predicate := func(tt float64) bool {
-		frame, ok := starOccultationPathFrameAt(tt, star)
+	separation, found := 0.0, false
+	nearestDelta := math.Inf(1)
+	for index := range north {
+		if !north[index].Time.Equal(south[index].Time) {
+			continue
+		}
+		value := occultationPathDistanceKM(north[index], south[index])
+		if !finite(value) || value < 0 {
+			continue
+		}
+		north[index].LimitSeparationKM = value
+		south[index].LimitSeparationKM = value
+		if delta := math.Abs(centerTimeTT(north[index].Time) - greatestTT); delta < nearestDelta {
+			nearestDelta, separation, found = delta, value, true
+		}
+	}
+	return separation, found
+}
+
+func occultationContactBandContours(
+	northern, southern []OccultationPathPoint,
+) [][]OccultationPathPoint {
+	contours := make([][]OccultationPathPoint, 0, 4)
+	for _, source := range [][]OccultationPathPoint{northern, southern} {
+		for _, sampleRange := range occultationContinuousBoundaryRanges(source) {
+			if sampleRange.end-sampleRange.start < 2 {
+				continue
+			}
+			contour := append([]OccultationPathPoint(nil), source[sampleRange.start:sampleRange.end]...)
+			contours = append(contours, contour)
+		}
+	}
+	return contours
+}
+
+type occultationPathSampleRange struct {
+	start int
+	end   int
+}
+
+func occultationContinuousBoundaryRanges(points []OccultationPathPoint) []occultationPathSampleRange {
+	if len(points) == 0 {
+		return nil
+	}
+	ranges := make([]occultationPathSampleRange, 0, 4)
+	start := 0
+	for index := 1; index < len(points); index++ {
+		if !occultationPathBoundaryBranchChanged(points[index-1], points[index]) {
+			continue
+		}
+		ranges = append(ranges, occultationPathSampleRange{start: start, end: index})
+		start = index
+	}
+	return append(ranges, occultationPathSampleRange{start: start, end: len(points)})
+}
+
+func occultationPathBoundaryBranchChanged(first, second OccultationPathPoint) bool {
+	distance := occultationPathDistanceKM(first, second)
+	if distance <= occultationPathBoundaryBranchJumpKM {
+		return false
+	}
+	duration := math.Abs(second.Time.Sub(first.Time).Seconds())
+	return duration == 0 || distance/duration > occultationPathBoundaryBranchSpeedKMPerSecond
+}
+
+func occultationContactBandContoursWithAdditionalTimes(
+	start, end OccultationPathPoint,
+	startTT, endTT, greatestTT float64,
+	frameAt occultationPathFrameFunc,
+	options OccultationPathOptions,
+	location *time.Location,
+	additionalTimes []float64,
+) [][]OccultationPathPoint {
+	stepDays := occultationPathContourStepDays(options)
+	northern, southern := occultationPathBoundaryContourSamplesForFrame(
+		startTT, endTT, greatestTT, frameAt, stepDays, location, additionalTimes,
+	)
+	return occultationContactBandContours(
+		occultationPathWithEndpoints(start, end, northern),
+		occultationPathWithEndpoints(start, end, southern),
+	)
+}
+
+func occultationPathContourStepDays(options OccultationPathOptions) float64 {
+	stepDays := float64(options.Step) / float64(24*time.Hour)
+	if stepDays <= 0 {
+		stepDays = occultationPathDefaultStepDays
+	}
+	if options.DisableRiseSet {
+		return stepDays
+	}
+	riseSetStep := options.RiseSetStep
+	if riseSetStep <= 0 {
+		riseSetStep = 5 * time.Minute
+	}
+	riseSetStepDays := float64(riseSetStep) / float64(24*time.Hour)
+	if riseSetStepDays > 0 && riseSetStepDays < stepDays {
+		stepDays = riseSetStepDays
+	}
+	return stepDays
+}
+
+func starOccultationPathWindow(seedTT, startTT, endTT float64, star StarCoordinate, center bool) (float64, float64, bool) {
+	return starOccultationPathWindowWithFrame(seedTT, startTT, endTT, func(tt float64) (occultationPathFrame, bool) {
+		return starOccultationPathFrameAt(tt, star)
+	}, center)
+}
+
+func starOccultationPathWindowWithFrame(
+	seedTT, startTT, endTT float64,
+	frameAt occultationPathFrameFunc,
+	center bool,
+) (float64, float64, bool) {
+	return occultationPathWindowWithCandidateFrames(
+		seedTT, startTT, endTT, frameAt, frameAt, center,
+		starOccultationPathHasBoundary,
+	)
+}
+
+func starOccultationPathWindowWithCandidateFrames(
+	seedTT, startTT, endTT float64,
+	candidateFrameAt, exactFrameAt occultationPathFrameFunc,
+	center bool,
+) (float64, float64, bool) {
+	return occultationPathWindowWithCandidateFrames(
+		seedTT, startTT, endTT, candidateFrameAt, exactFrameAt, center,
+		starOccultationPathHasBoundary,
+	)
+}
+
+func occultationPathWindowWithCandidateFrames(
+	seedTT, startTT, endTT float64,
+	candidateFrameAt, exactFrameAt occultationPathFrameFunc,
+	center bool,
+	hasBoundary func(occultationPathFrame) bool,
+) (float64, float64, bool) {
+	predicate := func(frameAt occultationPathFrameFunc, tt float64) bool {
+		frame, ok := frameAt(tt)
 		if !ok {
 			return false
 		}
@@ -181,146 +501,81 @@ func starOccultationPathWindow(seedTT, startTT, endTT float64, star StarCoordina
 			_, _, ok = occultationEarthLineIntersection(frame.moon, frame.axis)
 			return ok
 		}
-		return starOccultationPathHasBoundary(frame)
+		return hasBoundary(frame)
 	}
-
-	step := occultationPathRangeStepDays
-	first := math.NaN()
-	previous := left
-	previousOK := predicate(previous)
-	if previousOK {
-		first = previous
-	} else {
-		for tt := left + step; tt <= right; tt += step {
-			current := math.Min(tt, right)
-			currentOK := predicate(current)
-			if currentOK {
-				first = occultationPathRefineTransition(previous, current, predicate, false)
-				break
-			}
-			previous = current
-			previousOK = currentOK
-		}
-	}
-	if math.IsNaN(first) {
-		return 0, 0, false
-	}
-
-	last := first
-	previous = first
-	previousOK = true
-	for tt := first + step; tt <= right; tt += step {
-		current := math.Min(tt, right)
-		currentOK := predicate(current)
-		if !currentOK {
-			last = occultationPathRefineTransition(previous, current, predicate, true)
-			return first, last, true
-		}
-		last = current
-		previous = current
-		previousOK = currentOK
-	}
-	if previousOK {
-		last = right
-	}
-	return first, last, true
-}
-
-func occultationPathRefineTransition(left, right float64, predicate func(float64) bool, trueToFalse bool) float64 {
-	leftOK := predicate(left)
-	for i := 0; i < 48 && math.Abs(right-left) > occultationPathRootToleranceDays; i++ {
-		mid := (left + right) / 2
-		midOK := predicate(mid)
-		if trueToFalse {
-			if midOK {
-				left = mid
-			} else {
-				right = mid
-			}
-			continue
-		}
-		if midOK {
-			right = mid
-		} else {
-			left = mid
-		}
-	}
-	if trueToFalse {
-		return left
-	}
-	if leftOK {
-		return left
-	}
-	return right
+	engine := occultationMovingDiskEngine()
+	return engine.window(
+		seedTT, startTT, endTT,
+		func(tt float64) bool { return predicate(candidateFrameAt, tt) },
+		func(tt float64) bool { return predicate(exactFrameAt, tt) },
+	)
 }
 
 func starOccultationPathGreatest(seedTT, startTT, endTT float64, star StarCoordinate) float64 {
-	left := math.Max(startTT, seedTT-0.75)
-	right := math.Min(endTT, seedTT+0.75)
-	if right <= left {
-		return seedTT
-	}
-	const goldenRatio = 0.6180339887498949
-	x1 := right - goldenRatio*(right-left)
-	x2 := left + goldenRatio*(right-left)
-	f1 := starOccultationPathImpact(x1, star)
-	f2 := starOccultationPathImpact(x2, star)
-	for i := 0; i < 56; i++ {
-		if f1 > f2 {
-			left = x1
-			x1 = x2
-			f1 = f2
-			x2 = left + goldenRatio*(right-left)
-			f2 = starOccultationPathImpact(x2, star)
-		} else {
-			right = x2
-			x2 = x1
-			f2 = f1
-			x1 = right - goldenRatio*(right-left)
-			f1 = starOccultationPathImpact(x1, star)
-		}
-	}
-	return (left + right) / 2
+	return starOccultationPathGreatestWithFrame(seedTT, startTT, endTT, func(tt float64) (occultationPathFrame, bool) {
+		return starOccultationPathFrameAt(tt, star)
+	})
 }
 
-func starOccultationPathImpact(tt float64, star StarCoordinate) float64 {
-	frame, ok := starOccultationPathFrameAt(tt, star)
+func starOccultationPathGreatestWithFrame(
+	seedTT, startTT, endTT float64,
+	frameAt occultationPathFrameFunc,
+) float64 {
+	return starOccultationPathGreatestWithIterations(seedTT, startTT, endTT, frameAt, 56)
+}
+
+func starOccultationPathGreatestWithIterations(
+	seedTT, startTT, endTT float64,
+	frameAt occultationPathFrameFunc,
+	iterations int,
+) float64 {
+	return occultationMovingDiskEngine().greatest(
+		seedTT, startTT, endTT,
+		func(tt float64) (float64, bool) {
+			frame, ok := frameAt(tt)
+			if !ok {
+				return 0, false
+			}
+			return math.Hypot(frame.moonProjectionX(), frame.moonProjectionY()), true
+		}, iterations,
+	)
+}
+
+func starOccultationPathImpactWithFrame(tt float64, frameAt occultationPathFrameFunc) float64 {
+	frame, ok := frameAt(tt)
 	if !ok {
 		return math.Inf(1)
 	}
 	return math.Hypot(frame.moonProjectionX(), frame.moonProjectionY())
 }
 
-func starOccultationPathSamples(
+func starOccultationPathSamplesWithFrame(
 	outerStartTT, outerEndTT float64,
 	centerStartTT, centerEndTT float64,
 	hasCenter bool,
 	greatestTT float64,
-	star StarCoordinate,
+	frameAt occultationPathFrameFunc,
 	options OccultationPathOptions,
 	location *time.Location,
 ) ([]OccultationPathPoint, []OccultationPathPoint, []OccultationPathPoint, error) {
 	var points []OccultationPathPoint
 	if hasCenter {
 		var err error
-		points, err = starOccultationPathCenterSamples(centerStartTT, centerEndTT, greatestTT, star, options, location)
+		points, err = starOccultationPathCenterSamplesWithFrame(centerStartTT, centerEndTT, greatestTT, frameAt, options, location)
 		if err != nil {
 			return nil, nil, nil, err
 		}
 	}
 
-	frameAt := func(tt float64) (occultationPathFrame, bool) {
-		return starOccultationPathFrameAt(tt, star)
-	}
 	northern, southern := occultationPathBoundarySamplesForFrame(
-		outerStartTT, outerEndTT, greatestTT, frameAt, options, location,
+		outerStartTT, outerEndTT, greatestTT, frameAt, occultationPathContourStepDays(options), location,
 	)
 	return points, northern, southern, nil
 }
 
-func starOccultationPathCenterSamples(
+func starOccultationPathCenterSamplesWithFrame(
 	startTT, endTT, greatestTT float64,
-	star StarCoordinate,
+	frameAt occultationPathFrameFunc,
 	options OccultationPathOptions,
 	location *time.Location,
 ) ([]OccultationPathPoint, error) {
@@ -328,13 +583,13 @@ func starOccultationPathCenterSamples(
 	times := occultationPathSampleTimes(startTT, endTT, greatestTT, stepDays)
 	points := make([]OccultationPathPoint, 0, len(times))
 	for _, tt := range times {
-		point, ok := starOccultationPathCenterPoint(tt, star, location)
-		if ok {
+		point, ok := starOccultationPathCenterPointWithFrame(tt, frameAt, location)
+		if ok && (len(points) == 0 || point.Time.After(points[len(points)-1].Time)) {
 			points = append(points, point)
 		}
 	}
 	if options.TargetSpacingKM > 0 {
-		return refineOccultationPathSpacing(points, star, options.TargetSpacingKM, location)
+		return refineOccultationPathSpacingWithFrame(points, frameAt, options.TargetSpacingKM, location)
 	}
 	return points, nil
 }
@@ -349,44 +604,18 @@ func occultationPathSampleTimesWithLimit(
 	startTT, endTT, greatestTT, stepDays float64,
 	maximumCount int,
 ) []float64 {
-	if endTT < startTT {
-		startTT, endTT = endTT, startTT
-	}
 	if maximumCount < 3 {
 		maximumCount = 3
 	}
-	duration := endTT - startTT
-	if duration <= 0 {
-		return []float64{startTT}
-	}
-	if stepDays <= 0 || !finite(stepDays) {
-		stepDays = duration
-	}
-	baseSampleCount := int(math.Ceil(duration/stepDays)) + 1
-	if baseSampleCount+1 > maximumCount {
-		times := []float64{startTT, greatestTT, endTT}
-		interiorCount := maximumCount - len(times)
-		for index := 1; index <= interiorCount; index++ {
-			times = append(times, startTT+duration*float64(index)/float64(interiorCount+1))
-		}
-		sort.Float64s(times)
-		return uniqueOccultationPathTimes(times)
-	}
-	times := []float64{startTT, greatestTT, endTT}
-	for index := 1; ; index++ {
-		tt := startTT + float64(index)*stepDays
-		if tt >= endTT {
-			break
-		}
-		times = append(times, tt)
-	}
-	sort.Float64s(times)
-	return uniqueOccultationPathTimes(times)
+	engine := occultationMovingDiskEngine()
+	engine.maxSampleCount = maximumCount
+	times, _ := engine.sampleTimes(startTT, endTT, greatestTT, stepDays)
+	return times
 }
 
-func refineOccultationPathSpacing(
+func refineOccultationPathSpacingWithFrame(
 	points []OccultationPathPoint,
-	star StarCoordinate,
+	frameAt occultationPathFrameFunc,
 	targetSpacingKM float64,
 	location *time.Location,
 ) ([]OccultationPathPoint, error) {
@@ -396,13 +625,13 @@ func refineOccultationPathSpacing(
 	refined := make([]OccultationPathPoint, 0, len(points))
 	refined = append(refined, points[0])
 	widthAt := func(tt float64) (float64, bool) {
-		_, _, width, ok := starOccultationPathLimitsAndWidthAt(tt, star)
+		_, _, width, ok := occultationPathLimitsAndWidthForFrame(tt, frameAt)
 		return width, ok
 	}
 	for i := 1; i < len(points); i++ {
 		segmentStart := len(refined) - 1
 		var err error
-		refined, err = appendOccultationPathSegment(refined, points[i-1], points[i], star, targetSpacingKM, location, 0)
+		refined, err = appendOccultationPathSegmentWithFrame(refined, points[i-1], points[i], frameAt, targetSpacingKM, location, 0)
 		if err != nil {
 			return nil, err
 		}
@@ -411,10 +640,10 @@ func refineOccultationPathSpacing(
 	return refined, nil
 }
 
-func appendOccultationPathSegment(
+func appendOccultationPathSegmentWithFrame(
 	points []OccultationPathPoint,
 	start, end OccultationPathPoint,
-	star StarCoordinate,
+	frameAt occultationPathFrameFunc,
 	targetSpacingKM float64,
 	location *time.Location,
 	depth int,
@@ -432,31 +661,25 @@ func appendOccultationPathSegment(
 	startTT := centerTimeTT(start.Time)
 	endTT := centerTimeTT(end.Time)
 	midTT := (startTT + endTT) / 2
-	mid, ok := starOccultationPathCenterPointWithoutWidth(midTT, star, location)
+	midTime := occultationTTToLocation(midTT, location)
+	if !midTime.After(start.Time) || !midTime.Before(end.Time) {
+		return append(points, end), nil
+	}
+	mid, ok := starOccultationPathCenterPointWithoutWidthWithFrame(midTT, frameAt, location)
 	if !ok {
 		return append(points, end), nil
 	}
 	mid.WidthKM = (start.WidthKM + end.WidthKM) / 2
 	var err error
-	points, err = appendOccultationPathSegment(points, start, mid, star, targetSpacingKM, location, depth+1)
+	points, err = appendOccultationPathSegmentWithFrame(points, start, mid, frameAt, targetSpacingKM, location, depth+1)
 	if err != nil {
 		return nil, err
 	}
-	return appendOccultationPathSegment(points, mid, end, star, targetSpacingKM, location, depth+1)
+	return appendOccultationPathSegmentWithFrame(points, mid, end, frameAt, targetSpacingKM, location, depth+1)
 }
 
 func uniqueOccultationPathTimes(times []float64) []float64 {
-	if len(times) < 2 {
-		return times
-	}
-	unique := times[:1]
-	for _, tt := range times[1:] {
-		if math.Abs(tt-unique[len(unique)-1]) <= 1e-10 {
-			continue
-		}
-		unique = append(unique, tt)
-	}
-	return unique
+	return movingDiskUniqueTimes(times)
 }
 
 type occultationPathFrame struct {
@@ -466,6 +689,158 @@ type occultationPathFrame struct {
 	second       occultationPathVector
 	moonRadius   float64
 	targetRadius float64
+	// boundary 挂在被事件缓存复用的 frame 上，记忆化只依赖 frame 的边界搜索；零值 frame 为 nil 时退化为直接计算。
+	// boundary is attached to frames reused through the event cache and memoizes the boundary
+	// searches that depend only on the frame; a zero frame keeps it nil and computes directly.
+	boundary *occultationPathBoundaryCache
+}
+
+// occultationPathBoundaryCache 记忆化只依赖 frame 的两个边界搜索：切点与可见 θ 区间。
+// 两者各自要扫描 720 个网格点，而同一 frame 会在多个调用点被反复查询。
+// occultationPathBoundaryCache memoizes the two frame-only boundary searches (the tangency
+// and the visible theta intervals). Each scans 720 grid points and the same frame is queried
+// repeatedly from several call sites.
+type occultationPathBoundaryCache struct {
+	// boundaryOnce 用同一份 720 点判别式网格同时恢复切点与可见 θ 区间，避免两条路径各扫一遍。
+	// boundaryOnce recovers both the tangency and the visible theta intervals from one 720-point
+	// discriminant grid instead of scanning it once per path.
+	boundaryOnce sync.Once
+	tangentPoint occultationPathVector
+	tangentTheta float64
+	tangentOK    bool
+	intervals    []occultationPathThetaInterval
+
+	// intervalMu 保护按 centerTheta 复用的 θ 区间搜索；每个 frame 只会用到个位数个中心角。
+	// intervalMu guards the theta-interval searches reused per center angle; a frame only ever
+	// uses a handful of center angles.
+	intervalMu   sync.Mutex
+	intervalKeys []uint64
+	intervalVals []occultationPathThetaIntervalResult
+}
+
+// occultationPathFrameGeometryEqual 比较两个 frame 的几何内容，忽略只用于记忆化的 boundary 指针。
+// occultationPathFrameGeometryEqual compares the geometric content of two frames and ignores
+// the memo-only boundary pointer.
+func occultationPathFrameGeometryEqual(first, second occultationPathFrame) bool {
+	return first.moon == second.moon &&
+		first.axis == second.axis &&
+		first.first == second.first &&
+		first.second == second.second &&
+		first.moonRadius == second.moonRadius &&
+		first.targetRadius == second.targetRadius
+}
+
+// occultationPathThetaIntervalResult 是 occultationPathBoundaryThetaInterval 的缓存结果。
+// occultationPathThetaIntervalResult is the cached result of occultationPathBoundaryThetaInterval.
+type occultationPathThetaIntervalResult struct {
+	left, right float64
+	ok          bool
+}
+
+type starOccultationEphemerisState struct {
+	moonRA, moonDec float64
+	moonDistanceKM  float64
+	starRA, starDec float64
+	starDistanceKM  float64
+	valid           bool
+}
+
+type starOccultationEventCache struct {
+	star         StarCoordinate
+	states       map[uint64]starOccultationEphemerisState
+	frames       map[uint64]planetOccultationFrameCacheEntry
+	riseSetCache *occultationRiseSetEvaluationCache
+	local        *starOccultationLocalEphemeris
+}
+
+func newStarOccultationEventCache(star StarCoordinate) *starOccultationEventCache {
+	cache := &starOccultationEventCache{
+		star:   star,
+		states: make(map[uint64]starOccultationEphemerisState),
+		frames: make(map[uint64]planetOccultationFrameCacheEntry),
+	}
+	cache.riseSetCache = newOccultationRiseSetEvaluationCacheWithCandidate(
+		cache.riseSetContextAt,
+		cache.candidateRiseSetContextAt,
+	)
+	return cache
+}
+
+func (cache *starOccultationEventCache) stateAt(tt float64) starOccultationEphemerisState {
+	key := math.Float64bits(tt)
+	if state, ok := cache.states[key]; ok {
+		return state
+	}
+	if len(cache.states) >= planetOccultationEventCacheMaximumEntries {
+		for cachedKey := range cache.states {
+			delete(cache.states, cachedKey)
+		}
+		for cachedKey := range cache.frames {
+			delete(cache.frames, cachedKey)
+		}
+	}
+	var state starOccultationEphemerisState
+	interpolated := false
+	if cache.local != nil && cache.local.dense {
+		state, interpolated = cache.local.stateAt(tt)
+	}
+	if !interpolated {
+		state = starOccultationEphemerisStateAt(tt, cache.star)
+	}
+	cache.states[key] = state
+	return state
+}
+
+func (cache *starOccultationEventCache) prepareLocalEphemeris(center float64) {
+	if cache.local == nil {
+		cache.local = newStarOccultationLocalEphemeris(center, cache.star)
+	}
+}
+
+func (cache *starOccultationEventCache) candidateFrameAt(tt float64) (occultationPathFrame, bool) {
+	if cache.local != nil {
+		if state, ok := cache.local.stateAt(tt); ok {
+			return starOccultationPathFrameFromState(state)
+		}
+	}
+	return cache.frameAt(tt)
+}
+
+func (cache *starOccultationEventCache) frameAt(tt float64) (occultationPathFrame, bool) {
+	key := math.Float64bits(tt)
+	if entry, ok := cache.frames[key]; ok {
+		return entry.frame, entry.ok
+	}
+	frame, ok := starOccultationPathFrameFromState(cache.stateAt(tt))
+	if ok {
+		frame.boundary = &occultationPathBoundaryCache{}
+	}
+	cache.frames[key] = planetOccultationFrameCacheEntry{frame: frame, ok: ok}
+	return frame, ok
+}
+
+func (cache *starOccultationEventCache) riseSetContextAt(tt float64) occultationRiseSetContext {
+	state := cache.stateAt(tt)
+	return newOccultationRiseSetContext(
+		tt, state.moonRA, state.moonDec, state.moonDistanceKM,
+		state.starRA, state.starDec, state.starDistanceKM, 0,
+	)
+}
+
+func (cache *starOccultationEventCache) candidateRiseSetContextAt(tt float64) occultationRiseSetContext {
+	if cache.local != nil {
+		moonXYZ, targetXYZ, ok := cache.local.vectorsAt(tt)
+		if ok {
+			return newOccultationRiseSetContextFromVectors(
+				tt,
+				moonXYZ,
+				targetXYZ,
+				cache.local.starDistanceKM() > 0,
+				0,
+			)
+		}
+	}
+	return cache.riseSetContextAt(tt)
 }
 
 type occultationPathEndpoint struct {
@@ -477,18 +852,34 @@ func (f occultationPathFrame) moonProjectionX() float64 { return occultationPath
 func (f occultationPathFrame) moonProjectionY() float64 { return occultationPathDot(f.moon, f.second) }
 
 func starOccultationPathFrameAt(tt float64, star StarCoordinate) (occultationPathFrame, bool) {
+	return starOccultationPathFrameFromState(starOccultationEphemerisStateAt(tt, star))
+}
+
+func starOccultationEphemerisStateAt(tt float64, star StarCoordinate) starOccultationEphemerisState {
 	moonRA, moonDec := HMoonGeocentricApparentRaDecN(tt, -1)
-	moonDistance := HMoonAwayN(tt, -1)
-	if !finite(moonRA) || !finite(moonDec) || !finite(moonDistance) || moonDistance <= 0 {
+	moonDistanceKM := HMoonAwayN(tt, -1)
+	starRA, starDec := starApparentRaDecGeocentric(tt, star)
+	starDistanceKM := 0.0
+	if star.ParallaxMas > 0 {
+		starDistanceKM = 206264806.247 / star.ParallaxMas * occultationPathAstronomicalUnitKM
+	}
+	return starOccultationEphemerisState{
+		moonRA: moonRA, moonDec: moonDec, moonDistanceKM: moonDistanceKM,
+		starRA: starRA, starDec: starDec, starDistanceKM: starDistanceKM,
+		valid: finite(moonRA) && finite(moonDec) && finite(moonDistanceKM) && moonDistanceKM > 0 &&
+			finite(starRA) && finite(starDec) && finite(starDistanceKM) && starDistanceKM >= 0,
+	}
+}
+
+func starOccultationPathFrameFromState(state starOccultationEphemerisState) (occultationPathFrame, bool) {
+	if !state.valid {
 		return occultationPathFrame{}, false
 	}
-	moon := occultationPathRaDecVector(moonRA, moonDec, moonDistance)
-	starRA, starDec := starApparentRaDecGeocentric(tt, star)
-	starDirection := occultationPathRaDecVector(starRA, starDec, 1)
+	moon := occultationPathRaDecVector(state.moonRA, state.moonDec, state.moonDistanceKM)
+	starDirection := occultationPathRaDecVector(state.starRA, state.starDec, 1)
 	axis := occultationPathScale(starDirection, -1)
-	if star.ParallaxMas > 0 {
-		distanceAU := 206264806.247 / star.ParallaxMas
-		target := occultationPathRaDecVector(starRA, starDec, distanceAU*occultationPathAstronomicalUnitKM)
+	if state.starDistanceKM > 0 {
+		target := occultationPathRaDecVector(state.starRA, state.starDec, state.starDistanceKM)
 		axis = occultationPathScale(occultationPathSub(target, moon), -1)
 	}
 	axis = occultationPathUnit(axis)
@@ -504,7 +895,7 @@ func starOccultationPathFrameAt(tt float64, star StarCoordinate) (occultationPat
 		axis:       axis,
 		first:      first,
 		second:     second,
-		moonRadius: MoonSemidiameter(tt) * math.Pi / (180 * 3600),
+		moonRadius: math.Asin(moonEquatorialRadiusKM / state.moonDistanceKM),
 	}, true
 }
 
@@ -513,13 +904,18 @@ func starOccultationPathHasBoundary(frame occultationPathFrame) bool {
 	return ok
 }
 
-func starOccultationPathBoundaryEndpoint(tt float64, star StarCoordinate, location *time.Location, direction int) occultationPathEndpoint {
-	if _, ok := starOccultationPathFrameAt(tt, star); !ok {
+func starOccultationPathBoundaryEndpointWithFrame(
+	tt float64,
+	frameAt occultationPathFrameFunc,
+	location *time.Location,
+	direction int,
+) occultationPathEndpoint {
+	if _, ok := frameAt(tt); !ok {
 		return occultationPathEndpoint{}
 	}
 	for offset := 0; offset <= 3; offset++ {
 		candidateTT := tt + float64(direction)*float64(offset)*0.5/86400.0
-		candidateFrame, candidateOK := starOccultationPathFrameAt(candidateTT, star)
+		candidateFrame, candidateOK := frameAt(candidateTT)
 		if !candidateOK {
 			continue
 		}
@@ -532,7 +928,17 @@ func starOccultationPathBoundaryEndpoint(tt float64, star StarCoordinate, locati
 }
 
 func starOccultationPathCenterPoint(tt float64, star StarCoordinate, location *time.Location) (OccultationPathPoint, bool) {
-	frame, ok := starOccultationPathFrameAt(tt, star)
+	return starOccultationPathCenterPointWithFrame(tt, func(candidateTT float64) (occultationPathFrame, bool) {
+		return starOccultationPathFrameAt(candidateTT, star)
+	}, location)
+}
+
+func starOccultationPathCenterPointWithFrame(
+	tt float64,
+	frameAt occultationPathFrameFunc,
+	location *time.Location,
+) (OccultationPathPoint, bool) {
+	frame, ok := frameAt(tt)
 	if !ok {
 		return OccultationPathPoint{}, false
 	}
@@ -541,14 +947,18 @@ func starOccultationPathCenterPoint(tt float64, star StarCoordinate, location *t
 		return OccultationPathPoint{}, false
 	}
 	width := 0.0
-	if _, _, tangentWidth, limitsOK := starOccultationPathLimitsAndWidthAt(tt, star); limitsOK {
+	if _, _, tangentWidth, limitsOK := occultationPathLimitsAndWidthForFrame(tt, frameAt); limitsOK {
 		width = tangentWidth
 	}
 	return occultationPathPointFromVectorWithMoon(tt, point, width, frame.moon, location), true
 }
 
-func starOccultationPathCenterPointWithoutWidth(tt float64, star StarCoordinate, location *time.Location) (OccultationPathPoint, bool) {
-	frame, ok := starOccultationPathFrameAt(tt, star)
+func starOccultationPathCenterPointWithoutWidthWithFrame(
+	tt float64,
+	frameAt occultationPathFrameFunc,
+	location *time.Location,
+) (OccultationPathPoint, bool) {
+	frame, ok := frameAt(tt)
 	if !ok {
 		return OccultationPathPoint{}, false
 	}
@@ -559,19 +969,12 @@ func starOccultationPathCenterPointWithoutWidth(tt float64, star StarCoordinate,
 	return occultationPathPointFromVectorWithMoon(tt, point, 0, frame.moon, location), true
 }
 
-func starOccultationPathLimitsAndWidthAt(tt float64, star StarCoordinate) (occultationPathVector, occultationPathVector, float64, bool) {
-	frameAt := func(candidateTT float64) (occultationPathFrame, bool) {
-		return starOccultationPathFrameAt(candidateTT, star)
-	}
-	return occultationPathLimitsAndWidthForFrame(tt, frameAt)
-}
-
 func occultationPathScannedLimitsAtFrame(tt float64, frame occultationPathFrame) (occultationPathVector, occultationPathVector, bool) {
 	var northern, southern occultationPathVector
 	northLatitude := math.Inf(-1)
 	southLatitude := math.Inf(1)
 	consider := func(vector occultationPathVector) {
-		_, latitude := occultationPathGeodetic(tt, vector)
+		latitude := occultationPathGeodeticLatitude(vector)
 		if latitude > northLatitude {
 			northLatitude = latitude
 			northern = vector
@@ -604,6 +1007,9 @@ func occultationPathScannedLimitsAtFrame(tt float64, frame occultationPathFrame)
 }
 
 func occultationPathBoundaryThetaInterval(frame occultationPathFrame, centerTheta float64) (float64, float64, bool) {
+	if cached, hit := occultationPathCachedThetaInterval(frame, centerTheta); hit {
+		return cached.left, cached.right, cached.ok
+	}
 	if !occultationPathBoundaryLineIntersects(frame, centerTheta) {
 		return 0, 0, false
 	}
@@ -630,7 +1036,49 @@ func occultationPathBoundaryThetaInterval(frame occultationPathFrame, centerThet
 	}
 	left, leftOK := findEdge(-1)
 	right, rightOK := findEdge(1)
-	return left, right, leftOK && rightOK && right > left
+	result := occultationPathThetaIntervalResult{left: left, right: right, ok: leftOK && rightOK && right > left}
+	occultationPathStoreThetaInterval(frame, centerTheta, result)
+	return result.left, result.right, result.ok
+}
+
+// occultationPathCachedThetaInterval 查询 frame 上按 centerTheta 缓存的 θ 区间。
+// occultationPathCachedThetaInterval looks up a theta interval cached on the frame.
+func occultationPathCachedThetaInterval(
+	frame occultationPathFrame,
+	centerTheta float64,
+) (occultationPathThetaIntervalResult, bool) {
+	if frame.boundary == nil {
+		return occultationPathThetaIntervalResult{}, false
+	}
+	key := math.Float64bits(centerTheta)
+	frame.boundary.intervalMu.Lock()
+	defer frame.boundary.intervalMu.Unlock()
+	for index, cached := range frame.boundary.intervalKeys {
+		if cached == key {
+			return frame.boundary.intervalVals[index], true
+		}
+	}
+	return occultationPathThetaIntervalResult{}, false
+}
+
+// occultationPathStoreThetaInterval 记住 frame 上某个 centerTheta 的 θ 区间结果。
+// occultationPathStoreThetaInterval remembers one theta interval computed on a frame.
+func occultationPathStoreThetaInterval(
+	frame occultationPathFrame,
+	centerTheta float64,
+	result occultationPathThetaIntervalResult,
+) {
+	if frame.boundary == nil {
+		return
+	}
+	key := math.Float64bits(centerTheta)
+	frame.boundary.intervalMu.Lock()
+	defer frame.boundary.intervalMu.Unlock()
+	if len(frame.boundary.intervalKeys) >= occultationPathThetaIntervalCacheMaximumEntries {
+		return
+	}
+	frame.boundary.intervalKeys = append(frame.boundary.intervalKeys, key)
+	frame.boundary.intervalVals = append(frame.boundary.intervalVals, result)
 }
 
 func occultationPathBoundaryLineIntersects(frame occultationPathFrame, theta float64) bool {
@@ -662,9 +1110,10 @@ func occultationPathBoundaryRay(frame occultationPathFrame, theta float64) (occu
 	if moonDistance <= 0 || !finite(moonDistance) || !finite(frame.targetRadius) {
 		return occultationPathVector{}, occultationPathVector{}, false
 	}
+	sineTheta, cosineTheta := math.Sincos(theta)
 	radial := occultationPathAdd(
-		occultationPathScale(frame.first, math.Cos(theta)),
-		occultationPathScale(frame.second, math.Sin(theta)),
+		occultationPathScale(frame.first, cosineTheta),
+		occultationPathScale(frame.second, sineTheta),
 	)
 	sine, cosine := math.Sincos(frame.targetRadius)
 	normal := occultationPathAdd(
@@ -687,15 +1136,47 @@ func occultationPathBoundaryRay(frame occultationPathFrame, theta float64) (occu
 // 采样网格提供搜索盆地，再对线判别式做局部极大化以恢复网格点之间的切点 /
 // A sample grid supplies a basin, while local maximization of the line discriminant recovers tangencies between grid points.
 func occultationPathBoundaryTangent(frame occultationPathFrame) (occultationPathVector, float64, bool) {
+	if frame.boundary != nil {
+		frame.boundary.boundaryOnce.Do(func() { occultationPathBoundaryPrecompute(frame) })
+		return frame.boundary.tangentPoint, frame.boundary.tangentTheta, frame.boundary.tangentOK
+	}
+	return occultationPathBoundaryTangentUncached(frame)
+}
+
+// occultationPathBoundaryPrecompute 用一份网格同时算好切点与可见 θ 区间。
+// occultationPathBoundaryPrecompute derives both the tangency and the visible theta intervals
+// from one discriminant grid.
+func occultationPathBoundaryPrecompute(frame occultationPathFrame) {
 	step := 2 * math.Pi / float64(occultationPathBoundaryScanPoints)
+	discriminants := make([]float64, occultationPathBoundaryScanPoints)
+	occultationPathBoundaryFillGrid(frame, discriminants)
+	frame.boundary.tangentPoint, frame.boundary.tangentTheta, frame.boundary.tangentOK =
+		occultationPathBoundaryTangentFromGrid(frame, step, discriminants)
+	frame.boundary.intervals = occultationPathBoundaryThetaIntervalsFromGrid(frame, step, discriminants)
+}
+
+// occultationPathBoundaryTangentUncached 是切点搜索本体；调用方通过 frame 级缓存复用结果。
+// occultationPathBoundaryTangentUncached is the tangency search itself; callers reuse it through the frame cache.
+func occultationPathBoundaryTangentUncached(frame occultationPathFrame) (occultationPathVector, float64, bool) {
+	step := 2 * math.Pi / float64(occultationPathBoundaryScanPoints)
+	discriminants := make([]float64, occultationPathBoundaryScanPoints)
+	occultationPathBoundaryFillGrid(frame, discriminants)
+	return occultationPathBoundaryTangentFromGrid(frame, step, discriminants)
+}
+
+// occultationPathBoundaryTangentFromGrid 在已算好的网格上恢复切点。
+// occultationPathBoundaryTangentFromGrid recovers the tangency from a prepared grid.
+func occultationPathBoundaryTangentFromGrid(
+	frame occultationPathFrame,
+	step float64,
+	discriminants []float64,
+) (occultationPathVector, float64, bool) {
 	bestTheta := 0.0
 	bestDiscriminant := math.Inf(-1)
-	for i := 0; i < occultationPathBoundaryScanPoints; i++ {
-		theta := step * float64(i)
-		discriminant, _, _, ok := occultationPathBoundaryLine(frame, theta)
-		if ok && discriminant > bestDiscriminant {
+	for i, discriminant := range discriminants {
+		if discriminant > bestDiscriminant {
 			bestDiscriminant = discriminant
-			bestTheta = theta
+			bestTheta = step * float64(i)
 		}
 	}
 	if !finite(bestDiscriminant) {
@@ -776,21 +1257,61 @@ func occultationPathPointFromVectorWithMoon(
 	moon occultationPathVector,
 	location *time.Location,
 ) OccultationPathPoint {
-	lon, lat := occultationPathGeodetic(tt, vector)
+	return occultationPathPointFromVectorWithMoonSidereal(
+		tt, vector, width, moon, ApparentSiderealTime(TD2UT(tt, false))*15, location,
+	)
+}
+
+func occultationPathPointFromVectorWithMoonSidereal(
+	tt float64,
+	vector occultationPathVector,
+	width float64,
+	moon occultationPathVector,
+	siderealDegrees float64,
+	location *time.Location,
+) OccultationPathPoint {
+	lon, lat := occultationPathGeodeticWithSidereal(vector, siderealDegrees)
 	moonDistance := occultationPathNorm(moon)
 	moonRA := normalizeRA(math.Atan2(moon.y, moon.x) * 180 / math.Pi)
 	moonDec := math.Asin(math.Max(-1, math.Min(1, moon.z/moonDistance))) * 180 / math.Pi
-	moonRA, moonDec = TopocentricRaDec(
-		moonRA, moonDec, lat, lon, TD2UT(tt, false),
+	moonRA, moonDec = topocentricRaDecWithSidereal(
+		moonRA, moonDec, lat, lon, siderealDegrees,
 		moonDistance/occultationPathAstronomicalUnitKM, 0,
 	)
 	return OccultationPathPoint{
-		Time:         occultationTTToLocation(tt, location),
-		Longitude:    lon,
-		Latitude:     lat,
-		MoonAltitude: occultationAltitude(tt, Observer{Longitude: lon, Latitude: lat}, normalizeRA(moonRA), moonDec),
-		WidthKM:      width,
+		Time:      occultationTTToLocation(tt, location),
+		Longitude: lon,
+		Latitude:  lat,
+		MoonAltitude: occultationAltitudeWithSidereal(
+			siderealDegrees, Observer{Longitude: lon, Latitude: lat}, normalizeRA(moonRA), moonDec,
+		),
+		WidthKM: width,
 	}
+}
+
+func occultationPathDeduplicateBoundaryPoints(
+	first, second []OccultationPathPoint,
+) ([]OccultationPathPoint, []OccultationPathPoint) {
+	if len(first) != len(second) || len(first) == 0 {
+		return first, second
+	}
+	uniqueFirst := make([]OccultationPathPoint, 0, len(first))
+	uniqueSecond := make([]OccultationPathPoint, 0, len(second))
+	for index := range first {
+		if len(uniqueFirst) > 0 && !first[index].Time.After(uniqueFirst[len(uniqueFirst)-1].Time) {
+			continue
+		}
+		if len(uniqueFirst) > 0 && first[index].Time.Sub(uniqueFirst[len(uniqueFirst)-1].Time) < time.Second &&
+			occultationPathDistanceKM(first[index], uniqueFirst[len(uniqueFirst)-1]) < occultationPathBoundaryMergeKM &&
+			occultationPathDistanceKM(second[index], uniqueSecond[len(uniqueSecond)-1]) < occultationPathBoundaryMergeKM {
+			uniqueFirst[len(uniqueFirst)-1] = first[index]
+			uniqueSecond[len(uniqueSecond)-1] = second[index]
+			continue
+		}
+		uniqueFirst = append(uniqueFirst, first[index])
+		uniqueSecond = append(uniqueSecond, second[index])
+	}
+	return uniqueFirst, uniqueSecond
 }
 
 func centerTimeTT(value time.Time) float64 { return occultationTimeToTT(value) }
@@ -1011,22 +1532,45 @@ func occultationEarthLineIntersectionWithTolerance(origin, direction occultation
 
 func occultationPathGeodetic(tt float64, vector occultationPathVector) (float64, float64) {
 	ut := TD2UT(tt, false)
-	gst := ApparentSiderealTime(ut) * 15
-	longitude := normalizeLongitude(math.Atan2(vector.y, vector.x)*180/math.Pi - gst)
-	latitude := math.Atan2(
+	return occultationPathGeodeticWithSidereal(vector, ApparentSiderealTime(ut)*15)
+}
+
+func occultationPathGeodeticWithSidereal(
+	vector occultationPathVector,
+	siderealDegrees float64,
+) (float64, float64) {
+	longitude := normalizeLongitude(math.Atan2(vector.y, vector.x)*180/math.Pi - siderealDegrees)
+	return longitude, occultationPathGeodeticLatitude(vector)
+}
+
+func occultationPathGeodeticLatitude(vector occultationPathVector) float64 {
+	return math.Atan2(
 		vector.z,
 		occultationPathEarthPolarRatio*occultationPathEarthPolarRatio*math.Hypot(vector.x, vector.y),
 	) * 180 / math.Pi
-	return longitude, latitude
 }
 
 func occultationPathEarthFixedVector(tt float64, vector occultationPathVector) occultationPathVector {
+	return occultationPathEarthFixedVectorWithRotation(vector, occultationPathEarthRotationAt(tt))
+}
+
+type occultationPathEarthRotation struct {
+	cosine float64
+	sine   float64
+}
+
+func occultationPathEarthRotationAt(tt float64) occultationPathEarthRotation {
 	angle := ApparentSiderealTime(TD2UT(tt, false)) * 15 * math.Pi / 180
-	cosAngle := math.Cos(angle)
-	sinAngle := math.Sin(angle)
+	return occultationPathEarthRotation{cosine: math.Cos(angle), sine: math.Sin(angle)}
+}
+
+func occultationPathEarthFixedVectorWithRotation(
+	vector occultationPathVector,
+	rotation occultationPathEarthRotation,
+) occultationPathVector {
 	return occultationPathVector{
-		x: cosAngle*vector.x + sinAngle*vector.y,
-		y: -sinAngle*vector.x + cosAngle*vector.y,
+		x: rotation.cosine*vector.x + rotation.sine*vector.y,
+		y: -rotation.sine*vector.x + rotation.cosine*vector.y,
 		z: vector.z,
 	}
 }

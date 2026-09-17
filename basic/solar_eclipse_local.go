@@ -53,6 +53,32 @@ type localSolarEclipseState struct {
 	sunAzimuthRad      float64
 }
 
+func (state localSolarEclipseState) movingDiskContactState() movingDiskContactState {
+	return movingDiskContactState{
+		separation:           state.separationRad,
+		occultingOuterRadius: state.moonOuterRadiusRad,
+		occultingInnerRadius: state.moonInnerRadiusRad,
+		targetRadius:         state.sunRadiusRad,
+		valid: movingDiskContactStateValid(
+			state.separationRad,
+			state.moonOuterRadiusRad,
+			state.moonInnerRadiusRad,
+			state.sunRadiusRad,
+		),
+	}
+}
+
+type localSolarEclipseStateContext struct {
+	sunXYZ  [3]float64
+	moonXYZ [3]float64
+	gst     float64
+	params  solarEclipseModelParameters
+	// generation 记录写入缓存时的 ΔT 世代（gst 依赖 ΔT，覆盖 ΔT 后条目必须失效）。
+	// generation is the ΔT generation the cached context was built under; gst depends on
+	// ΔT, so an override must invalidate the entry.
+	generation uint64
+}
+
 const (
 	localSolarEclipseGreatestWindowDays = 0.5
 	localSolarEclipseGreatestTolerance  = 1e-8
@@ -89,6 +115,7 @@ func localSolarEclipse(seedJDE, lonDeg, latDeg, heightMeters float64, model Sola
 
 	greatestEclipseJDE := localSolarEclipseGreatest(newMoonJDE, lonRad, latRad, heightKM, params)
 	state := localSolarEclipseStateAt(greatestEclipseJDE, lonRad, latRad, heightKM, params)
+	contactEvaluator := newLocalSolarEclipseContactEvaluator(lonRad, latRad, heightKM, params)
 	visibleThresholdRad := 0.0
 	if heightMeters > 0 {
 		visibleThresholdRad = -HeightDegreeByLat(heightMeters, latDeg) * rad
@@ -104,8 +131,9 @@ func localSolarEclipse(seedJDE, lonDeg, latDeg, heightMeters float64, model Sola
 		VisibleAtGreatest: state.sunAltitudeRad > visibleThresholdRad,
 	}
 
-	partialBoundary := state.sunRadiusRad + state.moonOuterRadiusRad
-	partialGap := state.separationRad - partialBoundary
+	contactState := state.movingDiskContactState()
+	contactEvaluator.prime(greatestEclipseJDE, contactState, contactState.valid)
+	partialGap := contactState.externalContactGap()
 	if partialGap > 0 {
 		return result
 	}
@@ -122,15 +150,14 @@ func localSolarEclipse(seedJDE, lonDeg, latDeg, heightMeters float64, model Sola
 		state.separationRad,
 	)
 
-	if partialStart, ok := localSolarEclipseContact(greatestEclipseJDE, lonRad, latRad, heightKM, params, false, true); ok {
+	if partialStart, ok := localSolarEclipseContactWithEvaluator(greatestEclipseJDE, contactEvaluator, false, true); ok {
 		result.PartialStart = partialStart
 	}
-	if partialEnd, ok := localSolarEclipseContact(greatestEclipseJDE, lonRad, latRad, heightKM, params, false, false); ok {
+	if partialEnd, ok := localSolarEclipseContactWithEvaluator(greatestEclipseJDE, contactEvaluator, false, false); ok {
 		result.PartialEnd = partialEnd
 	}
 
-	centralBoundary := math.Abs(state.sunRadiusRad - state.moonInnerRadiusRad)
-	if state.separationRad > centralBoundary {
+	if contactState.internalContactGap() > 0 {
 		return result
 	}
 
@@ -144,10 +171,10 @@ func localSolarEclipse(seedJDE, lonDeg, latDeg, heightMeters float64, model Sola
 	}
 	result.Magnitude = state.moonInnerRadiusRad / state.sunRadiusRad
 
-	if centralStart, ok := localSolarEclipseContact(greatestEclipseJDE, lonRad, latRad, heightKM, params, true, true); ok {
+	if centralStart, ok := localSolarEclipseContactWithEvaluator(greatestEclipseJDE, contactEvaluator, true, true); ok {
 		result.CentralStart = centralStart
 	}
-	if centralEnd, ok := localSolarEclipseContact(greatestEclipseJDE, lonRad, latRad, heightKM, params, true, false); ok {
+	if centralEnd, ok := localSolarEclipseContactWithEvaluator(greatestEclipseJDE, contactEvaluator, true, false); ok {
 		result.CentralEnd = centralEnd
 	}
 
@@ -169,42 +196,76 @@ func localSolarEclipseGreatest(
 	newMoonJDE, lonRad, latRad, heightKM float64,
 	params solarEclipseModelParameters,
 ) float64 {
-	left := newMoonJDE - localSolarEclipseGreatestWindowDays
-	right := newMoonJDE + localSolarEclipseGreatestWindowDays
-	goldenRatio := (math.Sqrt(5) - 1) / 2
-
-	x1 := right - goldenRatio*(right-left)
-	x2 := left + goldenRatio*(right-left)
-	f1 := localSolarEclipseStateAt(x1, lonRad, latRad, heightKM, params).separationSquared
-	f2 := localSolarEclipseStateAt(x2, lonRad, latRad, heightKM, params).separationSquared
-
-	for i := 0; i < 80 && right-left > localSolarEclipseGreatestTolerance; i++ {
-		if f1 <= f2 {
-			right = x2
-			x2 = x1
-			f2 = f1
-			x1 = right - goldenRatio*(right-left)
-			f1 = localSolarEclipseStateAt(x1, lonRad, latRad, heightKM, params).separationSquared
-			continue
-		}
-
-		left = x1
-		x1 = x2
-		f1 = f2
-		x2 = left + goldenRatio*(right-left)
-		f2 = localSolarEclipseStateAt(x2, lonRad, latRad, heightKM, params).separationSquared
-	}
-
-	return (left + right) / 2
+	return localSolarEclipseGreatestWith(newMoonJDE, func(jd float64) localSolarEclipseState {
+		return localSolarEclipseStateAt(jd, lonRad, latRad, heightKM, params)
+	})
 }
 
-func localSolarEclipseContact(
-	greatestEclipseJDE, lonRad, latRad, heightKM float64,
+func localSolarEclipseGreatestWith(
+	newMoonJDE float64,
+	stateAt func(float64) localSolarEclipseState,
+) float64 {
+	left := newMoonJDE - localSolarEclipseGreatestWindowDays
+	right := newMoonJDE + localSolarEclipseGreatestWindowDays
+	return solarEclipseMovingDiskEngine().greatest(
+		newMoonJDE, left, right,
+		func(jd float64) (float64, bool) {
+			return stateAt(jd).separationSquared, true
+		},
+		80,
+	)
+}
+
+// centralPhaseDurationDaysAt 用事件局部插值星历求解某点的中心相时长（日）：先求局部食甚，
+// 再解本影/反本影的内切接触。没有中心相或接触退化时返回 0。
+func (solver solarEclipseSolver) centralPhaseDurationDaysAt(jd, lonDeg, latDeg float64) float64 {
+	solver = solver.withLocalEphemeris()
+	lonRad, latRad := lonDeg*rad, latDeg*rad
+	stateAt := func(jd float64) localSolarEclipseState {
+		return solver.localStateContextCandidateAt(jd).stateAt(lonRad, latRad, 0)
+	}
+	greatestJDE := localSolarEclipseGreatestWith(solver.newMoonJDE, stateAt)
+	contactState := stateAt(greatestJDE).movingDiskContactState()
+	if !contactState.valid || contactState.internalContactGap() > 0 {
+		return 0
+	}
+	evaluator := newMovingDiskContactEvaluator(func(jd float64) (movingDiskContactState, bool) {
+		contact := stateAt(jd).movingDiskContactState()
+		return contact, contact.valid
+	})
+	evaluator.prime(greatestJDE, contactState, true)
+	start, ok := localSolarEclipseContactWithEvaluator(greatestJDE, evaluator, true, true)
+	if !ok {
+		return 0
+	}
+	end, ok := localSolarEclipseContactWithEvaluator(greatestJDE, evaluator, true, false)
+	if !ok || end <= start {
+		return 0
+	}
+	return end - start
+}
+
+func newLocalSolarEclipseContactEvaluator(
+	lonRad, latRad, heightKM float64,
 	params solarEclipseModelParameters,
+) *movingDiskContactEvaluator {
+	return newMovingDiskContactEvaluator(func(jdTT float64) (movingDiskContactState, bool) {
+		state := localSolarEclipseStateAt(jdTT, lonRad, latRad, heightKM, params)
+		contactState := state.movingDiskContactState()
+		return contactState, contactState.valid
+	})
+}
+
+func localSolarEclipseContactWithEvaluator(
+	greatestEclipseJDE float64,
+	evaluator *movingDiskContactEvaluator,
 	central bool,
 	beforeGreatest bool,
 ) (float64, bool) {
-	centerGap := localSolarEclipseGap(greatestEclipseJDE, lonRad, latRad, heightKM, params, central)
+	centerGap, centerOK := evaluator.gap(greatestEclipseJDE, central)
+	if !centerOK {
+		return 0, false
+	}
 	if centerGap > 0 {
 		return 0, false
 	}
@@ -216,92 +277,64 @@ func localSolarEclipseContact(
 	if beforeGreatest {
 		direction = -1.0
 	}
-
-	previousJDE := greatestEclipseJDE
-	for i := 1; i <= localSolarEclipseContactSearchSteps; i++ {
-		currentJDE := greatestEclipseJDE + direction*localSolarEclipseContactStepDays*float64(i)
-		currentGap := localSolarEclipseGap(currentJDE, lonRad, latRad, heightKM, params, central)
-		if currentGap >= 0 {
-			left := previousJDE
-			right := currentJDE
-			if beforeGreatest {
-				left = currentJDE
-				right = previousJDE
-			}
-			return localSolarEclipseContactBisection(left, right, lonRad, latRad, heightKM, params, central)
-		}
-		previousJDE = currentJDE
-	}
-
-	return 0, false
-}
-
-func localSolarEclipseContactBisection(
-	leftJDE, rightJDE, lonRad, latRad, heightKM float64,
-	params solarEclipseModelParameters,
-	central bool,
-) (float64, bool) {
-	leftGap := localSolarEclipseGap(leftJDE, lonRad, latRad, heightKM, params, central)
-	rightGap := localSolarEclipseGap(rightJDE, lonRad, latRad, heightKM, params, central)
-	if leftGap == 0 {
-		return leftJDE, true
-	}
-	if rightGap == 0 {
-		return rightJDE, true
-	}
-	if leftGap*rightGap > 0 {
-		return 0, false
-	}
-
-	for i := 0; i < 80 && rightJDE-leftJDE > localSolarEclipseContactTolerance; i++ {
-		midJDE := (leftJDE + rightJDE) / 2
-		midGap := localSolarEclipseGap(midJDE, lonRad, latRad, heightKM, params, central)
-		if leftGap*midGap > 0 {
-			leftJDE = midJDE
-			leftGap = midGap
-			continue
-		}
-		rightJDE = midJDE
-		rightGap = midGap
-	}
-
-	return (leftJDE + rightJDE) / 2, true
-}
-
-func localSolarEclipseGap(
-	jdTT, lonRad, latRad, heightKM float64,
-	params solarEclipseModelParameters,
-	central bool,
-) float64 {
-	state := localSolarEclipseStateAt(jdTT, lonRad, latRad, heightKM, params)
-	boundary := state.sunRadiusRad + state.moonOuterRadiusRad
-	if central {
-		boundary = math.Abs(state.sunRadiusRad - state.moonInnerRadiusRad)
-	}
-	return state.separationRad - boundary
+	return solarEclipseMovingDiskEngine().contactRoot(
+		greatestEclipseJDE,
+		direction,
+		localSolarEclipseContactStepDays,
+		localSolarEclipseContactStepDays*localSolarEclipseContactSearchSteps,
+		localSolarEclipseContactTolerance,
+		func(jd float64) (float64, bool) {
+			return evaluator.gap(jd, central)
+		},
+		80,
+	)
 }
 
 func localSolarEclipseStateAt(
 	jdTT, lonRad, latRad, heightKM float64,
 	params solarEclipseModelParameters,
 ) localSolarEclipseState {
-	sunEquatorial, moonEquatorial := solarEclipseSunMoonEquatorial(jdTT)
-	sunXYZ := solarEclipseLLRToXYZ(sunEquatorial[0], sunEquatorial[1], sunEquatorial[2])
-	moonXYZ := solarEclipseLLRToXYZ(moonEquatorial[0], moonEquatorial[1], moonEquatorial[2])
+	return newLocalSolarEclipseStateContext(jdTT, params).stateAt(lonRad, latRad, heightKM)
+}
 
+func newLocalSolarEclipseStateContext(
+	jdTT float64,
+	params solarEclipseModelParameters,
+) localSolarEclipseStateContext {
+	return newLocalSolarEclipseStateContextWithOverride(jdTT, math.NaN(), params)
+}
+
+// newLocalSolarEclipseStateContextWithOverride 用显式 ΔT 构造站心状态上下文：TT 时刻不变，
+// ΔT 只决定恒星时相位；deltaTSeconds 为 NaN 时走进程级模型。
+func newLocalSolarEclipseStateContextWithOverride(
+	jdTT, deltaTSeconds float64,
+	params solarEclipseModelParameters,
+) localSolarEclipseStateContext {
+	sunEquatorial, moonEquatorial := solarEclipseSunMoonEquatorial(jdTT)
 	utJDE := TD2UT(jdTT, false)
-	gst := ApparentSiderealTime(utJDE) * 15 * rad
-	observerXYZ := localSolarEclipseObserverXYZ(gst, lonRad, latRad, heightKM)
+	if !math.IsNaN(deltaTSeconds) {
+		utJDE = jdTT - deltaTSeconds/86400
+	}
+	return localSolarEclipseStateContext{
+		sunXYZ:  solarEclipseLLRToXYZ(sunEquatorial[0], sunEquatorial[1], sunEquatorial[2]),
+		moonXYZ: solarEclipseLLRToXYZ(moonEquatorial[0], moonEquatorial[1], moonEquatorial[2]),
+		gst:     ApparentSiderealTime(utJDE) * 15 * rad,
+		params:  params,
+	}
+}
+
+func (context localSolarEclipseStateContext) stateAt(lonRad, latRad, heightKM float64) localSolarEclipseState {
+	observerXYZ := localSolarEclipseObserverXYZ(context.gst, lonRad, latRad, heightKM)
 
 	sunTopocentric := solarEclipseXYZToLLR(
-		sunXYZ[0]-observerXYZ[0],
-		sunXYZ[1]-observerXYZ[1],
-		sunXYZ[2]-observerXYZ[2],
+		context.sunXYZ[0]-observerXYZ[0],
+		context.sunXYZ[1]-observerXYZ[1],
+		context.sunXYZ[2]-observerXYZ[2],
 	)
 	moonTopocentric := solarEclipseXYZToLLR(
-		moonXYZ[0]-observerXYZ[0],
-		moonXYZ[1]-observerXYZ[1],
-		moonXYZ[2]-observerXYZ[2],
+		context.moonXYZ[0]-observerXYZ[0],
+		context.moonXYZ[1]-observerXYZ[1],
+		context.moonXYZ[2]-observerXYZ[2],
 	)
 
 	sunUnit := solarEclipseLLRToXYZ(sunTopocentric[0], sunTopocentric[1], 1)
@@ -321,7 +354,7 @@ func localSolarEclipseStateAt(
 		solarEclipseEarthEquatorialRadiusKM * solarEclipsePenumbralK * localSolarMoonRadiusScale / moonTopocentric[2],
 	))
 	moonInnerRadiusRad := math.Asin(localSolarEclipseClampUnit(
-		solarEclipseEarthEquatorialRadiusKM * params.umbralK * localSolarMoonRadiusScale / moonTopocentric[2],
+		solarEclipseEarthEquatorialRadiusKM * context.params.umbralK * localSolarMoonRadiusScale / moonTopocentric[2],
 	))
 
 	sunHorizontal := solarEclipseEquatorialToHorizontal(
@@ -330,7 +363,7 @@ func localSolarEclipseStateAt(
 		sunTopocentric[2],
 		lonRad,
 		latRad,
-		gst,
+		context.gst,
 	)
 
 	return localSolarEclipseState{

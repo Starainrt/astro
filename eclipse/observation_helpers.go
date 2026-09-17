@@ -46,5 +46,19 @@ func lunarCulminationTime(date time.Time, lon, lat float64) time.Time {
 	}
 	jde := basic.Date2JDE(date)
 	_, loc := date.Zone()
-	return basic.JDE2DateByZone(basic.MoonCulminationTime(jde, lon, lat, float64(loc)/3600.0), date.Location(), true)
+	culmination := basic.JDE2DateByZone(basic.MoonCulminationTime(jde, lon, lat, float64(loc)/3600.0), date.Location(), true)
+	// MoonCulminationTime returns the nearest root to its internal midnight
+	// seed, which can land one civil day later when the input is local noon.
+	// Visibility scans need the root belonging to the supplied local day.
+	if culmination.Year() != date.Year() || culmination.YearDay() != date.YearDay() {
+		// Preserve the solved local clock time while moving it onto the
+		// requested civil date. This also avoids assuming every DST day is
+		// exactly 24 elapsed hours.
+		culmination = time.Date(
+			date.Year(), date.Month(), date.Day(),
+			culmination.Hour(), culmination.Minute(), culmination.Second(), culmination.Nanosecond(),
+			date.Location(),
+		)
+	}
+	return culmination
 }

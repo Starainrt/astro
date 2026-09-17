@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/starainrt/astro/internal/svgasset"
+	"github.com/starainrt/astro/internal/svgchart"
 	"github.com/starainrt/astro/moon"
 )
 
@@ -57,11 +58,12 @@ type LocalPlanetOccultationSVGOptions struct {
 }
 
 type localPlanetOccultationEventFrame struct {
-	label  string
-	name   string
-	time   time.Time
-	hidden bool
-	frame  moon.PlanetOccultationDiagramFrame
+	label      string
+	name       string
+	time       time.Time
+	hidden     bool
+	frame      moon.PlanetOccultationDiagramFrame
+	appearance localOccultationMoonAppearance
 }
 
 // FindLocalPlanetOccultationSVGs 搜索固定观测地点，并渲染请求时间窗口内的每次有限盘面行星月掩。空切片表示没有本地事件。
@@ -192,6 +194,9 @@ func renderLocalPlanetOccultationSVG(
 ) string {
 	title := localPlanetOccultationSVGTitle(info, options)
 	headerLines := localPlanetOccultationSVGHeaderLines(info, options)
+	// 页眉字号 14/13，省略号按较大的 14 估算；行数上限只与画布高度有关，先按空页眉取上限。
+	headerLimit := localPlanetOccultationSVGLayoutFor(options, 72).headerMaxLines
+	headerLines = svgchart.TruncateTextLines(headerLines, float64(options.Width)-80, 14, headerLimit)
 	headerBottom := 72.0 + float64(len(headerLines))*19
 	layout := localPlanetOccultationSVGLayoutFor(options, headerBottom)
 	events := localPlanetOccultationSVGEventFrames(info, diagram.Frames, options.Language)
@@ -205,8 +210,13 @@ func renderLocalPlanetOccultationSVG(
 	b.WriteString(`</defs>`)
 	b.WriteString(`<rect width="100%" height="100%" fill="#efefed"/>`)
 	fmt.Fprintf(&b, `<rect x="22" y="18" width="%.3f" height="%.3f" fill="#ffffff" stroke="#c9c9c6" stroke-width="1.2"/>`, layout.width-44, layout.height-36)
+	titleSize := starOccultationTitleFontSize(title, layout.width)
+	titleText := title
+	if options.Title != "" {
+		titleText = svgchart.EllipsizeText(title, layout.width-80, float64(titleSize))
+	}
 	fmt.Fprintf(&b, `<text x="%.3f" y="44" fill="#111111" font-family="Georgia, 'Times New Roman', serif" font-size="%d" font-weight="700" text-anchor="middle">%s</text>`,
-		layout.width/2, starOccultationTitleFontSize(title, layout.width), html.EscapeString(title))
+		layout.width/2, titleSize, html.EscapeString(titleText))
 	fmt.Fprintf(&b, `<line x1="%.3f" y1="57" x2="%.3f" y2="57" stroke="#555" stroke-width="1"/>`, layout.width/2-78, layout.width/2+78)
 	for index, line := range headerLines {
 		fontSize, fill := 13, "#3b4143"
@@ -255,6 +265,7 @@ func localPlanetOccultationSVGLayoutFor(
 		stageTop:       stageTop,
 		stageBottom:    stageBottom,
 		footerY:        height - 62,
+		headerMaxLines: localOccultationHeaderLineLimit(height, footerSpace, stageHeight),
 	}
 }
 
@@ -265,8 +276,10 @@ func writeLocalPlanetOccultationOverview(
 	layout localStarOccultationSVGLayout,
 	options LocalPlanetOccultationSVGOptions,
 ) {
+	overviewTitle := occultationTitleText(localPlanetOccultationSVGOverviewTitle(options), options.OverviewTitle != "",
+		layout.panelX-layout.overviewLeft-12, 14)
 	fmt.Fprintf(b, `<text x="%.3f" y="%.3f" fill="#161a1b" font-family="Georgia, 'Times New Roman', serif" font-size="14" font-weight="700">%s</text>`,
-		layout.overviewLeft, layout.overviewTop-10, html.EscapeString(localPlanetOccultationSVGOverviewTitle(options)))
+		layout.overviewLeft, layout.overviewTop-10, html.EscapeString(overviewTitle))
 	cx := (layout.overviewLeft + layout.overviewRight) / 2
 	cy := (layout.overviewTop+layout.overviewBottom)/2 + 4
 	extent := localPlanetOccultationSVGExtent(diagram.Frames)
@@ -289,7 +302,9 @@ func writeLocalPlanetOccultationOverview(
 			event.frame.PlanetRadiusArcsec*scale, false, "overview-planet-disk", event.label,
 		)
 	}
-	writeLocalStarOccultationMoon(b, cx, cy, moonRadius, "overview-moon")
+	writeLocalOccultationMoon(b, cx, cy, moonRadius, "overview-moon",
+		localOccultationMoonAppearanceAt(diagram.Occultation.Greatest, diagram.Occultation.Observer),
+		"local-planet-occultation-moon-overview")
 	for _, event := range events {
 		x := mapX(event.frame.PlanetXArcsec)
 		y := mapY(event.frame.PlanetYArcsec)
@@ -435,8 +450,10 @@ func writeLocalPlanetOccultationContacts(
 ) {
 	fmt.Fprintf(b, `<line x1="%.3f" y1="%.3f" x2="%.3f" y2="%.3f" stroke="#d0d3d1" stroke-width="1"/>`,
 		layout.panelX-12, layout.overviewTop-12, layout.panelX-12, layout.overviewBottom)
+	contactsTitle := occultationTitleText(localPlanetOccultationSVGContactsTitle(options), options.ContactsTitle != "",
+		layout.width-layout.panelX-layout.margin, 14)
 	fmt.Fprintf(b, `<text x="%.3f" y="%.3f" fill="#161a1b" font-family="Georgia, 'Times New Roman', serif" font-size="14" font-weight="700">%s</text>`,
-		layout.panelX, layout.overviewTop-10, html.EscapeString(localPlanetOccultationSVGContactsTitle(options)))
+		layout.panelX, layout.overviewTop-10, html.EscapeString(contactsTitle))
 	available := layout.overviewBottom - layout.overviewTop - 10
 	rowHeight := math.Min(66, available/math.Max(1, float64(len(events))))
 	for index, event := range events {
@@ -465,8 +482,10 @@ func writeLocalPlanetOccultationStages(
 	layout localStarOccultationSVGLayout,
 	options LocalPlanetOccultationSVGOptions,
 ) {
+	phaseTitle := occultationTitleText(localPlanetOccultationSVGPhasePanelsTitle(options), options.PhasePanelsTitle != "",
+		layout.width-2*layout.margin, 14)
 	fmt.Fprintf(b, `<text x="%.3f" y="%.3f" fill="#161a1b" font-family="Georgia, 'Times New Roman', serif" font-size="14" font-weight="700">%s</text>`,
-		layout.margin, layout.stageTop+13, html.EscapeString(localPlanetOccultationSVGPhasePanelsTitle(options)))
+		layout.margin, layout.stageTop+13, html.EscapeString(phaseTitle))
 	if len(events) == 0 {
 		return
 	}
@@ -484,7 +503,8 @@ func writeLocalPlanetOccultationStages(
 		x, y := localPlanetOccultationSVGStageCenter(event, cx, cy, radius, displayRadius, scale)
 		fmt.Fprintf(b, `<circle class="stage-planet-disk" data-label="%s" data-true-radius="%.3f" data-magnification="%.3f" cx="%.3f" cy="%.3f" r="%.3f" fill="#d6ad69" stroke="#704b2d" stroke-width="1.1"/>`,
 			html.EscapeString(event.label), trueRadius, magnification, x, y, displayRadius)
-		writeLocalStarOccultationMoon(b, cx, cy, event.frame.MoonRadiusArcsec*scale, "stage-moon")
+		writeLocalOccultationMoon(b, cx, cy, event.frame.MoonRadiusArcsec*scale, "stage-moon",
+			event.appearance, fmt.Sprintf("local-planet-occultation-moon-stage-%d", index))
 		if event.hidden {
 			fmt.Fprintf(b, `<circle class="stage-planet-hidden-outline" cx="%.3f" cy="%.3f" r="%.3f" fill="none" stroke="#7d3430" stroke-width="1.1" stroke-dasharray="2 2"/>`,
 				x, y, displayRadius)
@@ -527,12 +547,14 @@ func writeLocalPlanetOccultationFooter(
 	layout localStarOccultationSVGLayout,
 	options LocalPlanetOccultationSVGOptions,
 ) {
-	directionLines := starOccultationWrapText(localPlanetOccultationSVGDirectionText(options), layout.width-80, 10)
+	directionLines, footerLines := localOccultationFooterLines(
+		localPlanetOccultationSVGDirectionText(options), options.DirectionText != "",
+		localPlanetOccultationSVGFooterNote(info, options), options.FooterNote != "",
+		layout.footerY, layout.width, layout.height)
 	for index, line := range directionLines {
 		fmt.Fprintf(b, `<text x="%.3f" y="%.3f" fill="#4f595b" font-family="Georgia, 'Times New Roman', serif" font-size="10">%s</text>`,
 			layout.margin, layout.footerY+float64(index)*14-8, html.EscapeString(line))
 	}
-	footerLines := starOccultationWrapText(localPlanetOccultationSVGFooterNote(info, options), layout.width-80, 9)
 	for index, line := range footerLines {
 		fmt.Fprintf(b, `<text x="%.3f" y="%.3f" fill="#747c7d" font-family="Georgia, 'Times New Roman', serif" font-size="9">%s</text>`,
 			layout.margin, layout.footerY+float64(len(directionLines))*14+float64(index)*12-6, html.EscapeString(line))
@@ -562,11 +584,12 @@ func localPlanetOccultationSVGEventFrames(
 				hidden := frame.FullyOcculted || info.Type == moon.OccultationTotal &&
 					(label == "C2" || label == "Greatest" || label == "C3")
 				result = append(result, localPlanetOccultationEventFrame{
-					label:  label,
-					name:   localPlanetOccultationSVGEventName(label, language),
-					time:   times[label],
-					hidden: hidden,
-					frame:  frame,
+					label:      label,
+					name:       localPlanetOccultationSVGEventName(label, language),
+					time:       times[label],
+					hidden:     hidden,
+					frame:      frame,
+					appearance: localOccultationMoonAppearanceAt(times[label], info.Observer),
 				})
 				break
 			}
@@ -592,11 +615,14 @@ func localPlanetOccultationSVGHeaderLines(
 	options LocalPlanetOccultationSVGOptions,
 ) []string {
 	lines := make([]string, 0, 4)
-	for _, value := range []string{
-		localPlanetOccultationSVGSummaryText(info, options),
-		localPlanetOccultationSVGGreatestText(info, options),
+	for _, item := range []struct {
+		value  string
+		custom bool
+	}{
+		{localPlanetOccultationSVGSummaryText(info, options), options.SummaryText != ""},
+		{localPlanetOccultationSVGGreatestText(info, options), options.GreatestText != ""},
 	} {
-		lines = append(lines, starOccultationWrapText(value, float64(options.Width)-80, 13)...)
+		lines = append(lines, occultationWrappedTextLines(item.value, item.custom, float64(options.Width)-80, 13)...)
 	}
 	return lines
 }

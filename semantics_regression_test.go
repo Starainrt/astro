@@ -156,33 +156,101 @@ func TestCalendarAddPreservesOriginalTimezone(t *testing.T) {
 	}
 }
 
-func TestObservationZenithSemantics(t *testing.T) {
-	date := time.Date(2026, 4, 26, 9, 30, 45, 123456789, time.FixedZone("CST", 8*3600))
-	lon := 116.391
-	lat := 39.907
-	ra := 6.752477
-	dec := -16.716116
-
-	checks := []struct {
+func TestObservationZenithMatchesIndependentFormula(t *testing.T) {
+	places := []struct {
 		name     string
-		altitude func() float64
-		zenith   func() float64
+		lon, lat float64
 	}{
-		{"sun", func() float64 { return sun.Altitude(date, lon, lat) }, func() float64 { return sun.Zenith(date, lon, lat) }},
-		{"moon", func() float64 { return moon.Altitude(date, lon, lat) }, func() float64 { return moon.Zenith(date, lon, lat) }},
-		{"star", func() float64 { return star.Altitude(date, ra, dec, lon, lat) }, func() float64 { return star.Zenith(date, ra, dec, lon, lat) }},
-		{"mercury", func() float64 { return mercury.Altitude(date, lon, lat) }, func() float64 { return mercury.Zenith(date, lon, lat) }},
-		{"venus", func() float64 { return venus.Altitude(date, lon, lat) }, func() float64 { return venus.Zenith(date, lon, lat) }},
-		{"mars", func() float64 { return mars.Altitude(date, lon, lat) }, func() float64 { return mars.Zenith(date, lon, lat) }},
-		{"jupiter", func() float64 { return jupiter.Altitude(date, lon, lat) }, func() float64 { return jupiter.Zenith(date, lon, lat) }},
-		{"saturn", func() float64 { return saturn.Altitude(date, lon, lat) }, func() float64 { return saturn.Zenith(date, lon, lat) }},
-		{"uranus", func() float64 { return uranus.Altitude(date, lon, lat) }, func() float64 { return uranus.Zenith(date, lon, lat) }},
-		{"neptune", func() float64 { return neptune.Altitude(date, lon, lat) }, func() float64 { return neptune.Zenith(date, lon, lat) }},
+		{"beijing", 116.391, 39.907},
+		{"sydney", 151.2093, -33.8688},
+		{"tromso", 18.9553, 69.6492},
 	}
+	dates := []time.Time{
+		time.Date(1900, 1, 1, 0, 0, 0, 0, time.UTC),
+		time.Date(2000, 1, 1, 12, 0, 0, 0, time.UTC),
+		time.Date(2024, 2, 29, 23, 59, 59, 0, time.UTC),
+		time.Date(2026, 4, 26, 9, 30, 45, 123456789, time.FixedZone("CST", 8*3600)),
+		time.Date(2100, 6, 15, 3, 4, 5, 0, time.UTC),
+	}
+	starRa := 6.752477
+	starDec := -16.716116
 
-	for _, tc := range checks {
-		if !nearlyEqual(tc.zenith(), 90-tc.altitude()) {
-			t.Fatalf("%s zenith should equal 90-altitude", tc.name)
+	// 容差取实测最大偏差的 5 倍以上；太阳还含视位置的入口差异，月光低精度级数与高精度级数本身不同源。
+	const (
+		sunTolerance     = 2e-3
+		moonTolerance    = 5e-8
+		moonLowTolerance = 3e-3
+		starTolerance    = 1e-12
+		planetTolerance  = 5e-9
+	)
+
+	for _, date := range dates {
+		for _, place := range places {
+			jde := basic.Date2JDE(date)
+			_, loc := date.Zone()
+			timezone := float64(loc) / 3600.0
+			tt := basic.TD2UT(jde-timezone/24, true)
+
+			checks := []struct {
+				name    string
+				tol     float64
+				zenith  float64
+				witness float64
+			}{
+				{"sun", sunTolerance,
+					sun.Zenith(date, place.lon, place.lat),
+					zenithFromHourAngle(sun.HourAngle(date, place.lon, place.lat), basic.HSunApparentDec(tt), place.lat)},
+				{"moon", moonTolerance,
+					moon.Zenith(date, place.lon, place.lat),
+					zenithFromHourAngle(moon.HourAngle(date, place.lon, place.lat), moon.ApparentDec(date, place.lon, place.lat), place.lat)},
+				{"moon-low-precision-series", moonLowTolerance,
+					moon.Zenith(date, place.lon, place.lat),
+					90 - basic.MoonHeight(jde, place.lon, place.lat, timezone)},
+				{"star", starTolerance,
+					star.Zenith(date, starRa, starDec, place.lon, place.lat),
+					zenithFromHourAngle(star.HourAngle(date, starRa, place.lon), starDec, place.lat)},
+				{"mercury", planetTolerance,
+					mercury.Zenith(date, place.lon, place.lat),
+					zenithFromHourAngle(mercury.HourAngle(date, place.lon), mercury.ApparentDec(date), place.lat)},
+				{"venus", planetTolerance,
+					venus.Zenith(date, place.lon, place.lat),
+					zenithFromHourAngle(venus.HourAngle(date, place.lon), venus.ApparentDec(date), place.lat)},
+				{"mars", planetTolerance,
+					mars.Zenith(date, place.lon, place.lat),
+					zenithFromHourAngle(mars.HourAngle(date, place.lon), mars.ApparentDec(date), place.lat)},
+				{"jupiter", planetTolerance,
+					jupiter.Zenith(date, place.lon, place.lat),
+					zenithFromHourAngle(jupiter.HourAngle(date, place.lon), jupiter.ApparentDec(date), place.lat)},
+				{"saturn", planetTolerance,
+					saturn.Zenith(date, place.lon, place.lat),
+					zenithFromHourAngle(saturn.HourAngle(date, place.lon), saturn.ApparentDec(date), place.lat)},
+				{"uranus", planetTolerance,
+					uranus.Zenith(date, place.lon, place.lat),
+					zenithFromHourAngle(uranus.HourAngle(date, place.lon), uranus.ApparentDec(date), place.lat)},
+				{"neptune", planetTolerance,
+					neptune.Zenith(date, place.lon, place.lat),
+					zenithFromHourAngle(neptune.HourAngle(date, place.lon), neptune.ApparentDec(date), place.lat)},
+			}
+
+			for _, tc := range checks {
+				if delta := math.Abs(tc.zenith - tc.witness); delta > tc.tol {
+					t.Fatalf("%s %s at %s: zenith %.9f, independent formula %.9f, delta %.3g > %.3g",
+						place.name, tc.name, date.Format(time.RFC3339), tc.zenith, tc.witness, delta, tc.tol)
+				}
+			}
 		}
 	}
+}
+
+// zenithFromHourAngle 由时角与赤纬按 cos z = sinφ·sinδ + cosφ·cosδ·cos H 独立求天顶距，单位度。
+func zenithFromHourAngle(hourAngle, dec, lat float64) float64 {
+	rad := math.Pi / 180
+	sinZenith := math.Sin(lat*rad)*math.Sin(dec*rad) + math.Cos(dec*rad)*math.Cos(lat*rad)*math.Cos(hourAngle*rad)
+	if sinZenith > 1 {
+		sinZenith = 1
+	}
+	if sinZenith < -1 {
+		sinZenith = -1
+	}
+	return math.Acos(sinZenith) / rad
 }

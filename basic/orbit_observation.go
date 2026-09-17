@@ -50,6 +50,20 @@ func OrbitHourAngle(jde, observerLon, observerLat, timezone, observerHeight floa
 	return hourAngle
 }
 
+// OrbitHourAngleWithTopocentric 返回站心视时角及同一状态的站心视赤经、视赤纬 / hour angle with its topocentric state.
+//
+// jde 沿用 OrbitHourAngle 的当地时口径：函数内部先减 timezone/24 得世界时，再按 UT→TT 换算。
+// jde follows the local-time convention of OrbitHourAngle: timezone/24 is subtracted before the UT→TT conversion.
+func OrbitHourAngleWithTopocentric(jde, observerLon, observerLat, timezone, observerHeight float64, elements OrbitElements) (ra, dec, hourAngle float64) {
+	ra, dec, _ = orbitTopocentricObservation(jde, observerLon, observerLat, observerHeight, timezone, elements)
+	st := Limit360(ApparentSiderealTime(jde-timezone/24.0)*15 + observerLon)
+	hourAngle = st - ra
+	if hourAngle < 0 {
+		hourAngle += 360
+	}
+	return ra, dec, hourAngle
+}
+
 // OrbitCulminationTime 返回轨道目标的中天时刻，输入输出均沿用本仓库现有观测函数的 JD 语义。
 func OrbitCulminationTime(jde, observerLon, observerLat, timezone, observerHeight float64, elements OrbitElements) float64 {
 	if !isFiniteFloat(jde) || !isFiniteFloat(observerLon) || !isFiniteFloat(observerLat) || !isFiniteFloat(timezone) || !isFiniteFloat(observerHeight) {

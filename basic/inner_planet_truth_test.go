@@ -93,8 +93,20 @@ func parseInnerBaselineTime(t *testing.T, value string) time.Time {
 
 func innerBaselineTolerance(event innerBaselineEvent) time.Duration {
 	switch event.Kind {
-	case "IC", "SC", "P2R", "R2P":
-		return 2 * time.Minute
+	case "IC", "SC":
+		// 2197 年附近双方 ΔT 外推已差约 2 分钟（校正了 EarthPI 的 0.00046·T² 项之后，
+		// 三个 2197 样本从 −119.5 s 移到 −121…−126 s），因此与留点同样留 3 分钟余量；
+		// 真实的搜索错误是小时/天级，靠这个容差仍能抓住。
+		// Around 2197 the two ΔT extrapolations already differ by about two minutes (after
+		// correcting the EarthPI 0.00046*T^2 term, three 2197 samples moved from -119.5 s to
+		// -121..-126 s), so conjunctions get the same 3-minute margin as the stations.
+		// Real search errors are hours or days, so this still catches them.
+		return 3 * time.Minute
+	case "P2R", "R2P":
+		// 留是 RA 的极值点：星历模型中 ~1e-6 度/天的变化率差异就会被放大成分钟级时刻差，
+		// 且 JPL 给出的 UT 时刻还叠加了各自的 ΔT 外推（2197 年附近两者已差 ~2 分钟）。
+		// 这里留 3 分钟余量，仍远小于任何真实的搜索错误（小时/天级）。
+		return 3 * time.Minute
 	case "GEE", "GEW":
 		return 90 * time.Minute
 	default:

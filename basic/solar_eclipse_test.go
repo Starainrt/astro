@@ -119,6 +119,75 @@ func TestSolarEclipseAgainstNASABaseline(t *testing.T) {
 	}
 }
 
+func TestSolarEclipseBesselGeometryCacheSeparatesExactAndCandidate(t *testing.T) {
+	seed := JDECalc(2024, 4, 8)
+	solver := newSolarEclipseSolver(CalcMoonSHByJDE(seed, 0), SolarEclipseModelNASABulletinSplitK)
+	tt := solver.newMoonJDE + 0.125
+	exactMoon, exactAxis, exactSun := solver.besselGeometryAt(tt)
+	exactMoonAgain, exactAxisAgain, exactSunAgain := solver.besselGeometryAt(tt)
+	if exactMoon != exactMoonAgain || exactAxis != exactAxisAgain || exactSun != exactSunAgain {
+		t.Fatal("exact Bessel cache changed the geometry on a repeated lookup")
+	}
+	if len(solver.besselGeometryCache) != 1 {
+		t.Fatalf("exact Bessel cache size=%d, want 1", len(solver.besselGeometryCache))
+	}
+
+	candidateSolver := solver.withLocalEphemeris()
+	candidateMoon, candidateAxis, candidateSun, ok := candidateSolver.besselGeometryCandidateAt(tt)
+	if !ok {
+		t.Fatal("candidate Bessel geometry unavailable inside local ephemeris")
+	}
+	candidateMoonAgain, candidateAxisAgain, candidateSunAgain, okAgain := candidateSolver.besselGeometryCandidateAt(tt)
+	if !okAgain || candidateMoon != candidateMoonAgain || candidateAxis != candidateAxisAgain || candidateSun != candidateSunAgain {
+		t.Fatal("candidate Bessel cache changed the geometry on a repeated lookup")
+	}
+	if len(solver.besselGeometryCache) != 1 {
+		t.Fatalf("exact Bessel cache size changed after candidate lookup=%d", len(solver.besselGeometryCache))
+	}
+	if len(solver.besselCandidateCache) != 1 {
+		t.Fatalf("candidate Bessel cache size=%d, want 1", len(solver.besselCandidateCache))
+	}
+}
+
+func TestSolarEclipseBesselGeometryCacheIsBounded(t *testing.T) {
+	cache := make(map[uint64]solarEclipseBesselGeometryCacheEntry)
+	entry := solarEclipseBesselGeometryCacheEntry{valid: true}
+	for index := 0; index < solarEclipseBesselGeometryCacheMaximumEntries+17; index++ {
+		storeSolarEclipseBesselGeometry(cache, uint64(index), entry)
+	}
+	if len(cache) > solarEclipseBesselGeometryCacheMaximumEntries {
+		t.Fatalf("Bessel cache size=%d, want <=%d", len(cache), solarEclipseBesselGeometryCacheMaximumEntries)
+	}
+	if _, ok := cache[uint64(solarEclipseBesselGeometryCacheMaximumEntries+16)]; !ok {
+		t.Fatal("latest Bessel cache entry was evicted")
+	}
+}
+
+func BenchmarkSolarEclipseBesselGeometryCache(b *testing.B) {
+	solver := newSolarEclipseSolver(
+		CalcMoonSHByJDE(JDECalc(2024, 4, 8), 0),
+		SolarEclipseModelNASABulletinSplitK,
+	)
+	tt := solver.newMoonJDE + 0.125
+	// Prime one exact entry so the benchmark measures the repeated lookup
+	// path used by contact and topology refinements.
+	solver.besselGeometryAt(tt)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for index := 0; index < b.N; index++ {
+		solver.besselGeometryAt(tt)
+	}
+}
+
+func BenchmarkSolarEclipseRepresentativePath(b *testing.B) {
+	seed := JDECalc(2024, 4, 8)
+	options := SolarEclipsePathOptions{StepDays: 5.0 / 1440.0, TargetSpacingKM: 200}
+	b.ReportAllocs()
+	for index := 0; index < b.N; index++ {
+		SolarEclipseCentralPath(seed, options)
+	}
+}
+
 func TestSolarEclipseDefaultUsesNASABulletinSplitK(t *testing.T) {
 	jde := JDECalc(2024, 4, 8)
 	defaultResult := SolarEclipse(jde)
@@ -171,6 +240,17 @@ func TestSolarEclipseNoEvent(t *testing.T) {
 				t.Fatalf("expected no contact times, got %+v", result)
 			}
 		})
+	}
+}
+
+func BenchmarkSolarEclipseGlobal(b *testing.B) {
+	seed := JDECalc(2010, 1, 15)
+	b.ReportAllocs()
+	for iteration := 0; iteration < b.N; iteration++ {
+		result := SolarEclipse(seed)
+		if !result.HasCentral {
+			b.Fatal("expected a central eclipse")
+		}
 	}
 }
 

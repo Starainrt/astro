@@ -1,5 +1,47 @@
 package calendar
 
+import "sync"
+
+// memoEras 缓存只读的年号表：文本入口每次解析都会重建这些表。
+func memoEras(build func() []Era) func() []Era {
+	var once sync.Once
+	var eras []Era
+	return func() []Era {
+		once.Do(func() { eras = build() })
+		return eras
+	}
+}
+
+// memoEraMap 缓存只读的年号映射表。
+func memoEraMap(build func() map[string][][]int) func() map[string][][]int {
+	var once sync.Once
+	var m map[string][][]int
+	return func() map[string][][]int {
+		once.Do(func() { m = build() })
+		return m
+	}
+}
+
+// memoUint32s 缓存只读的打包历表（如 2018 项的汉清年表）。
+func memoUint32s(build func() []uint32) func() []uint32 {
+	var once sync.Once
+	var table []uint32
+	return func() []uint32 {
+		once.Do(func() { table = build() })
+		return table
+	}
+}
+
+// memoUint32Map 缓存只读的年份→magic 映射表。
+func memoUint32Map(build func() map[int]uint32) func() map[int]uint32 {
+	var once sync.Once
+	var table map[int]uint32
+	return func() map[int]uint32 {
+		once.Do(func() { table = build() })
+		return table
+	}
+}
+
 type Era struct {
 	//完整农历年的公历年映射
 	Year              int
@@ -47,46 +89,32 @@ func innerEras(year int, eraSource func() []Era) []EraDesc {
 		}
 		break
 	}
+	// 表内只有一条命中、且它恰是 year 年新起年号时，该条会落在 secEra，firstEra 仍为零值；
+	// 因此按槽位是否为 Year==0 判断“无命中”，不能只看 firstEra。
 	var result []EraDesc
-	nianHao := firstEra.Nianhao
-	if firstEra.OtherNianHaoStart != "" {
-		nianHao = firstEra.OtherNianHaoStart
-	}
-	result = append(result, EraDesc{
-		YearOfNianHao: year - firstEra.Year + 1 + firstEra.Offset,
-		Emperor:       firstEra.Emperor,
-		Nianhao:       nianHao,
-		Dynasty:       firstEra.Dynasty,
-	})
-	nianHao = secEra.Nianhao
-	if secEra.OtherNianHaoStart != "" {
-		nianHao = secEra.OtherNianHaoStart
-	}
-	if secEra.Year != 0 {
+	for _, e := range []Era{firstEra, secEra, thirdEra} {
+		if e.Year == 0 {
+			continue
+		}
+		nianHao := e.Nianhao
+		if e.OtherNianHaoStart != "" {
+			nianHao = e.OtherNianHaoStart
+		}
 		result = append(result, EraDesc{
-			YearOfNianHao: year - secEra.Year + 1 + secEra.Offset,
-			Emperor:       secEra.Emperor,
+			YearOfNianHao: year - e.Year + 1 + e.Offset,
+			Emperor:       e.Emperor,
 			Nianhao:       nianHao,
-			Dynasty:       secEra.Dynasty,
+			Dynasty:       e.Dynasty,
 		})
 	}
-	nianHao = thirdEra.Nianhao
-	if thirdEra.OtherNianHaoStart != "" {
-		nianHao = thirdEra.OtherNianHaoStart
+	// 年份早于表内首个年号时无任何命中，返回 nil 由上层用年份描述兜底。
+	if len(result) == 0 {
+		return nil
 	}
-	if thirdEra.Year != 0 {
-		result = append(result, EraDesc{
-			YearOfNianHao: year - thirdEra.Year + 1 + thirdEra.Offset,
-			Emperor:       thirdEra.Emperor,
-			Nianhao:       nianHao,
-			Dynasty:       thirdEra.Dynasty,
-		})
-	}
-
 	return result
 }
 
-func nianHaoMap() map[string][][]int {
+var nianHaoMap = memoEraMap(func() map[string][][]int {
 	m := map[string][][]int{
 		"民国":   [][]int{{1912, 1949}},
 		"宣统":   [][]int{{1909, 1911}},
@@ -405,7 +433,7 @@ func nianHaoMap() map[string][][]int {
 	}
 	addNianHaoYouCompatAliases(m)
 	return m
-}
+})
 
 func addNianHaoYouCompatAliases(m map[string][][]int) {
 	for alias, canonical := range map[string]string{
@@ -426,7 +454,7 @@ func addNianHaoYouCompatAliases(m map[string][][]int) {
 	}
 }
 
-func hanEras() []Era {
+var hanEras = memoEras(func() []Era {
 	return []Era{
 		{
 			Year:              220,
@@ -861,9 +889,9 @@ func hanEras() []Era {
 			Dynasty: "西汉",
 		},
 	}
-}
+})
 
-func weiJinNanBeiChaoEras() []Era {
+var weiJinNanBeiChaoEras = memoEras(func() []Era {
 	return []Era{
 		{
 			Year:              617,
@@ -1224,6 +1252,7 @@ func weiJinNanBeiChaoEras() []Era {
 			Year:              304,
 			Emperor:           "晋惠帝",
 			OtherNianHaoStart: "永兴",
+			Dynasty:           "西晋",
 		},
 		{
 			Year:              302,
@@ -1340,9 +1369,9 @@ func weiJinNanBeiChaoEras() []Era {
 			Dynasty: "东汉",
 		},
 	}
-}
+})
 
-func tangEras() []Era {
+var tangEras = memoEras(func() []Era {
 	return []Era{
 		{
 			Year:              904,
@@ -1795,9 +1824,9 @@ func tangEras() []Era {
 			Dynasty: "隋",
 		},
 	}
-}
+})
 
-func wudaiSongYuanEras() []Era {
+var wudaiSongYuanEras = memoEras(func() []Era {
 	return []Era{
 		{
 			Year:    1341,
@@ -2305,9 +2334,9 @@ func wudaiSongYuanEras() []Era {
 			Dynasty: "唐",
 		},
 	}
-}
+})
 
-func mingQingEras() []Era {
+var mingQingEras = memoEras(func() []Era {
 	return []Era{
 		{
 			Year:    1949,
@@ -2496,4 +2525,4 @@ func mingQingEras() []Era {
 			Dynasty: "元",
 		},
 	}
-}
+})

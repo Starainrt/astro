@@ -72,12 +72,7 @@ func MoonTrueRaDec(jd float64) (float64, float64) {
 	return LoBoToRaDec(jd, MoonApparentLo(jd), MoonTrueBo(jd))
 }
 
-/*
-*
-
-	*
-	传入世界时
-*/
+// MoonApparentRa 站心视赤经；jd 为当地时儒略日，tz 为时区小时数 / topocentric apparent right ascension; jd is local civil time and tz is the zone offset in hours.
 func MoonApparentRa(jd, lon, lat float64, tz int) float64 {
 	jde := TD2UT(jd, true)
 	utcJD := jde - float64(tz)/24.000

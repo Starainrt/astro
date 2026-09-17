@@ -17,6 +17,7 @@ func writeOccultationTimeMarkers(
 	options StarOccultationSVGOptions,
 	excluded []time.Time,
 	greatest time.Time,
+	placer *occultationLabelPlacer,
 ) {
 	if options.TimeLabelStep <= 0 || len(points) < 2 {
 		return
@@ -42,15 +43,28 @@ func writeOccultationTimeMarkers(
 		if tooClose {
 			continue
 		}
-		projected = append(projected, [2]float64{x, y})
-		labelY := y - 8
+		text := marker.Time.In(options.Location).Format("15:04")
+		// 掩甚附近的标签默认压到圆点下方，给掩甚事件标记让位；两个方向都被占用就丢弃这个时刻。
+		baselines := []float64{y - 8, y + 15}
 		if occultationTimesNear(marker.Time, greatest, occultationGreatestTimeLabelWindow(options.TimeLabelStep)) {
-			labelY = y + 15
-		} else if labelY < frame.Y+10 {
-			labelY = y + 15
+			baselines[0], baselines[1] = baselines[1], baselines[0]
 		}
+		labelY, placed := 0.0, false
+		for _, baseline := range baselines {
+			if baseline < frame.Y+10 || baseline > frame.Y+frame.Height-8 {
+				continue
+			}
+			if placer.place(x, baseline, "middle", text, 9, 2) {
+				labelY, placed = baseline, true
+				break
+			}
+		}
+		if !placed {
+			continue
+		}
+		projected = append(projected, [2]float64{x, y})
 		fmt.Fprintf(b, `<g class="occultation-time-marker"><circle cx="%.3f" cy="%.3f" r="2.3" fill="#087f8c" stroke="#ffffff" stroke-width="1"/><text x="%.3f" y="%.3f" fill="#075f69" stroke="#ffffff" stroke-width="3" paint-order="stroke" font-family="Arial, sans-serif" font-size="9" font-weight="700" text-anchor="middle">%s</text></g>`,
-			x, y, x, labelY, html.EscapeString(marker.Time.In(options.Location).Format("15:04")))
+			x, y, x, labelY, html.EscapeString(text))
 	}
 }
 

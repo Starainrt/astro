@@ -124,6 +124,8 @@ func moonRiseSetResidual(jd, longitude, latitude, timeZone, zenithShift, height 
 	return residual
 }
 
+// moonRiseSetOnCivilDay 在民用日内求升/落时刻；找不到过零时的错误口径与 rise_set.go 的 ErrNeverRise/ErrNeverSet 一致，
+// fallbackErr 是调用方用中天/下中天残差预判的同一几何结论，命中时优先于扫描结果。
 func moonRiseSetOnCivilDay(candidate, slope, civilDayStart, longitude, latitude, originalTimeZone,
 	localTimeZone, zenithShift, height float64, isRise bool, fallbackErr error) (float64, error) {
 	if eventRiseSetCandidateValid(candidate, civilDayStart, slope, isRise) {
@@ -231,6 +233,7 @@ func GetMoonRiseTime(julianDay, longitude, latitude, timeZone, zenithShift, heig
 	currentResidual := moonRiseSetResidual(estimatedTime, longitude, latitude, timeZone, zenithShift, height, -1)
 	if !(currentResidual < -10 && math.Abs(latitude) < 60) {
 		if currentResidual > 0 {
+			// 下中天仍在地平线上：当日无落下（也无可升起），口径见 moonRiseSetOnCivilDay。
 			return moonRiseSetOnCivilDay(math.NaN(), math.NaN(), civilDayStart, longitude, latitude,
 				originalTimeZone, timeZone, zenithShift, height, true, ErrNeverSet)
 		}
@@ -241,6 +244,7 @@ func GetMoonRiseTime(julianDay, longitude, latitude, timeZone, zenithShift, heig
 		}
 		checkTime += (360 - checkAngle) * 4.0 / 60.0 / 24.0
 		if moonRiseSetResidual(checkTime, longitude, latitude, timeZone, zenithShift, height, -1) < 0 {
+			// 上中天仍在地平线下：当日无升起。
 			return moonRiseSetOnCivilDay(math.NaN(), math.NaN(), civilDayStart, longitude, latitude,
 				originalTimeZone, timeZone, zenithShift, height, true, ErrNeverRise)
 		}
@@ -314,6 +318,7 @@ func GetMoonSetTime(julianDay, longitude, latitude, timeZone, zenithShift, heigh
 	currentResidual := moonRiseSetResidual(estimatedTime, longitude, latitude, timeZone, zenithShift, height, -1)
 	if !(currentResidual > 10 && math.Abs(latitude) < 60) {
 		if currentResidual < 0 {
+			// 上中天仍在地平线下：当日无升起，也就无落下。
 			return moonRiseSetOnCivilDay(math.NaN(), math.NaN(), civilDayStart, longitude, latitude,
 				originalTimeZone, timeZone, zenithShift, height, false, ErrNeverRise)
 		}
@@ -321,6 +326,7 @@ func GetMoonSetTime(julianDay, longitude, latitude, timeZone, zenithShift, heigh
 		angleSubtraction := 180 - MoonTimeAngle(checkTime, longitude, latitude, timeZone)
 		checkTime += angleSubtraction * 4.0 / 60.0 / 24.0
 		if moonRiseSetResidual(checkTime, longitude, latitude, timeZone, zenithShift, height, -1) > 0 {
+			// 下中天仍在地平线上：当日无落下。
 			return moonRiseSetOnCivilDay(math.NaN(), math.NaN(), civilDayStart, longitude, latitude,
 				originalTimeZone, timeZone, zenithShift, height, false, ErrNeverSet)
 		}

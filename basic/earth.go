@@ -36,7 +36,7 @@ func HeightDegreeByLat(height, lat float64) float64 {
 	return math.Acos((radius)/(radius+height)) * 180 / math.Pi
 }
 
-// GeocentricRadius 地心直径与纬度的关系
+// GeocentricRadius 给定纬度处的地心半径，单位米 / geocentric radius at the given latitude, in metres.
 func GeocentricRadius(lat float64) float64 {
 	a := (EARTH_EQUATORIAL_RADIUS * EARTH_EQUATORIAL_RADIUS * Cos(lat))
 	a *= a

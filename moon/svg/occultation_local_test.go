@@ -2,6 +2,7 @@ package svg
 
 import (
 	"errors"
+	"fmt"
 	"math"
 	"strings"
 	"testing"
@@ -53,6 +54,54 @@ func TestFindLocalStarOccultationSVGsHR4799(t *testing.T) {
 	}
 	if err := validateXML(diagram); err != nil {
 		t.Fatalf("generated local SVG is not valid XML: %v", err)
+	}
+}
+
+func TestLocalStarOccultationSVGUsesGreatestMoonPhase(t *testing.T) {
+	info := localHR4799Occultation(t)
+	diagram, err := LocalStarOccultationSVG(info, hr4799StarCoordinate(), LocalStarOccultationSVGOptions{
+		Location: time.UTC,
+	})
+	if err != nil {
+		t.Fatalf("LocalStarOccultationSVG() error = %v", err)
+	}
+	appearance := localOccultationMoonAppearanceAt(info.Greatest, info.Observer)
+	want := fmt.Sprintf(`data-illumination="%.6f" data-bright-limb-position-angle="%.3f"`,
+		appearance.illumination, appearance.brightLimbPA)
+	if !strings.Contains(diagram, want) {
+		t.Fatalf("local SVG does not carry greatest-time Moon appearance %q", want)
+	}
+	if appearance.illumination > 1e-6 && appearance.illumination < 1-1e-6 &&
+		!strings.Contains(diagram, `<clipPath id="local-star-occultation-moon-overview">`) {
+		t.Fatal("non-full Moon overview is missing its phase clip path")
+	}
+}
+
+func TestLocalOccultationMoonPhasePathSelectsIlluminatedArea(t *testing.T) {
+	gibbous := localOccultationMoonPhasePath(100, 0.75)
+	if !strings.Contains(gibbous, `A 50.000 100.000 0 0 1 0 -100.000`) {
+		t.Fatalf("waxing or waning gibbous terminator uses the wrong arc: %s", gibbous)
+	}
+	crescent := localOccultationMoonPhasePath(100, 0.25)
+	if !strings.Contains(crescent, `A 50.000 100.000 0 0 0 0 -100.000`) {
+		t.Fatalf("crescent terminator uses the wrong arc: %s", crescent)
+	}
+}
+
+func TestLocalOccultationMoonSVGRotationUsesNorthUpEastLeft(t *testing.T) {
+	tests := []struct {
+		positionAngle float64
+		rotation      float64
+	}{
+		{positionAngle: 0, rotation: -90},
+		{positionAngle: 90, rotation: -180},
+		{positionAngle: 180, rotation: -270},
+		{positionAngle: 270, rotation: -360},
+	}
+	for _, test := range tests {
+		if got := localOccultationMoonSVGRotation(test.positionAngle); got != test.rotation {
+			t.Fatalf("bright-limb PA %.1f rotation = %.1f, want %.1f", test.positionAngle, got, test.rotation)
+		}
 	}
 }
 

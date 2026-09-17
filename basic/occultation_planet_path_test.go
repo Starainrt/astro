@@ -7,6 +7,352 @@ import (
 	"time"
 )
 
+func TestPlanetOccultationCombinedPositionMatchesSeparateEphemerides(t *testing.T) {
+	tt := occultationTimeToTT(time.Date(2025, time.February, 1, 4, 0, 48, 0, time.UTC))
+	for _, planet := range []OccultationPlanet{
+		OccultationMercury,
+		OccultationVenus,
+		OccultationMars,
+		OccultationJupiter,
+		OccultationSaturn,
+		OccultationUranus,
+		OccultationNeptune,
+	} {
+		config, ok := planetOccultationConfigFor(planet)
+		if !ok {
+			t.Fatalf("%s occultation config is unavailable", planet)
+		}
+		wantRA, wantDec := config.apparentRaDecN(tt, -1)
+		wantDistance := config.earthDistanceN(tt, -1)
+		gotRA, gotDec, distance := planetOccultationApparentPositionAndDistanceN(tt, config, -1)
+		if gotRA != wantRA || gotDec != wantDec || distance != wantDistance {
+			t.Fatalf("%s combined position = %.15g %.15g %.15g, want %.15g %.15g %.15g",
+				planet, gotRA, gotDec, distance, wantRA, wantDec, wantDistance)
+		}
+	}
+}
+
+func TestPlanetOccultationEventCacheReusesStateAndContactFrames(t *testing.T) {
+	config, ok := planetOccultationConfigFor(OccultationSaturn)
+	if !ok {
+		t.Fatal("Saturn occultation config is unavailable")
+	}
+	tt := occultationTimeToTT(time.Date(2024, time.August, 21, 2, 41, 36, 0, time.UTC))
+	cache := newPlanetOccultationEventCache(config)
+
+	wantOuter, wantOuterOK := planetOccultationPathFrameAt(tt, config)
+	wantTotal, wantTotalOK := planetOccultationTotalPathFrameAt(tt, config)
+	for iteration := 0; iteration < 2; iteration++ {
+		gotOuter, gotOuterOK := cache.outerFrameAt(tt)
+		gotTotal, gotTotalOK := cache.totalFrameAt(tt)
+		_ = cache.riseSetContextAt(tt)
+		if gotOuterOK != wantOuterOK || !occultationPathFrameGeometryEqual(gotOuter, wantOuter) {
+			t.Fatalf("cached outer frame differs on iteration %d", iteration)
+		}
+		if gotTotalOK != wantTotalOK || !occultationPathFrameGeometryEqual(gotTotal, wantTotal) {
+			t.Fatalf("cached total frame differs on iteration %d", iteration)
+		}
+	}
+	if len(cache.states) != 1 || len(cache.outerFrames) != 1 || len(cache.totalFrames) != 1 {
+		t.Fatalf("cache sizes = states:%d outer:%d total:%d, want one entry each",
+			len(cache.states), len(cache.outerFrames), len(cache.totalFrames))
+	}
+}
+
+func TestOccultationPathFramesReuseMoonDistanceForAngularRadius(t *testing.T) {
+	tt := occultationTimeToTT(time.Date(2025, time.February, 1, 4, 0, 48, 0, time.UTC))
+	want := MoonSemidiameter(tt) * math.Pi / (180 * 3600)
+	starFrame, ok := starOccultationPathFrameAt(tt, StarCoordinate{
+		RA: 0, Dec: 0, Epoch: time.Date(2000, time.January, 1, 12, 0, 0, 0, time.UTC), Frame: CoordinateFrameJ2000,
+	})
+	if !ok {
+		t.Fatal("stellar occultation frame is unavailable")
+	}
+	if difference := math.Abs(starFrame.moonRadius - want); difference > 1e-15 {
+		t.Fatalf("stellar cached lunar radius differs by %.15g radians", difference)
+	}
+
+	config, _ := planetOccultationConfigFor(OccultationSaturn)
+	planetFrame, ok := planetOccultationPathFrameAt(tt, config)
+	if !ok {
+		t.Fatal("planet occultation frame is unavailable")
+	}
+	if difference := math.Abs(planetFrame.moonRadius - want); difference > 1e-15 {
+		t.Fatalf("planet cached lunar radius differs by %.15g radians", difference)
+	}
+}
+
+func TestPlanetOccultationCanDisableInstantaneousFootprints(t *testing.T) {
+	start := time.Date(2024, time.August, 21, 0, 0, 0, 0, time.UTC)
+	paths, err := FindPlanetOccultationPaths(
+		start, start.Add(24*time.Hour), OccultationSaturn,
+		OccultationPathOptions{Step: 10 * time.Minute, DisableFootprints: true},
+	)
+	if err != nil || len(paths) != 1 {
+		t.Fatalf("FindPlanetOccultationPaths() paths=%d err=%v, want one", len(paths), err)
+	}
+	path := paths[0]
+	if len(path.PartialFootprints) != 0 || len(path.TotalFootprints) != 0 {
+		t.Fatalf("disabled footprint counts partial=%d total=%d, want zero", len(path.PartialFootprints), len(path.TotalFootprints))
+	}
+	if len(path.PartialBandFootprints) == 0 || len(path.TotalBandFootprints) == 0 {
+		t.Fatalf("compact band support counts partial=%d total=%d, want both nonzero", len(path.PartialBandFootprints), len(path.TotalBandFootprints))
+	}
+	if len(path.RiseSetCurves) != 6 {
+		t.Fatalf("rise/set curve count=%d, want six", len(path.RiseSetCurves))
+	}
+	if len(path.TotalRiseSetCurves) != 6 {
+		t.Fatalf("total rise/set curve count=%d, want six", len(path.TotalRiseSetCurves))
+	}
+	if len(path.CenterLine) == 0 || len(path.NorthernLimit) == 0 || len(path.SouthernLimit) == 0 {
+		t.Fatal("disabled footprints removed the center line or outer limits")
+	}
+	if !path.HasTotalBand || len(path.NorthernTotalLimit) == 0 || len(path.SouthernTotalLimit) == 0 {
+		t.Fatal("disabled footprints removed the total-occultation band")
+	}
+}
+
+func TestPlanetOccultationCompactBandCanIncludeLowFrequencyTimeline(t *testing.T) {
+	start := time.Date(2025, time.January, 5, 0, 0, 0, 0, time.FixedZone("UTC+8", 8*60*60))
+	paths, err := FindPlanetOccultationPaths(
+		start, start.Add(24*time.Hour), OccultationSaturn,
+		OccultationPathOptions{
+			Step: 20 * time.Minute, DisableFootprints: true,
+			IncludeFootprintTimeline: true, FootprintTimelineStep: 5 * time.Minute,
+		},
+	)
+	if err != nil || len(paths) != 1 {
+		t.Fatalf("paths=%d err=%v, want one", len(paths), err)
+	}
+	path := paths[0]
+	if len(path.PartialBandFootprints) == 0 || len(path.PartialFootprints) == 0 {
+		t.Fatalf("partial compact/timeline counts=%d/%d, want both", len(path.PartialBandFootprints), len(path.PartialFootprints))
+	}
+	if len(path.TotalBandFootprints) == 0 || len(path.TotalFootprints) == 0 {
+		t.Fatalf("total compact/timeline counts=%d/%d, want both", len(path.TotalBandFootprints), len(path.TotalFootprints))
+	}
+	if len(path.PartialFootprints) > 50 || len(path.TotalFootprints) > 50 {
+		t.Fatalf("five-minute timeline is unexpectedly dense: partial=%d total=%d", len(path.PartialFootprints), len(path.TotalFootprints))
+	}
+	timelinePoints := 0
+	for _, footprints := range [][]PlanetOccultationFootprint{path.PartialFootprints, path.TotalFootprints} {
+		for _, footprint := range footprints {
+			for polygonIndex, polygon := range footprint.Polygons {
+				if len(polygon) < 4 || occultationPathDistanceKM(polygon[0], polygon[len(polygon)-1]) > 0.001 {
+					t.Fatalf("timeline footprint at %v polygon %d is not closed", footprint.Time, polygonIndex)
+				}
+				timelinePoints += len(polygon)
+				for pointIndex := 1; pointIndex < len(polygon); pointIndex++ {
+					if distance := occultationPathDistanceKM(polygon[pointIndex-1], polygon[pointIndex]); distance > 301 {
+						t.Fatalf("timeline footprint at %v polygon %d edge %d spans %.1f km, want at most 301 km",
+							footprint.Time, polygonIndex, pointIndex-1, distance)
+					}
+				}
+			}
+		}
+	}
+	if timelinePoints > 15000 {
+		t.Fatalf("timeline contains %d polygon points, want at most 15000", timelinePoints)
+	}
+}
+
+func TestStarOccultationCompactBandUsesIndependentTimeline(t *testing.T) {
+	start := time.Date(2025, time.June, 5, 0, 0, 0, 0, time.UTC)
+	paths, err := FindStarOccultationPaths(
+		start, start.Add(24*time.Hour), hr4799OccultationCoordinateForTest(),
+		OccultationPathOptions{
+			Step: 20 * time.Minute, TargetSpacingKM: 900,
+			DisableFootprints: true, IncludeFootprintTimeline: true,
+			FootprintTimelineStep: 5 * time.Minute,
+		},
+	)
+	if err != nil || len(paths) != 1 {
+		t.Fatalf("FindStarOccultationPaths() paths=%d err=%v, want one", len(paths), err)
+	}
+	path := paths[0]
+	if len(path.BandFootprints) == 0 || len(path.Footprints) == 0 {
+		t.Fatalf("compact/timeline counts=%d/%d, want both", len(path.BandFootprints), len(path.Footprints))
+	}
+	for _, footprint := range path.Footprints {
+		for polygonIndex, polygon := range footprint.Polygons {
+			if len(polygon) < 4 || occultationPathDistanceKM(polygon[0], polygon[len(polygon)-1]) > 0.001 {
+				t.Fatalf("timeline footprint at %v polygon %d is not closed", footprint.Time, polygonIndex)
+			}
+			for pointIndex := 1; pointIndex < len(polygon); pointIndex++ {
+				if distance := occultationPathDistanceKM(polygon[pointIndex-1], polygon[pointIndex]); distance > 301 {
+					t.Fatalf("timeline footprint at %v polygon %d edge %d spans %.1f km, want at most 301 km",
+						footprint.Time, polygonIndex, pointIndex-1, distance)
+				}
+			}
+		}
+	}
+}
+
+func TestOccultationPathPointBudgetIsBounded(t *testing.T) {
+	options := normalizeOccultationPathOptions(OccultationPathOptions{})
+	got := occultationPathEstimatedPointCount(0, 0.2, 0, 0, false, 0, 0, false, 0.1, options)
+	if got <= 0 || got > occultationPathMaxOutputPointCount {
+		t.Fatalf("default occultation point estimate=%d, want within positive budget", got)
+	}
+	dense := normalizeOccultationPathOptions(OccultationPathOptions{Step: time.Second})
+	got = occultationPathEstimatedPointCount(0, 2, 0, 2, true, 0, 2, true, 1, dense)
+	if got <= occultationPathFootprintPointBudget || got > occultationPathMaxOutputPointCount {
+		t.Fatalf("dense occultation point estimate=%d, want footprint-aware value within budget %d",
+			got, occultationPathMaxOutputPointCount)
+	}
+	if overflow := occultationPathAccumulatePointEstimate(occultationPathMaxOutputPointCount-10, 20); overflow <= occultationPathMaxOutputPointCount {
+		t.Fatalf("overflow estimate=%d, want sentinel above %d", overflow, occultationPathMaxOutputPointCount)
+	}
+}
+
+func TestPlanetOccultation19621010TotalBandIsNarrowerThanOuterBand(t *testing.T) {
+	start := time.Date(1962, time.October, 10, 0, 0, 0, 0, time.UTC)
+	paths, err := FindPlanetOccultationPaths(
+		start, start.Add(24*time.Hour), OccultationJupiter,
+		OccultationPathOptions{Step: 10 * time.Minute, DisableFootprints: true, DisableRiseSet: true},
+	)
+	if err != nil || len(paths) != 1 {
+		t.Fatalf("FindPlanetOccultationPaths() paths=%d err=%v, want one", len(paths), err)
+	}
+	path := paths[0]
+	if !path.HasTotalBand || path.GreatestTotalWidthKM <= 0 || path.GreatestTotalWidthKM >= path.Greatest.WidthKM {
+		t.Fatalf("widths outer=%.3f total=%.3f hasTotal=%v, want a narrower positive total band",
+			path.Greatest.WidthKM, path.GreatestTotalWidthKM, path.HasTotalBand)
+	}
+}
+
+func TestPlanetOccultation20240725CompactBandRefinesContactsAndBoundaryPairing(t *testing.T) {
+	zone := time.FixedZone("UTC+8", 8*60*60)
+	start := time.Date(2024, time.July, 25, 0, 0, 0, 0, zone)
+	paths, err := FindPlanetOccultationPaths(
+		start, start.Add(24*time.Hour), OccultationSaturn,
+		OccultationPathOptions{
+			Step: 20 * time.Minute, TargetSpacingKM: 900,
+			DisableFootprints: true,
+		},
+	)
+	if err != nil || len(paths) != 1 {
+		t.Fatalf("FindPlanetOccultationPaths() paths=%d err=%v, want one", len(paths), err)
+	}
+	path := paths[0]
+	for _, test := range []struct {
+		name       string
+		footprints []PlanetOccultationFootprint
+		start, end time.Time
+	}{
+		{name: "partial", footprints: path.PartialBandFootprints, start: path.Start.Time, end: path.End.Time},
+		{name: "total", footprints: path.TotalBandFootprints, start: path.TotalStart.Time, end: path.TotalEnd.Time},
+	} {
+		if len(test.footprints) < 2 {
+			t.Fatalf("%s compact support count=%d, want at least two", test.name, len(test.footprints))
+		}
+		if gap := test.footprints[0].Time.Sub(test.start); gap > 30*time.Second {
+			t.Errorf("%s compact support starts %s after contact, want at most 30s", test.name, gap)
+		}
+		if gap := test.end.Sub(test.footprints[len(test.footprints)-1].Time); gap > 30*time.Second {
+			t.Errorf("%s compact support ends %s before contact, want at most 30s", test.name, gap)
+		}
+		for footprintIndex, footprint := range test.footprints {
+			if footprintIndex > 0 {
+				previous := test.footprints[footprintIndex-1]
+				if previous.Closed && footprint.Closed && footprint.Time.Sub(previous.Time) <= time.Second {
+					t.Errorf("%s compact support retains duplicate closed footprints at %s and %s",
+						test.name, previous.Time, footprint.Time)
+				}
+			}
+			for polygonIndex, polygon := range footprint.Polygons {
+				for pointIndex := 1; pointIndex < len(polygon); pointIndex++ {
+					if distance := occultationPathDistanceKM(polygon[pointIndex-1], polygon[pointIndex]); distance > 150 {
+						t.Errorf("%s compact support[%d].polygon[%d] edge %d spans %.1f km, want at most 150 km",
+							test.name, footprintIndex, polygonIndex, pointIndex-1, distance)
+					}
+				}
+			}
+		}
+	}
+	for _, test := range []struct {
+		name          string
+		first, second []OccultationPathPoint
+	}{
+		{name: "partial", first: path.NorthernLimit, second: path.SouthernLimit},
+		{name: "total", first: path.NorthernTotalLimit, second: path.SouthernTotalLimit},
+	} {
+		for index := 1; index < len(test.first); index++ {
+			direct := math.Max(
+				occultationPathDistanceKM(test.first[index-1], test.first[index]),
+				occultationPathDistanceKM(test.second[index-1], test.second[index]),
+			)
+			swapped := math.Max(
+				occultationPathDistanceKM(test.first[index-1], test.second[index]),
+				occultationPathDistanceKM(test.second[index-1], test.first[index]),
+			)
+			if direct > 2000 && swapped < 750 {
+				t.Errorf("%s boundary sample %d keeps a %.1f km direct pairing although the swapped pairing is %.1f km",
+					test.name, index, direct, swapped)
+			}
+		}
+	}
+}
+
+func TestPlanetOccultation20250105CompactBandRefinesVisibilityTransitions(t *testing.T) {
+	zone := time.FixedZone("UTC+8", 8*60*60)
+	start := time.Date(2025, time.January, 5, 0, 0, 0, 0, zone)
+	paths, err := FindPlanetOccultationPaths(
+		start, start.Add(24*time.Hour), OccultationSaturn,
+		OccultationPathOptions{
+			Step: 20 * time.Minute, TargetSpacingKM: 900,
+			DisableRiseSet: true, DisableFootprints: true,
+		},
+	)
+	if err != nil || len(paths) != 1 {
+		t.Fatalf("FindPlanetOccultationPaths() paths=%d err=%v, want one", len(paths), err)
+	}
+	for _, test := range []struct {
+		name       string
+		footprints []PlanetOccultationFootprint
+	}{
+		{name: "partial", footprints: paths[0].PartialBandFootprints},
+		{name: "total", footprints: paths[0].TotalBandFootprints},
+	} {
+		transitions := 0
+		for index := 1; index < len(test.footprints); index++ {
+			previous, current := test.footprints[index-1], test.footprints[index]
+			if previous.Closed == current.Closed {
+				continue
+			}
+			transitions++
+			if gap := current.Time.Sub(previous.Time); gap > 150*time.Millisecond {
+				t.Errorf("%s visibility transition %d spans %s, want at most 150ms", test.name, transitions, gap)
+			}
+			open := previous
+			if open.Closed {
+				open = current
+			}
+			if len(open.Boundaries) != 1 || len(open.Boundaries[0]) < 2 {
+				t.Fatalf("%s visibility transition %d has no open boundary", test.name, transitions)
+			}
+			// Boundaries contain the visible contact arc, not a closed ring. Its
+			// endpoints may remain far apart at the geocentric open/closed
+			// transition because station parallax changes the topology. The physical
+			// contract is that both endpoints lie on the lunar horizon and the
+			// separately exported polygon closes them with the horizon arc.
+			boundary := open.Boundaries[0]
+			for _, endpoint := range []OccultationPathPoint{boundary[0], boundary[len(boundary)-1]} {
+				if math.Abs(endpoint.MoonAltitude) > 1e-5 {
+					t.Errorf("%s visibility transition %d endpoint altitude=%g deg, want horizon root",
+						test.name, transitions, endpoint.MoonAltitude)
+				}
+			}
+			if len(open.Polygons) == 0 || len(open.Polygons[0]) < len(boundary)+2 {
+				t.Errorf("%s visibility transition %d has no horizon-closed polygon", test.name, transitions)
+			}
+		}
+		if transitions != 2 {
+			t.Errorf("%s visibility transition count=%d, want 2", test.name, transitions)
+		}
+	}
+}
+
 func TestPlanetOccultationFiniteDiskExpandsOuterAndContractsTotalPath(t *testing.T) {
 	config, ok := planetOccultationConfigFor(OccultationSaturn)
 	if !ok {
@@ -338,5 +684,42 @@ func assertOccultationPathCommonSamplesEqual(t *testing.T, name string, fine, co
 	}
 	if matched < 10 {
 		t.Fatalf("%s compared only %d common samples, want at least 10", name, matched)
+	}
+}
+
+func TestPlanetOccultation20250114MarsBandContourTimesIncrease(t *testing.T) {
+	zone := time.FixedZone("UTC+8", 8*60*60)
+	start := time.Date(2025, time.January, 14, 0, 0, 0, 0, zone)
+	paths, err := FindPlanetOccultationPaths(
+		start, start.Add(24*time.Hour), OccultationMars,
+		OccultationPathOptions{
+			Step: 20 * time.Minute, TargetSpacingKM: 900,
+			DisableFootprints: true, IncludeFootprintTimeline: true,
+			FootprintTimelineStep: 5 * time.Minute, RiseSetStep: time.Minute,
+		},
+	)
+	if err != nil || len(paths) != 1 {
+		t.Fatalf("FindPlanetOccultationPaths() paths=%d err=%v, want one", len(paths), err)
+	}
+	for _, band := range []struct {
+		name     string
+		contours [][]OccultationPathPoint
+	}{
+		{name: "partial", contours: paths[0].PartialBandContours},
+		{name: "total", contours: paths[0].TotalBandContours},
+	} {
+		for contourIndex, contour := range band.contours {
+			for pointIndex := 1; pointIndex < len(contour); pointIndex++ {
+				previous, current := contour[pointIndex-1], contour[pointIndex]
+				if !current.Time.After(previous.Time) {
+					t.Fatalf(
+						"%s contour %d times do not increase at %d: %s then %s (delta=%s, distance=%.6f km)",
+						band.name, contourIndex, pointIndex,
+						previous.Time.Format(time.RFC3339Nano), current.Time.Format(time.RFC3339Nano),
+						current.Time.Sub(previous.Time), occultationPathDistanceKM(previous, current),
+					)
+				}
+			}
+		}
 	}
 }

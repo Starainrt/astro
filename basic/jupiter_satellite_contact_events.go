@@ -336,25 +336,6 @@ func refineJupiterGalileanShadowContactPair(
 		}, true
 }
 
-func refineJupiterGalileanNegativeMetricWindow(
-	seedJD float64,
-	metric func(jd float64) float64,
-) (float64, float64, bool) {
-	activeJD, activeValue, ok := findJupiterGalileanNegativeMetricSeed(seedJD, metric)
-	if !ok {
-		return math.NaN(), math.NaN(), false
-	}
-	start, ok := refineJupiterGalileanNegativeWindowRoot(activeJD, activeValue, -1, metric)
-	if !ok {
-		return math.NaN(), math.NaN(), false
-	}
-	end, ok := refineJupiterGalileanNegativeWindowRoot(activeJD, activeValue, 1, metric)
-	if !ok {
-		return math.NaN(), math.NaN(), false
-	}
-	return start, end, true
-}
-
 func findJupiterGalileanNegativeMetricSeed(
 	seedJD float64,
 	metric func(jd float64) float64,
@@ -591,18 +572,6 @@ func jupiterPenumbraScale(distanceBehindAU, sunDistanceAU float64) float64 {
 	}
 	jupiterRadiusAU := jupiterGalileanEquatorialRadiusKM / astronomicalUnitKM
 	return 1 + distanceBehindAU*(solarRadiusAU+jupiterRadiusAU)/(sunDistanceAU*jupiterRadiusAU)
-}
-
-func jupiterGalileanUmbraRadiusJupiterRadii(satellite int, pathLengthAU, sunDistanceAU float64) float64 {
-	if pathLengthAU <= 0 || sunDistanceAU <= 0 {
-		return math.NaN()
-	}
-	satelliteRadiusAU := jupiterGalileanSatelliteRadiusJupiterRadii(satellite) * jupiterGalileanEquatorialRadiusKM / astronomicalUnitKM
-	umbraRadiusAU := satelliteRadiusAU - pathLengthAU*(solarRadiusAU-satelliteRadiusAU)/sunDistanceAU
-	if umbraRadiusAU <= 0 {
-		return math.NaN()
-	}
-	return umbraRadiusAU / (jupiterGalileanEquatorialRadiusKM / astronomicalUnitKM)
 }
 
 func jupiterGalileanPenumbraRadiusJupiterRadii(satellite int, pathLengthAU, sunDistanceAU float64) float64 {

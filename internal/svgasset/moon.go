@@ -3,8 +3,8 @@ package svgasset
 
 import _ "embed"
 
-// moonFaceSymbol 是精简的公版月面图形，来源于 / moonFaceSymbol is a compact public-domain Moon face derived from
-// labs/Full_Moon_clip_art.svg，并针对小型接触盘面做了简化 / labs/Full_Moon_clip_art.svg and simplified for small contact disks.
+// moonFaceSymbol 是精简的公版月面图形，针对小型接触盘面做了简化。
+// moonFaceSymbol is a compact public-domain Moon face simplified for small contact disks.
 //
 //go:embed lunar_eclipse_moon.svg
 var moonFaceSymbol string

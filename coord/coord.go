@@ -115,8 +115,9 @@ func TopocentricEquatorial(date time.Time, ra, dec, observerLon, observerLat, di
 // distanceAU 为目标天体到地心距离，单位 AU；height 为观测者海拔，单位米。
 // distanceAU is geocentric distance in AU; height is observer elevation in meters.
 func TopocentricEcliptic(date time.Time, lon, lat, observerLon, observerLat, distanceAU, height float64) Ecliptic {
-	topLon := basic.TopocentricLo(lon, lat, observerLat, observerLon, jdeUTC(date), distanceAU, height)
-	topLat := basic.TopocentricBo(lon, lat, observerLat, observerLon, jdeUTC(date), distanceAU, height)
+	jde := jdeUTC(date)
+	topLon := basic.TopocentricLo(lon, lat, observerLat, observerLon, jde, distanceAU, height)
+	topLat := basic.TopocentricBo(lon, lat, observerLat, observerLon, jde, distanceAU, height)
 	return Ecliptic{Lon: topLon, Lat: topLat}
 }
 

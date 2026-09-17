@@ -23,7 +23,7 @@ const (
 type LocalLunarEclipseInfo struct {
 	// Type 月食类型, eclipse type.
 	Type LunarEclipseType
-	// HasSaros 存在沙罗序列信息, has Saros series metadata.
+	// HasSaros 存在沙罗序列信息（可能是锚点外推结果）, has Saros series metadata (possibly extrapolated).
 	HasSaros bool
 	// Saros 是沙罗序列信息，包括系列号、系列内序号和总成员数。
 	// Saros is Saros series metadata with the series number, member index, and total member count.

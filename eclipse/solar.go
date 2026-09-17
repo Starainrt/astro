@@ -65,7 +65,7 @@ type SolarEclipseInfo struct {
 	Type SolarEclipseType
 	// Centrality 中心性, eclipse centrality.
 	Centrality SolarEclipseCentrality
-	// HasSaros 存在沙罗序列信息, has Saros series metadata.
+	// HasSaros 存在沙罗序列信息（可能是锚点外推结果）, has Saros series metadata (possibly extrapolated).
 	HasSaros bool
 	// Saros 是沙罗序列信息，包括系列号、系列内序号和总成员数。
 	// Saros is Saros series metadata with the series number, member index, and total member count.
@@ -86,6 +86,12 @@ type SolarEclipseInfo struct {
 	Magnitude float64
 	// Gamma 食甚时影轴到地心的距离, gamma at greatest eclipse.
 	Gamma float64
+	// CentralDuration 是食甚点的中心食持续时间，即日食目录（如 NASA「Central Dur.」）
+	// 的取值口径；沿整条中心线的最大值见 SolarEclipsePath.MaxCentralDuration。
+	// CentralDuration is the central-phase duration at the greatest eclipse, the
+	// value catalogues publish; SolarEclipsePath.MaxCentralDuration is the maximum
+	// along the whole track.
+	CentralDuration time.Duration
 	// PathWidthKM 食甚处中心食带宽度, central path width at greatest eclipse.
 	PathWidthKM float64
 
@@ -292,6 +298,7 @@ func solarEclipseInfoFromBasic(result basic.SolarEclipseResult, location *time.L
 		CentralEndOnEarth:   solarEclipseTTJDEToTime(result.CentralEndOnEarth, location),
 		Magnitude:           result.Magnitude,
 		Gamma:               result.Gamma,
+		CentralDuration:     solarEclipseDurationFromDays(result.CentralDurationDays),
 		PathWidthKM:         result.PathWidthKM,
 		GreatestLongitude:   result.GreatestLongitude,
 		GreatestLatitude:    result.GreatestLatitude,
@@ -354,10 +361,21 @@ func solarEclipseRange(info SolarEclipseInfo) (time.Time, time.Time, bool) {
 }
 
 func solarEclipseTTJDEToTime(ttJDE float64, location *time.Location) time.Time {
-	if ttJDE == 0 {
+	return solarEclipseTTJDEToTimeWithDeltaT(ttJDE, basic.DeltaT(ttJDE, true), location)
+}
+
+// solarEclipseTTJDEToTimeWithDeltaT 用显式 ΔT 把 TT 换算为时刻：显式 ΔT 的单时刻入口
+// 必须走这条路径，否则回填出来的 UT 会落到进程级模型上，与几何使用的 ΔT 不一致。
+// solarEclipseTTJDEToTimeWithDeltaT converts TT with an explicit ΔT; the single-instant
+// entries must use it so the reported UT matches the ΔT their geometry used.
+func solarEclipseTTJDEToTimeWithDeltaT(
+	ttJDE, deltaTSeconds float64, location *time.Location,
+) time.Time {
+	// 与 lunar 侧一致：0 与 NaN/±Inf 都表示“该时刻不存在”。
+	if ttJDE == 0 || math.IsNaN(ttJDE) || math.IsInf(ttJDE, 0) {
 		return time.Time{}
 	}
-	utcJDE := basic.TD2UT(ttJDE, false)
+	utcJDE := ttJDE - deltaTSeconds/86400
 	return basic.JDE2DateByZone(utcJDE, location, false)
 }
 

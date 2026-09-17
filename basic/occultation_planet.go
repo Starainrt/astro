@@ -19,6 +19,7 @@ const (
 
 type planetOccultationConfig struct {
 	planet             OccultationPlanet
+	planetIndex        int
 	equatorialRadiusKM float64
 	apparentRaDecN     func(float64, int) (float64, float64)
 	earthDistanceN     func(float64, int) float64
@@ -39,6 +40,16 @@ type planetOccultationState struct {
 	externalContactMetric float64
 	internalContactMetric float64
 	valid                 bool
+}
+
+func (state planetOccultationState) movingDiskContactState() movingDiskContactState {
+	return movingDiskContactState{
+		separation:           state.separationArcsec,
+		occultingOuterRadius: state.moonSemidiameter,
+		occultingInnerRadius: state.moonSemidiameter,
+		targetRadius:         state.planetSemidiameter,
+		valid:                state.valid,
+	}
 }
 
 // FindPlanetOccultations 搜索固定观测点的有限盘面行星月掩。
@@ -137,36 +148,43 @@ func planetOccultationConfigFor(planet OccultationPlanet) (planetOccultationConf
 	config := planetOccultationConfig{planet: planet}
 	switch planet {
 	case OccultationMercury:
+		config.planetIndex = 1
 		config.equatorialRadiusKM = mercuryEquatorialRadiusKM
 		config.apparentRaDecN = MercuryApparentRaDecN
 		config.earthDistanceN = EarthMercuryAwayN
 		config.semidiameterN = MercurySemidiameterN
 	case OccultationVenus:
+		config.planetIndex = 2
 		config.equatorialRadiusKM = venusEquatorialRadiusKM
 		config.apparentRaDecN = VenusApparentRaDecN
 		config.earthDistanceN = EarthVenusAwayN
 		config.semidiameterN = VenusSemidiameterN
 	case OccultationMars:
+		config.planetIndex = 3
 		config.equatorialRadiusKM = marsEquatorialRadiusKM
 		config.apparentRaDecN = MarsApparentRaDecN
 		config.earthDistanceN = EarthMarsAwayN
 		config.semidiameterN = MarsSemidiameterN
 	case OccultationJupiter:
+		config.planetIndex = 4
 		config.equatorialRadiusKM = jupiterEquatorialRadiusKM
 		config.apparentRaDecN = JupiterApparentRaDecN
 		config.earthDistanceN = EarthJupiterAwayN
 		config.semidiameterN = JupiterSemidiameterN
 	case OccultationSaturn:
+		config.planetIndex = 5
 		config.equatorialRadiusKM = saturnEquatorialRadiusKM
 		config.apparentRaDecN = SaturnApparentRaDecN
 		config.earthDistanceN = EarthSaturnAwayN
 		config.semidiameterN = SaturnSemidiameterN
 	case OccultationUranus:
+		config.planetIndex = 6
 		config.equatorialRadiusKM = uranusEquatorialRadiusKM
 		config.apparentRaDecN = UranusApparentRaDecN
 		config.earthDistanceN = EarthUranusAwayN
 		config.semidiameterN = UranusSemidiameterN
 	case OccultationNeptune:
+		config.planetIndex = 7
 		config.equatorialRadiusKM = neptuneEquatorialRadiusKM
 		config.apparentRaDecN = NeptuneApparentRaDecN
 		config.earthDistanceN = EarthNeptuneAwayN
@@ -262,7 +280,16 @@ func planetOccultationBestObserver(seedTT, startTT, endTT float64, config planet
 	}
 	point, pointOK := occultationPathCenterPointForFrame(greatestTT, frameAt, time.UTC)
 	if !pointOK {
-		point, pointOK = occultationPathBoundaryPointForFrame(greatestTT, frameAt, time.UTC)
+		// 非中心事件的月影轴不与地球椭球相交，最佳站心应取离影轴最近的椭球点；
+		// 外接触切点位于掩带边缘，会把掩甚站心推出掩食之外，只作最后回退。
+		// For a non-central event the shadow axis misses the ellipsoid, so the
+		// best station is the ellipsoid point nearest to that axis. The outer
+		// contact tangent sits on the band edge and moves the greatest station
+		// outside the occultation, so it remains the last resort only.
+		point, pointOK = occultationPathTrackPointForFrame(greatestTT, frameAt, time.UTC)
+		if !pointOK {
+			point, pointOK = occultationPathBoundaryPointForFrame(greatestTT, frameAt, time.UTC)
+		}
 	}
 	if !pointOK {
 		return 0, Observer{}, 0, false
@@ -312,8 +339,10 @@ func planetOccultationInfoAtGreatest(
 		return info, true
 	}
 
-	externalImmersionTT, externalImmersionOK := planetOccultationContact(greatestTT, -1, false, config, observer)
-	externalEmersionTT, externalEmersionOK := planetOccultationContact(greatestTT, 1, false, config, observer)
+	contactEvaluator := newPlanetOccultationContactEvaluator(config, observer)
+	contactEvaluator.prime(greatestTT, state.movingDiskContactState(), state.valid)
+	externalImmersionTT, externalImmersionOK := planetOccultationContactWithEvaluator(greatestTT, -1, false, contactEvaluator)
+	externalEmersionTT, externalEmersionOK := planetOccultationContactWithEvaluator(greatestTT, 1, false, contactEvaluator)
 	if !externalImmersionOK || !externalEmersionOK || externalEmersionTT <= externalImmersionTT {
 		return PlanetOccultationInfo{}, false
 	}
@@ -321,8 +350,8 @@ func planetOccultationInfoAtGreatest(
 	info.ExternalEmersion = occultationTTToLocation(externalEmersionTT, location)
 
 	if state.internalContactMetric < -planetOccultationGrazingToleranceArcsec {
-		internalImmersionTT, internalImmersionOK := planetOccultationContact(greatestTT, -1, true, config, observer)
-		internalEmersionTT, internalEmersionOK := planetOccultationContact(greatestTT, 1, true, config, observer)
+		internalImmersionTT, internalImmersionOK := planetOccultationContactWithEvaluator(greatestTT, -1, true, contactEvaluator)
+		internalEmersionTT, internalEmersionOK := planetOccultationContactWithEvaluator(greatestTT, 1, true, contactEvaluator)
 		if !internalImmersionOK || !internalEmersionOK ||
 			internalImmersionTT <= externalImmersionTT || internalEmersionTT >= externalEmersionTT ||
 			internalImmersionTT >= greatestTT || internalEmersionTT <= greatestTT {
@@ -370,14 +399,23 @@ func planetOccultationStateAt(tt float64, config planetOccultationConfig, observ
 		return planetOccultationState{}
 	}
 	separation := angularSeparationDegrees(position.moonRA, position.moonDec, position.planetRA, position.planetDec) * 3600
+	contactState := movingDiskContactState{
+		separation:           separation,
+		occultingOuterRadius: moonRadius,
+		occultingInnerRadius: moonRadius,
+		targetRadius:         planetRadius,
+		valid: movingDiskContactStateValid(
+			separation, moonRadius, moonRadius, planetRadius,
+		),
+	}
 	return planetOccultationState{
 		position:              position,
 		separationArcsec:      separation,
 		moonSemidiameter:      moonRadius,
 		planetSemidiameter:    planetRadius,
-		externalContactMetric: separation - (moonRadius + planetRadius),
-		internalContactMetric: separation - (moonRadius - planetRadius),
-		valid:                 finite(separation),
+		externalContactMetric: contactState.externalContactGap(),
+		internalContactMetric: contactState.internalContactGap(),
+		valid:                 contactState.valid,
 	}
 }
 
@@ -402,14 +440,6 @@ func planetOccultationExternalContactMetric(tt float64, config planetOccultation
 	return state.externalContactMetric
 }
 
-func planetMoonSeparationArcsec(tt float64, config planetOccultationConfig, observer *Observer, n int) float64 {
-	position := planetMoonPositionAt(tt, config, observer, n)
-	if !position.valid {
-		return math.Inf(1)
-	}
-	return angularSeparationDegrees(position.moonRA, position.moonDec, position.planetRA, position.planetDec) * 3600
-}
-
 func planetOccultationLatitudePass(tt float64, config planetOccultationConfig, observer *Observer, safetyMarginArcsec float64) bool {
 	state := planetOccultationStateAt(tt, config, observer, -1)
 	if !state.valid {
@@ -421,73 +451,41 @@ func planetOccultationLatitudePass(tt float64, config planetOccultationConfig, o
 	return math.Abs(moonLatitude-planetLatitude)*3600 <= limit
 }
 
-func planetOccultationContact(
+func newPlanetOccultationContactEvaluator(
+	config planetOccultationConfig,
+	observer Observer,
+) *movingDiskContactEvaluator {
+	return newMovingDiskContactEvaluator(func(tt float64) (movingDiskContactState, bool) {
+		state := planetOccultationStateAt(tt, config, &observer, -1)
+		return state.movingDiskContactState(), state.valid
+	})
+}
+
+func planetOccultationContactWithEvaluator(
 	greatestTT float64,
 	direction int,
 	internal bool,
-	config planetOccultationConfig,
-	observer Observer,
+	evaluator *movingDiskContactEvaluator,
 ) (float64, bool) {
 	if direction != -1 && direction != 1 {
 		return math.NaN(), false
 	}
-	metric := func(tt float64) float64 {
-		state := planetOccultationStateAt(tt, config, &observer, -1)
-		if !state.valid {
-			return math.NaN()
-		}
-		if internal {
-			return state.internalContactMetric
-		}
-		return state.externalContactMetric
+	metric := func(tt float64) (float64, bool) {
+		return evaluator.gap(tt, internal)
 	}
-	nearTT := greatestTT
-	nearValue := metric(nearTT)
-	if !finite(nearValue) || nearValue > 0 {
+	root, ok := occultationMovingDiskEngine().contactRoot(
+		greatestTT,
+		float64(direction),
+		planetOccultationContactStepDays,
+		planetOccultationContactSpanDays,
+		planetOccultationRootToleranceDays,
+		metric,
+		64,
+	)
+	if !ok {
 		return math.NaN(), false
 	}
-	maxSteps := int(math.Ceil(planetOccultationContactSpanDays / planetOccultationContactStepDays))
-	if maxSteps > planetOccultationMaxContactSteps {
-		maxSteps = planetOccultationMaxContactSteps
-	}
-	for i := 1; i <= maxSteps; i++ {
-		farTT := greatestTT + float64(direction*i)*planetOccultationContactStepDays
-		farValue := metric(farTT)
-		if !finite(farValue) {
-			continue
-		}
-		if farValue >= 0 {
-			return planetOccultationRoot(nearTT, farTT, nearValue, farValue, metric)
-		}
-		nearTT, nearValue = farTT, farValue
-	}
-	return math.NaN(), false
-}
-
-func planetOccultationRoot(
-	leftTT, rightTT, leftValue, rightValue float64,
-	metric func(float64) float64,
-) (float64, bool) {
-	if leftTT > rightTT {
-		leftTT, rightTT = rightTT, leftTT
-		leftValue, rightValue = rightValue, leftValue
-	}
-	if !finite(leftValue) || !finite(rightValue) || leftValue*rightValue > 0 {
-		return math.NaN(), false
-	}
-	for i := 0; i < 64 && math.Abs(rightTT-leftTT) > planetOccultationRootToleranceDays; i++ {
-		midTT := (leftTT + rightTT) / 2
-		midValue := metric(midTT)
-		if !finite(midValue) {
-			return math.NaN(), false
-		}
-		if leftValue*midValue <= 0 {
-			rightTT, rightValue = midTT, midValue
-		} else {
-			leftTT, leftValue = midTT, midValue
-		}
-	}
-	return (leftTT + rightTT) / 2, true
+	return root, true
 }
 
 func planetOccultationCoarseStepDays(options OccultationSearchOptions) float64 {

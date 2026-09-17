@@ -48,6 +48,17 @@ func TestLunarEclipseLocalDayBoundsRespectDST(t *testing.T) {
 	}
 }
 
+func TestLocalLunarEclipseFindsHighLatitudeMidEvent(t *testing.T) {
+	date := time.Date(2022, 11, 8, 12, 0, 0, 0, time.UTC)
+	info, ok := LocalLunarEclipseOnDate(date, -174, -70, 0)
+	if !ok {
+		t.Fatal("expected the eclipse to be visible during the local penumbral interval")
+	}
+	if info.MoonAltitude <= 0 {
+		t.Fatalf("maximum altitude=%v, want above horizon", info.MoonAltitude)
+	}
+}
+
 func TestLunarEclipseOnDateByLocalDay(t *testing.T) {
 	loc := time.FixedZone("UTC-05", -5*3600)
 

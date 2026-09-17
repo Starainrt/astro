@@ -172,6 +172,9 @@ func LastUranusWesternQuadrature(jde float64) float64 {
 }
 
 func uranusRetrogradeAroundOpposition(oppositionJD float64, searchBeforeOpposition bool) float64 {
+	if !isFiniteFloat(oppositionJD) {
+		return math.NaN()
+	}
 	oppositionTT := TD2UT(oppositionJD, true)
 	startTT := oppositionTT
 	endTT := oppositionTT
@@ -183,49 +186,98 @@ func uranusRetrogradeAroundOpposition(oppositionJD float64, searchBeforeOppositi
 		endTT = TD2UT(westernQuadratureUT, true)
 	}
 	bestJD := zeroEventInWindow(startTT, endTT, 2.0, 2.0, 30.0/86400.0, func(jd float64) float64 {
-		return uranusRADerivativeN(jd, 1.0/86400.0, uranusEventSearchN)
+		return uranusRADerivativeN(jd, stationDerivativeStepDay, uranusEventSearchN)
 	}, func(jd float64) float64 {
-		return uranusRADerivative(jd, 0.5/86400.0)
+		return uranusRADerivative(jd, stationDerivativeStepDay)
 	})
 	return TD2UT(bestJD, false)
 }
 
 func NextUranusRetrogradeToPrograde(jde float64) float64 {
+	if !isFiniteFloat(jde) {
+		return math.NaN()
+	}
 	lastOppositionJD := uranusConjunctionFull(jde, 180, 0)
 	date := uranusRetrogradeAroundOpposition(lastOppositionJD, false)
-	if sameEventUTQueryTT(date, jde) || eventUTQueryAfterOrEqual(date, jde) {
+	if isFiniteFloat(date) && stationUTQueryAfterOrEqual(date, jde) {
 		return date
 	}
 	nextOppositionJD := uranusConjunctionFull(jde, 180, 1)
-	return uranusRetrogradeAroundOpposition(nextOppositionJD, false)
+	if !isFiniteFloat(nextOppositionJD) {
+		return math.NaN()
+	}
+	date = uranusRetrogradeAroundOpposition(nextOppositionJD, false)
+	if !isFiniteFloat(date) || !stationUTQueryAfterOrEqual(date, jde) {
+		return math.NaN()
+	}
+	return date
 }
 
 func LastUranusRetrogradeToPrograde(jde float64) float64 {
+	if !isFiniteFloat(jde) {
+		return math.NaN()
+	}
 	lastOppositionJD := uranusConjunctionFull(jde, 180, 0)
 	date := uranusRetrogradeAroundOpposition(lastOppositionJD, false)
-	if sameEventUTQueryTT(date, jde) || eventUTQueryBeforeOrEqual(date, jde) {
+	if isFiniteFloat(date) && stationUTQueryBeforeOrEqual(date, jde) {
 		return date
 	}
+	if !isFiniteFloat(lastOppositionJD) {
+		return math.NaN()
+	}
 	previousOppositionJD := uranusConjunctionFull(eventUTLastQueryTT(lastOppositionJD), 180, 0)
-	return uranusRetrogradeAroundOpposition(previousOppositionJD, false)
+	if !isFiniteFloat(previousOppositionJD) {
+		return math.NaN()
+	}
+	date = uranusRetrogradeAroundOpposition(previousOppositionJD, false)
+	if !isFiniteFloat(date) || !stationUTQueryBeforeOrEqual(date, jde) {
+		return math.NaN()
+	}
+	return date
 }
 
 func NextUranusProgradeToRetrograde(jde float64) float64 {
+	if !isFiniteFloat(jde) {
+		return math.NaN()
+	}
 	nextOppositionJD := uranusConjunctionFull(jde, 180, 1)
 	date := uranusRetrogradeAroundOpposition(nextOppositionJD, true)
-	if sameEventUTQueryTT(date, jde) || eventUTQueryAfterOrEqual(date, jde) {
+	if isFiniteFloat(date) && stationUTQueryAfterOrEqual(date, jde) {
 		return date
 	}
+	if !isFiniteFloat(nextOppositionJD) {
+		return math.NaN()
+	}
 	followingOppositionJD := uranusConjunctionFull(eventUTNextQueryTT(nextOppositionJD), 180, 1)
-	return uranusRetrogradeAroundOpposition(followingOppositionJD, true)
+	if !isFiniteFloat(followingOppositionJD) {
+		return math.NaN()
+	}
+	date = uranusRetrogradeAroundOpposition(followingOppositionJD, true)
+	if !isFiniteFloat(date) || !stationUTQueryAfterOrEqual(date, jde) {
+		return math.NaN()
+	}
+	return date
 }
 
 func LastUranusProgradeToRetrograde(jde float64) float64 {
+	if !isFiniteFloat(jde) {
+		return math.NaN()
+	}
 	nextOppositionJD := uranusConjunctionFull(jde, 180, 1)
 	date := uranusRetrogradeAroundOpposition(nextOppositionJD, true)
-	if sameEventUTQueryTT(date, jde) || eventUTQueryBeforeOrEqual(date, jde) {
+	if isFiniteFloat(date) && stationUTQueryBeforeOrEqual(date, jde) {
 		return date
 	}
+	if !isFiniteFloat(nextOppositionJD) {
+		return math.NaN()
+	}
 	lastOppositionJD := uranusConjunctionFull(jde, 180, 0)
-	return uranusRetrogradeAroundOpposition(lastOppositionJD, true)
+	if !isFiniteFloat(lastOppositionJD) {
+		return math.NaN()
+	}
+	date = uranusRetrogradeAroundOpposition(lastOppositionJD, true)
+	if !isFiniteFloat(date) || !stationUTQueryBeforeOrEqual(date, jde) {
+		return math.NaN()
+	}
+	return date
 }

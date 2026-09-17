@@ -35,7 +35,7 @@ type jupiterGalileanL1Term struct {
 // JupiterGalileanState 木星伽利略卫星原始状态 / raw Galilean-satellite state.
 //
 // 输入 jd 使用 TT/TDB 对应的儒略日；返回值为 IMCCE L1 理论的木心 J2000 平赤道直角坐标与速度，单位 AU / AU/day。
-// The input jd is a TT/TDB Julian day. Returned coordinates are Jovicentric J2000 mean-equatorial position and velocity from the IMCCE L1 theory, in AU and AU/day.
+// The input jd is a TT/TDB Julian day (convert a UT query with TD2UT(jd, true)). Returned coordinates are Jovicentric J2000 mean-equatorial position and velocity from the IMCCE L1 theory, in AU and AU/day.
 type JupiterGalileanState struct {
 	X  float64
 	Y  float64

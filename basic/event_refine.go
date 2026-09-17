@@ -6,6 +6,10 @@ const (
 	eventNewtonMaxIterations         = 24
 	eventDirectionalSearchIterations = 128
 	eventRiseSetScanStep             = 1.0 / 1440
+	// stationDerivativeStepDay 「留」精修用的中心差分步长（天）。
+	// 0.5 秒级的步长会被浮点相消噪声支配（实测外行星留误差可达 42 s）；
+	// 0.01 天（14.4 分钟）实测误差 <0.05 s，且求值次数不变。
+	stationDerivativeStepDay = 0.01
 )
 
 func isFiniteFloat(value float64) bool {
@@ -119,6 +123,56 @@ func eventDirectionalBracketRefine(leftJD, rightJD, leftValue, rightValue float6
 		}
 	}
 	return (leftJD + rightJD) / 2
+}
+
+// eventBracketSecantRoot 在已知异号的括号内用割线法（带中点兜底）求根。
+//
+// 与 eventDirectionalBracketRefine（固定 48 次二分）相比，割线法通常 5~8 次求值即可达到
+// 亚秒精度，适合「括号由廉价截断级数给出、抛光必须用全项级数」的两段式搜索。
+// 括号每一步都收缩，因此不会跑到括号外；括号端点同号或出现非有限值时返回 false。
+func eventBracketSecantRoot(leftJD, rightJD, leftValue, rightValue, tolerance float64,
+	fn func(float64) float64) (float64, bool) {
+	if leftValue == 0 {
+		return leftJD, true
+	}
+	if rightValue == 0 {
+		return rightJD, true
+	}
+	if !isFiniteFloat(leftValue) || !isFiniteFloat(rightValue) || leftValue*rightValue > 0 {
+		return math.NaN(), false
+	}
+	if !isFiniteFloat(tolerance) || tolerance <= 0 {
+		tolerance = 0.5 / 86400.0
+	}
+	bestJD := (leftJD + rightJD) / 2
+	for i := 0; i < 48; i++ {
+		candidateJD := (leftJD + rightJD) / 2
+		if rightValue != leftValue {
+			secantJD := rightJD - rightValue*(rightJD-leftJD)/(rightValue-leftValue)
+			if secantJD > leftJD && secantJD < rightJD {
+				candidateJD = secantJD
+			}
+		}
+		candidateValue := fn(candidateJD)
+		if !isFiniteFloat(candidateValue) {
+			return math.NaN(), false
+		}
+		bestJD = candidateJD
+		if candidateValue == 0 || math.Abs(rightJD-leftJD) <= tolerance {
+			return candidateJD, true
+		}
+		if (leftValue < 0) == (candidateValue < 0) {
+			leftJD, leftValue = candidateJD, candidateValue
+			continue
+		}
+		rightJD, rightValue = candidateJD, candidateValue
+	}
+	if math.Abs(rightJD-leftJD) <= tolerance {
+		return bestJD, true
+	}
+	// 48 次迭代后括号仍宽于容差（例如容差低于该儒略日的 ULP）：调用方把 ok 当作
+	// “已抛光到容差”，这里必须报 false，不能返回一个精度未达标的时刻。
+	return bestJD, false
 }
 
 func eventFixedScanRefine(seed, halfWindow, step float64, fn func(float64) float64) float64 {

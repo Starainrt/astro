@@ -1,7 +1,7 @@
 package calendar
 
 // 后秦
-func houQinCals() map[int]uint32 {
+var houQinCals = memoUint32Map(func() map[int]uint32 {
 	return map[int]uint32{
 		384: 2862622464,
 		385: 3042089728,
@@ -38,9 +38,9 @@ func houQinCals() map[int]uint32 {
 		416: 2863672576,
 		417: 1431708160,
 	}
-}
+})
 
-func houQinEras() []Era {
+var houQinEras = memoEras(func() []Era {
 	return []Era{
 		{
 			Year:              416,
@@ -73,9 +73,9 @@ func houQinEras() []Era {
 			Dynasty: "后秦",
 		},
 	}
-}
+})
 
-func houQinEraMap() map[string][][]int {
+var houQinEraMap = memoEraMap(func() map[string][][]int {
 	return map[string][][]int{
 		"永和": [][]int{{416, 417}},
 		"弘始": [][]int{{399, 416}},
@@ -83,10 +83,10 @@ func houQinEraMap() map[string][][]int {
 		"建初": [][]int{{386, 394}},
 		"白雀": [][]int{{384, 386}},
 	}
-}
+})
 
 // 北魏、西魏、北周、隋
-func weiZhouSuiCals() map[int]uint32 {
+var weiZhouSuiCals = memoUint32Map(func() map[int]uint32 {
 	return map[int]uint32{
 		398: 1454219776,
 		399: 1436562688,
@@ -281,9 +281,9 @@ func weiZhouSuiCals() map[int]uint32 {
 		588: 1788879360,
 		589: 2907837952,
 	}
-}
+})
 
-func weiZhouSuiEras() []Era {
+var weiZhouSuiEras = memoEras(func() []Era {
 	return []Era{
 		{
 			Year:    601,
@@ -574,9 +574,9 @@ func weiZhouSuiEras() []Era {
 			Dynasty: "北魏",
 		},
 	}
-}
+})
 
-func weiZhouSuiEraMap() map[string][][]int {
+var weiZhouSuiEraMap = memoEraMap(func() map[string][][]int {
 	return map[string][][]int{
 		//"开皇":   [][]int{{581, 600}},
 		"大象":   [][]int{{579, 580}},
@@ -626,9 +626,9 @@ func weiZhouSuiEraMap() map[string][][]int {
 		"皇始":   [][]int{{396, 397}},
 		"登国":   [][]int{{386, 396}},
 	}
-}
+})
 
-func beiLiangCals() map[int]uint32 {
+var beiLiangCals = memoUint32Map(func() map[int]uint32 {
 	return map[int]uint32{
 		// currect here
 		412: 1432100352,
@@ -660,9 +660,9 @@ func beiLiangCals() map[int]uint32 {
 		438: 3578800384,
 		439: 1454219008,
 	}
-}
+})
 
-func beiLiangEras() []Era {
+var beiLiangEras = memoEras(func() []Era {
 	return []Era{
 		{
 			Year:              433,
@@ -707,9 +707,9 @@ func beiLiangEras() []Era {
 			Dynasty: "北凉",
 		},
 	}
-}
+})
 
-func beiLiangEraMap() map[string][][]int {
+var beiLiangEraMap = memoEraMap(func() map[string][][]int {
 	return map[string][][]int{
 		"承和": [][]int{{433, 439}},
 		"义和": [][]int{{431, 433}},
@@ -719,8 +719,9 @@ func beiLiangEraMap() map[string][][]int {
 		"天玺": [][]int{{399, 401}},
 		"神玺": [][]int{{397, 399}},
 	}
-}
-func dongWeiBeiQiCals() map[int]uint32 {
+})
+
+var dongWeiBeiQiCals = memoUint32Map(func() map[int]uint32 {
 	return map[int]uint32{
 		534: 2874547712,
 		535: 2865770752,
@@ -767,9 +768,9 @@ func dongWeiBeiQiCals() map[int]uint32 {
 		576: 2865769984,
 		577: 1431315200,
 	}
-}
+})
 
-func dongWeiBeiQiEras() []Era {
+var dongWeiBeiQiEras = memoEras(func() []Era {
 	return []Era{
 		{
 			Year:    577,
@@ -838,9 +839,9 @@ func dongWeiBeiQiEras() []Era {
 			Dynasty: "东魏",
 		},
 	}
-}
+})
 
-func dongWeiBeiQiEraMap() map[string][][]int {
+var dongWeiBeiQiEraMap = memoEraMap(func() map[string][][]int {
 	return map[string][][]int{
 		"承光": [][]int{{577, 577}},
 		"武平": [][]int{{570, 576}},
@@ -854,67 +855,80 @@ func dongWeiBeiQiEraMap() map[string][][]int {
 		"元象": [][]int{{538, 539}},
 		"天平": [][]int{{534, 538}},
 	}
-}
+})
 
 func innerSolarToLunarNanBeiChao(date Time) Time {
 	year := date.solarTime.Year()
 	month := int(date.solarTime.Month())
 	day := date.solarTime.Day()
+	// 农历年早于对应年号表首年时 eras 为空，此类候选与主流日期完全相同且无朝代，跳过追加。
 	if year >= 384 && year <= 417 {
 		lyear, lmonth, ganzhiMonth, lday, isLeap, ldesc := rapidLunarHan2Qing(year, month, day, 0, houQinCals)
-		date.lunars = append(date.lunars, LunarTime{
-			solarDate:   date.solarTime,
-			year:        lyear,
-			month:       lmonth,
-			day:         lday,
-			leap:        isLeap,
-			desc:        ldesc,
-			comment:     "",
-			ganzhiMonth: ganzhiMonth,
-			eras:        innerEras(lyear, houQinEras),
-		})
+		eras := innerEras(lyear, houQinEras)
+		if len(eras) > 0 {
+			date.lunars = append(date.lunars, LunarTime{
+				solarDate:   date.solarTime,
+				year:        lyear,
+				month:       lmonth,
+				day:         lday,
+				leap:        isLeap,
+				desc:        ldesc,
+				comment:     "",
+				ganzhiMonth: ganzhiMonth,
+				eras:        eras,
+			})
+		}
 	}
 	if year >= 398 && year <= 589 {
 		lyear, lmonth, ganzhiMonth, lday, isLeap, ldesc := rapidLunarHan2Qing(year, month, day, 0, weiZhouSuiCals)
-		date.lunars = append(date.lunars, LunarTime{
-			solarDate:   date.solarTime,
-			year:        lyear,
-			month:       lmonth,
-			day:         lday,
-			leap:        isLeap,
-			desc:        ldesc,
-			comment:     "",
-			ganzhiMonth: ganzhiMonth,
-			eras:        innerEras(lyear, weiZhouSuiEras),
-		})
+		eras := innerEras(lyear, weiZhouSuiEras)
+		if len(eras) > 0 {
+			date.lunars = append(date.lunars, LunarTime{
+				solarDate:   date.solarTime,
+				year:        lyear,
+				month:       lmonth,
+				day:         lday,
+				leap:        isLeap,
+				desc:        ldesc,
+				comment:     "",
+				ganzhiMonth: ganzhiMonth,
+				eras:        eras,
+			})
+		}
 	}
 	if year >= 397 && year <= 439 {
 		lyear, lmonth, ganzhiMonth, lday, isLeap, ldesc := rapidLunarHan2Qing(year, month, day, 0, beiLiangCals)
-		date.lunars = append(date.lunars, LunarTime{
-			solarDate:   date.solarTime,
-			year:        lyear,
-			month:       lmonth,
-			day:         lday,
-			leap:        isLeap,
-			ganzhiMonth: ganzhiMonth,
-			desc:        ldesc,
-			comment:     "",
-			eras:        innerEras(lyear, beiLiangEras),
-		})
+		eras := innerEras(lyear, beiLiangEras)
+		if len(eras) > 0 {
+			date.lunars = append(date.lunars, LunarTime{
+				solarDate:   date.solarTime,
+				year:        lyear,
+				month:       lmonth,
+				day:         lday,
+				leap:        isLeap,
+				ganzhiMonth: ganzhiMonth,
+				desc:        ldesc,
+				comment:     "",
+				eras:        eras,
+			})
+		}
 	}
 	if year >= 534 && year <= 577 {
 		lyear, lmonth, ganzhiMonth, lday, isLeap, ldesc := rapidLunarHan2Qing(year, month, day, 0, dongWeiBeiQiCals)
-		date.lunars = append(date.lunars, LunarTime{
-			solarDate:   date.solarTime,
-			year:        lyear,
-			month:       lmonth,
-			day:         lday,
-			leap:        isLeap,
-			desc:        ldesc,
-			ganzhiMonth: ganzhiMonth,
-			comment:     "",
-			eras:        innerEras(lyear, dongWeiBeiQiEras),
-		})
+		eras := innerEras(lyear, dongWeiBeiQiEras)
+		if len(eras) > 0 {
+			date.lunars = append(date.lunars, LunarTime{
+				solarDate:   date.solarTime,
+				year:        lyear,
+				month:       lmonth,
+				day:         lday,
+				leap:        isLeap,
+				desc:        ldesc,
+				ganzhiMonth: ganzhiMonth,
+				comment:     "",
+				eras:        eras,
+			})
+		}
 	}
 	return date
 }

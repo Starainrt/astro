@@ -54,8 +54,8 @@
         "occultation": false,
         "eclipse": false,
         "shadow_transit": true,
-        "shadow_x_arcsec": 17.228193145273753,
-        "shadow_y_arcsec": 3.256241312014926
+        "shadow_x_arcsec": 16.76690445965992,
+        "shadow_y_arcsec": 3.0477215683782015
       }
     }
   },
@@ -108,8 +108,8 @@
         "occultation": false,
         "eclipse": false,
         "shadow_transit": true,
-        "shadow_x_arcsec": 3.158460096080454,
-        "shadow_y_arcsec": -16.417707231374926
+        "shadow_x_arcsec": 2.9731905953542506,
+        "shadow_y_arcsec": -16.49424583711469
       },
       "io": {
         "transit": false,
@@ -133,8 +133,8 @@
         "occultation": false,
         "eclipse": false,
         "shadow_transit": true,
-        "shadow_x_arcsec": -5.755686876706326,
-        "shadow_y_arcsec": -12.656123592995895
+        "shadow_x_arcsec": -5.978454744969274,
+        "shadow_y_arcsec": -12.745255093672851
       },
       "ganymede": {
         "transit": false,

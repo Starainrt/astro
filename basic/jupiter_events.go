@@ -172,6 +172,9 @@ func LastJupiterWesternQuadrature(jde float64) float64 {
 }
 
 func jupiterRetrogradeAroundOpposition(oppositionJD float64, searchBeforeOpposition bool) float64 {
+	if !isFiniteFloat(oppositionJD) {
+		return math.NaN()
+	}
 	oppositionTT := TD2UT(oppositionJD, true)
 	startTT := oppositionTT
 	endTT := oppositionTT
@@ -183,49 +186,98 @@ func jupiterRetrogradeAroundOpposition(oppositionJD float64, searchBeforeOpposit
 		endTT = TD2UT(westernQuadratureUT, true)
 	}
 	bestJD := zeroEventInWindow(startTT, endTT, 2.0, 2.0, 30.0/86400.0, func(jd float64) float64 {
-		return jupiterRADerivativeN(jd, 1.0/86400.0, jupiterEventSearchN)
+		return jupiterRADerivativeN(jd, stationDerivativeStepDay, jupiterEventSearchN)
 	}, func(jd float64) float64 {
-		return jupiterRADerivative(jd, 0.5/86400.0)
+		return jupiterRADerivative(jd, stationDerivativeStepDay)
 	})
 	return TD2UT(bestJD, false)
 }
 
 func NextJupiterRetrogradeToPrograde(jde float64) float64 {
+	if !isFiniteFloat(jde) {
+		return math.NaN()
+	}
 	lastOppositionJD := jupiterConjunctionFull(jde, 180, 0)
 	date := jupiterRetrogradeAroundOpposition(lastOppositionJD, false)
-	if sameEventUTQueryTT(date, jde) || eventUTQueryAfterOrEqual(date, jde) {
+	if isFiniteFloat(date) && stationUTQueryAfterOrEqual(date, jde) {
 		return date
 	}
 	nextOppositionJD := jupiterConjunctionFull(jde, 180, 1)
-	return jupiterRetrogradeAroundOpposition(nextOppositionJD, false)
+	if !isFiniteFloat(nextOppositionJD) {
+		return math.NaN()
+	}
+	date = jupiterRetrogradeAroundOpposition(nextOppositionJD, false)
+	if !isFiniteFloat(date) || !stationUTQueryAfterOrEqual(date, jde) {
+		return math.NaN()
+	}
+	return date
 }
 
 func LastJupiterRetrogradeToPrograde(jde float64) float64 {
+	if !isFiniteFloat(jde) {
+		return math.NaN()
+	}
 	lastOppositionJD := jupiterConjunctionFull(jde, 180, 0)
 	date := jupiterRetrogradeAroundOpposition(lastOppositionJD, false)
-	if sameEventUTQueryTT(date, jde) || eventUTQueryBeforeOrEqual(date, jde) {
+	if isFiniteFloat(date) && stationUTQueryBeforeOrEqual(date, jde) {
 		return date
 	}
+	if !isFiniteFloat(lastOppositionJD) {
+		return math.NaN()
+	}
 	previousOppositionJD := jupiterConjunctionFull(eventUTLastQueryTT(lastOppositionJD), 180, 0)
-	return jupiterRetrogradeAroundOpposition(previousOppositionJD, false)
+	if !isFiniteFloat(previousOppositionJD) {
+		return math.NaN()
+	}
+	date = jupiterRetrogradeAroundOpposition(previousOppositionJD, false)
+	if !isFiniteFloat(date) || !stationUTQueryBeforeOrEqual(date, jde) {
+		return math.NaN()
+	}
+	return date
 }
 
 func NextJupiterProgradeToRetrograde(jde float64) float64 {
+	if !isFiniteFloat(jde) {
+		return math.NaN()
+	}
 	nextOppositionJD := jupiterConjunctionFull(jde, 180, 1)
 	date := jupiterRetrogradeAroundOpposition(nextOppositionJD, true)
-	if sameEventUTQueryTT(date, jde) || eventUTQueryAfterOrEqual(date, jde) {
+	if isFiniteFloat(date) && stationUTQueryAfterOrEqual(date, jde) {
 		return date
 	}
+	if !isFiniteFloat(nextOppositionJD) {
+		return math.NaN()
+	}
 	followingOppositionJD := jupiterConjunctionFull(eventUTNextQueryTT(nextOppositionJD), 180, 1)
-	return jupiterRetrogradeAroundOpposition(followingOppositionJD, true)
+	if !isFiniteFloat(followingOppositionJD) {
+		return math.NaN()
+	}
+	date = jupiterRetrogradeAroundOpposition(followingOppositionJD, true)
+	if !isFiniteFloat(date) || !stationUTQueryAfterOrEqual(date, jde) {
+		return math.NaN()
+	}
+	return date
 }
 
 func LastJupiterProgradeToRetrograde(jde float64) float64 {
+	if !isFiniteFloat(jde) {
+		return math.NaN()
+	}
 	nextOppositionJD := jupiterConjunctionFull(jde, 180, 1)
 	date := jupiterRetrogradeAroundOpposition(nextOppositionJD, true)
-	if sameEventUTQueryTT(date, jde) || eventUTQueryBeforeOrEqual(date, jde) {
+	if isFiniteFloat(date) && stationUTQueryBeforeOrEqual(date, jde) {
 		return date
 	}
+	if !isFiniteFloat(nextOppositionJD) {
+		return math.NaN()
+	}
 	lastOppositionJD := jupiterConjunctionFull(jde, 180, 0)
-	return jupiterRetrogradeAroundOpposition(lastOppositionJD, true)
+	if !isFiniteFloat(lastOppositionJD) {
+		return math.NaN()
+	}
+	date = jupiterRetrogradeAroundOpposition(lastOppositionJD, true)
+	if !isFiniteFloat(date) || !stationUTQueryBeforeOrEqual(date, jde) {
+		return math.NaN()
+	}
+	return date
 }

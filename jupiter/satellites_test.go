@@ -6,9 +6,12 @@ import (
 	"os"
 	"testing"
 	"time"
+
+	"github.com/starainrt/astro/basic"
 )
 
-const galileanHorizonsToleranceArcsec = 1.0
+// 基线是 UTC 瞬时地心赤道量的派生偏移，容差取实测最大残差（0.054″）的约三倍。
+const galileanHorizonsToleranceArcsec = 0.15
 
 type galileanHorizonsEquatorialRecord struct {
 	RA    float64 `json:"ra_deg"`
@@ -93,5 +96,24 @@ func selectGalileanSatellite(info GalileanSatellitesInfo, name string) GalileanS
 		return info.Callisto
 	default:
 		panic("unknown satellite: " + name)
+	}
+}
+
+func TestGalileanSatellitesUseTTFrame(t *testing.T) {
+	dates := []time.Time{
+		time.Date(1973, 4, 15, 0, 0, 0, 0, time.UTC),
+		time.Date(1999, 1, 1, 2, 0, 0, 0, time.UTC),
+		time.Date(2026, 4, 2, 18, 0, 0, 0, time.UTC),
+	}
+	for _, date := range dates {
+		want := basic.JupiterGalileanSatelliteObservations(basic.TD2UT(basic.Date2JDE(date.UTC()), true))
+		got := Satellites(date)
+		positions := []GalileanSatellitePosition{got.Io, got.Europa, got.Ganymede, got.Callisto}
+		for i, position := range positions {
+			expected := galileanSatellitePositionFromBasic(want[i])
+			if position != expected {
+				t.Fatalf("date=%s satellite=%d TT frame mismatch: got %+v want %+v", date, i+1, position, expected)
+			}
+		}
 	}
 }

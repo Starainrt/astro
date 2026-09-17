@@ -196,3 +196,46 @@ func TestFindStarOccultationsValidatesInputs(t *testing.T) {
 		t.Fatalf("FindStarOccultations() observer error = %v, want ErrInvalidOccultationInput", err)
 	}
 }
+
+func TestFindBestStarOccultationsKeepsNonCentralEvents(t *testing.T) {
+	// HR 1118 的黄纬为 +5.58°，接近月掩纬度极限，因此 2025-02-06 与 2025-05-26 的月掩
+	// 都是月影轴不与地球椭球相交的非中心事件；最佳站心曾取外接触切点而整场丢失。
+	// HR 1118 sits at ecliptic latitude +5.58°, close to the occultation latitude limit,
+	// so its 2025-02-06 and 2025-05-26 events are non-central: the shadow axis misses the
+	// ellipsoid and the best station used to be taken at the outer contact tangent, which
+	// dropped the whole event from the search.
+	star := StarCoordinate{
+		ID:                             "HR 1118",
+		RA:                             55.19291667,
+		Dec:                            25.32944444,
+		Epoch:                          time.Date(2000, time.January, 1, 12, 0, 0, 0, time.UTC),
+		Frame:                          CoordinateFrameJ2000,
+		ProperMotionRACosDecMasPerYear: 8,
+		ProperMotionDecMasPerYear:      -15,
+	}
+	for _, day := range []time.Time{
+		time.Date(2025, time.February, 6, 0, 0, 0, 0, time.UTC),
+		time.Date(2025, time.May, 26, 0, 0, 0, 0, time.UTC),
+	} {
+		t.Run(day.Format("2006-01-02"), func(t *testing.T) {
+			start := day.Add(-24 * time.Hour)
+			end := day.Add(24 * time.Hour)
+			events, err := FindBestStarOccultations(start, end, star, OccultationSearchOptions{})
+			if err != nil {
+				t.Fatalf("FindBestStarOccultations() error = %v", err)
+			}
+			paths, err := FindStarOccultationPaths(start, end, star, OccultationPathOptions{})
+			if err != nil {
+				t.Fatalf("FindStarOccultationPaths() error = %v", err)
+			}
+			if len(events) != 1 || len(paths) != 1 {
+				t.Fatalf("event search returned %d events, path search %d, want one each", len(events), len(paths))
+			}
+			event := events[0]
+			if event.MinimumSeparationArcsec > event.MoonSemidiameterArcsec {
+				t.Fatalf("greatest station lies outside the occultation: separation=%.3f moon=%.3f",
+					event.MinimumSeparationArcsec, event.MoonSemidiameterArcsec)
+			}
+		})
+	}
+}

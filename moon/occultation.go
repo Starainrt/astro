@@ -1,6 +1,10 @@
 package moon
 
-import "github.com/starainrt/astro/basic"
+import (
+	"time"
+
+	"github.com/starainrt/astro/basic"
+)
 
 // ErrInvalidOccultationInput 表示月掩输入无效。
 // ErrInvalidOccultationInput reports invalid lunar-occultation input.
@@ -96,6 +100,16 @@ type OccultationSearchOptions = basic.OccultationSearchOptions
 // OccultationPathOptions controls global occultation-path sampling.
 type OccultationPathOptions = basic.OccultationPathOptions
 
+// OccultationPathAlgorithm 选择全球月掩路径的优化或原有精确分支。
+// OccultationPathAlgorithm selects the optimized or original exact global-path branch.
+type OccultationPathAlgorithm = basic.OccultationPathAlgorithm
+
+// 全球月掩路径的两条算法分支取值 / the two global occultation-path algorithm values.
+const (
+	OccultationPathAlgorithmOptimized = basic.OccultationPathAlgorithmOptimized
+	OccultationPathAlgorithmExact     = basic.OccultationPathAlgorithmExact
+)
+
 // StarOccultationInfo 描述一次点光源恒星月掩。
 // StarOccultationInfo describes one point-source stellar occultation.
 type StarOccultationInfo = basic.StarOccultationInfo
@@ -108,9 +122,38 @@ type PlanetOccultationInfo = basic.PlanetOccultationInfo
 // OccultationPathPoint is a geographic sample of a global occultation path.
 type OccultationPathPoint = basic.OccultationPathPoint
 
+// RiseSetPhase 标识局部月掩阶段。
+// RiseSetPhase identifies a local occultation phase.
+type RiseSetPhase = basic.RiseSetPhase
+
+// RiseSetDirection 标识月升或月落方向。
+// RiseSetDirection identifies moonrise or moonset.
+type RiseSetDirection = basic.RiseSetDirection
+
+// 与 basic 同名的阶段与方向常量 / the phase and direction constants re-exported from basic.
+const (
+	RiseSetPhaseStart    = basic.RiseSetPhaseStart
+	RiseSetPhaseGreatest = basic.RiseSetPhaseGreatest
+	RiseSetPhaseEnd      = basic.RiseSetPhaseEnd
+	RiseSetDirectionRise = basic.RiseSetDirectionRise
+	RiseSetDirectionSet  = basic.RiseSetDirectionSet
+)
+
+// OccultationRiseSetCurve 是局部阶段发生在月升或月落时的边界。
+// OccultationRiseSetCurve is a boundary where a local phase occurs at moonrise or moonset.
+type OccultationRiseSetCurve = basic.OccultationRiseSetCurve
+
+// OccultationGreatestTimeContour 是一个固定地方掩甚时刻的等值线支路集合。
+// OccultationGreatestTimeContour contains the continuous branches of one fixed local greatest-occultation time.
+type OccultationGreatestTimeContour = basic.OccultationGreatestTimeContour
+
 // StarOccultationPath 包含点光源恒星月掩掩带。
 // StarOccultationPath contains a point-source stellar occultation footprint.
 type StarOccultationPath = basic.StarOccultationPath
+
+// OccultationFootprint 是一个时刻的可见接触区域。
+// OccultationFootprint is one instantaneous visible contact region.
+type OccultationFootprint = basic.OccultationFootprint
 
 // PlanetOccultationPath 包含有限盘面行星月掩掩带。
 // PlanetOccultationPath contains a finite-disk planetary occultation footprint.
@@ -119,3 +162,23 @@ type PlanetOccultationPath = basic.PlanetOccultationPath
 // PlanetOccultationFootprint 是一个时刻的可见行星接触区域。
 // PlanetOccultationFootprint is one instantaneous visible planetary-contact region.
 type PlanetOccultationFootprint = basic.PlanetOccultationFootprint
+
+// StarOccultationInstant 是一个请求时刻的点源恒星月掩可见足迹。
+// StarOccultationInstant is the visible point-source footprint at one requested instant.
+type StarOccultationInstant = basic.StarOccultationInstant
+
+// PlanetOccultationInstant 是一个请求时刻的行星偏掩和全掩可见足迹。
+// PlanetOccultationInstant contains the visible partial and total planetary footprints at one requested instant.
+type PlanetOccultationInstant = basic.PlanetOccultationInstant
+
+// StarOccultationFootprintAt 计算指定时刻的精确恒星月掩可见足迹。
+// StarOccultationFootprintAt calculates the exact visible stellar-occultation footprint at one instant.
+func StarOccultationFootprintAt(at time.Time, star StarCoordinate) (StarOccultationInstant, error) {
+	return basic.StarOccultationFootprintAt(at, star)
+}
+
+// PlanetOccultationFootprintsAt 计算指定时刻的精确行星偏掩和全掩可见足迹。
+// PlanetOccultationFootprintsAt calculates the exact visible partial and total planetary footprints at one instant.
+func PlanetOccultationFootprintsAt(at time.Time, planet OccultationPlanet) (PlanetOccultationInstant, error) {
+	return basic.PlanetOccultationFootprintsAt(at, planet)
+}

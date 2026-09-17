@@ -61,8 +61,9 @@ func SunTrueRa(jd float64) float64 { //'太阳真赤经
 }
 
 func SunApparentDec(jd float64) float64 { // '太阳视赤纬
-	t := (jd - 2451545) / 36525
-	eps := TrueObliquity(jd) + 0.00256*Cos(125.04-1934.136*t)
+	// TrueObliquity 已是“平交角 + 交角章动”，不能再加 0.00256*cos(Ω)：
+	// 那一项就是交角章动的近似值（见《天文算法》24 章译者注），加了会把章动计两次。
+	eps := TrueObliquity(jd)
 	sunApparentDec := ArcSin(Sin(eps) * Sin(SunApparentLo(jd)))
 	return sunApparentDec
 }

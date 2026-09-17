@@ -3,6 +3,7 @@ package calendar
 import (
 	"fmt"
 	"math"
+	"sync"
 	"time"
 
 	"github.com/starainrt/astro/basic"
@@ -58,22 +59,35 @@ func hanQingJieQiPatternDelta(patternID, pos int) int {
 	return 15
 }
 
+// hanQingJieQiPatternExceptions 是未排序的 95 项例外表，先缓存成 map 再查，避免每次线性扫描。
+var (
+	hanQingJieQiPatternExceptionOnce  sync.Once
+	hanQingJieQiPatternExceptionByKey map[int]int
+)
+
 func hanQingJieQiPatternExceptionDelta(key int) (int, bool) {
-	for _, item := range hanQingJieQiPatternExceptions {
-		if int(item&0x0FFF) != key {
-			continue
+	hanQingJieQiPatternExceptionOnce.Do(func() {
+		m := make(map[int]int, len(hanQingJieQiPatternExceptions))
+		for _, item := range hanQingJieQiPatternExceptions {
+			k := int(item & 0x0FFF)
+			if _, exists := m[k]; exists {
+				continue
+			}
+			switch item >> 12 {
+			case 0:
+				m[k] = 12
+			case 1:
+				m[k] = 14
+			case 2:
+				m[k] = 17
+			default:
+				m[k] = 15
+			}
 		}
-		switch item >> 12 {
-		case 0:
-			return 12, true
-		case 1:
-			return 14, true
-		case 2:
-			return 17, true
-		}
-		return 15, true
-	}
-	return 0, false
+		hanQingJieQiPatternExceptionByKey = m
+	})
+	delta, ok := hanQingJieQiPatternExceptionByKey[key]
+	return delta, ok
 }
 
 func packedBits(data []byte, offset, width int) int {

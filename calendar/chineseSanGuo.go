@@ -1,7 +1,7 @@
 package calendar
 
 // 蜀汉朔日表
-func shuCals() map[int]uint32 {
+var shuCals = memoUint32Map(func() map[int]uint32 {
 	return map[int]uint32{
 		237: 2862623744,
 		238: 3042255104,
@@ -31,44 +31,50 @@ func shuCals() map[int]uint32 {
 		262: 2862622208,
 		263: 3578927872,
 	}
-}
+})
 
-func shuEras() []Era {
+var shuEras = memoEras(func() []Era {
 	return []Era{
 		{
 			Year:              264,
 			Emperor:           "魏元帝",
 			OtherNianHaoStart: "咸熙",
+			Dynasty:           "魏",
 		},
 		{
 			Year:              263,
 			Emperor:           "蜀后主",
 			OtherNianHaoStart: "炎兴",
+			Dynasty:           "蜀",
 		},
 		{
 			Year:    258,
 			Emperor: "蜀后主",
 			Nianhao: "景耀",
+			Dynasty: "蜀",
 		},
 		{
 			Year:    238,
 			Emperor: "蜀后主",
 			Nianhao: "延熙",
+			Dynasty: "蜀",
 		},
 		{
 			Year:              223,
 			Emperor:           "蜀后主",
 			OtherNianHaoStart: "建兴",
+			Dynasty:           "蜀",
 		},
 		{
 			Year:    221,
 			Emperor: "蜀昭烈帝",
 			Nianhao: "章武",
+			Dynasty: "蜀",
 		},
 	}
-}
+})
 
-func shuEraMap() map[string][][]int {
+var shuEraMap = memoEraMap(func() map[string][][]int {
 	return map[string][][]int{
 		"炎兴": [][]int{{263, 263}},
 		"景耀": [][]int{{258, 263}},
@@ -76,9 +82,9 @@ func shuEraMap() map[string][][]int {
 		"建兴": [][]int{{223, 237}},
 		"章武": [][]int{{221, 223}},
 	}
-}
+})
 
-func wuCals() map[int]uint32 {
+var wuCals = memoUint32Map(func() map[int]uint32 {
 	return map[int]uint32{
 		223: 1432367360,
 		224: 2862622208,
@@ -139,9 +145,9 @@ func wuCals() map[int]uint32 {
 		279: 1454087680,
 		280: 1436561664,
 	}
-}
+})
 
-func wuEraMap() map[string][][]int {
+var wuEraMap = memoEraMap(func() map[string][][]int {
 	return map[string][][]int{
 		"天玺": [][]int{{276, 276}},
 		"天册": [][]int{{275, 276}},
@@ -160,9 +166,9 @@ func wuEraMap() map[string][][]int {
 		"黄龙": [][]int{{229, 231}},
 		"黄武": [][]int{{222, 229}},
 	}
-}
+})
 
-func wuEras() []Era {
+var wuEras = memoEras(func() []Era {
 	return []Era{
 		{
 			Year:    277,
@@ -267,39 +273,47 @@ func wuEras() []Era {
 			Dynasty: "吴",
 		},
 	}
-}
+})
 
 func innerSolarToLunarSanGuo(date Time) Time {
 	year := date.solarTime.Year()
 	month := int(date.solarTime.Month())
 	day := date.solarTime.Day()
+	// 农历年早于年号表首年（如 221 年初尚属农历 220 年）时 eras 为空，
+	// 该候选与其它候选日期完全相同且无朝代，不再追加。
 	if year >= 221 && year <= 263 {
 		lyear, lmonth, ganzhiMonth, lday, isLeap, ldesc := rapidLunarHan2Qing(year, month, day, 0, shuCals)
-		date.lunars = append(date.lunars, LunarTime{
-			solarDate:   date.solarTime,
-			year:        lyear,
-			month:       lmonth,
-			day:         lday,
-			leap:        isLeap,
-			desc:        ldesc,
-			comment:     "",
-			ganzhiMonth: ganzhiMonth,
-			eras:        innerEras(lyear, shuEras),
-		})
+		eras := innerEras(lyear, shuEras)
+		if len(eras) > 0 {
+			date.lunars = append(date.lunars, LunarTime{
+				solarDate:   date.solarTime,
+				year:        lyear,
+				month:       lmonth,
+				day:         lday,
+				leap:        isLeap,
+				desc:        ldesc,
+				comment:     "",
+				ganzhiMonth: ganzhiMonth,
+				eras:        eras,
+			})
+		}
 	}
 	if year >= 222 && year <= 280 {
 		lyear, lmonth, ganzhiMonth, lday, isLeap, ldesc := rapidLunarHan2Qing(year, month, day, 0, wuCals)
-		date.lunars = append(date.lunars, LunarTime{
-			solarDate:   date.solarTime,
-			year:        lyear,
-			month:       lmonth,
-			day:         lday,
-			leap:        isLeap,
-			desc:        ldesc,
-			ganzhiMonth: ganzhiMonth,
-			comment:     "",
-			eras:        innerEras(lyear, wuEras),
-		})
+		eras := innerEras(lyear, wuEras)
+		if len(eras) > 0 {
+			date.lunars = append(date.lunars, LunarTime{
+				solarDate:   date.solarTime,
+				year:        lyear,
+				month:       lmonth,
+				day:         lday,
+				leap:        isLeap,
+				desc:        ldesc,
+				ganzhiMonth: ganzhiMonth,
+				comment:     "",
+				eras:        eras,
+			})
+		}
 	}
 	return date
 }

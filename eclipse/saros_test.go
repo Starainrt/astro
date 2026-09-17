@@ -27,6 +27,43 @@ func TestSolarSarosInfoAgainstNASAExamples(t *testing.T) {
 	})
 }
 
+func TestSolarSarosInfoDerivedOutsideCatalogRange(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		date time.Time
+	}{
+		{name: "before catalog", date: time.Date(-3200, time.January, 1, 12, 0, 0, 0, time.UTC)},
+		{name: "after catalog", date: time.Date(3288, time.November, 15, 12, 0, 0, 0, time.UTC)},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			info := ClosestSolarEclipse(tc.date)
+			if !info.HasSaros || info.Saros.Verified {
+				t.Fatalf("expected provisional solar Saros: has=%v saros=%+v", info.HasSaros, info.Saros)
+			}
+			if info.Saros.Member < 1 || info.Saros.Member > info.Saros.Count || info.Saros.Count < 1 {
+				t.Fatalf("invalid provisional solar Saros range: %+v", info.Saros)
+			}
+		})
+	}
+}
+
+func TestSarosInfoDerivedAtFarEpochs(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		date time.Time
+	}{
+		{name: "solar 6000 BCE", date: time.Date(-6000, time.January, 1, 12, 0, 0, 0, time.UTC)},
+		{name: "solar 8000 BCE", date: time.Date(-8000, time.January, 1, 12, 0, 0, 0, time.UTC)},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			info := ClosestSolarEclipse(tc.date)
+			if !info.HasSaros || info.Saros.Verified || info.Saros.Member < 1 || info.Saros.Member > info.Saros.Count {
+				t.Fatalf("expected far-epoch provisional solar Saros: has=%v info=%+v", info.HasSaros, info.Saros)
+			}
+		})
+	}
+}
+
 func TestLocalSolarSarosMatchesGlobal(t *testing.T) {
 	date := time.Date(2009, 7, 22, 12, 0, 0, 0, time.FixedZone("CST", 8*3600))
 	global := ClosestSolarEclipse(date)
@@ -77,6 +114,26 @@ func TestLunarSarosInfoAgainstNASAExamples(t *testing.T) {
 		info := ClosestLunarEclipse(time.Date(-780, 12, 13, 12, 0, 0, 0, time.UTC))
 		assertSarosInfo(t, info.HasSaros, info.Saros, 61, 1, 78)
 	})
+}
+
+func TestLunarSarosInfoDerivedOutsideCatalogRange(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		date time.Time
+	}{
+		{name: "before catalog", date: time.Date(-3200, time.January, 1, 12, 0, 0, 0, time.UTC)},
+		{name: "after catalog", date: time.Date(3300, time.January, 1, 12, 0, 0, 0, time.UTC)},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			info := ClosestLunarEclipse(tc.date)
+			if !info.HasSaros || info.Saros.Verified {
+				t.Fatalf("expected provisional lunar Saros: has=%v saros=%+v", info.HasSaros, info.Saros)
+			}
+			if info.Saros.Member < 1 || info.Saros.Member > info.Saros.Count || info.Saros.Count < 1 {
+				t.Fatalf("invalid provisional lunar Saros range: %+v", info.Saros)
+			}
+		})
+	}
 }
 
 func TestLunarSarosShallowFirstMemberChauvenet(t *testing.T) {
@@ -139,6 +196,9 @@ func assertSarosInfo(t *testing.T, has bool, got SarosInfo, wantSeries, wantMemb
 			wantCount,
 		)
 	}
+	if !got.Verified {
+		t.Fatalf("expected authoritative Saros metadata: got %+v", got)
+	}
 }
 
 func assertSarosAnchorTable(t *testing.T, anchors []sarosMagic, seriesBase int) {
@@ -155,7 +215,7 @@ func assertSarosAnchorTable(t *testing.T, anchors []sarosMagic, seriesBase int) 
 			t.Fatalf("series not strictly increasing: prev=%d current=%d", lastSeries, series)
 		}
 		lastSeries = series
-		if anchor.Count == 0 || int(anchor.Count) >= sarosWalkLimit {
+		if anchor.Count == 0 || int(anchor.Count) > sarosExtrapolationWindow {
 			t.Fatalf("unexpected anchor count for series %d: %d", series, anchor.Count)
 		}
 		dateKey := [3]int{int(anchor.Year), int(anchor.Month), int(anchor.Day)}
@@ -193,5 +253,32 @@ func assertSarosHeadOverrides(t *testing.T, overrides []sarosHeadOverride, ancho
 		if count != int(override.Count) {
 			t.Fatalf("override count mismatch for series %d: got %d want %d", override.Series, override.Count, count)
 		}
+	}
+}
+
+func TestLunarSarosOverrideHeadIsAuthoritative(t *testing.T) {
+	// 月食 4 号在锚表与 override 里各有一个头，相差 9 个沙罗周期（−2646-10-06 与
+	// −2483-01-12 / MemberOffset +2）。两套格点同时生效时，相隔 127 年的两场月食都报
+	// Series=4、Member=3、Verified=true（重复成员号）。override 必须是唯一权威：窗口外
+	// 的那场按文档只报"没有沙罗信息"，而不是另一套编号。
+	// Lunar series 4 has two heads nine cycles apart (-2646-10-06 in the anchor table and
+	// -2483-01-12 with MemberOffset +2 as an override). With both lattices live, two
+	// eclipses 127 years apart both reported Series=4, Member=3, Verified=true. The
+	// override must be the only authority: the out-of-window eclipse reports no Saros
+	// metadata instead of a second numbering.
+	anchored := ClosestLunarEclipse(time.Date(-2483, time.January, 11, 0, 0, 0, 0, time.UTC))
+	if !anchored.HasSaros {
+		t.Fatal("the override head eclipse must keep its Saros metadata")
+	}
+	if anchored.Saros.Series != 4 || anchored.Saros.Member != 3 || !anchored.Saros.Verified {
+		t.Fatalf("override head eclipse Saros=%+v, want series 4 member 3 verified", anchored.Saros)
+	}
+
+	earlier := ClosestLunarEclipse(time.Date(-2610, time.October, 27, 0, 0, 0, 0, time.UTC))
+	if earlier.HasSaros &&
+		earlier.Saros.Series == anchored.Saros.Series &&
+		earlier.Saros.Member == anchored.Saros.Member {
+		t.Fatalf("two eclipses 127 years apart share series %d member %d",
+			earlier.Saros.Series, earlier.Saros.Member)
 	}
 }

@@ -9,6 +9,7 @@ import (
 
 	"github.com/starainrt/astro/basic"
 	eclipsecore "github.com/starainrt/astro/eclipse"
+	"github.com/starainrt/astro/internal/svgchart"
 )
 
 const (
@@ -189,8 +190,12 @@ func renderLocalSolarEclipseSVG(
 	b.WriteString(`<rect width="100%" height="100%" fill="#efefed"/>`)
 	fmt.Fprintf(&b, `<rect x="22" y="18" width="%.3f" height="%.3f" fill="#ffffff" stroke="#c9c9c6" stroke-width="1.2"/>`,
 		width-44, height-36)
+	titleText := title
+	if options.Title != "" {
+		titleText = svgchart.EllipsizeText(title, width-52, 26)
+	}
 	fmt.Fprintf(&b, `<text x="%.3f" y="44" fill="#111111" font-family="Georgia, 'Times New Roman', serif" font-size="26" font-weight="700" text-anchor="middle">%s</text>`,
-		width/2, html.EscapeString(title))
+		width/2, html.EscapeString(titleText))
 	fmt.Fprintf(&b, `<line x1="%.3f" y1="57" x2="%.3f" y2="57" stroke="#555" stroke-width="1"/>`, width/2-78, width/2+78)
 	for index, line := range headerTexts {
 		fontSize := 13
@@ -245,12 +250,23 @@ func renderLocalSolarEclipseSVG(
 	}
 	writeLocalSolarEclipseStagePanels(&b, info, eventFrames, options, margin, stageTop, width-2*margin, stageHeight)
 
+	direction := localSolarEclipseSVGDirectionTextValue(options)
+	if options.DirectionText != "" {
+		direction = svgchart.EllipsizeText(direction, width-80, 12)
+	}
 	fmt.Fprintf(&b, `<text x="%.3f" y="%.3f" fill="#333" font-family="Georgia, 'Times New Roman', serif" font-size="12">%s</text>`,
-		40.0, height-54,
-		html.EscapeString(localSolarEclipseSVGDirectionTextValue(options)))
-	note := localSolarEclipseSVGFooterNoteText(options)
-	fmt.Fprintf(&b, `<text x="%.3f" y="%.3f" fill="#555" font-family="Georgia, 'Times New Roman', serif" font-size="12">%s</text>`,
-		40.0, height-34, html.EscapeString(note))
+		40.0, height-54, html.EscapeString(direction))
+	// 默认说明是单行；调用方文本折行后按画布底边截断，首行位置不变。
+	lines := []string{localSolarEclipseSVGFooterNoteText(options)}
+	if options.FooterNote != "" {
+		maxWidth := width - 80
+		lines = svgchart.TruncateTextLines(svgchart.WrapText(options.FooterNote, maxWidth, 12), maxWidth, 12,
+			svgchart.BaselineLineLimit(12, 15, height-34, height-4))
+	}
+	for index, line := range lines {
+		fmt.Fprintf(&b, `<text x="%.3f" y="%.3f" fill="#555" font-family="Georgia, 'Times New Roman', serif" font-size="12">%s</text>`,
+			40.0, height-34+float64(index)*15, html.EscapeString(line))
+	}
 	writeLocalSolarEclipseContacts(&b, info, options, panelX, math.Max(154, cy-92))
 	b.WriteString(`</svg>`)
 	return b.String()
@@ -264,16 +280,25 @@ func localSolarEclipseSVGTitleText(info LocalSolarEclipseInfo, options LocalSola
 }
 
 func localSolarEclipseSVGHeaderTexts(info LocalSolarEclipseInfo, options LocalSolarEclipseSVGOptions) []string {
-	lines := []string{
-		localSolarEclipseSVGSummaryText(info, options),
-		localSolarEclipseSVGGreatestTextValue(info, options),
-		localSolarEclipseSVGMetaTextValue(info, options),
+	values := []struct {
+		text   string
+		custom bool
+	}{
+		{localSolarEclipseSVGSummaryText(info, options), options.SummaryText != ""},
+		{localSolarEclipseSVGGreatestTextValue(info, options), options.GreatestText != ""},
+		{localSolarEclipseSVGMetaTextValue(info, options), options.MetaText != ""},
 	}
-	filtered := make([]string, 0, len(lines))
-	for _, line := range lines {
-		if line != "" {
-			filtered = append(filtered, line)
+	filtered := make([]string, 0, len(values))
+	for _, value := range values {
+		if value.text == "" {
+			continue
 		}
+		// 摘要行各占一个固定槽位，调用方长文本只能截断，不能折行挤压下一行。
+		if value.custom {
+			filtered = append(filtered, svgchart.EllipsizeText(value.text, float64(options.Width)-80, 14))
+			continue
+		}
+		filtered = append(filtered, value.text)
 	}
 	return filtered
 }
@@ -374,9 +399,17 @@ func localSolarEclipseSVGMetaText(info LocalSolarEclipseInfo, language string) s
 	parts := make([]string, 0, 2)
 	if info.HasSaros {
 		if language == localSolarEclipseSVGLanguageEnglish {
-			parts = append(parts, fmt.Sprintf("Solar Saros %d  %d/%d", info.Saros.Series, info.Saros.Member, info.Saros.Count))
+			label := fmt.Sprintf("Solar Saros %d  %d/%d", info.Saros.Series, info.Saros.Member, info.Saros.Count)
+			if !info.Saros.Verified {
+				label += " (provisional)"
+			}
+			parts = append(parts, label)
 		} else {
-			parts = append(parts, fmt.Sprintf("沙罗 %d  第 %d/%d 个成员", info.Saros.Series, info.Saros.Member, info.Saros.Count))
+			label := fmt.Sprintf("沙罗 %d  第 %d/%d 个成员", info.Saros.Series, info.Saros.Member, info.Saros.Count)
+			if !info.Saros.Verified {
+				label += "（推算）"
+			}
+			parts = append(parts, label)
 		}
 	}
 	if duration := localSolarEclipseSVGCentralDurationText(info, language); duration != "" {

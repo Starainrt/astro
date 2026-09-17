@@ -161,6 +161,46 @@ func TestRefinedStarOccultationCenterLineRespectsWidthTolerance(t *testing.T) {
 	}
 }
 
+func TestPolarStarOccultationFootprintsContainCenterLine(t *testing.T) {
+	star := StarCoordinate{
+		ID: "Antares", RA: 247.3516666666667, Dec: -26.431944444444444,
+		Epoch: time.Date(2000, time.January, 1, 12, 0, 0, 0, time.UTC), Frame: CoordinateFrameJ2000,
+		ProperMotionRACosDecMasPerYear: -10, ProperMotionDecMasPerYear: -20, ParallaxMas: 24,
+	}
+	start := time.Date(2026, time.February, 11, 0, 0, 0, 0, time.UTC)
+	paths, err := FindStarOccultationPaths(
+		start, start.Add(24*time.Hour), star,
+		OccultationPathOptions{Step: 5 * time.Minute, TargetSpacingKM: 200},
+	)
+	if err != nil || len(paths) != 1 {
+		t.Fatalf("FindStarOccultationPaths() paths=%d err=%v, want one", len(paths), err)
+	}
+	if len(paths[0].Footprints) == 0 {
+		t.Fatal("polar stellar path has no instantaneous footprints")
+	}
+	checked := 0
+	for _, center := range paths[0].CenterLine {
+		if center.MoonAltitude <= 0 {
+			continue
+		}
+		contained := false
+		for _, footprint := range paths[0].Footprints {
+			if planetOccultationFootprintContains(footprint, center.Longitude, center.Latitude) {
+				contained = true
+				break
+			}
+		}
+		if !contained {
+			t.Fatalf("footprint sweep does not contain visible center line at %v, %.4f, %.4f",
+				center.Time, center.Longitude, center.Latitude)
+		}
+		checked++
+	}
+	if checked == 0 {
+		t.Fatal("no visible center-line sample was checked")
+	}
+}
+
 func TestRefineOccultationPathWidthsBoundsSmoothInterpolationError(t *testing.T) {
 	start := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
 	startTT := occultationTimeToTT(start)
@@ -179,6 +219,57 @@ func TestRefineOccultationPathWidthsBoundsSmoothInterpolationError(t *testing.T)
 		exact, _ := widthAt(centerTimeTT(point.Time))
 		if difference := math.Abs(point.WidthKM - exact); difference > occultationPathWidthToleranceKM {
 			t.Fatalf("interpolated width %d differs by %.9f km, tolerance %.9f", index, difference, occultationPathWidthToleranceKM)
+		}
+	}
+}
+
+func TestOccultationPathCachedEarthRotationMatchesDirectGeometry(t *testing.T) {
+	tt := occultationTimeToTT(time.Date(2025, time.June, 5, 12, 2, 6, 0, time.UTC))
+	vector := occultationPathVector{x: 4123.5, y: -2789.25, z: 3950.75}
+	angle := ApparentSiderealTime(TD2UT(tt, false)) * 15 * math.Pi / 180
+	want := occultationPathVector{
+		x: math.Cos(angle)*vector.x + math.Sin(angle)*vector.y,
+		y: -math.Sin(angle)*vector.x + math.Cos(angle)*vector.y,
+		z: vector.z,
+	}
+	got := occultationPathEarthFixedVectorWithRotation(vector, occultationPathEarthRotationAt(tt))
+	if difference := occultationPathNorm(occultationPathSub(got, want)); difference > 1e-12 {
+		t.Fatalf("cached Earth rotation differs by %.15g km", difference)
+	}
+
+	_, geodeticLatitude := occultationPathGeodetic(tt, vector)
+	if difference := math.Abs(occultationPathGeodeticLatitude(vector) - geodeticLatitude); difference > 1e-12 {
+		t.Fatalf("cached geodetic latitude differs by %.15g degrees", difference)
+	}
+}
+
+func TestOccultationPathCachedMoonAndSiderealMatchDirectPoint(t *testing.T) {
+	star := hr4799OccultationCoordinateForTest()
+	tt := occultationTimeToTT(time.Date(2025, time.June, 5, 12, 2, 6, 0, time.UTC))
+	frame, ok := starOccultationPathFrameAt(tt, star)
+	if !ok {
+		t.Fatal("stellar occultation frame is unavailable")
+	}
+	vector, _, ok := occultationEarthLineIntersection(frame.moon, frame.axis)
+	if !ok {
+		t.Fatal("stellar occultation center point is unavailable")
+	}
+
+	direct := occultationPathPointFromVector(tt, vector, 1234.5, time.UTC)
+	cached := occultationPathPointFromVectorWithMoonSidereal(
+		tt, vector, 1234.5, frame.moon, ApparentSiderealTime(TD2UT(tt, false))*15, time.UTC,
+	)
+	if !cached.Time.Equal(direct.Time) {
+		t.Fatalf("cached point time = %v, want %v", cached.Time, direct.Time)
+	}
+	for name, difference := range map[string]float64{
+		"longitude":     math.Abs(cached.Longitude - direct.Longitude),
+		"latitude":      math.Abs(cached.Latitude - direct.Latitude),
+		"moon altitude": math.Abs(cached.MoonAltitude - direct.MoonAltitude),
+		"width":         math.Abs(cached.WidthKM - direct.WidthKM),
+	} {
+		if difference > 1e-10 {
+			t.Fatalf("cached point %s differs by %.15g degrees or km", name, difference)
 		}
 	}
 }

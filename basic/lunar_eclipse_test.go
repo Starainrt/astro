@@ -133,12 +133,12 @@ func TestLunarEclipseChauvenetAgainstLegacyBaseline(t *testing.T) {
 				t.Fatalf("Magnitude mismatch: got %.12f want %.12f", result.Magnitude, tc.expectedMag)
 			}
 
-			assertCloseJD(t, "PenumbralStart", result.PenumbralStart, tc.expectedPenumbralStart, timeTolerance)
-			assertCloseJD(t, "PenumbralEnd", result.PenumbralEnd, tc.expectedPenumbralEnd, timeTolerance)
-			assertCloseJD(t, "PartialStart", result.PartialStart, tc.expectedPartialStart, timeTolerance)
-			assertCloseJD(t, "PartialEnd", result.PartialEnd, tc.expectedPartialEnd, timeTolerance)
-			assertCloseJD(t, "TotalStart", result.TotalStart, tc.expectedTotalStart, timeTolerance)
-			assertCloseJD(t, "TotalEnd", result.TotalEnd, tc.expectedTotalEnd, timeTolerance)
+			assertContactJD(t, "PenumbralStart", result.PenumbralStart, tc.expectedPenumbralStart, timeTolerance)
+			assertContactJD(t, "PenumbralEnd", result.PenumbralEnd, tc.expectedPenumbralEnd, timeTolerance)
+			assertContactJD(t, "PartialStart", result.PartialStart, tc.expectedPartialStart, timeTolerance)
+			assertContactJD(t, "PartialEnd", result.PartialEnd, tc.expectedPartialEnd, timeTolerance)
+			assertContactJD(t, "TotalStart", result.TotalStart, tc.expectedTotalStart, timeTolerance)
+			assertContactJD(t, "TotalEnd", result.TotalEnd, tc.expectedTotalEnd, timeTolerance)
 
 			if result.HasTotal && !(result.TotalStart < result.Maximum && result.Maximum < result.TotalEnd) {
 				t.Fatalf("total contact order invalid: start=%.12f max=%.12f end=%.12f", result.TotalStart, result.Maximum, result.TotalEnd)
@@ -284,8 +284,17 @@ func TestLunarEclipseNoEvent(t *testing.T) {
 			if result.HasPenumbral || result.HasPartial || result.HasTotal {
 				t.Fatalf("unexpected contacts: %+v", result)
 			}
-			if result.PenumbralStart != 0 || result.PenumbralEnd != 0 || result.PartialStart != 0 || result.PartialEnd != 0 || result.TotalStart != 0 || result.TotalEnd != 0 {
-				t.Fatalf("expected no contact times, got %+v", result)
+			for name, value := range map[string]float64{
+				"PenumbralStart": result.PenumbralStart,
+				"PenumbralEnd":   result.PenumbralEnd,
+				"PartialStart":   result.PartialStart,
+				"PartialEnd":     result.PartialEnd,
+				"TotalStart":     result.TotalStart,
+				"TotalEnd":       result.TotalEnd,
+			} {
+				if !math.IsNaN(value) {
+					t.Fatalf("%s = %.12f, want NaN for a non-eclipse: %+v", name, value, result)
+				}
 			}
 			if result.Magnitude != 0 || result.PenumbralMagnitude != 0 {
 				t.Fatalf("expected zero magnitudes for non-eclipse, got %+v", result)
@@ -305,4 +314,16 @@ func assertCloseJD(t *testing.T, name string, got, want, tolerance float64) {
 	if math.Abs(got-want) > tolerance {
 		t.Fatalf("%s mismatch: got %.12f want %.12f", name, got, want)
 	}
+}
+
+// assertContactJD 未发生阶段的期望值是 0（基准表写法），此时实际值必须是 NaN 而不是 JD 0。
+func assertContactJD(t *testing.T, name string, got, want, tolerance float64) {
+	t.Helper()
+	if want == 0 {
+		if !math.IsNaN(got) {
+			t.Fatalf("%s = %.12f, want NaN for an absent phase", name, got)
+		}
+		return
+	}
+	assertCloseJD(t, name, got, want, tolerance)
 }

@@ -10,7 +10,8 @@ import (
  * 坐标变换，黄道转赤道
  */
 func LoToRa(jde, lo, bo float64) float64 {
-	ra := math.Atan2(Sin(lo)*Cos(TrueObliquity(jde))-Tan(bo)*Sin(TrueObliquity(jde)), Cos(lo))
+	eps := TrueObliquity(jde)
+	ra := math.Atan2(Sin(lo)*Cos(eps)-Tan(bo)*Sin(eps), Cos(lo))
 	ra = ra * 180 / math.Pi
 	if ra < 0 {
 		ra += 360
@@ -19,13 +20,17 @@ func LoToRa(jde, lo, bo float64) float64 {
 }
 
 func BoToDec(jde, lo, bo float64) float64 {
-	dec := ArcSin(Sin(bo)*Cos(TrueObliquity(jde)) + Cos(bo)*Sin(TrueObliquity(jde))*Sin(lo))
+	eps := TrueObliquity(jde)
+	dec := ArcSin(Sin(bo)*Cos(eps) + Cos(bo)*Sin(eps)*Sin(lo))
 	return dec
 }
 
 func LoBoToRaDec(jde, lo, bo float64) (float64, float64) {
-	dec := ArcSin(Sin(bo)*Cos(TrueObliquity(jde)) + Cos(bo)*Sin(TrueObliquity(jde))*Sin(lo))
-	ra := math.Atan2(Sin(lo)*Cos(TrueObliquity(jde))-Tan(bo)*Sin(TrueObliquity(jde)), Cos(lo))
+	eps := TrueObliquity(jde)
+	sinEps := Sin(eps)
+	cosEps := Cos(eps)
+	dec := ArcSin(Sin(bo)*cosEps + Cos(bo)*sinEps*Sin(lo))
+	ra := math.Atan2(Sin(lo)*cosEps-Tan(bo)*sinEps, Cos(lo))
 	ra = ra * 180 / math.Pi
 	if ra < 0 {
 		ra += 360
@@ -81,10 +86,14 @@ func psini(lat, h float64) float64 {
 }
 
 func TopocentricRaDec(ra, dec, lat, lon, jd, au, h float64) (float64, float64) {
+	return topocentricRaDecWithSidereal(ra, dec, lat, lon, ApparentSiderealTime(jd)*15, au, h)
+}
+
+func topocentricRaDecWithSidereal(ra, dec, lat, lon, siderealDegrees, au, h float64) (float64, float64) {
 	sinpi := Sin(0.0024427777777) / au
 	pcosi := pcosi(lat, h)
 	psini := psini(lat, h)
-	tH := Limit360(ApparentSiderealTime(jd)*15 + lon - ra)
+	tH := Limit360(siderealDegrees + lon - ra)
 	nra := math.Atan2(-pcosi*sinpi*Sin(tH), (Cos(dec)-pcosi*sinpi*Cos(tH))) * 180 / math.Pi
 
 	ndec := math.Atan2((Sin(dec)-psini*sinpi)*Cos(nra), (Cos(dec)-pcosi*sinpi*Cos(tH))) * 180 / math.Pi

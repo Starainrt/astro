@@ -6,9 +6,13 @@
 // 每个要素都包含 event 和 role 属性。带时间的 MultiLineString 要素还包含与坐标段对齐的嵌套 times 数组。
 // Times 编码为 UTC RFC 3339 字符串；路径采样由上游日月食和月掩选项控制后再传入本包。
 // WithTimeMarkers 变体还会追加 role 为 time-marker 的 Point 要素，标签按请求地点格式化。
+// 月掩 fallback 掩带通常为 MultiPolygon；支路跳变留下的孤立零时长截面以 MultiLineString 表达，
+// 与连续扫掠同时存在时使用 GeometryCollection，避免用虚假多边形重新连接跳变。
 // Every feature has event and role properties. Timed MultiLineString features also contain a nested times array aligned with their coordinate segments.
 // Times are encoded as UTC RFC 3339 strings. Path sampling is controlled by the source eclipse and occultation options before values reach this package.
 // The WithTimeMarkers variants additionally append Point Features whose role is time-marker and whose label is formatted for the requested location.
+// Fallback occultation bands normally use MultiPolygon. Isolated zero-duration sections left by branch changes use MultiLineString,
+// combined with a continuous sweep in a GeometryCollection, so discontinuities are never reconnected by a false polygon.
 package geojson
 
 import (
@@ -39,7 +43,8 @@ type feature struct {
 
 type geometry struct {
 	Type        string      `json:"type"`
-	Coordinates interface{} `json:"coordinates"`
+	Coordinates interface{} `json:"coordinates,omitempty"`
+	Geometries  []geometry  `json:"geometries,omitempty"`
 }
 
 type pathSample struct {
@@ -69,6 +74,14 @@ func marshalFeatureCollection(features []feature) ([]byte, error) {
 	if len(features) == 0 {
 		return nil, fmt.Errorf("geojson: no geographic features")
 	}
+	return encodeFeatureCollection(features)
+}
+
+func marshalEmptyFeatureCollection() ([]byte, error) {
+	return encodeFeatureCollection(make([]feature, 0))
+}
+
+func encodeFeatureCollection(features []feature) ([]byte, error) {
 	value, err := json.Marshal(featureCollection{Type: featureCollectionType, Features: features})
 	if err != nil {
 		return nil, fmt.Errorf("geojson: encode feature collection: %w", err)
@@ -277,21 +290,54 @@ func pointGeometry(longitude, latitude float64) (geometry, error) {
 }
 
 func timedMultiLineGeometry(points []pathSample) (geometry, [][]string, error) {
-	segments, err := splitTimedLine(points)
-	if err != nil {
-		return geometry{}, nil, err
-	}
-	coordinates := make([][][]float64, 0, len(segments))
-	times := make([][]string, 0, len(segments))
-	for _, segment := range segments {
-		line := make([][]float64, len(segment))
-		lineTimes := make([]string, len(segment))
-		for index, point := range segment {
-			line[index] = []float64{point.Longitude, point.Latitude}
-			lineTimes[index] = formatTime(point.Time)
+	return timedMultiLineGeometryFromSegments([][]pathSample{points})
+}
+
+func timedMultiLineGeometryFromSegments(sourceSegments [][]pathSample) (geometry, [][]string, error) {
+	return timedMultiLineGeometryFromSegmentsWithTimeOrder(sourceSegments, true)
+}
+
+func timedMultiLineGeometryFromSegmentsWithTimeOrder(
+	sourceSegments [][]pathSample,
+	requireIncreasingTimes bool,
+) (geometry, [][]string, error) {
+	coordinates := make([][][]float64, 0, len(sourceSegments))
+	times := make([][]string, 0, len(sourceSegments))
+	for _, source := range sourceSegments {
+		if len(source) == 0 {
+			continue
 		}
-		coordinates = append(coordinates, line)
-		times = append(times, lineTimes)
+		if len(source) == 1 {
+			point := source[0]
+			if point.Time.IsZero() {
+				return geometry{}, nil, fmt.Errorf("geojson: timed line contains a zero time")
+			}
+			if err := validateCoordinate(point.Longitude, point.Latitude); err != nil {
+				return geometry{}, nil, err
+			}
+			position := []float64{point.Longitude, point.Latitude}
+			formattedTime := formatTime(point.Time)
+			coordinates = append(coordinates, [][]float64{position, append([]float64(nil), position...)})
+			times = append(times, []string{formattedTime, formattedTime})
+			continue
+		}
+		segments, err := splitTimedLine(source, requireIncreasingTimes)
+		if err != nil {
+			return geometry{}, nil, err
+		}
+		for _, segment := range segments {
+			line := make([][]float64, len(segment))
+			lineTimes := make([]string, len(segment))
+			for index, point := range segment {
+				line[index] = []float64{point.Longitude, point.Latitude}
+				lineTimes[index] = formatTime(point.Time)
+			}
+			coordinates = append(coordinates, line)
+			times = append(times, lineTimes)
+		}
+	}
+	if len(coordinates) == 0 {
+		return geometry{}, nil, fmt.Errorf("geojson: line has no valid segments")
 	}
 	return geometry{Type: "MultiLineString", Coordinates: coordinates}, times, nil
 }
@@ -309,7 +355,7 @@ func geoMultiLineGeometry(points []geodata.GeoPoint, closeLine bool) (geometry, 
 	if closeLine && !geodata.SameGeoPoint(geographic[0], geographic[len(geographic)-1]) {
 		geographic = append(geographic, geographic[0])
 	}
-	segments := geodata.PolylineSegments(geographic, geodata.ProjectionEquirectangular)
+	segments := geodata.PolylineSegments(geographic, geodata.ClipView{Projection: geodata.ProjectionEquirectangular})
 	coordinates := make([][][]float64, 0, len(segments))
 	for _, segment := range segments {
 		if len(segment) < 2 {
@@ -327,7 +373,24 @@ func geoMultiLineGeometry(points []geodata.GeoPoint, closeLine bool) (geometry, 
 	return geometry{Type: "MultiLineString", Coordinates: coordinates}, nil
 }
 
+// multiPolygonFillGeometry tags fill-only polygons, which tolerate a coarser
+// map chord bound than the path strokes.
+func multiPolygonFillGeometry(polygons [][]geodata.GeoPoint) (geometry, error) {
+	return multiPolygonGeometryWithin(
+		polygons, sphericalFillChordLimitKM, sphericalFillChordErrorDegrees,
+	)
+}
+
 func multiPolygonGeometry(polygons [][]geodata.GeoPoint) (geometry, error) {
+	return multiPolygonGeometryWithin(
+		polygons, sphericalMapChordLimitKM, sphericalMapChordErrorDegrees,
+	)
+}
+
+func multiPolygonGeometryWithin(
+	polygons [][]geodata.GeoPoint,
+	chordLimitKM, chordErrorDegrees float64,
+) (geometry, error) {
 	fragments := make([][]geodata.GeoPoint, 0, len(polygons))
 	for index, polygon := range polygons {
 		polygon = openRing(polygon)
@@ -340,7 +403,10 @@ func multiPolygonGeometry(polygons [][]geodata.GeoPoint) (geometry, error) {
 			}
 		}
 		fragments = append(fragments,
-			geodata.PolygonFragments(polygon, geodata.ProjectionEquirectangular)...)
+			geodata.PolygonFragments(
+				sampleSphericalMapRingWithin(polygon, chordLimitKM, chordErrorDegrees),
+				geodata.ClipView{Projection: geodata.ProjectionEquirectangular},
+			)...)
 	}
 	return multiPolygonGeometryFromFragments(fragments)
 }
@@ -403,7 +469,7 @@ func polygonArea(points []geodata.GeoPoint) float64 {
 	return area / 2
 }
 
-func splitTimedLine(points []pathSample) ([][]pathSample, error) {
+func splitTimedLine(points []pathSample, requireIncreasingTimes bool) ([][]pathSample, error) {
 	if len(points) < 2 {
 		return nil, fmt.Errorf("geojson: line requires at least two points")
 	}
@@ -414,7 +480,7 @@ func splitTimedLine(points []pathSample) ([][]pathSample, error) {
 		if err := validateCoordinate(point.Longitude, point.Latitude); err != nil {
 			return nil, err
 		}
-		if index > 0 && !point.Time.After(points[index-1].Time) {
+		if requireIncreasingTimes && index > 0 && !point.Time.After(points[index-1].Time) {
 			return nil, fmt.Errorf("geojson: timed line times must be strictly increasing")
 		}
 	}

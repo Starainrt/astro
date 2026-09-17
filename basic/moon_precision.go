@@ -54,8 +54,24 @@ func MoonCalcNew(coordIndex int, jd float64) float64 {
 }
 
 func MoonCalcNewN(coordIndex int, jd float64, n int) float64 {
-	rad := 180.0 * 3600.0 / math.Pi
-	t := (jd - 2451545.0) / 36525.0
+	return moonCalcNewN(coordIndex, jd, n)
+}
+
+// moonPhaseCompensationThreshold 是启用线性相位补偿的最小 |t|（世纪数）倒数尺度：
+// 更小的项本身已低于纳角秒级相位舍入，无需补偿。
+const moonPhaseCompensationThreshold = 1e6
+
+func moonCalcNewN(coordIndex int, jd float64, n int) float64 {
+	arcsecPerRadian := 180.0 * 3600.0 / math.Pi
+	// Preserve the low parts of both the epoch subtraction and century division.
+	days := jd - 2451545.0
+	origin := days - jd
+	daysLow := (jd - (days - origin)) - (2451545 + origin)
+	t := days / 36525.0
+	tLow := (math.FMA(-t, 36525, days) + daysLow) / 36525
+	// Small angular terms have sub-nanoarcsecond phase roundoff already.
+	// Compensate only the larger terms; distance needs no angular precision.
+	phaseThreshold := moonPhaseCompensationThreshold / math.Abs(t)
 	ob := moonCir[coordIndex]
 	var v float64
 	var tn float64 = 1
@@ -65,8 +81,11 @@ func MoonCalcNewN(coordIndex int, jd float64, n int) float64 {
 	t5 := t4 * t
 	tx := t - 10
 	if coordIndex == 0 {
-		v += (3.81034409 + 8399.684730072*t - 3.319e-05*t2 + 3.11e-08*t3 - 2.033e-10*t4) * rad //月球平黄经(弧度)
-		v += 5028.792262*t + 1.1124406*t2 + 0.00007699*t3 - 0.000023479*t4 - 0.0000000178*t5   //岁差(角秒)
+		// 黄经线性项必须始终走补偿版本：MoonCalcNew 与 HMoonTrueLo 是同一个物理量的两个入口，
+		// 只在其中一个入口补偿会让两者差约 1e-9 度。
+		longitude := moonReducedLinearPhase(3.81034409, 8399.684730072, t, tLow)
+		v += (longitude - 3.319e-05*t2 + 3.11e-08*t3 - 2.033e-10*t4) * arcsecPerRadian
+		v += 5028.792262*t + 1.1124406*t2 + 0.00007699*t3 - 0.000023479*t4 - 0.0000000178*t5 //岁差(角秒)
 		if tx > 0 {
 			v += -0.866 + 1.43*tx + 0.054*tx*tx //对公元3000年至公元5000年的拟合,最大误差小于10角秒
 		}
@@ -80,6 +99,7 @@ func MoonCalcNewN(coordIndex int, jd float64, n int) float64 {
 	}
 	for i := 0; i < len(ob); i++ {
 		F := ob[i]
+		seriesPhaseThreshold := phaseThreshold / math.Abs(tn)
 		N := math.Floor(float64(nScalars*len(F))/float64(len(ob[0])) + 0.5)
 		if i != 0 {
 			N += 6
@@ -89,15 +109,29 @@ func MoonCalcNewN(coordIndex int, jd float64, n int) float64 {
 		}
 		var c float64 = 0
 		for j := 0; float64(j) < N; j += 6 {
-			c += F[j] * math.Cos(F[j+1]+t*F[j+2]+t2*F[j+3]+t3*F[j+4]+t4*F[j+5])
+			phase := F[j+1] + t*F[j+2]
+			if coordIndex != 2 && math.Abs(F[j]*F[j+2]) > seriesPhaseThreshold {
+				phase = moonReducedLinearPhase(F[j+1], F[j+2], t, tLow)
+			}
+			c += F[j] * math.Cos(phase+t2*F[j+3]+t3*F[j+4]+t4*F[j+5])
 		}
 		v += c * tn
 		tn *= t
 	}
 	if coordIndex != 2 {
-		v /= rad
+		v /= arcsecPerRadian
 	}
 	return v
+}
+
+// Keep the small phase increment out of the rounded secular product. The
+// low part of 2*pi also prevents a range-reduction jump at full revolutions.
+func moonReducedLinearPhase(offset, rate, t, tLow float64) float64 {
+	const twoPiLow = 2.4492935982947064e-16
+	product := rate * t
+	roundoff := math.FMA(rate, t, -product) + rate*tLow
+	turns := math.Round(product / (2 * math.Pi))
+	return math.FMA(-turns, 2*math.Pi, product) + (roundoff - turns*twoPiLow) + offset
 }
 
 func HMoonTrueLo(jd float64) float64 { //计算月亮
@@ -105,7 +139,7 @@ func HMoonTrueLo(jd float64) float64 { //计算月亮
 }
 
 func HMoonTrueLoN(jd float64, n int) float64 { //计算月亮
-	v := MoonCalcNewN(0, jd, n) * 180 / math.Pi
+	v := moonCalcNewN(0, jd, n) * 180 / math.Pi
 	return Limit360(v)
 }
 
@@ -234,10 +268,8 @@ func HMoonTrueRaN(jd float64, n int) float64 {
 }
 
 /*
-*
-*
-传入世界时
-*/
+ * HMoonApparentRaDec 本地民用时下的月球视赤道坐标；jd 是本地民用时（内部按 jd-tz/24 换算 UT），不是世界时
+ */
 func HMoonApparentRaDec(jd, lon, lat, tz float64) (float64, float64) {
 	return HMoonApparentRaDecN(jd, lon, lat, tz, -1)
 }

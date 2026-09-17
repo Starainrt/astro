@@ -9,6 +9,8 @@ import (
 	"unicode"
 	"unicode/utf8"
 
+	"github.com/starainrt/astro/internal/occultationgeo"
+	"github.com/starainrt/astro/internal/svgchart"
 	"github.com/starainrt/astro/internal/svgmap"
 	"github.com/starainrt/astro/moon"
 )
@@ -30,6 +32,8 @@ type starOccultationSVGLayout struct {
 	panelWidth float64
 	footerY    float64
 	projection svgmap.Projection
+	// center 是正射球面的视点；其他投影忽略它。
+	center svgmap.GeoPoint
 }
 
 type starOccultationGeoPoint struct {
@@ -91,29 +95,113 @@ func validateStarOccultationPath(path moon.StarOccultationPath) error {
 			return fmt.Errorf("%w: northern and southern limit sample %d times must match", ErrInvalidStarOccultationPath, index)
 		}
 	}
+	if err := occultationgeo.ValidateRiseSetCurves(path.RiseSetCurves, path.Start.Time, path.End.Time); err != nil {
+		return fmt.Errorf("%w: invalid rise/set curves: %v", ErrInvalidStarOccultationPath, err)
+	}
+	if err := validateOccultationContours(
+		ErrInvalidStarOccultationPath, "band contours", path.BandContours,
+		path.Start.Time, path.End.Time,
+	); err != nil {
+		return err
+	}
+	if err := validateOccultationContours(
+		ErrInvalidStarOccultationPath, "visibility contours", path.VisibilityContours,
+		path.Start.Time, path.End.Time,
+	); err != nil {
+		return err
+	}
+	if err := validateOccultationGreatestTimeContours(ErrInvalidStarOccultationPath, path.GreatestTimeContours); err != nil {
+		return err
+	}
 	last := len(path.NorthernLimit) - 1
 	if !path.NorthernLimit[0].Time.Equal(path.Start.Time) || !path.SouthernLimit[0].Time.Equal(path.Start.Time) ||
 		!path.NorthernLimit[last].Time.Equal(path.End.Time) || !path.SouthernLimit[last].Time.Equal(path.End.Time) {
 		return fmt.Errorf("%w: global limits must span start through end", ErrInvalidStarOccultationPath)
 	}
-	return nil
+	if err := validateOccultationFootprints(
+		ErrInvalidStarOccultationPath, "stellar", path.Footprints, path.Start.Time, path.End.Time,
+	); err != nil {
+		return err
+	}
+	return validateOccultationFootprints(
+		ErrInvalidStarOccultationPath, "stellar compact band", path.BandFootprints, path.Start.Time, path.End.Time,
+	)
 }
 
 func validateStarOccultationPathPoint(name string, point moon.OccultationPathPoint) error {
+	return validateOccultationPathPoint(ErrInvalidStarOccultationPath, name, point)
+}
+
+func validateOccultationPathPoint(base error, name string, point moon.OccultationPathPoint) error {
 	if point.Time.IsZero() {
-		return fmt.Errorf("%w: %s time is required", ErrInvalidStarOccultationPath, name)
+		return fmt.Errorf("%w: %s time is required", base, name)
 	}
 	if !starOccultationFinite(point.Longitude) || point.Longitude < -180 || point.Longitude > 180 {
-		return fmt.Errorf("%w: %s longitude must be in [-180, 180]", ErrInvalidStarOccultationPath, name)
+		return fmt.Errorf("%w: %s longitude must be in [-180, 180]", base, name)
 	}
 	if !starOccultationFinite(point.Latitude) || point.Latitude < -90 || point.Latitude > 90 {
-		return fmt.Errorf("%w: %s latitude must be in [-90, 90]", ErrInvalidStarOccultationPath, name)
+		return fmt.Errorf("%w: %s latitude must be in [-90, 90]", base, name)
 	}
 	if !starOccultationFinite(point.MoonAltitude) || point.MoonAltitude < -90 || point.MoonAltitude > 90 {
-		return fmt.Errorf("%w: %s Moon altitude must be in [-90, 90]", ErrInvalidStarOccultationPath, name)
+		return fmt.Errorf("%w: %s Moon altitude must be in [-90, 90]", base, name)
 	}
 	if !starOccultationFinite(point.WidthKM) || point.WidthKM < 0 {
-		return fmt.Errorf("%w: %s width must be finite and non-negative", ErrInvalidStarOccultationPath, name)
+		return fmt.Errorf("%w: %s width must be finite and non-negative", base, name)
+	}
+	return nil
+}
+
+func validateOccultationContours(
+	base error,
+	name string,
+	contours [][]moon.OccultationPathPoint,
+	start, end time.Time,
+) error {
+	for contourIndex, contour := range contours {
+		if len(contour) < 2 {
+			return fmt.Errorf("%w: %s[%d] must contain at least two points", base, name, contourIndex)
+		}
+		for pointIndex, point := range contour {
+			if err := validateOccultationPathPoint(
+				base, fmt.Sprintf("%s[%d][%d]", name, contourIndex, pointIndex), point,
+			); err != nil {
+				return err
+			}
+			if point.Time.Before(start) || point.Time.After(end) {
+				return fmt.Errorf("%w: %s point is outside event time", base, name)
+			}
+			if pointIndex > 0 && !point.Time.After(contour[pointIndex-1].Time) {
+				return fmt.Errorf("%w: %s[%d] times must be strictly increasing", base, name, contourIndex)
+			}
+		}
+	}
+	return nil
+}
+
+// validateOccultationGreatestTimeContours 校验等时线：支路至少两点、点时刻必须等于该支路的
+// 时刻取值（1 ms 容差覆盖 TT 往返），其余字段与普通路径点同口径。
+func validateOccultationGreatestTimeContours(base error, contours []moon.OccultationGreatestTimeContour) error {
+	for contourIndex, contour := range contours {
+		if !starOccultationFinite(contour.JDE) || contour.JDE == 0 {
+			return fmt.Errorf("%w: greatest-time contour %d JDE is required", base, contourIndex)
+		}
+		if contour.Time.IsZero() {
+			return fmt.Errorf("%w: greatest-time contour %d time is required", base, contourIndex)
+		}
+		for segmentIndex, segment := range contour.Segments {
+			if len(segment) < 2 {
+				return fmt.Errorf("%w: greatest-time contour %d segment %d must contain at least two points", base, contourIndex, segmentIndex)
+			}
+			name := fmt.Sprintf("greatest-time contour %d segment %d", contourIndex, segmentIndex)
+			for pointIndex, point := range segment {
+				if err := validateOccultationPathPoint(base, fmt.Sprintf("%s point %d", name, pointIndex), point); err != nil {
+					return err
+				}
+				if delta := point.Time.Sub(contour.Time); delta > time.Millisecond || delta < -time.Millisecond {
+					return fmt.Errorf("%w: %s point %d time does not match the contour instant", base, name, pointIndex)
+				}
+			}
+		}
 	}
 	return nil
 }
@@ -122,6 +210,7 @@ func starOccultationSVGLayoutFor(
 	options StarOccultationSVGOptions,
 	headerBottom float64,
 	projection svgmap.Projection,
+	center svgmap.GeoPoint,
 ) starOccultationSVGLayout {
 	width := float64(options.Width)
 	height := float64(options.Height)
@@ -134,9 +223,10 @@ func starOccultationSVGLayoutFor(
 		mapWidth = width - 2*margin - gap - panelWidth
 	}
 	contentTop := headerBottom + 28
-	footerSpace := 82.0
+	// 底部预留必须同时容纳图例行、页脚正文与它们之间的空隙，否则小画布上图例与页脚会同高叠印。
+	footerSpace := 104.0
 	if projection != svgmap.ProjectionEquirectangular {
-		footerSpace = 116
+		footerSpace = 128
 	}
 	availableHeight := math.Max(110, height-contentTop-footerSpace)
 	mapHeight := math.Min(mapWidth/2, availableHeight)
@@ -149,6 +239,11 @@ func starOccultationSVGLayoutFor(
 		mapWidth = math.Min(mapWidth, 2*mapHeight)
 	}
 	mapY := contentTop + math.Max(0, (availableHeight-mapHeight)/2)
+	footerY := height - 54
+	// 图例最多两行（occultationLegendRowHeight），页脚必须落在第二行下方。
+	if legendY := mapY + mapHeight + 30; footerY < legendY+2*occultationLegendRowHeight {
+		footerY = legendY + 2*occultationLegendRowHeight
+	}
 	return starOccultationSVGLayout{
 		width:      width,
 		height:     height,
@@ -160,8 +255,9 @@ func starOccultationSVGLayoutFor(
 		panelX:     margin + mapWidth + gap,
 		panelY:     mapY,
 		panelWidth: panelWidth,
-		footerY:    height - 54,
+		footerY:    footerY,
 		projection: projection,
+		center:     center,
 	}
 }
 
@@ -177,6 +273,9 @@ func (layout starOccultationSVGLayout) mapFrame() svgmap.Frame {
 		Width:      layout.mapWidth,
 		Height:     layout.mapHeight,
 		Projection: layout.projection,
+		// 正射球面必须给出视点，否则会退回 (0°,0°) 而完全不对准事件。
+		CenterLongitude: layout.center.Longitude,
+		CenterLatitude:  layout.center.Latitude,
 	}
 }
 
@@ -187,6 +286,16 @@ func resolveStarOccultationMapProjection(path moon.StarOccultationPath, requeste
 		for _, point := range series {
 			minimumLatitude = math.Min(minimumLatitude, point.Latitude)
 			maximumLatitude = math.Max(maximumLatitude, point.Latitude)
+		}
+	}
+	for _, footprints := range [][]moon.OccultationFootprint{path.Footprints, path.BandFootprints} {
+		for _, footprint := range footprints {
+			for _, polygon := range footprint.Polygons {
+				for _, point := range polygon {
+					minimumLatitude = math.Min(minimumLatitude, point.Latitude)
+					maximumLatitude = math.Max(maximumLatitude, point.Latitude)
+				}
+			}
 		}
 	}
 	return svgmap.ResolveProjection(internalMapProjection(requested), path.Greatest.Latitude, minimumLatitude, maximumLatitude)
@@ -225,16 +334,16 @@ func starOccultationPathSegments(points []moon.OccultationPathPoint) [][]moon.Oc
 
 func starOccultationPathSegmentsForProjection(
 	points []moon.OccultationPathPoint,
-	projection svgmap.Projection,
+	view svgmap.ClipView,
 ) [][]moon.OccultationPathPoint {
-	if projection == svgmap.ProjectionEquirectangular {
+	if view.Projection == svgmap.ProjectionEquirectangular {
 		return starOccultationPathSegments(points)
 	}
 	geographic := make([]svgmap.GeoPoint, len(points))
 	for index, point := range points {
 		geographic[index] = svgmap.GeoPoint{Longitude: point.Longitude, Latitude: point.Latitude}
 	}
-	clipped := svgmap.PolylineSegments(geographic, projection)
+	clipped := svgmap.PolylineSegments(geographic, view)
 	result := make([][]moon.OccultationPathPoint, 0, len(clipped))
 	for _, segment := range clipped {
 		converted := make([]moon.OccultationPathPoint, len(segment))
@@ -242,6 +351,36 @@ func starOccultationPathSegmentsForProjection(
 			converted[index] = moon.OccultationPathPoint{Longitude: point.Longitude, Latitude: point.Latitude}
 		}
 		result = append(result, converted)
+	}
+	return result
+}
+
+func starOccultationBoundarySegmentsForProjection(
+	points []moon.OccultationPathPoint,
+	view svgmap.ClipView,
+) [][]moon.OccultationPathPoint {
+	ranges := occultationgeo.ContinuousBoundaryRanges(points)
+	result := make([][]moon.OccultationPathPoint, 0, len(ranges))
+	for _, sampleRange := range ranges {
+		current := points[sampleRange.Start:sampleRange.End]
+		if len(current) == 1 {
+			current = []moon.OccultationPathPoint{current[0], current[0]}
+		}
+		if view.Projection == svgmap.ProjectionEquirectangular {
+			result = append(result, starOccultationPathSegments(current)...)
+			continue
+		}
+		geographic := make([]svgmap.GeoPoint, len(current))
+		for index, point := range current {
+			geographic[index] = svgmap.GeoPoint{Longitude: point.Longitude, Latitude: point.Latitude}
+		}
+		for _, segment := range svgmap.PolylineSegments(geographic, view) {
+			converted := make([]moon.OccultationPathPoint, len(segment))
+			for index, point := range segment {
+				converted[index] = moon.OccultationPathPoint{Longitude: point.Longitude, Latitude: point.Latitude}
+			}
+			result = append(result, converted)
+		}
 	}
 	return result
 }
@@ -289,12 +428,13 @@ func starOccultationInterpolatePathPoint(a, b moon.OccultationPathPoint, fractio
 func starOccultationBandSegments(
 	northern, southern []moon.OccultationPathPoint,
 ) [][]starOccultationGeoPoint {
-	return starOccultationBandFragments(northern, southern, svgmap.ProjectionEquirectangular)
+	return starOccultationBandFragments(northern, southern,
+		svgmap.ClipView{Projection: svgmap.ProjectionEquirectangular})
 }
 
 func starOccultationBandFragments(
 	northern, southern []moon.OccultationPathPoint,
-	projection svgmap.Projection,
+	view svgmap.ClipView,
 ) [][]starOccultationGeoPoint {
 	count := len(northern)
 	if len(southern) < count {
@@ -303,30 +443,66 @@ func starOccultationBandFragments(
 	if count < 2 {
 		return nil
 	}
-	polygon := make([]starOccultationGeoPoint, 0, 2*count)
-	for _, point := range northern[:count] {
-		polygon = append(polygon, starOccultationGeoPoint{point.Longitude, point.Latitude})
-	}
-	for index := count - 1; index >= 0; index-- {
-		point := southern[index]
-		polygon = append(polygon, starOccultationGeoPoint{point.Longitude, point.Latitude})
-	}
-	geographic := make([]svgmap.GeoPoint, len(polygon))
-	for index, point := range polygon {
-		geographic[index] = svgmap.GeoPoint{Longitude: point.longitude, Latitude: point.latitude}
-	}
-	fragments := svgmap.PolygonFragments(geographic, projection)
-	segments := make([][]starOccultationGeoPoint, 0, len(fragments))
-	for _, fragment := range fragments {
-		converted := make([]starOccultationGeoPoint, len(fragment))
-		for index, point := range fragment {
-			converted[index] = starOccultationGeoPoint{longitude: point.Longitude, latitude: point.Latitude}
+	segments := make([][]starOccultationGeoPoint, 0, 2)
+	for _, sampleRange := range occultationgeo.ContinuousPairedBoundaryRanges(northern[:count], southern[:count]) {
+		if sampleRange.End-sampleRange.Start < 2 {
+			continue
 		}
-		if math.Abs(starOccultationPolygonArea(converted)) > 1e-9 {
-			segments = append(segments, converted)
+		polygon := make([]starOccultationGeoPoint, 0, 2*(sampleRange.End-sampleRange.Start))
+		for _, point := range northern[sampleRange.Start:sampleRange.End] {
+			polygon = append(polygon, starOccultationGeoPoint{point.Longitude, point.Latitude})
+		}
+		for index := sampleRange.End - 1; index >= sampleRange.Start; index-- {
+			point := southern[index]
+			polygon = append(polygon, starOccultationGeoPoint{point.Longitude, point.Latitude})
+		}
+		geographic := make([]svgmap.GeoPoint, len(polygon))
+		for index, point := range polygon {
+			geographic[index] = svgmap.GeoPoint{Longitude: point.longitude, Latitude: point.latitude}
+		}
+		for _, fragment := range svgmap.PolygonFragments(geographic, view) {
+			converted := make([]starOccultationGeoPoint, len(fragment))
+			for index, point := range fragment {
+				converted[index] = starOccultationGeoPoint{longitude: point.Longitude, latitude: point.Latitude}
+			}
+			if math.Abs(starOccultationPolygonArea(converted)) > 1e-9 {
+				segments = append(segments, converted)
+			}
 		}
 	}
 	return segments
+}
+
+func starOccultationBandEndpointSections(
+	northern, southern []moon.OccultationPathPoint,
+	view svgmap.ClipView,
+) [][]starOccultationGeoPoint {
+	count := len(northern)
+	if len(southern) < count {
+		count = len(southern)
+	}
+	if count == 0 {
+		return nil
+	}
+	sections := make([][]starOccultationGeoPoint, 0, 2)
+	for _, sampleRange := range occultationgeo.ContinuousPairedBoundaryRanges(northern[:count], southern[:count]) {
+		if sampleRange.End-sampleRange.Start != 1 {
+			continue
+		}
+		index := sampleRange.Start
+		line := []svgmap.GeoPoint{
+			{Longitude: northern[index].Longitude, Latitude: northern[index].Latitude},
+			{Longitude: southern[index].Longitude, Latitude: southern[index].Latitude},
+		}
+		for _, segment := range svgmap.PolylineSegments(line, view) {
+			converted := make([]starOccultationGeoPoint, len(segment))
+			for pointIndex, point := range segment {
+				converted[pointIndex] = starOccultationGeoPoint{longitude: point.Longitude, latitude: point.Latitude}
+			}
+			sections = append(sections, converted)
+		}
+	}
+	return sections
 }
 
 func legacyStarOccultationBandSegments(polygon []starOccultationGeoPoint) [][]starOccultationGeoPoint {
@@ -424,16 +600,21 @@ func starOccultationPolygonArea(points []starOccultationGeoPoint) float64 {
 	return area / 2
 }
 
-func starOccultationSVGHeaderLines(path moon.StarOccultationPath, options StarOccultationSVGOptions) []string {
+func starOccultationSVGHeaderLines(
+	path moon.StarOccultationPath,
+	options StarOccultationSVGOptions,
+	flags occultationSVGTextFlags,
+) []string {
 	lines := make([]string, 0, 4)
 	for _, item := range []struct {
 		text     string
 		fontSize float64
+		custom   bool
 	}{
-		{starOccultationSVGSummaryText(path, options), 14},
-		{starOccultationSVGGreatestText(path, options), 13},
+		{starOccultationSVGSummaryText(path, options), 14, flags.summaryText},
+		{starOccultationSVGGreatestText(path, options), 13, flags.greatestText},
 	} {
-		lines = append(lines, starOccultationWrapText(item.text, float64(options.Width)-80, item.fontSize)...)
+		lines = append(lines, occultationWrappedTextLines(item.text, item.custom, float64(options.Width)-80, item.fontSize)...)
 	}
 	return lines
 }
@@ -483,10 +664,15 @@ func starOccultationSVGGreatestText(path moon.StarOccultationPath, options StarO
 	}
 	coordinates := starOccultationFormatCoordinates(path.Greatest.Longitude, path.Greatest.Latitude)
 	altitude := starOccultationFormatSignedDegree(path.Greatest.MoonAltitude)
-	if options.Language == starOccultationSVGLanguageEnglish {
-		return fmt.Sprintf("Greatest point %s | path width %.1f km | Moon altitude %s", coordinates, path.Greatest.WidthKM, altitude)
+	// 带宽与行星图、详细版同口径：取南北限的地面间距。Greatest.WidthKM 是另一种构造，两者不可互换。
+	partialWidth := path.GreatestLimitSeparationKM
+	if partialWidth <= 0 {
+		partialWidth = path.Greatest.WidthKM
 	}
-	return fmt.Sprintf("掩甚点 %s | 掩带宽 %.1f km | 月球高度 %s", coordinates, path.Greatest.WidthKM, altitude)
+	if options.Language == starOccultationSVGLanguageEnglish {
+		return fmt.Sprintf("Greatest point %s | path width %.1f km | Moon altitude %s", coordinates, partialWidth, altitude)
+	}
+	return fmt.Sprintf("掩甚点 %s | 掩带宽 %.1f km | 月球高度 %s", coordinates, partialWidth, altitude)
 }
 
 func starOccultationSVGMapTitle(options StarOccultationSVGOptions) string {
@@ -527,6 +713,8 @@ func starOccultationProjectionLabel(projection MapProjection, language string) s
 			return "North-polar azimuthal equidistant projection"
 		case MapProjectionSouthPolar:
 			return "South-polar azimuthal equidistant projection"
+		case MapProjectionOrthographic:
+			return "Orthographic globe projection"
 		default:
 			return "Equirectangular projection"
 		}
@@ -536,6 +724,8 @@ func starOccultationProjectionLabel(projection MapProjection, language string) s
 		return "北极方位等距投影"
 	case MapProjectionSouthPolar:
 		return "南极方位等距投影"
+	case MapProjectionOrthographic:
+		return "正射球面投影"
 	default:
 		return "等经纬投影"
 	}
@@ -593,6 +783,33 @@ func starOccultationSameDate(first, second time.Time) bool {
 	y1, m1, d1 := first.Date()
 	y2, m2, d2 := second.Date()
 	return y1 == y2 && m1 == m2 && d1 == d2
+}
+
+// occultationTitleText 截断调用方给出的单行标题：自动文案不动，避免改变既有产物。
+func occultationTitleText(value string, custom bool, maxWidth, fontSize float64) string {
+	// 标题是单行固定槽位，放不下就截断；默认标题本来就放得下时结果不变。
+	return svgchart.EllipsizeText(value, maxWidth, fontSize)
+}
+
+// occultationWrappedTextLines 折行一段文本：调用方自定义文本按保守字宽折行，自动生成文本沿用既有口径，改口径会移动断行位置。
+func occultationWrappedTextLines(value string, custom bool, maxWidth, fontSize float64) []string {
+	if custom {
+		return svgchart.WrapText(value, maxWidth, fontSize)
+	}
+	return starOccultationWrapText(value, maxWidth, fontSize)
+}
+
+// starOccultationSVGHeaderLineLimit 返回页眉行数上限：地图下限 110、上方空隙 28 与页脚预留之外的余高才轮到页眉。
+func starOccultationSVGHeaderLineLimit(options StarOccultationSVGOptions, projection svgmap.Projection) int {
+	footerSpace := 104.0
+	if projection != svgmap.ProjectionEquirectangular {
+		footerSpace = 128
+	}
+	limit := int(math.Floor((float64(options.Height) - 210 - footerSpace) / 19))
+	if limit < 1 {
+		return 1
+	}
+	return limit
 }
 
 func starOccultationWrapText(value string, maxWidth, fontSize float64) []string {

@@ -2,13 +2,18 @@ package jupiter
 
 import (
 	"encoding/json"
+	"fmt"
 	"math"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/starainrt/astro/basic"
 )
 
-const galileanShadowToleranceArcsec = 0.2
+// 基线 shadow 值按 TDB/TT 逆行历元（UTC 观测时刻换算 ΔT 后再减光行时）标定；
+// 按 UTC 瞬时求值会让整条曲线平移 ΔT（Io 约 0.46″）并被本容差拒绝。
+const galileanShadowToleranceArcsec = 0.15
 
 type galileanPhenomenaSample struct {
 	UTC       string                                   `json:"utc"`
@@ -101,5 +106,21 @@ func selectGalileanPhenomenon(info GalileanPhenomenaInfo, name string) GalileanS
 		return info.Callisto
 	default:
 		panic("unknown satellite: " + name)
+	}
+}
+
+func TestGalileanPhenomenaUseTTFrame(t *testing.T) {
+	dates := []time.Time{
+		time.Date(1999, 1, 1, 2, 0, 0, 0, time.UTC),
+		time.Date(2000, 1, 1, 14, 0, 0, 0, time.UTC),
+		time.Date(2026, 4, 2, 20, 0, 0, 0, time.UTC),
+	}
+	for _, date := range dates {
+		want := basic.JupiterGalileanSatellitePhenomena(basic.TD2UT(basic.Date2JDE(date.UTC()), true))
+		got := SatellitePhenomena(date)
+		phenomena := []GalileanSatellitePhenomenon{got.Io, got.Europa, got.Ganymede, got.Callisto}
+		for i, phenomenon := range phenomena {
+			assertSameGalileanPhenomenon(t, fmt.Sprintf("date=%s satellite=%d TT frame", date, i+1), phenomenon, want[i])
+		}
 	}
 }

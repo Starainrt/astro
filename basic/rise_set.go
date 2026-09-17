@@ -8,6 +8,9 @@ import (
 )
 
 var (
+	// ErrNeverRise/ErrNeverSet 是几何口径：天体全天在地平线以下报 ErrNeverRise（无升起），
+	// 全天在地平线以上报 ErrNeverSet（无落下）。名字描述“缺失的那个现象”，不是“被问的事件”；
+	// 太阳、恒星、月球三条链路都按此约定，GetMoonRiseTime 因此在极昼返回 ErrNeverSet。
 	ErrNeverRise               = errors.New("rise event does not occur on this date")
 	ErrNeverSet                = errors.New("set event does not occur on this date")
 	ErrNotOnThisDate           = errors.New("rise/set event occurs on adjacent date")

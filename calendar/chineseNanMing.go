@@ -1,6 +1,6 @@
 package calendar
 
-func nanMingCals() map[int]uint32 {
+var nanMingCals = memoUint32Map(func() map[int]uint32 {
 	return map[int]uint32{
 		1645: 1232804864,
 		1646: 1232088832,
@@ -42,9 +42,9 @@ func nanMingCals() map[int]uint32 {
 		1682: 3529516544,
 		1683: 3912440576,
 	}
-}
+})
 
-func nanMingEras01() []Era {
+var nanMingEras01 = memoEras(func() []Era {
 	return []Era{
 		{
 			Year:              1646,
@@ -70,9 +70,9 @@ func nanMingEras01() []Era {
 			Dynasty: "明",
 		},
 	}
-}
+})
 
-func nanMingEras02() []Era {
+var nanMingEras02 = memoEras(func() []Era {
 	return []Era{
 		{
 			Year:              1647,
@@ -81,48 +81,55 @@ func nanMingEras02() []Era {
 			Dynasty:           "南明",
 		},
 	}
-}
+})
 
-func nanMingEraMap() map[string][][]int {
+var nanMingEraMap = memoEraMap(func() map[string][][]int {
 	return map[string][][]int{
 		"永历":   [][]int{{1647, 1683}},
 		"鲁王监国": [][]int{{1646, 1653}},
 		"隆武":   [][]int{{1645, 1646}},
 		"弘光":   [][]int{{1645, 1645}},
 	}
-}
+})
 
 func innerSolarToLunarNanMing(date Time) Time {
 	year := date.solarTime.Year()
 	month := int(date.solarTime.Month())
 	day := date.solarTime.Day()
+	// 农历年早于对应年号表首年时 eras 为空，此类候选与主流日期完全相同且无朝代，跳过追加。
 	if year > 1644 && year < 1654 {
 		lyear, lmonth, ganzhiMonth, lday, isLeap, ldesc := rapidLunarHan2Qing(year, month, day, 0, nanMingCals)
-		date.lunars = append(date.lunars, LunarTime{
-			solarDate:   date.solarTime,
-			year:        lyear,
-			month:       lmonth,
-			day:         lday,
-			leap:        isLeap,
-			desc:        ldesc,
-			ganzhiMonth: ganzhiMonth,
-			comment:     "",
-			eras:        innerEras(lyear, nanMingEras01),
-		})
+		eras := innerEras(lyear, nanMingEras01)
+		if len(eras) > 0 {
+			date.lunars = append(date.lunars, LunarTime{
+				solarDate:   date.solarTime,
+				year:        lyear,
+				month:       lmonth,
+				day:         lday,
+				leap:        isLeap,
+				desc:        ldesc,
+				ganzhiMonth: ganzhiMonth,
+				comment:     "",
+				eras:        eras,
+			})
+		}
 	}
 	if year > 1646 && year < 1684 {
 		lyear, lmonth, ganzhiMonth, lday, isLeap, ldesc := rapidLunarHan2Qing(year, month, day, 0, nanMingCals)
-		date.lunars = append(date.lunars, LunarTime{
-			solarDate:   date.solarTime,
-			year:        lyear,
-			month:       lmonth,
-			day:         lday,
-			leap:        isLeap,
-			desc:        ldesc,
-			ganzhiMonth: ganzhiMonth,
-			comment:     "",
-			eras:        innerEras(lyear, nanMingEras02),
-		})
+		eras := innerEras(lyear, nanMingEras02)
+		if len(eras) > 0 {
+			date.lunars = append(date.lunars, LunarTime{
+				solarDate:   date.solarTime,
+				year:        lyear,
+				month:       lmonth,
+				day:         lday,
+				leap:        isLeap,
+				desc:        ldesc,
+				ganzhiMonth: ganzhiMonth,
+				comment:     "",
+				eras:        eras,
+			})
+		}
 	}
 	return date
 }

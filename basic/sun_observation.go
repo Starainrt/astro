@@ -6,17 +6,32 @@ import (
 	. "github.com/starainrt/astro/tools"
 )
 
-// 太阳中天时刻，通过均时差计算
+// CulminationTime 太阳中天时刻（按均时差计算）/ solar culmination time from the equation of time.
+//
+// 日期锚点是 floor(jd)（JD 整数 = 12:00 UT 的正午锚点），不是午夜；调用方要传“本地 0 时对应 JD + 0.5”
+// 才能落在同一本地日（sun/sun.go 的 CulminationTime 就是这么补的）。地方时相对世界时的偏移按角度归化到
+// ±180°：超过 ±12 小时（如 UTC+14 配西经）时不归化会把中天推到相邻的一天。
 func CulminationTime(jd, lon, tz float64) float64 { //实际中天时间
 	jd = math.Floor(jd)
-	tmp := (tz*15 - lon) * 4 / 60
+	tmp := longitudeOffsetDegrees(tz*15-lon) * 4 / 60
 	return jd + tmp/24.0 - SunTime(jd)/24.0
 }
 
+// CulminationTimeN 截断项太阳中天时刻 / truncated solar culmination time.
 func CulminationTimeN(jd, lon, tz float64, n int) float64 { //实际中天时间
 	jd = math.Floor(jd)
-	tmp := (tz*15 - lon) * 4 / 60
+	tmp := longitudeOffsetDegrees(tz*15-lon) * 4 / 60
 	return jd + tmp/24.0 - SunTimeN(jd, n)/24.0
+}
+
+func longitudeOffsetDegrees(offset float64) float64 {
+	if offset > 180 {
+		offset -= 360
+	}
+	if offset < -180 {
+		offset += 360
+	}
+	return offset
 }
 
 /*

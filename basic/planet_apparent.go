@@ -60,15 +60,25 @@ func planetGeocentricPositionWithEarthN(planetIndex int, planetJD float64, ex, e
 }
 
 func planetApparentGeocentricPositionN(planetIndex int, jd float64, n int) (planetGeocentricPosition, float64) {
+	geo, tau, _ := planetApparentGeocentricPositionAndDistanceN(planetIndex, jd, n)
+	return geo, tau
+}
+
+func planetApparentGeocentricPositionAndDistanceN(
+	planetIndex int,
+	jd float64,
+	n int,
+) (planetGeocentricPosition, float64, float64) {
 	ex, ey, ez := earthHeliocentricXYZN(jd, n)
 	geoNow := planetGeocentricPositionWithEarthN(planetIndex, jd, ex, ey, ez, n)
-	tau := 0.0057755183 * math.Sqrt(geoNow.x*geoNow.x+geoNow.y*geoNow.y+geoNow.z*geoNow.z)
+	distance := math.Sqrt(geoNow.x*geoNow.x + geoNow.y*geoNow.y + geoNow.z*geoNow.z)
+	tau := 0.0057755183 * distance
 	geo := planetGeocentricPositionWithEarthN(planetIndex, jd-tau, ex, ey, ez, n)
 	baseLo := geo.lo
 	baseBo := geo.bo
 	geo.lo = Limit360(baseLo + GXCLo(baseLo, baseBo, jd)/3600.0 + Nutation2000Bi(jd))
 	geo.bo = baseBo + GXCBo(baseLo, baseBo, jd)/3600.0
-	return geo, tau
+	return geo, tau, distance
 }
 
 func planetTrueGeocentricPositionN(planetIndex int, jd float64, n int) (planetGeocentricPosition, float64) {

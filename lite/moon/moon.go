@@ -60,27 +60,34 @@ func ApparentRaDec(date time.Time, lon, lat float64) (float64, float64) {
 	return state.RightAscension, state.Declination
 }
 
+func topocentricHorizontal(date time.Time, lon, lat float64) (altitude, azimuth, hourAngle float64) {
+	jd := basic.Date2JDE(date.UTC())
+	state := lite.MoonTopocentric(jd, lon, lat, 0)
+	return lite.HorizontalCoordinates(state.RightAscension, state.Declination, jd, lon, lat)
+}
+
 // HourAngle 轻量时角 / lightweight hour angle.
 func HourAngle(date time.Time, lon, lat float64) float64 {
-	_, _, hourAngle := lite.HorizontalCoordinates(ApparentRa(date, lon, lat), ApparentDec(date, lon, lat), basic.Date2JDE(date.UTC()), lon, lat)
+	_, _, hourAngle := topocentricHorizontal(date, lon, lat)
 	return hourAngle
 }
 
 // Azimuth 轻量方位角 / lightweight azimuth.
 func Azimuth(date time.Time, lon, lat float64) float64 {
-	_, azimuth, _ := lite.HorizontalCoordinates(ApparentRa(date, lon, lat), ApparentDec(date, lon, lat), basic.Date2JDE(date.UTC()), lon, lat)
+	_, azimuth, _ := topocentricHorizontal(date, lon, lat)
 	return azimuth
 }
 
 // Altitude 轻量高度角 / lightweight altitude.
 func Altitude(date time.Time, lon, lat float64) float64 {
-	altitude, _, _ := lite.HorizontalCoordinates(ApparentRa(date, lon, lat), ApparentDec(date, lon, lat), basic.Date2JDE(date.UTC()), lon, lat)
+	altitude, _, _ := topocentricHorizontal(date, lon, lat)
 	return altitude
 }
 
 // Zenith 轻量天顶距 / lightweight zenith distance.
 func Zenith(date time.Time, lon, lat float64) float64 {
-	return 90 - Altitude(date, lon, lat)
+	altitude, _, _ := topocentricHorizontal(date, lon, lat)
+	return 90 - altitude
 }
 
 // SunMoonLoDiff 轻量日月黄经差 / lightweight Moon-Sun ecliptic-longitude difference.

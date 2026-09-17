@@ -124,3 +124,48 @@ func TestFindPlanetOccultationsValidatesInputs(t *testing.T) {
 		})
 	}
 }
+
+func TestFindBestPlanetOccultationsKeepsNonCentralEvents(t *testing.T) {
+	// 2025-01-05 月掩海王星与 2025-07-28 月掩火星都是月影轴不与地球椭球相交的非中心
+	// 事件：最佳站心曾取外接触切点，该点位于掩带边缘、落在掩食之外，整场被事件搜索
+	// 丢弃。事件搜索与路径搜索必须报告同一场事件，掩甚站心必须落在掩食之内。
+	// The 2025-01-05 Neptune and 2025-07-28 Mars occultations are non-central events
+	// whose shadow axis misses the ellipsoid. The best station used to be taken at the
+	// outer contact tangent, which sits on the band edge and outside the occultation, so
+	// the whole event was dropped from the search. The event and path searches must
+	// report the same event with a greatest station inside the occultation.
+	tests := []struct {
+		name   string
+		planet OccultationPlanet
+		day    time.Time
+	}{
+		{name: "2025-01-05 Neptune", planet: OccultationNeptune, day: time.Date(2025, time.January, 5, 0, 0, 0, 0, time.UTC)},
+		{name: "2025-07-28 Mars", planet: OccultationMars, day: time.Date(2025, time.July, 28, 0, 0, 0, 0, time.UTC)},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			start := test.day.Add(-24 * time.Hour)
+			end := test.day.Add(24 * time.Hour)
+			events, err := FindBestPlanetOccultations(start, end, test.planet, OccultationSearchOptions{})
+			if err != nil {
+				t.Fatalf("FindBestPlanetOccultations() error = %v", err)
+			}
+			paths, err := FindPlanetOccultationPaths(start, end, test.planet, OccultationPathOptions{})
+			if err != nil {
+				t.Fatalf("FindPlanetOccultationPaths() error = %v", err)
+			}
+			if len(events) != 1 || len(paths) != 1 {
+				t.Fatalf("event search returned %d events, path search %d, want one each", len(events), len(paths))
+			}
+			event := events[0]
+			limit := event.MoonSemidiameterArcsec + event.PlanetSemidiameterArcsec
+			if event.MinimumSeparationArcsec > limit {
+				t.Fatalf("greatest station lies outside the occultation: separation=%.3f limit=%.3f",
+					event.MinimumSeparationArcsec, limit)
+			}
+			if delta := math.Abs(event.Greatest.Sub(paths[0].Greatest.Time).Seconds()); delta > 60 {
+				t.Fatalf("greatest differs from the path search by %.1fs", delta)
+			}
+		})
+	}
+}

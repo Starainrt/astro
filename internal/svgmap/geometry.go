@@ -24,9 +24,3 @@ func ShortestCircleArc(circle []GeoPoint, from, to GeoPoint) []GeoPoint {
 func SameGeoPoint(a, b GeoPoint) bool {
 	return geodata.SameGeoPoint(a, b)
 }
-
-// VisibleHemispherePolygons 返回以指定中心为中心的半球多边形 / VisibleHemispherePolygons returns polygons for the hemisphere centered on
-// 中心的半球多边形，并裁剪到请求的地图投影 / center, clipped to the requested map projection.
-func VisibleHemispherePolygons(center GeoPoint, projection Projection, samples int) [][]GeoPoint {
-	return geodata.VisibleHemispherePolygons(center, projection, samples)
-}

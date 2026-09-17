@@ -164,6 +164,8 @@ func maximizeInWindow(start, end, coarseStep float64, coarseFn, exactFn func(flo
 	if right-left <= innerEventMaximizeEpsilon {
 		return guess
 	}
+	// 注意：这里必须全部用全项函数迭代。粗阶段（截断函数）虽然更便宜，但截断峰位与全项峰位
+	// 相差分钟量级，粗段省下的求值次数会被精段为达到同等精度而多花掉，因此不做两段式拆分。
 	for i := 0; i < 20; i++ {
 		third := (right - left) / 3.0
 		leftThird := left + third

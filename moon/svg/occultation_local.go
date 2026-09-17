@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/starainrt/astro/internal/svgasset"
+	"github.com/starainrt/astro/internal/svgchart"
 	"github.com/starainrt/astro/moon"
 )
 
@@ -69,13 +70,15 @@ type localStarOccultationSVGLayout struct {
 	stageTop       float64
 	stageBottom    float64
 	footerY        float64
+	headerMaxLines int
 }
 
 type localStarOccultationEventFrame struct {
-	label string
-	name  string
-	time  time.Time
-	frame moon.StarOccultationDiagramFrame
+	label      string
+	name       string
+	time       time.Time
+	frame      moon.StarOccultationDiagramFrame
+	appearance localOccultationMoonAppearance
 }
 
 // FindLocalStarOccultationSVGs 搜索固定观测地点，并渲染请求时间窗口内的每次点光源恒星月掩。不会加载内嵌星表；空切片表示没有本地事件。
@@ -198,6 +201,9 @@ func renderLocalStarOccultationSVG(
 ) string {
 	title := localStarOccultationSVGTitle(info, options)
 	headerLines := localStarOccultationSVGHeaderLines(info, options)
+	// 页眉字号 14/13，省略号按较大的 14 估算；行数上限只与画布高度有关，先按空页眉取上限。
+	headerLimit := localStarOccultationSVGLayoutFor(options, 72).headerMaxLines
+	headerLines = svgchart.TruncateTextLines(headerLines, float64(options.Width)-80, 14, headerLimit)
 	headerBottom := 72.0 + float64(len(headerLines))*19
 	layout := localStarOccultationSVGLayoutFor(options, headerBottom)
 	events := localStarOccultationSVGEventFrames(info, diagram.Frames, options.Language)
@@ -211,8 +217,13 @@ func renderLocalStarOccultationSVG(
 	b.WriteString(`</defs>`)
 	b.WriteString(`<rect width="100%" height="100%" fill="#efefed"/>`)
 	fmt.Fprintf(&b, `<rect x="22" y="18" width="%.3f" height="%.3f" fill="#ffffff" stroke="#c9c9c6" stroke-width="1.2"/>`, layout.width-44, layout.height-36)
+	titleSize := starOccultationTitleFontSize(title, layout.width)
+	titleText := title
+	if options.Title != "" {
+		titleText = svgchart.EllipsizeText(title, layout.width-80, float64(titleSize))
+	}
 	fmt.Fprintf(&b, `<text x="%.3f" y="44" fill="#111111" font-family="Georgia, 'Times New Roman', serif" font-size="%d" font-weight="700" text-anchor="middle">%s</text>`,
-		layout.width/2, starOccultationTitleFontSize(title, layout.width), html.EscapeString(title))
+		layout.width/2, titleSize, html.EscapeString(titleText))
 	fmt.Fprintf(&b, `<line x1="%.3f" y1="57" x2="%.3f" y2="57" stroke="#555" stroke-width="1"/>`, layout.width/2-78, layout.width/2+78)
 	for index, line := range headerLines {
 		fontSize, fill := 13, "#3b4143"
@@ -258,6 +269,7 @@ func localStarOccultationSVGLayoutFor(options LocalStarOccultationSVGOptions, he
 		stageTop:       stageTop,
 		stageBottom:    stageBottom,
 		footerY:        height - 43,
+		headerMaxLines: localOccultationHeaderLineLimit(height, footerSpace, stageHeight),
 	}
 }
 
@@ -268,8 +280,10 @@ func writeLocalStarOccultationOverview(
 	layout localStarOccultationSVGLayout,
 	options LocalStarOccultationSVGOptions,
 ) {
+	overviewTitle := occultationTitleText(localStarOccultationSVGOverviewTitle(options), options.OverviewTitle != "",
+		layout.panelX-layout.overviewLeft-12, 14)
 	fmt.Fprintf(b, `<text x="%.3f" y="%.3f" fill="#161a1b" font-family="Georgia, 'Times New Roman', serif" font-size="14" font-weight="700">%s</text>`,
-		layout.overviewLeft, layout.overviewTop-10, html.EscapeString(localStarOccultationSVGOverviewTitle(options)))
+		layout.overviewLeft, layout.overviewTop-10, html.EscapeString(overviewTitle))
 	cx := (layout.overviewLeft + layout.overviewRight) / 2
 	cy := (layout.overviewTop+layout.overviewBottom)/2 + 4
 	extent := localStarOccultationSVGExtent(diagram.Frames)
@@ -284,7 +298,9 @@ func writeLocalStarOccultationOverview(
 	moonRadius := localStarOccultationSVGMaximumMoonRadius(diagram.Frames) * scale
 
 	writeLocalStarOccultationAxes(b, cx, cy, moonRadius, options.Language)
-	writeLocalStarOccultationMoon(b, cx, cy, moonRadius, "overview-moon")
+	writeLocalOccultationMoon(b, cx, cy, moonRadius, "overview-moon",
+		localOccultationMoonAppearanceAt(diagram.Occultation.Greatest, diagram.Occultation.Observer),
+		"local-star-occultation-moon-overview")
 	writeLocalStarOccultationLunarPath(b, diagram.Frames, mapX, mapY, extent, options.Language)
 	writeLocalStarOccultationTrack(b, diagram.Frames, mapX, mapY)
 	for _, event := range events {
@@ -400,14 +416,6 @@ func localStarOccultationSVGLunarPathLabel(language string) string {
 	return "白道"
 }
 
-func writeLocalStarOccultationMoon(b *strings.Builder, cx, cy, radius float64, class string) {
-	fmt.Fprintf(b, `<g class="%s">`, html.EscapeString(class))
-	fmt.Fprintf(b, `<use href="#le-moon" x="%.3f" y="%.3f" width="%.3f" height="%.3f"/>`,
-		cx-radius, cy-radius, radius*2, radius*2)
-	fmt.Fprintf(b, `<circle cx="%.3f" cy="%.3f" r="%.3f" fill="none" stroke="#4f5d60" stroke-width="1.1" opacity="0.9"/>`, cx, cy, radius)
-	b.WriteString(`</g>`)
-}
-
 func writeLocalStarOccultationAxes(b *strings.Builder, cx, cy, radius float64, language string) {
 	north, east, west, south := "北", "东", "西", "南"
 	if language == starOccultationSVGLanguageEnglish {
@@ -466,8 +474,10 @@ func writeLocalStarOccultationContacts(
 ) {
 	fmt.Fprintf(b, `<line x1="%.3f" y1="%.3f" x2="%.3f" y2="%.3f" stroke="#d0d3d1" stroke-width="1"/>`,
 		layout.panelX-12, layout.overviewTop-12, layout.panelX-12, layout.overviewBottom)
+	contactsTitle := occultationTitleText(localStarOccultationSVGContactsTitle(options), options.ContactsTitle != "",
+		layout.width-layout.panelX-layout.margin, 14)
 	fmt.Fprintf(b, `<text x="%.3f" y="%.3f" fill="#161a1b" font-family="Georgia, 'Times New Roman', serif" font-size="14" font-weight="700">%s</text>`,
-		layout.panelX, layout.overviewTop-10, html.EscapeString(localStarOccultationSVGContactsTitle(options)))
+		layout.panelX, layout.overviewTop-10, html.EscapeString(contactsTitle))
 	available := layout.overviewBottom - layout.overviewTop - 10
 	rowHeight := math.Min(86, available/math.Max(1, float64(len(events))))
 	for index, event := range events {
@@ -494,8 +504,10 @@ func writeLocalStarOccultationStages(
 	layout localStarOccultationSVGLayout,
 	options LocalStarOccultationSVGOptions,
 ) {
+	phaseTitle := occultationTitleText(localStarOccultationSVGPhasePanelsTitle(options), options.PhasePanelsTitle != "",
+		layout.width-2*layout.margin, 14)
 	fmt.Fprintf(b, `<text x="%.3f" y="%.3f" fill="#161a1b" font-family="Georgia, 'Times New Roman', serif" font-size="14" font-weight="700">%s</text>`,
-		layout.margin, layout.stageTop+13, html.EscapeString(localStarOccultationSVGPhasePanelsTitle(options)))
+		layout.margin, layout.stageTop+13, html.EscapeString(phaseTitle))
 	if len(events) == 0 {
 		return
 	}
@@ -507,7 +519,8 @@ func writeLocalStarOccultationStages(
 	cy := layout.stageTop + 34 + radius
 	for index, event := range events {
 		cx := layout.margin + columnWidth*(float64(index)+0.5)
-		writeLocalStarOccultationMoon(b, cx, cy, event.frame.MoonRadiusArcsec*scale, "stage-moon")
+		writeLocalOccultationMoon(b, cx, cy, event.frame.MoonRadiusArcsec*scale, "stage-moon",
+			event.appearance, fmt.Sprintf("local-star-occultation-moon-stage-%d", index))
 		x := cx - event.frame.StarXArcsec*scale
 		y := cy - event.frame.StarYArcsec*scale
 		writeLocalStarOccultationStar(b, x, y, event.frame.BehindMoon, "stage-star", event.label)
@@ -531,12 +544,14 @@ func writeLocalStarOccultationFooter(
 	layout localStarOccultationSVGLayout,
 	options LocalStarOccultationSVGOptions,
 ) {
-	directionLines := starOccultationWrapText(localStarOccultationSVGDirectionText(options), layout.width-80, 10)
+	directionLines, footerLines := localOccultationFooterLines(
+		localStarOccultationSVGDirectionText(options), options.DirectionText != "",
+		localStarOccultationSVGFooterNote(options), options.FooterNote != "",
+		layout.footerY, layout.width, layout.height)
 	for index, line := range directionLines {
 		fmt.Fprintf(b, `<text x="%.3f" y="%.3f" fill="#4f595b" font-family="Georgia, 'Times New Roman', serif" font-size="10">%s</text>`,
 			layout.margin, layout.footerY+float64(index)*14-8, html.EscapeString(line))
 	}
-	footerLines := starOccultationWrapText(localStarOccultationSVGFooterNote(options), layout.width-80, 9)
 	for index, line := range footerLines {
 		fmt.Fprintf(b, `<text x="%.3f" y="%.3f" fill="#747c7d" font-family="Georgia, 'Times New Roman', serif" font-size="9">%s</text>`,
 			layout.margin, layout.footerY+float64(len(directionLines))*14+float64(index)*12-6, html.EscapeString(line))
@@ -559,10 +574,11 @@ func localStarOccultationSVGEventFrames(
 		for _, frame := range frames {
 			if localStarOccultationSVGFrameHasLabel(frame, label) {
 				result = append(result, localStarOccultationEventFrame{
-					label: label,
-					name:  localStarOccultationSVGEventName(label, language),
-					time:  times[label],
-					frame: frame,
+					label:      label,
+					name:       localStarOccultationSVGEventName(label, language),
+					time:       times[label],
+					frame:      frame,
+					appearance: localOccultationMoonAppearanceAt(times[label], info.Observer),
 				})
 				break
 			}
@@ -585,13 +601,50 @@ func localStarOccultationSVGFrameHasLabel(frame moon.StarOccultationDiagramFrame
 
 func localStarOccultationSVGHeaderLines(info moon.StarOccultationInfo, options LocalStarOccultationSVGOptions) []string {
 	lines := make([]string, 0, 4)
-	for _, value := range []string{
-		localStarOccultationSVGSummaryText(info, options),
-		localStarOccultationSVGGreatestText(info, options),
+	for _, item := range []struct {
+		value  string
+		custom bool
+	}{
+		{localStarOccultationSVGSummaryText(info, options), options.SummaryText != ""},
+		{localStarOccultationSVGGreatestText(info, options), options.GreatestText != ""},
 	} {
-		lines = append(lines, starOccultationWrapText(value, float64(options.Width)-80, 13)...)
+		lines = append(lines, occultationWrappedTextLines(item.value, item.custom, float64(options.Width)-80, 13)...)
 	}
 	return lines
+}
+
+// localOccultationFooterLines 排布本地图页脚：补充说明贴画布底边，方向说明占用上方余高，两块都按行数上限截断。
+func localOccultationFooterLines(
+	directionText string, directionCustom bool,
+	noteText string, noteCustom bool,
+	footerY, width, height float64,
+) ([]string, []string) {
+	maxWidth := width - 80
+	direction := occultationWrappedTextLines(directionText, directionCustom, maxWidth, 10)
+	note := occultationWrappedTextLines(noteText, noteCustom, maxWidth, 9)
+	noteAbove, noteBelow := svgchart.EstimatedTextExtents(9)
+	noteHeight := noteAbove + float64(len(note)-1)*12 + noteBelow
+	direction = svgchart.TruncateTextLines(direction, maxWidth, 10,
+		svgchart.BaselineLineLimit(10, 14, footerY-8, height-2-noteHeight))
+	noteFirst := footerY + float64(len(direction))*14 - 6
+	note = svgchart.TruncateTextLines(note, maxWidth, 9,
+		svgchart.BaselineLineLimit(9, 12, noteFirst, height-2))
+	return direction, note
+}
+
+// localOccultationHeaderLineLimit 由版式的页脚预留与阶段区高度推出页眉行数上限，总览区被压到 120 px 以下时圆盘与方向标记会跑出画布。
+func localOccultationHeaderLineLimit(height, footerSpace, stageHeight float64) int {
+	const (
+		stageGap       = 20.0
+		overviewTopGap = 26.0
+		overviewMin    = 120.0
+		headerStart    = 72.0
+	)
+	limit := int(math.Floor((height - footerSpace - stageHeight - stageGap - overviewMin - overviewTopGap - headerStart) / 19))
+	if limit < 1 {
+		return 1
+	}
+	return limit
 }
 
 func localStarOccultationSVGTitle(info moon.StarOccultationInfo, options LocalStarOccultationSVGOptions) string {

@@ -140,11 +140,12 @@ func LunarToSolarByYMDWithCalendar(year, month, day int, leap bool, system Ancie
 		return Time{}, fmt.Errorf("日期超出范围")
 	}
 	lmonth.day = day
-	date := ancientJDNToDate(lmonth.startJDN + day - 1)
+	jdn := lmonth.startJDN + day - 1
+	date := ancientJDNToDate(jdn)
 	if !ancientSolarYearInRange(date.Year()) {
 		return Time{}, fmt.Errorf("未找到对应日期")
 	}
-	return ancientTime(date, lmonth), nil
+	return markJulianOnlyJDN(ancientTime(date, lmonth), jdn), nil
 }
 
 func calendricalJieQiWithCalendar(year, term int, system AncientCalendarSystem) (time.Time, error) {
@@ -284,14 +285,44 @@ func lunarToSolarAncientDefault(year, month, day int, leap bool) (Time, bool) {
 	if !ok {
 		return Time{}, false
 	}
+	if result, ok := lunarToSolarAncientWithDefault(year, month, day, leap, system); ok {
+		return result, true
+	}
+	// 岁首跨公历年时正向按公历年选古历、反向只能按农历年选，两者会差一天；
+	// 这里换另一种默认古历再试，并要求与正向的选历一致。
+	if alternate, ok := ancientAlternateDefaultSystem(system); ok {
+		if result, ok := lunarToSolarAncientWithDefault(year, month, day, leap, alternate); ok {
+			return result, true
+		}
+	}
+	return Time{}, false
+}
+
+// lunarToSolarAncientWithDefault 用指定古历求农历日，并要求与正向的默认选历一致。
+func lunarToSolarAncientWithDefault(year, month, day int, leap bool, system AncientCalendarSystem) (Time, bool) {
 	result, err := LunarToSolarByYMDWithCalendar(year, month, day, leap, system)
 	if err != nil {
 		return Time{}, false
 	}
-	if !ancientSolarYearInRange(result.Solar().In(getCst()).Year()) {
+	solarYear := result.Solar().In(getCst()).Year()
+	if !ancientSolarYearInRange(solarYear) {
+		return Time{}, false
+	}
+	if forwardSystem, ok := defaultAncientCalendarSystemForYear(solarYear); !ok || forwardSystem != system {
 		return Time{}, false
 	}
 	return result, true
+}
+
+// ancientAlternateDefaultSystem 返回另一种默认古历（春秋 ↔ 周），用于岁首跨界回退。
+func ancientAlternateDefaultSystem(system AncientCalendarSystem) (AncientCalendarSystem, bool) {
+	switch system {
+	case AncientCalendarChunqiu:
+		return AncientCalendarZhou, true
+	case AncientCalendarZhou:
+		return AncientCalendarChunqiu, true
+	}
+	return AncientCalendarDefault, false
 }
 
 func innerSolarToLunarByYMDWithCalendar(year, month, day int, hmi time.Time, system AncientCalendarSystem) (Time, error) {

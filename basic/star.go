@@ -77,7 +77,8 @@ func MeanSiderealTime1982(jd float64) float64 {
 // ApparentSiderealTime1982 视恒星时，计算章动
 func ApparentSiderealTime1982(jd float64) float64 {
 	tmp := MeanSiderealTime1982(jd)
-	return tmp + Nutation2000Bi(jd)*Cos(TrueObliquity(jd))/15
+	dpsi, deps := Nutation2000B(jd)
+	return tmp + dpsi*math.Cos((Obliquity1980(jd)+deps)*math.Pi/180)/15
 }
 
 // EarthRotationAngle 计算地球自转角 (ERA)
@@ -115,10 +116,23 @@ func MeanSiderealTime2006(jd_ut1 float64) float64 {
 	return gmst * deg / 15
 }
 
-// ApparentSiderealTime2006 视恒星时，计算章动
+// ApparentSiderealTime2006 视恒星时，计算章动。
+// 一次求值只要一份 IAU2000B 章动（黄经与交角在同一次展开里同时得到），并走有界记忆表，
+// 避免月掩路径里的重复求值；ΔT 覆盖会使记忆表按世代失效。见 sidereal_memo.go。
+// ApparentSiderealTime2006 computes apparent sidereal time. One evaluation needs only a single
+// IAU2000B nutation expansion (longitude and obliquity come out of the same series) and is
+// memoized so repeated occultation-path queries do not rerun it; a ΔT override invalidates the
+// memo by generation. See sidereal_memo.go.
 func ApparentSiderealTime2006(jd float64) float64 {
+	if value, ok := siderealMemoLoad(jd); ok {
+		return value
+	}
+	generation := siderealMemoGeneration()
 	tmp := MeanSiderealTime2006(jd)
-	return tmp + Nutation2000Bi(jd)*Cos(TrueObliquity(jd))/15
+	dpsi, deps := Nutation2000B(jd)
+	value := tmp + dpsi*math.Cos((Obliquity1980(jd)+deps)*math.Pi/180)/15
+	siderealMemoStore(jd, value, generation)
+	return value
 }
 
 func StarRiseTime(jde, ra, dec, lon, lat, height, timezone float64, aero bool) (float64, error) {

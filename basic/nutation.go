@@ -209,9 +209,17 @@ func Nutation1980(jd float64) (float64, float64) {
 	return dpsi * deg, deps * deg
 }
 
-// Nutation2000B 计算 IAU 2000B 章动模型
-// 返回交角章动 (de) 和黄经章动 (dp)，单位为度
+// Nutation2000B IAU 2000B 章动，返回 (黄经章动, 交角章动)，单位度 / nutation in longitude and obliquity in degrees.
 func Nutation2000B(jd float64) (float64, float64) {
+	if dpsi, deps, ok := nutationMemoLoad(jd); ok {
+		return dpsi, deps
+	}
+	dpsi, deps := nutation2000BCompute(jd)
+	nutationMemoStore(jd, dpsi, deps)
+	return dpsi, deps
+}
+
+func nutation2000BCompute(jd float64) (float64, float64) {
 	// 常量定义
 	as2r := 4.848136811095359935899141e-6 // 角秒到弧度的转换因子
 	twopi := 6.283185307179586476925287   // 2π

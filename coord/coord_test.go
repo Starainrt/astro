@@ -2,6 +2,7 @@ package coord
 
 import (
 	"math"
+	"math/rand"
 	"testing"
 	"time"
 
@@ -81,4 +82,82 @@ func TestAngularSeparationWrapper(t *testing.T) {
 	got := AngularSeparation(101.28715533, -16.71611586, 95.9879578, -52.6956611)
 	want := basic.StarAngularSeparation(101.28715533, -16.71611586, 95.9879578, -52.6956611)
 	assertClose(t, "angular separation", got, want, 1e-12)
+}
+
+// TopocentricEcliptic 对同一时刻只求一次儒略日：参考实现按旧口径重复求值，逐位对照。
+func TestTopocentricEclipticMatchesDuplicatedJDE(t *testing.T) {
+	type sample struct {
+		label      string
+		date       time.Time
+		lon, lat   float64
+		obsLon     float64
+		obsLat     float64
+		distanceAU float64
+		height     float64
+	}
+	zones := []*time.Location{
+		time.UTC,
+		time.FixedZone("CST", 8*3600),
+		time.FixedZone("EST", -5*3600),
+		time.FixedZone("LMT", -7*3600-52*60-58),
+	}
+	sites := []struct {
+		name     string
+		lon, lat float64
+	}{
+		{"shanghai", 121.4737, 31.2304},
+		{"sydney", 151.2093, -33.8688},
+		{"north-pole", 0, 89.9999},
+		{"south-pole", 0, -89.9999},
+		{"dateline-west", -179.99, 12},
+		{"dateline-east", 179.99, -12},
+		{"equator", 0, 0},
+	}
+	years := []int{-500, 1000, 1582, 2025, 2100, 3000, 4000}
+	hours := []int{0, 5, 12, 20, 23}
+	cases := make([]sample, 0, len(sites)*len(zones)*len(years)*len(hours)+200)
+	for _, site := range sites {
+		for _, zone := range zones {
+			for _, year := range years {
+				for _, hour := range hours {
+					cases = append(cases, sample{
+						label:      site.name + "/" + zone.String(),
+						date:       time.Date(year, 3, 17, hour, 43, 21, 123456789, zone),
+						lon:        139.686111,
+						lat:        4.875278,
+						obsLon:     site.lon,
+						obsLat:     site.lat,
+						distanceAU: 0.00257,
+						height:     53,
+					})
+				}
+			}
+		}
+	}
+	rng := rand.New(rand.NewSource(20260915))
+	for i := 0; i < 200; i++ {
+		zone := time.FixedZone("random", (rng.Intn(97)-48)*1800)
+		cases = append(cases, sample{
+			label: "random",
+			date: time.Date(
+				rng.Intn(8000)-2000, time.Month(1+rng.Intn(12)), 1+rng.Intn(28),
+				rng.Intn(24), rng.Intn(60), rng.Intn(60), rng.Intn(1000000000), zone,
+			),
+			lon:        rng.Float64()*360 - 180,
+			lat:        rng.Float64()*180 - 90,
+			obsLon:     rng.Float64()*360 - 180,
+			obsLat:     rng.Float64()*179.8 - 89.9,
+			distanceAU: 0.0001 + rng.Float64()*40,
+			height:     rng.Float64() * 5000,
+		})
+	}
+
+	for _, tc := range cases {
+		got := TopocentricEcliptic(tc.date, tc.lon, tc.lat, tc.obsLon, tc.obsLat, tc.distanceAU, tc.height)
+		wantLon := basic.TopocentricLo(tc.lon, tc.lat, tc.obsLat, tc.obsLon, jdeUTC(tc.date), tc.distanceAU, tc.height)
+		wantLat := basic.TopocentricBo(tc.lon, tc.lat, tc.obsLat, tc.obsLon, jdeUTC(tc.date), tc.distanceAU, tc.height)
+		if got.Lon != wantLon || got.Lat != wantLat {
+			t.Fatalf("%s %s: got (%.17g, %.17g) want (%.17g, %.17g)", tc.label, tc.date.Format(time.RFC3339Nano), got.Lon, got.Lat, wantLon, wantLat)
+		}
+	}
 }

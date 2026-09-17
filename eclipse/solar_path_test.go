@@ -109,6 +109,24 @@ func TestSolarEclipsePartialFootprintsKeepLocation(t *testing.T) {
 	}
 }
 
+func TestSolarEclipsePartialFootprintsExposePartialBandContours(t *testing.T) {
+	location := time.FixedZone("UTC+08", 8*3600)
+	result, ok := SolarEclipsePartialFootprints(
+		time.Date(2009, time.July, 22, 9, 0, 0, 0, location),
+		SolarEclipsePartialFootprintOptions{Step: 10 * time.Minute, BoundaryPoints: 24},
+	)
+	if !ok || len(result.PartialBandContours) == 0 {
+		t.Fatalf("partial-band contours=%d ok=%v", len(result.PartialBandContours), ok)
+	}
+	for segmentIndex, segment := range result.PartialBandContours {
+		for pointIndex, point := range segment {
+			if point.Time.Location() != location {
+				t.Fatalf("segment %d point %d location=%v, want input location", segmentIndex, pointIndex, point.Time.Location())
+			}
+		}
+	}
+}
+
 func TestSolarEclipsePartialFootprintsWorkForPartialOnly(t *testing.T) {
 	footprints, ok := SolarEclipsePartialFootprints(
 		time.Date(2025, 3, 29, 0, 0, 0, 0, time.UTC),
@@ -146,5 +164,68 @@ func TestSolarEclipsePartialAreaCompatibilityWrapper(t *testing.T) {
 	}
 	if len(compat.Footprints) != len(primary.Footprints) {
 		t.Fatalf("compat footprint count mismatch: got %d want %d", len(compat.Footprints), len(primary.Footprints))
+	}
+}
+
+func TestSolarEclipsePartialFootprints20140429NonCentralContactsMatchNASA(t *testing.T) {
+	partial, ok := SolarEclipsePartialFootprints(
+		time.Date(2014, time.April, 29, 0, 0, 0, 0, time.UTC),
+		SolarEclipsePartialFootprintOptions{Step: 10 * time.Minute, BoundaryPoints: 96},
+	)
+	if !ok || partial.Eclipse.Centrality != SolarEclipseNonCentral {
+		t.Fatal("expected the 2014-04-29 non-central annular eclipse")
+	}
+	for name, sample := range map[string]struct {
+		got  time.Time
+		want time.Time
+	}{
+		"U1": {partial.U1.Time, time.Date(2014, time.April, 29, 5, 57, 38, 0, time.UTC)},
+		"U4": {partial.U4.Time, time.Date(2014, time.April, 29, 6, 9, 34, 0, time.UTC)},
+	} {
+		if difference := sample.got.Sub(sample.want); difference < -5*time.Second || difference > 5*time.Second {
+			t.Fatalf("%s=%s, want %s within five seconds", name, sample.got, sample.want)
+		}
+	}
+	if !partial.U2.Time.IsZero() || !partial.U3.Time.IsZero() {
+		t.Fatalf("non-central eclipse has internal contacts U2=%s U3=%s", partial.U2.Time, partial.U3.Time)
+	}
+	if len(partial.CentralBandSegments) != 1 {
+		t.Fatalf("central-band regions=%d, want one continuous non-central band", len(partial.CentralBandSegments))
+	}
+}
+
+func TestSolarEclipsePartialFootprintsRetryTinyGrazingFootprints(t *testing.T) {
+	for _, date := range []time.Time{
+		time.Date(1859, 2, 3, 0, 0, 0, 0, time.UTC),
+		time.Date(1935, 1, 5, 0, 0, 0, 0, time.UTC),
+	} {
+		partial, ok := SolarEclipsePartialFootprints(date, SolarEclipsePartialFootprintOptions{
+			Step: 10 * time.Minute, BoundaryPoints: 24, CentralShadowStep: 10 * time.Minute,
+			DisableRiseSet: true,
+		})
+		if !ok || len(partial.Footprints) == 0 {
+			t.Fatalf("%s tiny grazing partial eclipse unavailable at low boundary resolution", date.Format("2006-01-02"))
+		}
+		if partial.BoundaryPoints <= 24 {
+			t.Fatalf("%s did not report the finer fallback boundary resolution: %d", date.Format("2006-01-02"), partial.BoundaryPoints)
+		}
+	}
+}
+
+func TestSolarEclipseCentralPathRecoversFromCoarseSampling(t *testing.T) {
+	path, ok := SolarEclipseCentralPath(
+		time.Date(2119, 3, 11, 0, 0, 0, 0, time.UTC),
+		SolarEclipsePathOptions{Step: time.Hour},
+	)
+	if !ok || len(path.CenterLine) < 2 {
+		t.Fatalf("coarse central path has %d points, want at least two", len(path.CenterLine))
+	}
+	if path.Step >= time.Hour {
+		t.Fatalf("fallback central path retained coarse metadata step %s", path.Step)
+	}
+	for index := 1; index < len(path.CenterLine); index++ {
+		if !path.CenterLine[index].Time.After(path.CenterLine[index-1].Time) {
+			t.Fatalf("center-line times are not strictly increasing at %d", index)
+		}
 	}
 }

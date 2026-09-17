@@ -120,6 +120,7 @@ func TestGlobalPlanetOccultationQueriesSelectByGeometricGreatest(t *testing.T) {
 func BenchmarkFindPlanetOccultationPathTargetSpacing(b *testing.B) {
 	for _, spacing := range []float64{1, 10, 200} {
 		b.Run(fmt.Sprintf("%.0fkm", spacing), func(b *testing.B) {
+			b.ReportAllocs()
 			for i := 0; i < b.N; i++ {
 				paths, err := FindPlanetOccultationPaths(
 					time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC),

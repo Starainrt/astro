@@ -43,6 +43,10 @@ func planetApparentDecManualN(planetIndex int, jd float64, n int) float64 {
 
 func planetApparentRaDecManualN(planetIndex int, jd float64, n int) (float64, float64) {
 	lo, bo := planetApparentLoBoN(planetIndex, jd, n)
+	return planetApparentRaDecFromLoBo(jd, lo, bo)
+}
+
+func planetApparentRaDecFromLoBo(jd, lo, bo float64) (float64, float64) {
 	eps := TrueObliquity(jd)
 	ra := math.Atan2((Sin(lo)*Cos(eps) - Tan(bo)*Sin(eps)), Cos(lo))
 	ra = ra * 180 / math.Pi

@@ -5,6 +5,7 @@ import (
 	"math"
 )
 
+// Format 把角度格式化为度分秒；typed 为 0 时输出度分秒，非 0 时输出时分秒 / format an angle as degrees-minutes-seconds, or hours-minutes-seconds when typed is non-zero.
 func Format(val float64, typed uint8) string {
 	belowZero := false
 	if val < 0 {

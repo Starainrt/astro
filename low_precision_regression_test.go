@@ -1,3 +1,4 @@
+// 低精度日月基线与高精度派生量的 n 截断收敛契约。
 package astro_test
 
 import (
@@ -125,51 +126,47 @@ func TestLowPrecisionSunMoonBaselineRegression(t *testing.T) {
 	}
 }
 
-func TestDerivedHighPrecisionTruncationFullMatchesDefault(t *testing.T) {
-	jd := 2469808.7654321
+func derivedTruncationCases(samples []lowPrecisionSample) []truncationCase {
+	jdOf := func(index int) float64 { return samples[index].TTJD }
 	lon := 116.391
 	lat := 39.907
 	tz := 8.0
-
-	assertSame := func(name string, got, want float64) {
-		t.Helper()
-		if math.Float64bits(got) != math.Float64bits(want) {
-			t.Fatalf("%s full-n mismatch", name)
-		}
+	// withSite 把带观测点经纬度与时区的入口适配成 jd 探针。
+	withSite := func(f func(jd, lon, lat, tz float64, n int) float64) func(float64, int) float64 {
+		return func(jd float64, n int) float64 { return f(jd, lon, lat, tz, n) }
 	}
-	assertSamePair := func(name string, got1, got2, want1, want2 float64) {
-		t.Helper()
-		assertSame(name+".1", got1, want1)
-		assertSame(name+".2", got2, want2)
+	withSiteRaDec := func(f func(jd, lon, lat, tz float64, n int) (float64, float64)) func(float64, int) (float64, float64) {
+		return func(jd float64, n int) (float64, float64) { return f(jd, lon, lat, tz, n) }
 	}
 
-	assertSame("HSunTrueLo", basic.HSunTrueLo(jd), basic.HSunTrueLoN(jd, -1))
-	assertSame("HSunTrueBo", basic.HSunTrueBo(jd), basic.HSunTrueBoN(jd, -1))
-	assertSame("HSunApparentLo", basic.HSunApparentLo(jd), basic.HSunApparentLoN(jd, -1))
-	assertSame("SunLoGXC", basic.SunLoGXC(jd), basic.SunLoGXCN(jd, -1))
-	assertSame("EarthAway", basic.EarthAway(jd), basic.EarthAwayN(jd, -1))
-	assertSame("HSunApparentRa", basic.HSunApparentRa(jd), basic.HSunApparentRaN(jd, -1))
-	assertSame("HSunTrueRa", basic.HSunTrueRa(jd), basic.HSunTrueRaN(jd, -1))
-	assertSame("HSunApparentDec", basic.HSunApparentDec(jd), basic.HSunApparentDecN(jd, -1))
-	assertSame("HSunTrueDec", basic.HSunTrueDec(jd), basic.HSunTrueDecN(jd, -1))
-	ra1, dec1 := basic.HSunApparentRaDec(jd)
-	ra2, dec2 := basic.HSunApparentRaDecN(jd, -1)
-	assertSamePair("HSunApparentRaDec", ra1, dec1, ra2, dec2)
+	// 上限按 48 个采样点实测最坏值放宽 5 倍以上给出，随 n 递减。
+	return []truncationCase{
+		scalarTruncation("HSunTrueLoN", jdOf, basic.HSunTrueLoN, true, []float64{0.15, 0.05, 0.02, 0.006}),
+		scalarTruncation("HSunTrueBoN", jdOf, basic.HSunTrueBoN, true, []float64{1e-3, 5e-4, 3e-4, 1.5e-4}),
+		scalarTruncation("HSunApparentLoN", jdOf, basic.HSunApparentLoN, true, []float64{0.15, 0.05, 0.02, 0.006}),
+		scalarTruncation("SunLoGXCN", jdOf, basic.SunLoGXCN, true, []float64{1e-5, 2e-6, 1e-6, 3e-7}),
+		scalarTruncation("EarthAwayN", jdOf, basic.EarthAwayN, false, []float64{1e-3, 3e-4, 1e-4, 3e-5}),
+		scalarTruncation("HSunApparentRaN", jdOf, basic.HSunApparentRaN, true, []float64{0.15, 0.05, 0.02, 0.006}),
+		scalarTruncation("HSunTrueRaN", jdOf, basic.HSunTrueRaN, true, []float64{0.15, 0.05, 0.02, 0.006}),
+		scalarTruncation("HSunApparentDecN", jdOf, basic.HSunApparentDecN, true, []float64{0.05, 0.02, 0.008, 0.003}),
+		scalarTruncation("HSunTrueDecN", jdOf, basic.HSunTrueDecN, true, []float64{0.05, 0.02, 0.008, 0.003}),
+		pairTruncation("HSunApparentRaDecN", jdOf, basic.HSunApparentRaDecN, []float64{0.15, 0.05, 0.02, 0.006}),
+		scalarTruncation("HMoonTrueLoN", jdOf, basic.HMoonTrueLoN, true, []float64{5, 2.5, 1, 0.25}),
+		scalarTruncation("HMoonTrueBoN", jdOf, basic.HMoonTrueBoN, true, []float64{3, 0.75, 0.15, 0.06}),
+		scalarTruncation("HMoonAwayN", jdOf, basic.HMoonAwayN, false, []float64{40000, 7000, 2500, 400}),
+		scalarTruncation("HMoonApparentLoN", jdOf, basic.HMoonApparentLoN, true, []float64{5, 2.5, 1, 0.25}),
+		scalarTruncation("HMoonTrueRaN", jdOf, basic.HMoonTrueRaN, true, []float64{5, 2.5, 1, 0.3}),
+		scalarTruncation("HMoonTrueDecN", jdOf, basic.HMoonTrueDecN, true, []float64{3, 1, 0.4, 0.1}),
+		pairTruncation("HMoonTrueRaDecN", jdOf, basic.HMoonTrueRaDecN, []float64{5, 2.5, 1, 0.3}),
+		scalarTruncation("HMoonApparentRaN", jdOf, withSite(basic.HMoonApparentRaN), true, []float64{5, 2.5, 1, 0.3}),
+		scalarTruncation("HMoonApparentDecN", jdOf, withSite(basic.HMoonApparentDecN), true, []float64{4, 1, 0.3, 0.1}),
+		pairTruncation("HMoonApparentRaDecN", jdOf, withSiteRaDec(basic.HMoonApparentRaDecN), []float64{5, 2.5, 1, 0.3}),
+		scalarTruncation("HMoonAzimuthN", jdOf, withSite(basic.HMoonAzimuthN), true, []float64{9, 4, 2, 0.9}),
+		scalarTruncation("HMoonHeightN", jdOf, withSite(basic.HMoonHeightN), true, []float64{4, 2, 0.7, 0.15}),
+	}
+}
 
-	assertSame("HMoonTrueLo", basic.HMoonTrueLo(jd), basic.HMoonTrueLoN(jd, -1))
-	assertSame("HMoonTrueBo", basic.HMoonTrueBo(jd), basic.HMoonTrueBoN(jd, -1))
-	assertSame("HMoonAway", basic.HMoonAway(jd), basic.HMoonAwayN(jd, -1))
-	assertSame("HMoonApparentLo", basic.HMoonApparentLo(jd), basic.HMoonApparentLoN(jd, -1))
-	assertSame("HMoonTrueRa", basic.HMoonTrueRa(jd), basic.HMoonTrueRaN(jd, -1))
-	assertSame("HMoonTrueDec", basic.HMoonTrueDec(jd), basic.HMoonTrueDecN(jd, -1))
-	ra1, dec1 = basic.HMoonTrueRaDec(jd)
-	ra2, dec2 = basic.HMoonTrueRaDecN(jd, -1)
-	assertSamePair("HMoonTrueRaDec", ra1, dec1, ra2, dec2)
-	ra1, dec1 = basic.HMoonApparentRaDec(jd, lon, lat, tz)
-	ra2, dec2 = basic.HMoonApparentRaDecN(jd, lon, lat, tz, -1)
-	assertSamePair("HMoonApparentRaDec", ra1, dec1, ra2, dec2)
-	assertSame("HMoonApparentRa", basic.HMoonApparentRa(jd, lon, lat, tz), basic.HMoonApparentRaN(jd, lon, lat, tz, -1))
-	assertSame("HMoonApparentDec", basic.HMoonApparentDec(jd, lon, lat, tz), basic.HMoonApparentDecN(jd, lon, lat, tz, -1))
-	assertSame("HMoonAzimuth", basic.HMoonAzimuth(jd, lon, lat, tz), basic.HMoonAzimuthN(jd, lon, lat, tz, -1))
-	assertSame("HMoonHeight", basic.HMoonHeight(jd, lon, lat, tz), basic.HMoonHeightN(jd, lon, lat, tz, -1))
+func TestDerivedHighPrecisionTruncationConverges(t *testing.T) {
+	samples := loadLowPrecisionSamples(t)
+	assertTruncationConverges(t, derivedTruncationCases(samples), len(samples))
 }

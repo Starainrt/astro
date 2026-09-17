@@ -143,3 +143,39 @@ func mustParseRFC3339Nano(t *testing.T, value string) time.Time {
 	}
 	return date
 }
+
+func TestJupiterGalileanSearchFindsShortGrazingTransit(t *testing.T) {
+	// 2463144 附近 Callisto 有一次擦边凌日：Start 2463143.9993 / Greatest 2463144.0015 /
+	// End 2463144.0038，全场只有 6.4 分钟，整段落在 2 小时粗采样之间。旧实现看不到度量
+	// 凹陷，会把 16.85 天后的下一次凌日当成 "next"（Valid 仍为 true，属静默跳事件）。
+	// Callisto has a grazing transit near 2463144: Start 2463143.9993, Greatest
+	// 2463144.0015, End 2463144.0038 — only 6.4 minutes, entirely between two two-hour
+	// coarse samples. The old search saw no metric dip and reported the next transit 16.85
+	// days later as "next", still with Valid=true (a silent skip).
+	closest := ClosestJupiterGalileanPhenomenonEvent(2463144.0, 4, JupiterGalileanTransit)
+	if !closest.Valid {
+		t.Fatal("no Callisto transit found at 2463144")
+	}
+	if duration := closest.End - closest.Start; duration > 0.01 {
+		t.Fatalf("fixture changed: transit duration %.4f d, want the 6.4-minute grazing event", duration)
+	}
+
+	next := NextJupiterGalileanPhenomenonEvent(2463143.9646, 4, JupiterGalileanTransit)
+	if !next.Valid {
+		t.Fatal("NextJupiterGalileanPhenomenonEvent returned nothing")
+	}
+	if offset := next.Greatest - 2463143.9646; offset > 0.1 {
+		t.Fatalf("next transit is %.3f d away, want the 53-minute one (the search skipped it)", offset)
+	}
+	if math.Abs(next.Greatest-closest.Greatest) > 1e-5 {
+		t.Fatalf("next greatest %.9f, want the same event as closest %.9f", next.Greatest, closest.Greatest)
+	}
+
+	last := LastJupiterGalileanPhenomenonEvent(2463144.05, 4, JupiterGalileanTransit)
+	if !last.Valid {
+		t.Fatal("LastJupiterGalileanPhenomenonEvent returned nothing")
+	}
+	if math.Abs(last.Greatest-closest.Greatest) > 1e-5 {
+		t.Fatalf("last greatest %.9f, want the same event as closest %.9f", last.Greatest, closest.Greatest)
+	}
+}

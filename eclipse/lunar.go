@@ -28,7 +28,18 @@ const (
 
 type lunarEclipseCalculator func(float64) basic.LunarEclipseResult
 
-// LunarEclipseType 月食类型, lunar eclipse type.
+// LunarEclipseShadowModel 标识月食用的是哪套影半径模型。
+// LunarEclipseShadowModel identifies which shadow-radius model produced a result.
+type LunarEclipseShadowModel = basic.LunarEclipseShadowModel
+
+const (
+	// LunarEclipseShadowModelDanjon 是 Danjon 影半径模型。
+	LunarEclipseShadowModelDanjon = basic.LunarEclipseShadowModelDanjon
+	// LunarEclipseShadowModelChauvenet 是 Chauvenet 影半径模型。
+	LunarEclipseShadowModelChauvenet = basic.LunarEclipseShadowModelChauvenet
+)
+
+// LunarEclipseType 月食类型 / lunar eclipse type.
 type LunarEclipseType string
 
 const (
@@ -72,7 +83,7 @@ type LunarEclipseContactPoint struct {
 type LunarEclipseInfo struct {
 	// Type 月食类型, eclipse type.
 	Type LunarEclipseType
-	// HasSaros 存在沙罗序列信息, has Saros series metadata.
+	// HasSaros 存在沙罗序列信息（可能是锚点外推结果）, has Saros series metadata (possibly extrapolated).
 	HasSaros bool
 	// Saros 是沙罗序列信息，包括系列号、系列内序号和总成员数。
 	// Saros is Saros series metadata with the series number, member index, and total member count.
@@ -101,6 +112,23 @@ type LunarEclipseInfo struct {
 	// ContactPoints 是各接触时刻在月面上的接触点方位。
 	// ContactPoints are Moon-limb contact position angles at eclipse contacts.
 	ContactPoints []LunarEclipseContactPoint
+
+	// ShadowModel 是本次使用的影半径模型，决定下列影几何与食分的具体数值。
+	// ShadowModel is the shadow-radius model used; it fixes the shadow geometry and magnitudes below.
+	ShadowModel LunarEclipseShadowModel
+	// Gamma 是食甚时月心到地影轴的最小距离，单位地球赤道半径。
+	// Gamma is the minimum distance from the Moon's centre to the shadow axis at greatest eclipse, in Earth equatorial radii.
+	Gamma float64
+	// AxisDegrees 是同一个角距的角度制数值，即 NASA 月食图上的 Axis；Gamma 除以月球处的地球视差即得。
+	// AxisDegrees is the same distance in degrees, the Axis column of NASA lunar-eclipse charts; it equals Gamma divided by the Earth's parallax at the Moon.
+	AxisDegrees float64
+	// PenumbralRadiusDegrees 与 UmbralRadiusDegrees 是食甚时的半影、本影半径，单位度。
+	// PenumbralRadiusDegrees and UmbralRadiusDegrees are the shadow radii at greatest eclipse, in degrees.
+	PenumbralRadiusDegrees float64
+	UmbralRadiusDegrees    float64
+	// MoonDistanceEarthRadii 是食甚时的地心月距。
+	// MoonDistanceEarthRadii is the geocentric Moon distance at greatest eclipse.
+	MoonDistanceEarthRadii float64
 
 	// HasPenumbral 有半影阶段, has penumbral phase.
 	HasPenumbral bool
@@ -322,23 +350,30 @@ func isPotentialLunarEclipse(fullMoonTT float64) bool {
 
 func lunarEclipseInfoFromBasic(result basic.LunarEclipseResult, location *time.Location) LunarEclipseInfo {
 	saros, hasSaros := lunarSarosInfo(result.Maximum)
+	geometry := basic.LunarEclipseShadowGeometryAtModel(result.Maximum, result.ShadowModel)
 	return LunarEclipseInfo{
-		HasSaros:           hasSaros,
-		Saros:              saros,
-		Type:               mapBasicLunarEclipseType(result.Type),
-		PenumbralMagnitude: result.PenumbralMagnitude,
-		UmbralMagnitude:    result.Magnitude,
-		PenumbralStart:     ttJDEToTime(result.PenumbralStart, location),
-		PartialStart:       ttJDEToTime(result.PartialStart, location),
-		TotalStart:         ttJDEToTime(result.TotalStart, location),
-		Maximum:            ttJDEToTime(result.Maximum, location),
-		TotalEnd:           ttJDEToTime(result.TotalEnd, location),
-		PartialEnd:         ttJDEToTime(result.PartialEnd, location),
-		PenumbralEnd:       ttJDEToTime(result.PenumbralEnd, location),
-		ContactPoints:      lunarEclipseContactPointsFromBasic(result, location),
-		HasPenumbral:       result.HasPenumbral,
-		HasPartial:         result.HasPartial,
-		HasTotal:           result.HasTotal,
+		ShadowModel:            LunarEclipseShadowModel(result.ShadowModel),
+		Gamma:                  geometry.Gamma,
+		AxisDegrees:            geometry.AxisDegrees,
+		PenumbralRadiusDegrees: geometry.PenumbralRadiusDegrees,
+		UmbralRadiusDegrees:    geometry.UmbralRadiusDegrees,
+		MoonDistanceEarthRadii: geometry.MoonDistanceEarthRadii,
+		HasSaros:               hasSaros,
+		Saros:                  saros,
+		Type:                   mapBasicLunarEclipseType(result.Type),
+		PenumbralMagnitude:     result.PenumbralMagnitude,
+		UmbralMagnitude:        result.Magnitude,
+		PenumbralStart:         ttJDEToTime(result.PenumbralStart, location),
+		PartialStart:           ttJDEToTime(result.PartialStart, location),
+		TotalStart:             ttJDEToTime(result.TotalStart, location),
+		Maximum:                ttJDEToTime(result.Maximum, location),
+		TotalEnd:               ttJDEToTime(result.TotalEnd, location),
+		PartialEnd:             ttJDEToTime(result.PartialEnd, location),
+		PenumbralEnd:           ttJDEToTime(result.PenumbralEnd, location),
+		ContactPoints:          lunarEclipseContactPointsFromBasic(result, location),
+		HasPenumbral:           result.HasPenumbral,
+		HasPartial:             result.HasPartial,
+		HasTotal:               result.HasTotal,
 	}
 }
 
@@ -442,7 +477,9 @@ func lunarEclipseRange(info LunarEclipseInfo) (time.Time, time.Time, bool) {
 }
 
 func ttJDEToTime(ttJDE float64, location *time.Location) time.Time {
-	if ttJDE == 0 {
+	// basic 用 NaN 表示"该阶段不发生"（0 是 −4713-11-24 的真实时刻），
+	// 这里必须一并当空值处理，否则 NaN 会被换算成 −296 年那种假时刻。
+	if ttJDE == 0 || math.IsNaN(ttJDE) || math.IsInf(ttJDE, 0) {
 		return time.Time{}
 	}
 	utcJDE := basic.TD2UT(ttJDE, false)

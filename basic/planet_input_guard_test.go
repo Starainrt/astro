@@ -91,3 +91,140 @@ func TestSharedObservationRejectsNonFiniteQuery(t *testing.T) {
 		t.Fatalf("StarRiseTime error = %v, want ErrInvalidObservationInput", err)
 	}
 }
+
+func TestMoonMaximumDeclinationEventsRejectNonFiniteQuery(t *testing.T) {
+	nonFinite := []struct {
+		name string
+		jd   float64
+	}{
+		{"NaN", math.NaN()},
+		{"+Inf", math.Inf(1)},
+		{"-Inf", math.Inf(-1)},
+	}
+	events := []struct {
+		name string
+		fn   func(float64) DeclinationEvent
+	}{
+		{"LastMoonMaximumNorthDeclination", LastMoonMaximumNorthDeclination},
+		{"NextMoonMaximumNorthDeclination", NextMoonMaximumNorthDeclination},
+		{"ClosestMoonMaximumNorthDeclination", ClosestMoonMaximumNorthDeclination},
+		{"LastMoonMaximumSouthDeclination", LastMoonMaximumSouthDeclination},
+		{"NextMoonMaximumSouthDeclination", NextMoonMaximumSouthDeclination},
+		{"ClosestMoonMaximumSouthDeclination", ClosestMoonMaximumSouthDeclination},
+	}
+	for _, event := range events {
+		for _, query := range nonFinite {
+			// A non-finite query used to seed an out-of-range cycle index and spin in the
+			// sampling sweep forever; it must return the zero event instead.
+			got := event.fn(query.jd)
+			if got.JDE != 0 || got.Declination != 0 {
+				t.Fatalf("%s(%s) = %+v, want zero event", event.name, query.name, got)
+			}
+		}
+	}
+
+	// The finite path must keep working.
+	const jd = 2460310.5
+	north := NextMoonMaximumNorthDeclination(jd)
+	if !(north.JDE > jd) || north.Declination == 0 {
+		t.Fatalf("NextMoonMaximumNorthDeclination(%v) = %+v, want a later event", jd, north)
+	}
+	south := LastMoonMaximumSouthDeclination(jd)
+	if !(south.JDE <= jd) || south.Declination == 0 {
+		t.Fatalf("LastMoonMaximumSouthDeclination(%v) = %+v, want an earlier event", jd, south)
+	}
+}
+
+func TestOuterPlanetStationEventsRejectNonFiniteQuery(t *testing.T) {
+	nonFinite := []struct {
+		name string
+		jd   float64
+	}{
+		{"NaN", math.NaN()},
+		{"+Inf", math.Inf(1)},
+		{"-Inf", math.Inf(-1)},
+	}
+	events := []struct {
+		name string
+		fn   func(float64) float64
+	}{
+		{"Mercury", NextMercuryProgradeToRetrograde},
+		{"Mercury retrograde", NextMercuryRetrograde},
+		{"Venus", NextVenusProgradeToRetrograde},
+		{"Venus retrograde", NextVenusRetrograde},
+		{"Mars", NextMarsProgradeToRetrograde},
+		{"Jupiter", NextJupiterProgradeToRetrograde},
+		{"Saturn", NextSaturnProgradeToRetrograde},
+		{"Uranus", NextUranusProgradeToRetrograde},
+		{"Neptune", NextNeptuneProgradeToRetrograde},
+		{"Mars opposition", NextMarsOpposition},
+		{"Jupiter opposition", NextJupiterOpposition},
+		{"Saturn opposition", NextSaturnOpposition},
+		{"Uranus opposition", NextUranusOpposition},
+		{"Neptune opposition", NextNeptuneOpposition},
+		{"Mars eastern quadrature", NextMarsEasternQuadrature},
+		{"Jupiter eastern quadrature", NextJupiterEasternQuadrature},
+		{"Saturn eastern quadrature", NextSaturnEasternQuadrature},
+		{"Uranus eastern quadrature", NextUranusEasternQuadrature},
+		{"Neptune eastern quadrature", NextNeptuneEasternQuadrature},
+	}
+	for _, event := range events {
+		for _, query := range nonFinite {
+			if got := event.fn(query.jd); !math.IsNaN(got) {
+				t.Fatalf("%s(%s) = %v, want NaN", event.name, query.name, got)
+			}
+		}
+	}
+}
+
+func TestOuterPlanetLastStationEventsRejectNonFiniteQuery(t *testing.T) {
+	events := []struct {
+		name string
+		fn   func(float64) float64
+	}{
+		{"LastMarsProgradeToRetrograde", LastMarsProgradeToRetrograde},
+		{"LastMarsRetrogradeToPrograde", LastMarsRetrogradeToPrograde},
+		{"LastJupiterProgradeToRetrograde", LastJupiterProgradeToRetrograde},
+		{"LastJupiterRetrogradeToPrograde", LastJupiterRetrogradeToPrograde},
+		{"LastSaturnProgradeToRetrograde", LastSaturnProgradeToRetrograde},
+		{"LastSaturnRetrogradeToPrograde", LastSaturnRetrogradeToPrograde},
+		{"LastUranusProgradeToRetrograde", LastUranusProgradeToRetrograde},
+		{"LastUranusRetrogradeToPrograde", LastUranusRetrogradeToPrograde},
+		{"LastNeptuneProgradeToRetrograde", LastNeptuneProgradeToRetrograde},
+		{"LastNeptuneRetrogradeToPrograde", LastNeptuneRetrogradeToPrograde},
+	}
+	for _, event := range events {
+		if got := event.fn(math.NaN()); !math.IsNaN(got) {
+			t.Fatalf("%s(NaN) = %v, want NaN", event.name, got)
+		}
+	}
+}
+
+// 查询落在事件之后 1 秒：首候选必须被侧向不变量拒绝，第二候选也必须通过同一不变量。
+func TestOuterPlanetStationSecondCandidateKeepsSideInvariant(t *testing.T) {
+	const offsetSeconds = 1.0
+	cases := []struct {
+		name string
+		fn   func(float64) float64
+	}{
+		{"Mars", NextMarsProgradeToRetrograde},
+		{"Jupiter", NextJupiterProgradeToRetrograde},
+		{"Saturn", NextSaturnProgradeToRetrograde},
+		{"Uranus", NextUranusProgradeToRetrograde},
+		{"Neptune", NextNeptuneProgradeToRetrograde},
+	}
+	for _, tc := range cases {
+		event := tc.fn(JDECalc(2025, 1, 1))
+		if math.IsNaN(event) {
+			t.Fatalf("%s: no station event found", tc.name)
+		}
+		query := event + offsetSeconds/86400.0
+		got := tc.fn(TD2UT(query, true))
+		if math.IsNaN(got) {
+			t.Fatalf("%s: second candidate rejected as NaN at %s", tc.name, JDE2Date(query))
+		}
+		if got < query-stationQueryToleranceUT {
+			t.Fatalf("%s: returned %.9f before the query %.9f", tc.name, got, query)
+		}
+	}
+}

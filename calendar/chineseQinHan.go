@@ -39,7 +39,15 @@ func innerSolarToLunarQinHan(date time.Time) (Time, bool) {
 }
 
 func innerSolarToLunarQinHanByYMD(year, month, day int) (Time, bool) {
-	return innerSolarToLunarQinHan(time.Date(year, time.Month(month), day, 0, 0, 0, 0, getCst()))
+	// 直接按 JDN 取日期：儒略历独有的闰日先转 time.Time 会被规范化成后继日。
+	jdn := qinHanDateJDN(year, month, day)
+	date := qinHanJDNToDate(jdn)
+	lmonth, ok := qinHanMonthBySolar(year, month, day)
+	if !ok {
+		return Time{}, false
+	}
+	lmonth.day = jdn - lmonth.startJDN + 1
+	return markJulianOnlyJDN(qinHanTime(date, lmonth), jdn), true
 }
 
 func lunarToSolarQinHan(year, month, day int, leap bool) (Time, bool) {
@@ -51,8 +59,9 @@ func lunarToSolarQinHan(year, month, day int, leap bool) (Time, bool) {
 		return Time{}, false
 	}
 	lmonth.day = day
-	date := qinHanJDNToDate(lmonth.startJDN + day - 1)
-	return qinHanTime(date, lmonth), true
+	jdn := lmonth.startJDN + day - 1
+	date := qinHanJDNToDate(jdn)
+	return markJulianOnlyJDN(qinHanTime(date, lmonth), jdn), true
 }
 
 func rapidSolarQinHan(year, month, day int, leap bool) (time.Time, bool) {

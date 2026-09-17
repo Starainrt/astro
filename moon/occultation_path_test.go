@@ -5,7 +5,40 @@ import (
 	"math"
 	"testing"
 	"time"
+
+	"github.com/starainrt/astro/basic"
 )
+
+func TestStarOccultationBoundaryTimesRemainStrictAfterAdaptiveConvergence(t *testing.T) {
+	data, err := basic.StarDataByChinese("进贤增九")
+	if err != nil {
+		t.Fatal(err)
+	}
+	star, err := StarCoordinateFromStarData(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, date := range []time.Time{
+		time.Date(2033, time.March, 17, 0, 0, 0, 0, time.UTC),
+		time.Date(2050, time.December, 8, 0, 0, 0, 0, time.UTC),
+	} {
+		paths, err := FindStarOccultationPaths(date, date.Add(24*time.Hour), star,
+			OccultationPathOptions{Step: 10 * time.Minute, DisableFootprints: true, DisableRiseSet: true})
+		if err != nil {
+			t.Fatalf("%s: FindStarOccultationPaths: %v", date.Format("2006-01-02"), err)
+		}
+		if len(paths) == 0 {
+			t.Fatalf("%s: no occultation path", date.Format("2006-01-02"))
+		}
+		for _, points := range [][]OccultationPathPoint{paths[0].NorthernLimit, paths[0].SouthernLimit, paths[0].CenterLine} {
+			for index := 1; index < len(points); index++ {
+				if !points[index].Time.After(points[index-1].Time) {
+					t.Fatalf("%s: non-increasing path time at %d: %s then %s", date.Format("2006-01-02"), index, points[index-1].Time, points[index].Time)
+				}
+			}
+		}
+	}
+}
 
 func TestFindStarOccultationPathsHR4799(t *testing.T) {
 	location := time.FixedZone("CST", 8*3600)
@@ -221,6 +254,7 @@ func BenchmarkFindStarOccultationPathTargetSpacing(b *testing.B) {
 	star := hr4799CoordinateForTest()
 	for _, spacing := range []float64{1, 10, 200} {
 		b.Run(fmt.Sprintf("%.0fkm", spacing), func(b *testing.B) {
+			b.ReportAllocs()
 			for i := 0; i < b.N; i++ {
 				paths, err := FindStarOccultationPaths(
 					time.Date(2025, 6, 5, 0, 0, 0, 0, location),

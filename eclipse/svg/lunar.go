@@ -4,12 +4,14 @@ import (
 	"fmt"
 	"html"
 	"math"
+	"sort"
 	"strings"
 	"time"
 
 	"github.com/starainrt/astro/basic"
 	eclipsecore "github.com/starainrt/astro/eclipse"
 	"github.com/starainrt/astro/internal/svgasset"
+	"github.com/starainrt/astro/internal/svgchart"
 )
 
 const (
@@ -77,6 +79,8 @@ type lunarEclipseSVGLayout struct {
 	scale        float64
 	diagramLeft  float64
 	diagramRight float64
+	diagramTop   float64
+	diagramEnd   float64
 	panelX       float64
 	panelY       float64
 }
@@ -96,10 +100,35 @@ type lunarEclipseSVGMaximumCoordinates struct {
 	ConstellationName string
 }
 
-// LunarEclipseSVG 生成月食穿影图 SVG，默认使用 Danjon 影半径模型。
-// LunarEclipseSVG generates an SVG lunar eclipse shadow-path chart, using the Danjon shadow model by default.
+// LunarEclipseSVG 生成月食穿影图 SVG，默认模型与 LunarEclipseOnDate 一致：Danjon 为主，极浅半影回退 Chauvenet。
+// LunarEclipseSVG generates an SVG lunar eclipse shadow-path chart with the default model of
+// LunarEclipseOnDate: Danjon, falling back to Chauvenet for ultra-shallow penumbral cases.
 func LunarEclipseSVG(date time.Time, options LunarEclipseSVGOptions) (string, bool) {
+	model, ok := lunarEclipseDefaultShadowModel(date)
+	if !ok {
+		return "", false
+	}
+	if model == eclipsecore.LunarEclipseShadowModelChauvenet {
+		return LunarEclipseSVGChauvenet(date, options)
+	}
 	return LunarEclipseSVGDanjon(date, options)
+}
+
+// lunarEclipseDefaultShadowModel 返回默认模型下该日期的月食影半径模型；当天没有月食时返回 false。
+func lunarEclipseDefaultShadowModel(date time.Time) (eclipsecore.LunarEclipseShadowModel, bool) {
+	info, ok := eclipsecore.LunarEclipseOnDate(date)
+	if !ok {
+		return eclipsecore.LunarEclipseShadowModelDanjon, false
+	}
+	return info.ShadowModel, true
+}
+
+// lunarEclipseShadowModelName 给出影半径模型的展示名。
+func lunarEclipseShadowModelName(model eclipsecore.LunarEclipseShadowModel) string {
+	if model == eclipsecore.LunarEclipseShadowModelChauvenet {
+		return "Chauvenet"
+	}
+	return "Danjon"
 }
 
 // LunarEclipseSVGDanjon 生成月食穿影图 SVG，使用 Danjon 影半径模型。
@@ -154,6 +183,140 @@ func normalizeLunarEclipseSVGOptions(options LunarEclipseSVGOptions) LunarEclips
 	return options
 }
 
+// writeLunarEclipseDiagram 在给定圆心与比例下画地影、月心轨迹与各阶段月面。
+// 独立月食图和 详细版式组合图共用这一段，只有圆心的位置不同。
+func writeLunarEclipseDiagram(
+	b *strings.Builder,
+	layout lunarEclipseSVGLayout,
+	diagram basic.LunarEclipseDiagramResult,
+	language string,
+	labels *svgchart.LabelTable,
+) {
+	cx, cy, scale := layout.cx, layout.cy, layout.scale
+	points := lunarEclipseSVGPoints(diagram.Points)
+	mapX := func(x float64) float64 { return cx - x*scale }
+	mapY := func(y float64) float64 { return cy - y*scale }
+	area := svgchart.LabelBox{
+		X: layout.diagramLeft, Y: layout.diagramTop,
+		Width: layout.diagramRight - layout.diagramLeft, Height: layout.diagramEnd - layout.diagramTop,
+	}
+	fmt.Fprintf(b, `<circle cx="%.3f" cy="%.3f" r="%.3f" fill="#e9e9e9" stroke="#d6d6d6" stroke-width="1.2"/>`,
+		cx, cy, diagram.PenumbraRadius*scale)
+	fmt.Fprintf(b, `<circle cx="%.3f" cy="%.3f" r="%.3f" fill="#b21f16" stroke="#83170f" stroke-width="1.3"/>`,
+		cx, cy, diagram.UmbraRadius*scale)
+	writeLunarEclipseShadowLabels(b, layout, diagram, language, labels, area)
+	writeLunarEclipseAxes(b, cx, cy, diagram.PenumbraRadius*scale, language, labels, area)
+	writeLunarEclipseEclipticLine(b, layout, diagram, mapX, mapY, language, labels, area)
+
+	if len(points) > 0 {
+		b.WriteString(`<path d="`)
+		for i, point := range points {
+			if i == 0 {
+				fmt.Fprintf(b, `M %.3f %.3f`, mapX(point.X), mapY(point.Y))
+				continue
+			}
+			fmt.Fprintf(b, ` L %.3f %.3f`, mapX(point.X), mapY(point.Y))
+		}
+		b.WriteString(`" fill="none" stroke="#333333" stroke-width="1.1" stroke-dasharray="5 4" stroke-linecap="round" stroke-linejoin="round"/>`)
+	}
+
+	eventPoints := lunarEclipseSVGEventPoints(points)
+	for _, point := range eventPoints {
+		if point.Label == "Greatest" {
+			continue
+		}
+		writeLunarEclipseMoon(b, point, diagram, mapX(point.X), mapY(point.Y), scale, false)
+	}
+	for _, point := range eventPoints {
+		if point.Label == "Greatest" {
+			writeLunarEclipseMoon(b, point, diagram, mapX(point.X), mapY(point.Y), scale, true)
+			break
+		}
+	}
+	writeLunarEclipseEventLabels(b, eventPoints, mapX, mapY, cx, diagram.MoonRadius*scale, language, labels, area)
+}
+
+// lunarEclipseEventLabelRank 是事件标注的占位优先级：数字小的先占位，放不下的后放的让位。
+func lunarEclipseEventLabelRank(label string) int {
+	switch label {
+	case "Greatest":
+		return 0
+	case "U2", "U3":
+		return 1
+	case "U1", "U4":
+		return 2
+	case "P1", "P4":
+		return 3
+	}
+	return 4
+}
+
+// writeLunarEclipseEventLabels 先按重要性占位再按原顺序绘制：食甚最优先，其次本影接触，最后半影接触。
+func writeLunarEclipseEventLabels(
+	b *strings.Builder,
+	eventPoints []lunarEclipseSVGPoint,
+	mapX, mapY func(float64) float64,
+	cx, moonRadius float64,
+	language string,
+	labels *svgchart.LabelTable,
+	area svgchart.LabelBox,
+) {
+	type eventLabel struct {
+		rank       int
+		text       string
+		candidates []svgchart.LabelPlacement
+		placed     svgchart.LabelPlacement
+		ok         bool
+	}
+	entries := make([]eventLabel, 0, len(eventPoints))
+	for _, point := range eventPoints {
+		if point.Label == "" {
+			continue
+		}
+		x := mapX(point.X)
+		y := mapY(point.Y)
+		dx := moonRadius*0.72 + 6
+		anchor := "start"
+		if x < cx {
+			dx = -dx
+			anchor = "end"
+		}
+		dy := -moonRadius*0.35 - 4
+		if point.Label == "Greatest" {
+			dy = moonRadius + 15
+			anchor = "middle"
+			dx = 0
+		}
+		candidates := []svgchart.LabelPlacement{{X: x + dx, Y: y + dy, Anchor: anchor}}
+		// 浅半影食里 P1 与 P4 挨得很近，近环放不下时还要一圈更远的候选。
+		candidates = append(candidates, svgchart.LabelCandidates(x+dx, y+dy, anchor, math.Max(14, moonRadius*0.8))...)
+		candidates = append(candidates, svgchart.LabelCandidates(x+dx, y+dy, anchor, math.Max(30, moonRadius*1.6))...)
+		candidates = append(candidates, svgchart.LabelCandidates(x+dx, y+dy, anchor, math.Max(48, moonRadius*2.4))...)
+		entries = append(entries, eventLabel{
+			rank:       lunarEclipseEventLabelRank(point.Label),
+			text:       lunarEclipseSVGEventName(point.Label, language),
+			candidates: candidates,
+		})
+	}
+	order := make([]int, len(entries))
+	for index := range entries {
+		order[index] = index
+	}
+	sort.SliceStable(order, func(i, j int) bool { return entries[order[i]].rank < entries[order[j]].rank })
+	for _, index := range order {
+		entry := &entries[index]
+		entry.placed, entry.ok = labels.Place(entry.text, 12,
+			labelCandidatesInsideBox(entry.candidates, entry.text, 12, area))
+	}
+	for _, entry := range entries {
+		if !entry.ok {
+			continue
+		}
+		fmt.Fprintf(b, `<text x="%.3f" y="%.3f" fill="#2554c7" font-family="Georgia, 'Times New Roman', serif" font-size="12" text-anchor="%s">%s</text>`,
+			entry.placed.X, entry.placed.Y, entry.placed.Anchor, html.EscapeString(entry.text))
+	}
+}
+
 func renderLunarEclipseSVG(
 	info LunarEclipseInfo,
 	diagram basic.LunarEclipseDiagramResult,
@@ -161,9 +324,6 @@ func renderLunarEclipseSVG(
 ) string {
 	headerTexts := lunarEclipseSVGHeaderTexts(info, options)
 	layout := lunarEclipseSVGLayoutFor(diagram, options, lunarEclipseSVGHeaderBottom(headerTexts))
-	points := lunarEclipseSVGPoints(diagram.Points)
-	mapX := func(x float64) float64 { return layout.cx - x*layout.scale }
-	mapY := func(y float64) float64 { return layout.cy - y*layout.scale }
 	title := lunarEclipseSVGTitleText(info, options)
 
 	var b strings.Builder
@@ -174,51 +334,21 @@ func renderLunarEclipseSVG(
 	b.WriteString(`<rect width="100%" height="100%" fill="#efefed"/>`)
 	fmt.Fprintf(&b, `<rect x="22" y="18" width="%.3f" height="%.3f" fill="#ffffff" stroke="#c9c9c6" stroke-width="1.2"/>`,
 		layout.width-44, layout.height-36)
+	titleText := title
+	if options.Title != "" {
+		titleText = svgchart.EllipsizeText(title, layout.width-52, 26)
+	}
 	fmt.Fprintf(&b, `<text x="%.3f" y="44" fill="#111111" font-family="Georgia, 'Times New Roman', serif" font-size="26" font-weight="700" text-anchor="middle">%s</text>`,
-		layout.width/2, html.EscapeString(title))
+		layout.width/2, html.EscapeString(titleText))
 	fmt.Fprintf(&b, `<line x1="%.3f" y1="57" x2="%.3f" y2="57" stroke="#555" stroke-width="1"/>`, layout.width/2-78, layout.width/2+78)
 	writeLunarEclipseSummary(&b, headerTexts, options)
-	fmt.Fprintf(&b, `<circle cx="%.3f" cy="%.3f" r="%.3f" fill="#e9e9e9" stroke="#d6d6d6" stroke-width="1.2"/>`,
-		layout.cx, layout.cy, diagram.PenumbraRadius*layout.scale)
-	fmt.Fprintf(&b, `<circle cx="%.3f" cy="%.3f" r="%.3f" fill="#b21f16" stroke="#83170f" stroke-width="1.3"/>`,
-		layout.cx, layout.cy, diagram.UmbraRadius*layout.scale)
-	writeLunarEclipseShadowLabels(&b, layout, diagram, options.Language)
-	writeLunarEclipseAxes(&b, layout.cx, layout.cy, diagram.PenumbraRadius*layout.scale, options.Language)
-	writeLunarEclipseEclipticLine(&b, layout, diagram, mapX, mapY, options.Language)
-
-	if len(points) > 0 {
-		b.WriteString(`<path d="`)
-		for i, point := range points {
-			if i == 0 {
-				fmt.Fprintf(&b, `M %.3f %.3f`, mapX(point.X), mapY(point.Y))
-				continue
-			}
-			fmt.Fprintf(&b, ` L %.3f %.3f`, mapX(point.X), mapY(point.Y))
-		}
-		b.WriteString(`" fill="none" stroke="#333333" stroke-width="1.1" stroke-dasharray="5 4" stroke-linecap="round" stroke-linejoin="round"/>`)
-	}
-
-	eventPoints := lunarEclipseSVGEventPoints(points)
-	for _, point := range eventPoints {
-		if point.Label == "Greatest" {
-			continue
-		}
-		writeLunarEclipseMoon(&b, point, diagram, mapX(point.X), mapY(point.Y), layout.scale, false)
-	}
-	for _, point := range eventPoints {
-		if point.Label == "Greatest" {
-			writeLunarEclipseMoon(&b, point, diagram, mapX(point.X), mapY(point.Y), layout.scale, true)
-			break
-		}
-	}
-	for _, point := range eventPoints {
-		if point.Label == "" {
-			continue
-		}
-		x := mapX(point.X)
-		y := mapY(point.Y)
-		writeLunarEclipseEventLabel(&b, point.Label, x, y, layout.cx, diagram.MoonRadius*layout.scale, options.Language)
-	}
+	// 穿影示意图的标注要避开已经写好的表头与右侧接触时刻面板。
+	labels := &svgchart.LabelTable{}
+	labels.Reserve(0, 0, layout.width, layout.diagramTop)
+	labels.Reserve(layout.diagramRight, layout.diagramTop,
+		layout.width-layout.diagramRight, layout.diagramEnd-layout.diagramTop)
+	labels.Reserve(0, layout.diagramEnd, layout.width, layout.height-layout.diagramEnd)
+	writeLunarEclipseDiagram(&b, layout, diagram, options.Language, labels)
 
 	writeLunarEclipseContacts(&b, info, options, layout.panelX, layout.panelY)
 	writeLunarEclipseFooter(&b, info, options, layout)
@@ -265,6 +395,8 @@ func lunarEclipseSVGLayoutFor(
 		scale:        scale,
 		diagramLeft:  diagramLeft,
 		diagramRight: diagramRight,
+		diagramTop:   topReserved,
+		diagramEnd:   height - bottomReserved,
 		panelX:       panelX,
 		panelY:       math.Max(148, cy-88),
 	}
@@ -504,9 +636,17 @@ func lunarEclipseSVGMetaText(info LunarEclipseInfo, language string) string {
 		return ""
 	}
 	if language == lunarEclipseSVGLanguageEnglish {
-		return fmt.Sprintf("Lunar Saros %d  %d/%d", info.Saros.Series, info.Saros.Member, info.Saros.Count)
+		label := fmt.Sprintf("Lunar Saros %d  %d/%d", info.Saros.Series, info.Saros.Member, info.Saros.Count)
+		if !info.Saros.Verified {
+			label += " (provisional)"
+		}
+		return label
 	}
-	return fmt.Sprintf("沙罗 %d  第 %d/%d 个成员", info.Saros.Series, info.Saros.Member, info.Saros.Count)
+	label := fmt.Sprintf("沙罗 %d  第 %d/%d 个成员", info.Saros.Series, info.Saros.Member, info.Saros.Count)
+	if !info.Saros.Verified {
+		label += "（推算）"
+	}
+	return label
 }
 
 func lunarEclipseSVGFormatDuration(duration time.Duration) string {
@@ -545,19 +685,35 @@ func lunarEclipseSVGTypeName(eclipseType LunarEclipseType, language string) stri
 	}
 }
 
-func writeLunarEclipseAxes(b *strings.Builder, cx, cy, radius float64, language string) {
+func writeLunarEclipseAxes(
+	b *strings.Builder,
+	cx, cy, radius float64,
+	language string,
+	labels *svgchart.LabelTable,
+	area svgchart.LabelBox,
+) {
 	north, east, west, south := "北", "东", "西", "南"
 	if language == lunarEclipseSVGLanguageEnglish {
 		north, east, west, south = "N", "E", "W", "S"
 	}
-	fmt.Fprintf(b, `<text x="%.3f" y="%.3f" fill="#111" font-family="Georgia, 'Times New Roman', serif" font-size="14" font-weight="700" text-anchor="middle">%s</text>`,
-		cx, cy-radius-18, html.EscapeString(north))
-	fmt.Fprintf(b, `<text x="%.3f" y="%.3f" fill="#111" font-family="Georgia, 'Times New Roman', serif" font-size="14" font-weight="700" text-anchor="middle">%s</text>`,
-		cx-radius-22, cy+4, html.EscapeString(east))
-	fmt.Fprintf(b, `<text x="%.3f" y="%.3f" fill="#111" font-family="Georgia, 'Times New Roman', serif" font-size="14" font-weight="700" text-anchor="middle">%s</text>`,
-		cx+radius+22, cy+4, html.EscapeString(west))
-	fmt.Fprintf(b, `<text x="%.3f" y="%.3f" fill="#111" font-family="Georgia, 'Times New Roman', serif" font-size="14" font-weight="700" text-anchor="middle">%s</text>`,
-		cx, cy+radius+28, html.EscapeString(south))
+	entries := [4]struct {
+		text string
+		x, y float64
+	}{
+		{text: north, x: cx, y: cy - radius - 18},
+		{text: east, x: cx - radius - 22, y: cy + 4},
+		{text: west, x: cx + radius + 22, y: cy + 4},
+		{text: south, x: cx, y: cy + radius + 28},
+	}
+	for _, entry := range entries {
+		candidates := svgchart.LabelCandidates(entry.x, entry.y, "middle", 15)
+		placed, ok := labels.Place(entry.text, 14, labelCandidatesInsideBox(candidates, entry.text, 14, area))
+		if !ok {
+			continue
+		}
+		fmt.Fprintf(b, `<text x="%.3f" y="%.3f" fill="#111" font-family="Georgia, 'Times New Roman', serif" font-size="14" font-weight="700" text-anchor="%s">%s</text>`,
+			placed.X, placed.Y, placed.Anchor, html.EscapeString(entry.text))
+	}
 }
 
 func lunarEclipseSVGPoints(points []basic.LunarEclipseDiagramPoint) []lunarEclipseSVGPoint {
@@ -580,6 +736,8 @@ func writeLunarEclipseEclipticLine(
 	diagram basic.LunarEclipseDiagramResult,
 	mapX, mapY func(float64) float64,
 	language string,
+	labels *svgchart.LabelTable,
+	area svgchart.LabelBox,
 ) {
 	unitX, unitY, ok := lunarEclipseSVGEclipticDirection(diagram.Eclipse.Maximum)
 	if !ok {
@@ -610,8 +768,15 @@ func writeLunarEclipseEclipticLine(
 		labelX += 16
 		anchor = "start"
 	}
+	text := lunarEclipseSVGLabelEcliptic(language)
+	candidates := append([]svgchart.LabelPlacement{{X: labelX, Y: labelY + 4, Anchor: anchor}},
+		svgchart.LabelCandidates(labelX, labelY+4, anchor, 14)...)
+	placed, ok := labels.Place(text, 12, labelCandidatesInsideBox(candidates, text, 12, area))
+	if !ok {
+		return
+	}
 	fmt.Fprintf(b, `<text x="%.3f" y="%.3f" fill="#444" font-family="Georgia, 'Times New Roman', serif" font-size="12" text-anchor="%s">%s</text>`,
-		labelX, labelY+4, anchor, html.EscapeString(lunarEclipseSVGLabelEcliptic(language)))
+		placed.X, placed.Y, placed.Anchor, html.EscapeString(text))
 }
 
 func lunarEclipseSVGEclipticDirection(ttJDE float64) (float64, float64, bool) {
@@ -664,15 +829,31 @@ func writeLunarEclipseShadowLabels(
 	layout lunarEclipseSVGLayout,
 	diagram basic.LunarEclipseDiagramResult,
 	language string,
+	labels *svgchart.LabelTable,
+	area svgchart.LabelBox,
 ) {
 	penumbraLabel, umbraLabel := "地球半影", "地球本影"
 	if language == lunarEclipseSVGLanguageEnglish {
 		penumbraLabel, umbraLabel = "Earth's Penumbra", "Earth's Umbra"
 	}
-	fmt.Fprintf(b, `<text x="%.3f" y="%.3f" fill="#333" font-family="Georgia, 'Times New Roman', serif" font-size="13" font-weight="700" text-anchor="middle">%s</text>`,
-		layout.cx, layout.cy-diagram.PenumbraRadius*layout.scale+28, html.EscapeString(penumbraLabel))
-	fmt.Fprintf(b, `<text x="%.3f" y="%.3f" fill="#111" font-family="Georgia, 'Times New Roman', serif" font-size="13" font-weight="700" text-anchor="middle">%s</text>`,
-		layout.cx, layout.cy-diagram.UmbraRadius*layout.scale+22, html.EscapeString(umbraLabel))
+	entries := [2]struct {
+		text   string
+		x, y   float64
+		fill   string
+		weight string
+	}{
+		{text: penumbraLabel, x: layout.cx, y: layout.cy - diagram.PenumbraRadius*layout.scale + 28, fill: "#333", weight: "700"},
+		{text: umbraLabel, x: layout.cx, y: layout.cy - diagram.UmbraRadius*layout.scale + 22, fill: "#111", weight: "700"},
+	}
+	for _, entry := range entries {
+		candidates := svgchart.LabelCandidates(entry.x, entry.y, "middle", 14)
+		placed, ok := labels.Place(entry.text, 13, labelCandidatesInsideBox(candidates, entry.text, 13, area))
+		if !ok {
+			continue
+		}
+		fmt.Fprintf(b, `<text x="%.3f" y="%.3f" fill="%s" font-family="Georgia, 'Times New Roman', serif" font-size="13" font-weight="%s" text-anchor="%s">%s</text>`,
+			placed.X, placed.Y, entry.fill, entry.weight, placed.Anchor, html.EscapeString(entry.text))
+	}
 }
 
 func lunarEclipseSVGEventPoints(points []lunarEclipseSVGPoint) []lunarEclipseSVGPoint {
@@ -823,11 +1004,23 @@ func writeLunarEclipseFooter(
 	layout lunarEclipseSVGLayout,
 ) {
 	_ = info
+	direction := lunarEclipseSVGDirectionTextValue(options)
+	if options.DirectionText != "" {
+		direction = svgchart.EllipsizeText(direction, layout.width-80, 12)
+	}
 	fmt.Fprintf(b, `<text x="%.3f" y="%.3f" fill="#333" font-family="Georgia, 'Times New Roman', serif" font-size="12">%s</text>`,
-		40.0, layout.height-54, html.EscapeString(lunarEclipseSVGDirectionTextValue(options)))
-	note := lunarEclipseSVGFooterNoteText(options)
-	fmt.Fprintf(b, `<text x="%.3f" y="%.3f" fill="#555" font-family="Georgia, 'Times New Roman', serif" font-size="12">%s</text>`,
-		40.0, layout.height-34, html.EscapeString(note))
+		40.0, layout.height-54, html.EscapeString(direction))
+	// 默认说明是单行；调用方文本折行后按画布底边截断，首行位置不变。
+	lines := []string{lunarEclipseSVGFooterNoteText(options)}
+	if options.FooterNote != "" {
+		maxWidth := layout.width - 80
+		lines = svgchart.TruncateTextLines(svgchart.WrapText(options.FooterNote, maxWidth, 12), maxWidth, 12,
+			svgchart.BaselineLineLimit(12, 15, layout.height-34, layout.height-4))
+	}
+	for index, line := range lines {
+		fmt.Fprintf(b, `<text x="%.3f" y="%.3f" fill="#555" font-family="Georgia, 'Times New Roman', serif" font-size="12">%s</text>`,
+			40.0, layout.height-34+float64(index)*15, html.EscapeString(line))
+	}
 }
 
 func lunarEclipseSVGContacts(info LunarEclipseInfo, language string) []lunarEclipseSVGContact {

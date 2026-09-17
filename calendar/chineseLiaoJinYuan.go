@@ -1,6 +1,7 @@
 package calendar
 
-func liaoJinYuanCals() map[int]uint32 {
+// liaoJinYuanCals 辽/金/元历相对宋基准表的年份修正表，编码同 getHanQingCals()。
+var liaoJinYuanCals = memoUint32Map(func() map[int]uint32 {
 	return map[int]uint32{
 		949:  2996838400,
 		955:  1237097216,
@@ -12,7 +13,9 @@ func liaoJinYuanCals() map[int]uint32 {
 		973:  2464163072,
 		985:  3031177216,
 		986:  1788881664,
+		993:  1767184896,
 		994:  3645910016,
+		1000: 2774542080,
 		999:  2775716864,
 		1001: 3530398464,
 		1012: 3579124224,
@@ -35,9 +38,13 @@ func liaoJinYuanCals() map[int]uint32 {
 		1073: 2991597824,
 		1075: 3601470208,
 		1077: 2513836800,
+		1074: 3040878080,
 		1078: 2511351296,
 		1080: 2763790592,
+		1093: 1531977216,
 		1094: 728372224,
+		1102: 1523258624,
+		1103: 1456482304,
 		1105: 2733216256,
 		1113: 635048960,
 		1121: 1269470464,
@@ -49,15 +56,18 @@ func liaoJinYuanCals() map[int]uint32 {
 		1155: 1530929920,
 		1163: 3595576320,
 		1168: 2461018624,
+		1175: 633116928,
 		1176: 628108288,
 		1178: 2839221504,
 		1184: 1264594176,
 		1198: 3040880384,
 		1207: 2904563200,
+		1208: 3047822080,
 		1209: 727721472,
 		1239: 1370498304,
 		1250: 3576701440,
 		1251: 1520769024,
+		1252: 3600820736,
 		1253: 1523588864,
 		1256: 2732596480,
 		1258: 3511690240,
@@ -66,9 +76,9 @@ func liaoJinYuanCals() map[int]uint32 {
 		1273: 1169888512,
 		1276: 1784254976,
 	}
-}
+})
 
-func liaoJinYuanEras() []Era {
+var liaoJinYuanEras = memoEras(func() []Era {
 	return []Era{
 		{
 			Year:              1264,
@@ -337,9 +347,9 @@ func liaoJinYuanEras() []Era {
 			Dynasty:           "辽",
 		},
 	}
-}
+})
 
-func liaoJinYuanEraMap() map[string][][]int {
+var liaoJinYuanEraMap = memoEraMap(func() map[string][][]int {
 	return map[string][][]int{
 		"中统":   [][]int{{1260, 1264}},
 		"元宪宗":  [][]int{{1251, 1259}},
@@ -385,25 +395,29 @@ func liaoJinYuanEraMap() map[string][][]int {
 		"大同":   [][]int{{947, 947}},
 		"会同":   [][]int{{939, 946}},
 	}
-}
+})
 
 func innerSolarToLunarLiaoJinYuan(date Time) Time {
 	year := date.solarTime.Year()
 	month := int(date.solarTime.Month())
 	day := date.solarTime.Day()
+	// 农历年早于对应年号表首年时 eras 为空，此类候选与主流日期完全相同且无朝代，跳过追加。
 	if year >= 947 && year <= 1279 {
 		lyear, lmonth, ganzhiMonth, lday, isLeap, ldesc := rapidLunarHan2Qing(year, month, day, 0, liaoJinYuanCals)
-		date.lunars = append(date.lunars, LunarTime{
-			solarDate:   date.Solar(),
-			year:        lyear,
-			month:       lmonth,
-			day:         lday,
-			leap:        isLeap,
-			desc:        ldesc,
-			comment:     "",
-			ganzhiMonth: ganzhiMonth,
-			eras:        innerEras(lyear, liaoJinYuanEras),
-		})
+		eras := innerEras(lyear, liaoJinYuanEras)
+		if len(eras) > 0 {
+			date.lunars = append(date.lunars, LunarTime{
+				solarDate:   date.Solar(),
+				year:        lyear,
+				month:       lmonth,
+				day:         lday,
+				leap:        isLeap,
+				desc:        ldesc,
+				comment:     "",
+				ganzhiMonth: ganzhiMonth,
+				eras:        eras,
+			})
+		}
 	}
 	return date
 }

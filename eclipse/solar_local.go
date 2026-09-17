@@ -9,7 +9,6 @@ import (
 
 const (
 	localSolarEclipseSynodicMonthDays = 29.530588853
-	localSolarEclipseSearchLimit      = 6000
 	localSolarEclipseSearchEpsilonDay = 1e-8
 	localSolarEclipseLatitudeLimitDeg = 2.0
 )
@@ -55,7 +54,7 @@ type LocalSolarEclipseInfo struct {
 	Model SolarEclipseRadiusModel
 	// Type 站心食型, local eclipse type.
 	Type SolarEclipseType
-	// HasSaros 存在沙罗序列信息, has Saros series metadata.
+	// HasSaros 存在沙罗序列信息（可能是锚点外推结果）, has Saros series metadata (possibly extrapolated).
 	HasSaros bool
 	// Saros 是沙罗序列信息，包括系列号、系列内序号和总成员数。
 	// Saros is Saros series metadata with the series number, member index, and total member count.
@@ -384,27 +383,13 @@ func searchLocalSolarEclipse(
 	calculator localSolarEclipseCalculator,
 	mode localSolarEclipseQueryMode,
 ) (LocalSolarEclipseInfo, bool) {
-	targetTT := solarEclipseTimeToTTJDE(date)
-	candidateTT := basic.CalcMoonSHByJDE(targetTT, 0)
-
-	for i := 0; i < localSolarEclipseSearchLimit; i++ {
-		if isPotentialLocalSolarEclipse(candidateTT) {
-			globalResult := calculator.global(candidateTT)
-			if globalResult.Type != basic.SolarEclipseNone {
-				result := calculator.local(globalResult.GreatestEclipse, lon, lat, height)
-				if result.Type != basic.SolarEclipseNone {
-					info := localSolarEclipseInfoFromBasic(result, lon, lat, height, date.Location())
-					if (mode != localSolarEclipseQueryVisible || localSolarEclipseVisible(info)) &&
-						localSolarEclipseMatchesDirection(result.GreatestEclipse, targetTT, direction, includeCurrent) {
-						return info, true
-					}
-				}
-			}
-		}
-		candidateTT = nextEclipseSearchCandidateTT(candidateTT, 0, direction, localSolarEclipseSynodicMonthDays)
-	}
-
-	return LocalSolarEclipseInfo{}, false
+	info, _, ok := searchLocalCentralSolarEclipse(
+		solarEclipseTimeToTTJDE(date),
+		solarEclipseTimeToTTJDE(date)+float64(direction)*localSolarEclipseDefaultSearchYears*365.25,
+		direction, includeCurrent, SolarEclipseLocalSearchAny, lon, lat, height, date.Location(),
+		calculator, mode,
+	)
+	return info, ok
 }
 
 func searchLocalTotalSolarEclipse(
@@ -415,27 +400,13 @@ func searchLocalTotalSolarEclipse(
 	calculator localSolarEclipseCalculator,
 	mode localSolarEclipseQueryMode,
 ) (LocalSolarEclipseInfo, bool) {
-	targetTT := solarEclipseTimeToTTJDE(date)
-	candidateTT := basic.CalcMoonSHByJDE(targetTT, 0)
-
-	for i := 0; i < localSolarEclipseSearchLimit; i++ {
-		if isPotentialLocalSolarEclipse(candidateTT) {
-			globalResult := calculator.global(candidateTT)
-			if globalResult.HasTotal || globalResult.HasHybrid {
-				result := calculator.local(globalResult.GreatestEclipse, lon, lat, height)
-				if result.HasTotal {
-					info := localSolarEclipseInfoFromBasic(result, lon, lat, height, date.Location())
-					if (mode != localSolarEclipseQueryVisible || localCentralSolarEclipseVisible(info)) &&
-						localSolarEclipseMatchesDirection(result.GreatestEclipse, targetTT, direction, includeCurrent) {
-						return info, true
-					}
-				}
-			}
-		}
-		candidateTT = nextEclipseSearchCandidateTT(candidateTT, 0, direction, localSolarEclipseSynodicMonthDays)
-	}
-
-	return LocalSolarEclipseInfo{}, false
+	info, _, ok := searchLocalCentralSolarEclipse(
+		solarEclipseTimeToTTJDE(date),
+		solarEclipseTimeToTTJDE(date)+float64(direction)*localSolarEclipseDefaultSearchYears*365.25,
+		direction, includeCurrent, SolarEclipseLocalSearchTotal, lon, lat, height, date.Location(),
+		calculator, mode,
+	)
+	return info, ok
 }
 
 func searchLocalAnnularSolarEclipse(
@@ -446,27 +417,13 @@ func searchLocalAnnularSolarEclipse(
 	calculator localSolarEclipseCalculator,
 	mode localSolarEclipseQueryMode,
 ) (LocalSolarEclipseInfo, bool) {
-	targetTT := solarEclipseTimeToTTJDE(date)
-	candidateTT := basic.CalcMoonSHByJDE(targetTT, 0)
-
-	for i := 0; i < localSolarEclipseSearchLimit; i++ {
-		if isPotentialLocalSolarEclipse(candidateTT) {
-			globalResult := calculator.global(candidateTT)
-			if globalResult.HasAnnular || globalResult.HasHybrid {
-				result := calculator.local(globalResult.GreatestEclipse, lon, lat, height)
-				if result.HasAnnular && !result.HasTotal {
-					info := localSolarEclipseInfoFromBasic(result, lon, lat, height, date.Location())
-					if (mode != localSolarEclipseQueryVisible || localCentralSolarEclipseVisible(info)) &&
-						localSolarEclipseMatchesDirection(result.GreatestEclipse, targetTT, direction, includeCurrent) {
-						return info, true
-					}
-				}
-			}
-		}
-		candidateTT = nextEclipseSearchCandidateTT(candidateTT, 0, direction, localSolarEclipseSynodicMonthDays)
-	}
-
-	return LocalSolarEclipseInfo{}, false
+	info, _, ok := searchLocalCentralSolarEclipse(
+		solarEclipseTimeToTTJDE(date),
+		solarEclipseTimeToTTJDE(date)+float64(direction)*localSolarEclipseDefaultSearchYears*365.25,
+		direction, includeCurrent, SolarEclipseLocalSearchAnnular, lon, lat, height, date.Location(),
+		calculator, mode,
+	)
+	return info, ok
 }
 
 func isPotentialLocalSolarEclipse(newMoonTT float64) bool {

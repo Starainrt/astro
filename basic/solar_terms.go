@@ -32,12 +32,21 @@ func GetMoonLoops(year float64, loop int) []float64 {
 	return moonLoops
 }
 
+// GetJieqiLoops 返回从该年冬至起连续 loop 个节气时刻（北京时间，按 15° 一步）：
+// 每 24 个节气跨一年，loop<=0 返回 nil；黄经一律归化到 (0, 360]，
+// 因此 loop 超过 31 时也不会把 >360° 的角度丢给 GetJQTime（那里会静默 NaN）。
+// GetJieqiLoops returns loop consecutive solar-term instants starting at the winter solstice of
+// year; 24 terms span one year. Non-positive loop returns nil, and the longitude is normalised into
+// (0, 360] so loops beyond 31 never hand an out-of-range angle to GetJQTime.
 func GetJieqiLoops(year, loop int) []float64 {
+	if loop <= 0 {
+		return nil
+	}
 	start := 270
 	jq := make([]float64, loop)
 	for i := 1; i <= loop; i++ {
 		angle := start + 15*(i-1)
-		if angle > 360 {
+		for angle > 360 {
 			angle -= 360
 		}
 		jq[i-1] = GetJQTime(year+int(math.Ceil(float64(i-1)/24.000)), angle) + 8.0/24.0

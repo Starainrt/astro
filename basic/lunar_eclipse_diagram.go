@@ -111,11 +111,11 @@ func lunarEclipseDiagram(
 	result.StepDays = stepDays
 	result.Points = make([]LunarEclipseDiagramPoint, 0, len(times))
 	for _, item := range times {
-		state := computeLunarShadowState(item.jde, shadowModel)
+		plane := lunarEclipsePlaneStateAt(item.jde)
 		result.Points = append(result.Points, LunarEclipseDiagramPoint{
 			JDE:    item.jde,
-			X:      state.x / maximumState.moonRadiusRad,
-			Y:      state.y / maximumState.moonRadiusRad,
+			X:      plane.x / maximumState.moonRadiusRad,
+			Y:      plane.y / maximumState.moonRadiusRad,
 			Label:  lunarEclipseDiagramPrimaryLabel(item.labels),
 			Labels: append([]string(nil), item.labels...),
 		})
@@ -136,7 +136,7 @@ func normalizeLunarEclipseDiagramOptions(options LunarEclipseDiagramOptions) Lun
 func lunarEclipseDiagramTimes(eclipse LunarEclipseResult, stepDays float64) ([]lunarEclipseDiagramTime, float64) {
 	startJDE := eclipse.PenumbralStart
 	endJDE := eclipse.PenumbralEnd
-	if startJDE == 0 || endJDE == 0 || endJDE <= startJDE {
+	if !isFiniteFloat(startJDE) || !isFiniteFloat(endJDE) || endJDE <= startJDE {
 		return nil, stepDays
 	}
 
@@ -181,7 +181,7 @@ func uniqueLunarEclipseDiagramTimes(times []lunarEclipseDiagramTime) []lunarEcli
 
 	unique := times[:0]
 	for _, item := range times {
-		if item.jde == 0 {
+		if !isFiniteFloat(item.jde) {
 			continue
 		}
 		if len(unique) == 0 || math.Abs(item.jde-unique[len(unique)-1].jde) > lunarEclipseDiagramDuplicateDays {

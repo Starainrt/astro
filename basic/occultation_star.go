@@ -240,38 +240,10 @@ func starOccultationLatitudeEnvelopePass(startTT, endTT float64, star StarCoordi
 	return minimumLatitude <= limit && maximumLatitude >= -limit
 }
 
-func starOccultationGeocentricLongitudeCandidate(startTT, endTT, step float64, star StarCoordinate) float64 {
-	bestTT := math.NaN()
-	bestDelta := math.Inf(1)
-	for tt := startTT; tt <= endTT; tt += step {
-		delta := math.Abs(signedAngleDifference(HMoonTrueLoN(tt, 8), starOccultationGeocentricStarLongitude(tt, star)))
-		if delta < bestDelta {
-			bestDelta = delta
-			bestTT = tt
-		}
-	}
-	if endTT > startTT {
-		delta := math.Abs(signedAngleDifference(HMoonTrueLoN(endTT, 8), starOccultationGeocentricStarLongitude(endTT, star)))
-		if delta < bestDelta {
-			bestTT = endTT
-		}
-	}
-	return bestTT
-}
-
 func starOccultationGeocentricStarLongitude(tt float64, star StarCoordinate) float64 {
 	ra, dec := starApparentRaDecGeocentric(tt, star)
 	longitude, _ := RaDecToLoBo(tt, ra, dec)
 	return longitude
-}
-
-func starOccultationMinimizeGeocentricSeparation(seed, startTT, endTT float64, star StarCoordinate) float64 {
-	halfWindow := 0.75
-	left := math.Max(startTT, seed-halfWindow)
-	right := math.Min(endTT, seed+halfWindow)
-	return starOccultationMinimizeValue(left, right, func(tt float64) float64 {
-		return starOccultationGeocentricSeparationArcsec(tt, star)
-	})
 }
 
 func starOccultationMinimizeValue(left, right float64, value func(float64) float64) float64 {
@@ -321,7 +293,15 @@ func starOccultationBestObserver(seedTT, startTT, endTT float64, star StarCoordi
 		frameAt := func(tt float64) (occultationPathFrame, bool) {
 			return starOccultationPathFrameAt(tt, star)
 		}
-		point, pointOK = occultationPathBoundaryPointForFrame(greatestTT, frameAt, time.UTC)
+		// 同行星最佳事件搜索：非中心路径的最佳站心取离影轴最近的椭球点，
+		// 外接触切点位于掩带边缘，只作最后回退。
+		// Same as the planetary best-event search: for a non-central path the
+		// best station is the ellipsoid point nearest to the shadow axis, while
+		// the outer contact tangent on the band edge stays the last resort.
+		point, pointOK = occultationPathTrackPointForFrame(greatestTT, frameAt, time.UTC)
+		if !pointOK {
+			point, pointOK = occultationPathBoundaryPointForFrame(greatestTT, frameAt, time.UTC)
+		}
 	}
 	if !pointOK {
 		return 0, Observer{}, 0, false
@@ -531,39 +511,11 @@ func starAnnualParallaxEcliptic(tt, longitude, latitude, parallaxMas float64) (f
 	return normalizeRA(longitude), latitude
 }
 
-func starOccultationLongitudeCandidate(startTT, endTT, step float64, star StarCoordinate, observer Observer) float64 {
-	bestTT := math.NaN()
-	bestDelta := math.Inf(1)
-	for tt := startTT; tt <= endTT; tt += step {
-		delta := starOccultationLongitudeDistance(tt, star, observer)
-		if delta < bestDelta {
-			bestDelta = delta
-			bestTT = tt
-		}
-	}
-	if endTT > startTT {
-		delta := starOccultationLongitudeDistance(endTT, star, observer)
-		if delta < bestDelta {
-			bestTT = endTT
-		}
-	}
-	return bestTT
-}
-
 func starOccultationLongitudeDistance(tt float64, star StarCoordinate, observer Observer) float64 {
 	moonLongitude := HMoonTrueLoN(tt, 8)
 	starRA, starDec := starApparentRaDec(tt, star, observer)
 	starLongitude, _ := RaDecToLoBo(tt, starRA, starDec)
 	return math.Abs(signedAngleDifference(moonLongitude, starLongitude))
-}
-
-func starOccultationMinimizeSeparation(seed, startTT, endTT float64, star StarCoordinate, observer Observer) float64 {
-	halfWindow := 0.75
-	left := math.Max(startTT, seed-halfWindow)
-	right := math.Min(endTT, seed+halfWindow)
-	return starOccultationMinimizeValue(left, right, func(tt float64) float64 {
-		return starMoonSeparationArcsec(tt, star, observer)
-	})
 }
 
 func starMoonSeparationArcsec(tt float64, star StarCoordinate, observer Observer) float64 {
@@ -675,7 +627,13 @@ func occultationPositionAngle(moonRA, moonDec, starRA, starDec float64) float64 
 }
 
 func occultationAltitude(tt float64, observer Observer, ra, dec float64) float64 {
-	hourAngle := signedAngleDifference(ApparentSiderealTime(TD2UT(tt, false))*15+observer.Longitude, ra) * math.Pi / 180
+	return occultationAltitudeWithSidereal(
+		ApparentSiderealTime(TD2UT(tt, false))*15, observer, ra, dec,
+	)
+}
+
+func occultationAltitudeWithSidereal(siderealDegrees float64, observer Observer, ra, dec float64) float64 {
+	hourAngle := signedAngleDifference(siderealDegrees+observer.Longitude, ra) * math.Pi / 180
 	lat := observer.Latitude * math.Pi / 180
 	declination := dec * math.Pi / 180
 	sinAltitude := math.Sin(lat)*math.Sin(declination) + math.Cos(lat)*math.Cos(declination)*math.Cos(hourAngle)

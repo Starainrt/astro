@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/starainrt/astro/basic"
 	"github.com/starainrt/astro/internal/svgmap"
 )
 
@@ -59,6 +60,9 @@ func TestLunarEclipseMapSVGUsesExclusiveVisibilityLayers(t *testing.T) {
 	if strings.Contains(diagram, `class="entire-eclipse-region"`) && strings.Contains(diagram, `fill-opacity="0.70"`) {
 		t.Fatal("entire-eclipse region still uses the opaque stacked-overlay style")
 	}
+	if !strings.Contains(diagram, `clipPath id="lunar-visible-maximum"`) {
+		t.Fatal("entire-eclipse region is not constrained by greatest-eclipse visibility")
+	}
 }
 
 func TestLunarEclipseMapSVGSupportsForcedPolarProjection(t *testing.T) {
@@ -79,118 +83,45 @@ func TestLunarEclipseMapSVGSupportsForcedPolarProjection(t *testing.T) {
 	}
 }
 
-func TestLunarEclipseVisibilityPolygonsContainOnlyVisibleHemisphere(t *testing.T) {
-	tests := []struct {
-		name       string
-		projection svgmap.Projection
-		center     svgmap.GeoPoint
-		visible    svgmap.GeoPoint
-		hidden     svgmap.GeoPoint
-	}{
-		{
-			name:       "equirectangular across antimeridian",
-			projection: svgmap.ProjectionEquirectangular,
-			center:     svgmap.GeoPoint{Longitude: 170, Latitude: 12},
-			visible:    svgmap.GeoPoint{Longitude: 170, Latitude: 12},
-			hidden:     svgmap.GeoPoint{Longitude: -10, Latitude: -12},
-		},
-		{
-			name:       "north polar center inside projection",
-			projection: svgmap.ProjectionNorthPolar,
-			center:     svgmap.GeoPoint{Longitude: 30, Latitude: 20},
-			visible:    svgmap.GeoPoint{Longitude: 30, Latitude: 80},
-			hidden:     svgmap.GeoPoint{Longitude: -150, Latitude: 10},
-		},
-		{
-			name:       "north polar center outside projection",
-			projection: svgmap.ProjectionNorthPolar,
-			center:     svgmap.GeoPoint{Longitude: 30, Latitude: -20},
-			visible:    svgmap.GeoPoint{Longitude: 30, Latitude: 10},
-			hidden:     svgmap.GeoPoint{Longitude: 30, Latitude: 90},
-		},
-		{
-			name:       "south polar center inside projection",
-			projection: svgmap.ProjectionSouthPolar,
-			center:     svgmap.GeoPoint{Longitude: -45, Latitude: -20},
-			visible:    svgmap.GeoPoint{Longitude: -45, Latitude: -80},
-			hidden:     svgmap.GeoPoint{Longitude: 135, Latitude: -10},
-		},
-	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			frame := svgmap.Frame{Width: 360, Height: 360, Projection: test.projection}
-			polygons := lunarEclipseVisibilityPolygons(test.center, test.projection, 360)
-			if len(polygons) == 0 {
-				t.Fatal("visibility polygon is empty")
-			}
-			if !projectedPointInLunarVisibility(frame, polygons, test.visible) {
-				t.Fatalf("visible point %#v is outside the rendered region", test.visible)
-			}
-			if projectedPointInLunarVisibility(frame, polygons, test.hidden) {
-				t.Fatalf("hidden point %#v is inside the rendered region", test.hidden)
-			}
-		})
-	}
-}
-
-func TestLunarEclipseVisibilityPathDoesNotUseTriangleFan(t *testing.T) {
-	for _, projection := range []svgmap.Projection{
-		svgmap.ProjectionEquirectangular,
-		svgmap.ProjectionNorthPolar,
-		svgmap.ProjectionSouthPolar,
+func TestLunarEclipseVisibilityPathMatchesTopocentricHorizon(t *testing.T) {
+	for _, at := range []time.Time{
+		time.Date(2026, 3, 3, 9, 0, 0, 0, time.UTC),
+		time.Date(2025, 9, 7, 16, 0, 0, 0, time.UTC),
+		time.Date(2024, 12, 15, 12, 0, 0, 0, time.UTC),
 	} {
-		frame := svgmap.Frame{Width: 720, Height: 360, Projection: projection}
-		if projection != svgmap.ProjectionEquirectangular {
-			frame.Width = 360
-		}
-		path := lunarEclipseVisibilityPathForCenter(
-			svgmap.GeoPoint{Longitude: 170, Latitude: 12}, frame,
-		)
-		if subpaths := strings.Count(path, "M "); subpaths != 1 {
-			t.Fatalf("%s visibility path has %d subpaths, want one continuous outline", projection, subpaths)
-		}
-		if strings.Contains(path, "NaN") || strings.Contains(path, "Inf") {
-			t.Fatalf("%s visibility path contains a non-finite coordinate", projection)
-		}
-	}
-}
-
-func TestLunarEclipseVisibilityPolygonsMatchSphericalHorizon(t *testing.T) {
-	tests := []struct {
-		projection svgmap.Projection
-		center     svgmap.GeoPoint
-	}{
-		{svgmap.ProjectionEquirectangular, svgmap.GeoPoint{Longitude: 170, Latitude: 18}},
-		{svgmap.ProjectionEquirectangular, svgmap.GeoPoint{Longitude: -170, Latitude: -18}},
-		{svgmap.ProjectionEquirectangular, svgmap.GeoPoint{Longitude: 170, Latitude: 0}},
-		{svgmap.ProjectionNorthPolar, svgmap.GeoPoint{Longitude: 35, Latitude: 18}},
-		{svgmap.ProjectionNorthPolar, svgmap.GeoPoint{Longitude: 35, Latitude: -18}},
-		{svgmap.ProjectionSouthPolar, svgmap.GeoPoint{Longitude: -70, Latitude: -18}},
-		{svgmap.ProjectionSouthPolar, svgmap.GeoPoint{Longitude: -70, Latitude: 18}},
-	}
-	for _, test := range tests {
-		frame := svgmap.Frame{Width: 720, Height: 360, Projection: test.projection}
-		if test.projection != svgmap.ProjectionEquirectangular {
-			frame.Width = 360
-		}
-		polygons := lunarEclipseVisibilityPolygons(test.center, test.projection, 360)
-		for latitude := -75.0; latitude <= 75; latitude += 15 {
-			if test.projection == svgmap.ProjectionNorthPolar && latitude <= 0 {
-				continue
+		for _, projection := range []svgmap.Projection{svgmap.ProjectionEquirectangular, svgmap.ProjectionNorthPolar, svgmap.ProjectionSouthPolar} {
+			frame := svgmap.Frame{Width: 36000, Height: 18000, Projection: projection}
+			path, boundary := lunarEclipseVisibilityPath(at, frame)
+			if strings.Contains(path, "NaN") || strings.Contains(path, "Inf") {
+				t.Fatal("nonfinite path")
 			}
-			if test.projection == svgmap.ProjectionSouthPolar && latitude >= 0 {
-				continue
+			rings := svgClosedPathRings(t, `<path d="`+path+`"/>`)
+			if len(rings) == 0 || len(rings) > 3 {
+				t.Fatalf("projection=%s subpaths=%d", projection, len(rings))
 			}
-			for longitude := -165.0; longitude <= 165; longitude += 30 {
-				point := svgmap.GeoPoint{Longitude: longitude, Latitude: latitude}
-				dot := lunarVisibilityDot(test.center, point)
-				if math.Abs(dot) < 0.02 {
-					continue
+			jd := basic.Date2JDE(at)
+			for _, point := range boundary {
+				if altitude := basic.HMoonHeight(jd, point.Longitude, point.Latitude, 0); math.Abs(altitude) > 1e-9 {
+					t.Fatalf("horizon altitude=%g", altitude)
 				}
-				got := projectedPointInLunarVisibility(frame, polygons, point)
-				if got != (dot > 0) {
-					t.Fatalf("%s center=%#v point=%#v inside=%v dot=%.6f",
-						test.projection, test.center, point, got, dot)
+			}
+			for lon := -175.; lon < 180; lon += 20 {
+				for lat := -85.; lat < 90; lat += 10 {
+					x, y, ok := frame.Project(lon, lat)
+					if !ok {
+						continue
+					}
+					altitude := basic.HMoonHeight(jd, lon, lat, 0)
+					if math.Abs(altitude) < 0.05 {
+						continue
+					}
+					inside := false
+					for _, ring := range rings {
+						inside = inside || pointInLunarVisibilityPolygon(x, y, ring)
+					}
+					if inside != (altitude > 0) {
+						t.Fatalf("projection=%s at=%s site=(%v,%v) inside=%v altitude=%v", projection, at, lon, lat, inside, altitude)
+					}
 				}
 			}
 		}
@@ -218,26 +149,6 @@ func validateEclipseMapXML(value string) error {
 	}
 }
 
-func projectedPointInLunarVisibility(frame svgmap.Frame, polygons [][]svgmap.GeoPoint, point svgmap.GeoPoint) bool {
-	x, y, ok := frame.Project(point.Longitude, point.Latitude)
-	if !ok {
-		return false
-	}
-	for _, polygon := range polygons {
-		projected := make([][2]float64, 0, len(polygon))
-		for _, vertex := range polygon {
-			px, py, projectedOK := frame.Project(vertex.Longitude, vertex.Latitude)
-			if projectedOK {
-				projected = append(projected, [2]float64{px, py})
-			}
-		}
-		if pointInLunarVisibilityPolygon(x, y, projected) {
-			return true
-		}
-	}
-	return false
-}
-
 func pointInLunarVisibilityPolygon(x, y float64, polygon [][2]float64) bool {
 	inside := false
 	for current, previous := 0, len(polygon)-1; current < len(polygon); previous, current = current, current+1 {
@@ -248,13 +159,4 @@ func pointInLunarVisibilityPolygon(x, y float64, polygon [][2]float64) bool {
 		}
 	}
 	return inside
-}
-
-func lunarVisibilityDot(center, point svgmap.GeoPoint) float64 {
-	centerLongitude := center.Longitude * math.Pi / 180
-	centerLatitude := center.Latitude * math.Pi / 180
-	longitude := point.Longitude * math.Pi / 180
-	latitude := point.Latitude * math.Pi / 180
-	return math.Sin(centerLatitude)*math.Sin(latitude) +
-		math.Cos(centerLatitude)*math.Cos(latitude)*math.Cos(longitude-centerLongitude)
 }

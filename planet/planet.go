@@ -5,16 +5,25 @@ import (
 	"math"
 )
 
-// WherePlanet returns the full VSOP result for the selected body and coordinate.
+// WherePlanet 天体 xt 在儒略日 jd 的 VSOP 结果 / VSOP result for body xt at Julian day jd.
+//
+// xt 取 -1 或 0..7：0 为地球，1..7 依次为水星、金星、火星、木星、土星、天王星、海王星；-1 表示地球，zn 取 0 时给日心黄经。
+// zn 取 0 黄经、1 黄纬、2 日心距（AU）；xt 或 zn 越界返回 NaN 而不 panic。
+// xt is -1 or 0..7 (0 Earth, 1..7 Mercury through Neptune; -1 selects Earth, giving its heliocentric longitude for zn 0).
+// zn is 0 longitude, 1 latitude, 2 heliocentric distance in AU; an out-of-range xt or zn yields NaN instead of panicking.
 func WherePlanet(xt, zn int, jd float64) float64 {
 	return WherePlanetN(xt, zn, jd, -1)
 }
 
-// WherePlanetN returns the VSOP result for the selected body and coordinate.
-// When n < 0, all terms are used. Otherwise n follows the original eph0.js
-// truncation semantics: keep roughly n principal terms from the 0th order
-// series and scale higher-order series proportionally.
+// WherePlanetN 同 WherePlanet 的截断版 / truncated form of WherePlanet.
+//
+// n < 0 时使用全部项；否则保留约 n 个主项并按比例缩短高阶项。取值域与越界行为同 WherePlanet。
+// When n < 0 all terms are used; otherwise roughly n principal terms are kept and higher orders scaled proportionally. Domain and out-of-range behavior match WherePlanet.
 func WherePlanetN(xt, zn int, jd float64, n int) float64 {
+	if xt < -1 || xt > 7 || zn < 0 || zn > 2 {
+		return math.NaN()
+	}
+
 	sata := 0
 	if xt == -1 {
 		xt = 0

@@ -22,6 +22,9 @@ const (
 // 输入 seedJDE 只需要落在目标望月附近，允许相差数天。
 type LunarEclipseResult struct {
 	Type LunarEclipseType
+	// ShadowModel 是本次使用的影半径模型，决定影半径与食分的具体数值。
+	// ShadowModel is the shadow-radius model used, which fixes the shadow radii and magnitudes.
+	ShadowModel LunarEclipseShadowModel
 
 	// Maximum 是食甚时刻；即使最终没有月食，也会返回该次望月附近
 	// “月面中心最接近地影中心”的几何极值时刻。
@@ -39,6 +42,10 @@ type LunarEclipseResult struct {
 	// PenumbralStart / PenumbralEnd: 半影食始 / 半影食终
 	// PartialStart / PartialEnd: 初亏 / 复圆
 	// TotalStart / TotalEnd: 食既 / 生光
+	//
+	// 该阶段不发生时为 NaN（0 是 −4713-11-24 的真实时刻）；判断阶段是否存在一律用 Has*。
+	// A contact is NaN when that phase does not occur (JD 0 is the real instant −4713-11-24);
+	// decide by the Has* flags, never by comparing a contact against zero.
 	PenumbralStart float64
 	PenumbralEnd   float64
 	PartialStart   float64
@@ -59,6 +66,17 @@ type lunarShadowState struct {
 	umbraRadiusRad    float64
 	penumbraRadiusRad float64
 }
+
+// LunarEclipseShadowModel 标识月食用的是哪套影半径模型。
+// LunarEclipseShadowModel identifies which shadow-radius model produced a result.
+type LunarEclipseShadowModel int
+
+const (
+	// LunarEclipseShadowModelDanjon 是 Danjon 影半径模型。
+	LunarEclipseShadowModelDanjon LunarEclipseShadowModel = iota
+	// LunarEclipseShadowModelChauvenet 是 Chauvenet 影半径模型。
+	LunarEclipseShadowModelChauvenet
+)
 
 type lunarEclipseShadowModel int
 
@@ -117,11 +135,23 @@ func lunarEclipse(seedJDE float64, shadowModel lunarEclipseShadowModel) LunarEcl
 	fullMoonJDE := CalcMoonSHByJDE(seedJDE, 1)
 	maximumJDE, state, dxdt, dydt, minimumDistance := refineLunarEclipseMaximum(fullMoonJDE, shadowModel)
 
+	// 未发生的阶段保持 NaN：Has* 是权威判据，时刻字段不能拿 0 当哨兵。
+	model := LunarEclipseShadowModelDanjon
+	if shadowModel == lunarEclipseShadowChauvenet {
+		model = LunarEclipseShadowModelChauvenet
+	}
 	result := LunarEclipseResult{
 		Type:               LunarEclipseNone,
+		ShadowModel:        model,
 		Maximum:            maximumJDE,
 		MinimumDistance:    minimumDistance,
 		PenumbralMagnitude: (state.moonRadiusRad + state.penumbraRadiusRad - minimumDistance) / (2 * state.moonRadiusRad),
+		PenumbralStart:     math.NaN(),
+		PenumbralEnd:       math.NaN(),
+		PartialStart:       math.NaN(),
+		PartialEnd:         math.NaN(),
+		TotalStart:         math.NaN(),
+		TotalEnd:           math.NaN(),
 	}
 	rawUmbralMagnitude := (state.moonRadiusRad + state.umbraRadiusRad - minimumDistance) / (2 * state.moonRadiusRad)
 
@@ -223,7 +253,7 @@ func refineLunarEclipseContact(
 ) float64 {
 	firstGuess, ok := solveLineCircleContact(maximumState, dxdt, dydt, boundaryRadius, afterMaximum)
 	if !ok {
-		return 0
+		return math.NaN()
 	}
 
 	contactState := computeLunarShadowState(firstGuess, shadowModel)
@@ -272,17 +302,34 @@ func solveLineCircleContact(
 	return state.jde + delta, true
 }
 
-// computeLunarShadowState 计算某一力学时刻下，月心相对地影中心的二维几何状态。
-//
-// 所有内部角量统一使用弧度。影半径模型允许在 Danjon 与 Chauvenet 之间切换，
-// 其余月心轨迹与几何求交框架保持一致。
-func computeLunarShadowState(jde float64, shadowModel lunarEclipseShadowModel) lunarShadowState {
+// lunarEclipsePlaneState 只需要月心相对地影中心的二维坐标（穿影图采样点用，跳过半径所需的距离项）。
+type lunarEclipsePlaneState struct {
+	jde float64
+	x   float64
+	y   float64
+}
+
+func lunarEclipsePlaneStateAt(jde float64) lunarEclipsePlaneState {
 	julianCentury := (jde - 2451545.0) / 36525.0
 
 	sunLongitude := HSunTrueLo(jde)*rad + sunLongitudeAberrationRad(julianCentury)
 	sunLatitude := HSunTrueBo(jde) * rad
 	moonLongitude := HMoonTrueLo(jde)*rad + lunarLongitudeAberration
 	moonLatitude := HMoonTrueBo(jde)*rad + moonLatitudeAberrationRad(julianCentury)
+
+	return lunarEclipsePlaneState{
+		jde: jde,
+		x:   normalizeRadians(moonLongitude+math.Pi-sunLongitude) * math.Cos((moonLatitude-sunLatitude)/2),
+		y:   moonLatitude + sunLatitude,
+	}
+}
+
+// computeLunarShadowState 计算某一力学时刻下，月心相对地影中心的二维几何状态。
+//
+// 所有内部角量统一使用弧度。影半径模型允许在 Danjon 与 Chauvenet 之间切换，
+// 其余月心轨迹与几何求交框架保持一致。
+func computeLunarShadowState(jde float64, shadowModel lunarEclipseShadowModel) lunarShadowState {
+	plane := lunarEclipsePlaneStateAt(jde)
 
 	moonDistanceKM := HMoonAway(jde)
 	sunDistanceAU := EarthAway(jde)
@@ -299,9 +346,9 @@ func computeLunarShadowState(jde float64, shadowModel lunarEclipseShadowModel) l
 	)
 
 	return lunarShadowState{
-		jde:               jde,
-		x:                 normalizeRadians(moonLongitude+math.Pi-sunLongitude) * math.Cos((moonLatitude-sunLatitude)/2),
-		y:                 moonLatitude + sunLatitude,
+		jde:               plane.jde,
+		x:                 plane.x,
+		y:                 plane.y,
 		moonRadiusRad:     moonRadiusArcsec / lunarArcsecPerRadian,
 		umbraRadiusRad:    umbraRadiusArcsec / lunarArcsecPerRadian,
 		penumbraRadiusRad: penumbraRadiusArcsec / lunarArcsecPerRadian,
