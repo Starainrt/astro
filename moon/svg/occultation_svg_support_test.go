@@ -20,6 +20,7 @@ type occultationSVGText struct {
 	parent      string
 	parentClass string
 	value       string
+	fill        string
 	x, y        float64
 	fontSize    float64
 	anchor      string
@@ -67,6 +68,8 @@ func occultationSVGTexts(t *testing.T, diagram string) []occultationSVGText {
 					text.fontSize, _ = strconv.ParseFloat(attribute.Value, 64)
 				case "text-anchor":
 					text.anchor = attribute.Value
+				case "fill":
+					text.fill = attribute.Value
 				}
 			}
 			texts = append(texts, text)

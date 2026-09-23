@@ -26,7 +26,7 @@ func TestGetJQTime(t *testing.T) {
 			month -= 12
 		}
 
-		jd := JDECalc(year, int(month), float64(day))
+		jd := JDCalc(year, int(month), float64(day))
 		if angle == 0 {
 			angle = 360
 		}
@@ -43,7 +43,7 @@ func TestGetJQTime(t *testing.T) {
 			jd -= 0.001
 		}
 		jd += 0.001
-		return TD2UT(jd, false)
+		return TT2UTC(jd)
 	}
 
 	testCases := []struct {

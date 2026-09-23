@@ -3,8 +3,8 @@ package basic
 import "math"
 
 // GetShiErCi 十二次 / twelve divisions of the ecliptic in traditional Chinese astronomy.
-func GetShiErCi(jd float64) string { //十二次
-	tlo := HSunApparentLo(jd)
+func GetShiErCi(jde float64) string { //十二次
+	tlo := HSunApparentLo(jde)
 	if tlo >= 255 && tlo < 285 {
 		return "星纪"
 	} else if tlo >= 285 && tlo < 315 {
@@ -53,23 +53,25 @@ func GetWuHouTime(Year, Angle int) float64 {
 	if Month > 12 {
 		Month -= 12
 	}
-	JD1 := JDECalc(Year, Month, float64(Day))
-	JD1 += float64(tmp - Angle)
+	jd := JDCalc(Year, Month, float64(Day))
+	jd += float64(tmp - Angle)
 	Angle = tmp
 	if Angle <= 5 {
 		Angle = 360 + Angle
 	}
+	// 种子是民用时刻，牛顿迭代解出的是力学时事件时刻，两者必须分开命名。
+	jde := jd
 	converged := false
 	for i := 0; i < eventNewtonMaxIterations; i++ {
-		JD0 := JD1
-		stDegree := JQLospec(JD0, float64(Angle)) - float64(Angle)
-		stDegreep := (JQLospec(JD0+0.000005, float64(Angle)) - JQLospec(JD0-0.000005, float64(Angle))) / 0.00001
-		nextJD := JD0 - stDegree/stDegreep
+		jde0 := jde
+		stDegree := JQLospec(jde0, float64(Angle)) - float64(Angle)
+		stDegreep := (JQLospec(jde0+0.000005, float64(Angle)) - JQLospec(jde0-0.000005, float64(Angle))) / 0.00001
+		nextJD := jde0 - stDegree/stDegreep
 		if !isFiniteFloat(nextJD) {
 			return math.NaN()
 		}
-		JD1 = nextJD
-		if math.Abs(nextJD-JD0) <= 0.00001 {
+		jde = nextJD
+		if math.Abs(nextJD-jde0) <= 0.00001 {
 			converged = true
 			break
 		}
@@ -77,7 +79,7 @@ func GetWuHouTime(Year, Angle int) float64 {
 	if !converged {
 		return math.NaN()
 	}
-	return TD2UT(JD1, false)
+	return TT2UTC(jde)
 }
 
 // GetGanZhi 年干支 / ganzhi for a year number.

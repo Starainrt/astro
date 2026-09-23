@@ -526,10 +526,10 @@ func (solver solarEclipseSolver) validMagnitudeArcState(
 	magnitude, referenceJDE float64,
 	iterations int,
 ) (solarEclipseMagnitudeArcState, int, bool) {
-	jd := referenceJDE + coordinates[2]/solarEclipseMagnitudeContourTimeScale
+	jde := referenceJDE + coordinates[2]/solarEclipseMagnitudeContourTimeScale
 	longitude := normalizeLongitude(coordinates[0])
 	latitude := coordinates[1]
-	evaluation := solver.magnitudeEvaluationAt(jd)
+	evaluation := solver.magnitudeEvaluationAt(jde)
 	state := evaluation.center.stateAt(longitude*rad, latitude*rad, 0)
 	if math.Abs(solarEclipseMagnitudeAtTarget(state, magnitude)-magnitude) > 1e-7 ||
 		evaluation.separationSecondDerivative(longitude, latitude) <= 0 {
@@ -543,7 +543,7 @@ func (solver solarEclipseSolver) validMagnitudeArcState(
 		coordinates: coordinates,
 		tangent:     tangent,
 		point: SolarEclipsePathPoint{
-			JDE: jd, Longitude: longitude, Latitude: latitude, SunAltitude: state.sunAltitudeRad / rad,
+			JDE: jde, Longitude: longitude, Latitude: latitude, SunAltitude: state.sunAltitudeRad / rad,
 		},
 	}, iterations, true
 }
@@ -552,10 +552,10 @@ func (solver solarEclipseSolver) magnitudeEnvelopeJacobian(
 	coordinates [3]float64,
 	magnitude, referenceJDE float64,
 ) ([2]float64, [2][3]float64, bool) {
-	jd := referenceJDE + coordinates[2]/solarEclipseMagnitudeContourTimeScale
+	jde := referenceJDE + coordinates[2]/solarEclipseMagnitudeContourTimeScale
 	longitude := normalizeLongitude(coordinates[0])
 	latitude := coordinates[1]
-	evaluation := solver.magnitudeEvaluationAt(jd)
+	evaluation := solver.magnitudeEvaluationAt(jde)
 	residual, ok := solarEclipseMagnitudeEnvelopeResidualAt(evaluation, longitude, latitude, magnitude)
 	if !ok {
 		return [2]float64{}, [2][3]float64{}, false
@@ -574,14 +574,14 @@ func (solver solarEclipseSolver) magnitudeEnvelopeJacobian(
 			jacobian[row][column] = (shiftedResidual[row] - residual[row]) / steps[column]
 		}
 	}
-	timeEvaluation := solver.magnitudeEvaluationAt(jd + steps[2]/solarEclipseMagnitudeContourTimeScale)
+	timeEvaluation := solver.magnitudeEvaluationAt(jde + steps[2]/solarEclipseMagnitudeContourTimeScale)
 	timeResidual, timeOK := solarEclipseMagnitudeEnvelopeResidualAt(
 		timeEvaluation, longitude, latitude, magnitude,
 	)
 	if !timeOK {
 		return [2]float64{}, [2][3]float64{}, false
 	}
-	beforeEvaluation := solver.magnitudeEvaluationAt(jd - steps[2]/solarEclipseMagnitudeContourTimeScale)
+	beforeEvaluation := solver.magnitudeEvaluationAt(jde - steps[2]/solarEclipseMagnitudeContourTimeScale)
 	beforeResidual, beforeOK := solarEclipseMagnitudeEnvelopeResidualAt(
 		beforeEvaluation, longitude, latitude, magnitude,
 	)
@@ -645,14 +645,14 @@ func (solver solarEclipseSolver) refineMagnitudeHorizonCrossing(
 }
 
 func (solver solarEclipseSolver) refineMagnitudeHorizonPoint(
-	jd, longitude, latitude, magnitude float64,
+	jde, longitude, latitude, magnitude float64,
 ) (SolarEclipsePathPoint, bool) {
 	const (
 		geographicStep = 1e-4
 		timeStep       = 5.0 / 86400.0
 	)
 	for iteration := 0; iteration < 24; iteration++ {
-		evaluation := solver.magnitudeEvaluationAt(jd)
+		evaluation := solver.magnitudeEvaluationAt(jde)
 		residual, ok := solarEclipseMagnitudeHorizonResidualAt(evaluation, longitude, latitude, magnitude)
 		if !ok {
 			return SolarEclipsePathPoint{}, false
@@ -666,7 +666,7 @@ func (solver solarEclipseSolver) refineMagnitudeHorizonPoint(
 		latitudeResidual, latOK := solarEclipseMagnitudeHorizonResidualAt(
 			evaluation, longitude, latitude+geographicStep, magnitude,
 		)
-		timeResidual, timeOK := solver.magnitudeHorizonResidual(jd+timeStep, longitude, latitude, magnitude)
+		timeResidual, timeOK := solver.magnitudeHorizonResidual(jde+timeStep, longitude, latitude, magnitude)
 		if !lonOK || !latOK || !timeOK {
 			return SolarEclipsePathPoint{}, false
 		}
@@ -690,49 +690,49 @@ func (solver solarEclipseSolver) refineMagnitudeHorizonPoint(
 		}
 		longitude = normalizeLongitude(longitude + delta[0])
 		latitude += delta[1]
-		jd += delta[2]
+		jde += delta[2]
 	}
-	residual, ok := solver.magnitudeHorizonResidual(jd, longitude, latitude, magnitude)
+	residual, ok := solver.magnitudeHorizonResidual(jde, longitude, latitude, magnitude)
 	if !ok || math.Abs(residual[0]) > 1e-7 || math.Abs(residual[1]) > 1e-8 || math.Abs(residual[2]) > 1e-7 {
 		return SolarEclipsePathPoint{}, false
 	}
-	evaluation := solver.magnitudeEvaluationAt(jd)
+	evaluation := solver.magnitudeEvaluationAt(jde)
 	if evaluation.separationSecondDerivative(longitude, latitude) <= 0 {
 		return SolarEclipsePathPoint{}, false
 	}
 	return SolarEclipsePathPoint{
-		JDE: jd, Longitude: longitude, Latitude: latitude, SunAltitude: residual[2] / rad,
+		JDE: jde, Longitude: longitude, Latitude: latitude, SunAltitude: residual[2] / rad,
 	}, true
 }
 
-func (solver solarEclipseSolver) magnitudeEvaluationAt(jd float64) solarEclipseRiseSetEvaluation {
+func (solver solarEclipseSolver) magnitudeEvaluationAt(jde float64) solarEclipseRiseSetEvaluation {
 	return solarEclipseRiseSetEvaluation{
-		jd:     jd,
-		center: solver.localStateContextAt(jd),
-		before: solver.localStateContextAt(jd - solarEclipseRiseSetDerivativeStepDays),
-		after:  solver.localStateContextAt(jd + solarEclipseRiseSetDerivativeStepDays),
+		jd:     jde,
+		center: solver.localStateContextAt(jde),
+		before: solver.localStateContextAt(jde - solarEclipseRiseSetDerivativeStepDays),
+		after:  solver.localStateContextAt(jde + solarEclipseRiseSetDerivativeStepDays),
 	}
 }
 
-func (solver solarEclipseSolver) magnitudeCandidateEvaluationAt(jd float64) solarEclipseRiseSetEvaluation {
+func (solver solarEclipseSolver) magnitudeCandidateEvaluationAt(jde float64) solarEclipseRiseSetEvaluation {
 	return solarEclipseRiseSetEvaluation{
-		jd:     jd,
-		center: solver.localStateContextCandidateAt(jd),
-		before: solver.localStateContextCandidateAt(jd - solarEclipseRiseSetDerivativeStepDays),
-		after:  solver.localStateContextCandidateAt(jd + solarEclipseRiseSetDerivativeStepDays),
+		jd:     jde,
+		center: solver.localStateContextCandidateAt(jde),
+		before: solver.localStateContextCandidateAt(jde - solarEclipseRiseSetDerivativeStepDays),
+		after:  solver.localStateContextCandidateAt(jde + solarEclipseRiseSetDerivativeStepDays),
 	}
 }
 
-func (solver solarEclipseSolver) localStateContextAt(jd float64) localSolarEclipseStateContext {
+func (solver solarEclipseSolver) localStateContextAt(jde float64) localSolarEclipseStateContext {
 	if solver.localStateContextCache == nil {
-		return newLocalSolarEclipseStateContextWithOverride(jd, solver.deltaTSeconds, solver.params)
+		return newLocalSolarEclipseStateContextWithOverride(jde, solver.deltaTSeconds, solver.params)
 	}
-	key := math.Float64bits(jd)
+	key := math.Float64bits(jde)
 	if context, ok := solver.localStateContextCache[key]; ok &&
 		context.generation == deltaTGenerationValue() {
 		return context
 	}
-	context := newLocalSolarEclipseStateContextWithOverride(jd, solver.deltaTSeconds, solver.params)
+	context := newLocalSolarEclipseStateContextWithOverride(jde, solver.deltaTSeconds, solver.params)
 	return storeLocalSolarEclipseStateContext(solver.localStateContextCache, key, context)
 }
 
@@ -755,26 +755,26 @@ func storeLocalSolarEclipseStateContext(
 	return context
 }
 
-func (solver solarEclipseSolver) localStateContextCandidateAt(jd float64) localSolarEclipseStateContext {
+func (solver solarEclipseSolver) localStateContextCandidateAt(jde float64) localSolarEclipseStateContext {
 	if solver.localEphemeris == nil {
-		return solver.localStateContextAt(jd)
+		return solver.localStateContextAt(jde)
 	}
-	sun, moon, ok := solver.localEphemeris.equatorialAt(jd)
+	sun, moon, ok := solver.localEphemeris.equatorialAt(jde)
 	if !ok {
-		return solver.localStateContextAt(jd)
+		return solver.localStateContextAt(jde)
 	}
 	return localSolarEclipseStateContext{
 		sunXYZ:  solarEclipseLLRToXYZ(sun[0], sun[1], sun[2]),
 		moonXYZ: solarEclipseLLRToXYZ(moon[0], moon[1], moon[2]),
-		gst:     solver.siderealTimeAt(jd),
+		gst:     solver.siderealTimeAt(jde),
 		params:  solver.params,
 	}
 }
 
 func (solver solarEclipseSolver) magnitudeHorizonResidual(
-	jd, longitude, latitude, magnitude float64,
+	jde, longitude, latitude, magnitude float64,
 ) ([3]float64, bool) {
-	evaluation := solver.magnitudeEvaluationAt(jd)
+	evaluation := solver.magnitudeEvaluationAt(jde)
 	return solarEclipseMagnitudeHorizonResidualAt(evaluation, longitude, latitude, magnitude)
 }
 
@@ -829,13 +829,13 @@ func solveSolarEclipse3x3(matrix [3][3]float64, right [3]float64) ([3]float64, b
 	return result, true
 }
 
-func (solver solarEclipseSolver) magnitudeContourPointsAt(jd, magnitude float64) []SolarEclipsePathPoint {
-	moon := solver.besselMoonAt(jd)
-	axis := solver.besselAxisAt(jd)
-	evaluation := solver.magnitudeEvaluationAt(jd)
+func (solver solarEclipseSolver) magnitudeContourPointsAt(jde, magnitude float64) []SolarEclipsePathPoint {
+	moon := solver.besselMoonAt(jde)
+	axis := solver.besselAxisAt(jde)
+	evaluation := solver.magnitudeEvaluationAt(jde)
 	valueAt := func(angle float64) (float64, bool) {
 		point, ok := solver.magnitudeContourPointAt(
-			jd, moon, axis, math.Cos(angle), math.Sin(angle), magnitude,
+			jde, moon, axis, math.Cos(angle), math.Sin(angle), magnitude,
 		)
 		if !ok {
 			return 0, false
@@ -845,7 +845,7 @@ func (solver solarEclipseSolver) magnitudeContourPointsAt(jd, magnitude float64)
 	points := make([]SolarEclipsePathPoint, 0, 2)
 	for _, angle := range riseSetCyclicRoots(solarEclipseMagnitudeContourBoundaryPoints, valueAt) {
 		seed, ok := solver.magnitudeContourPointAt(
-			jd, moon, axis, math.Cos(angle), math.Sin(angle), magnitude,
+			jde, moon, axis, math.Cos(angle), math.Sin(angle), magnitude,
 		)
 		if !ok {
 			continue
@@ -861,27 +861,27 @@ func (solver solarEclipseSolver) magnitudeContourPointsAt(jd, magnitude float64)
 			continue
 		}
 		point := SolarEclipsePathPoint{
-			JDE: jd, Longitude: longitude, Latitude: latitude, SunAltitude: state.sunAltitudeRad / rad,
+			JDE: jde, Longitude: longitude, Latitude: latitude, SunAltitude: state.sunAltitudeRad / rad,
 		}
 		if !solarEclipseRiseSetPointExists(points, point) {
 			points = append(points, point)
 		}
 	}
 	if magnitude == 1 && len(points) < 2 {
-		points = solver.appendMagnitudeOneLimitSeeds(points, jd, evaluation)
+		points = solver.appendMagnitudeOneLimitSeeds(points, jde, evaluation)
 	}
 	if len(points) == 0 {
-		points = solver.magnitudeContourGeographicSeedsAt(jd, magnitude)
+		points = solver.magnitudeContourGeographicSeedsAt(jde, magnitude)
 	}
 	return points
 }
 
 func (solver solarEclipseSolver) appendMagnitudeOneLimitSeeds(
 	points []SolarEclipsePathPoint,
-	jd float64,
+	jde float64,
 	evaluation solarEclipseRiseSetEvaluation,
 ) []SolarEclipsePathPoint {
-	center, ok := solver.centralPathPointAt(jd)
+	center, ok := solver.centralPathPointAt(jde)
 	if !ok {
 		return points
 	}
@@ -901,7 +901,7 @@ func (solver solarEclipseSolver) appendMagnitudeOneLimitSeeds(
 			continue
 		}
 		candidate := SolarEclipsePathPoint{
-			JDE: jd, Longitude: longitude, Latitude: latitude, SunAltitude: state.sunAltitudeRad / rad,
+			JDE: jde, Longitude: longitude, Latitude: latitude, SunAltitude: state.sunAltitudeRad / rad,
 		}
 		if !solarEclipseRiseSetPointExists(points, candidate) {
 			points = append(points, candidate)
@@ -916,8 +916,8 @@ func (solver solarEclipseSolver) appendMagnitudeOneLimitSeeds(
 // total/annular transition. Solving the local-magnitude envelope from the
 // greatest point keeps those contours available without changing the normal
 // Bessel path.
-func (solver solarEclipseSolver) magnitudeContourGeographicSeedsAt(jd, magnitude float64) []SolarEclipsePathPoint {
-	center, ok := solver.centralPathPointAt(jd)
+func (solver solarEclipseSolver) magnitudeContourGeographicSeedsAt(jde, magnitude float64) []SolarEclipsePathPoint {
+	center, ok := solver.centralPathPointAt(jde)
 	if !ok {
 		// A non-central eclipse has no Earth-intersecting shadow axis, but its
 		// local maximum still has a well-defined geographic stationary point.
@@ -929,12 +929,12 @@ func (solver solarEclipseSolver) magnitudeContourGeographicSeedsAt(jd, magnitude
 			return nil
 		}
 		center = SolarEclipsePathPoint{
-			JDE:       jd,
+			JDE:       jde,
 			Longitude: result.GreatestLongitude,
 			Latitude:  result.GreatestLatitude,
 		}
 	}
-	evaluation := solver.magnitudeEvaluationAt(jd)
+	evaluation := solver.magnitudeEvaluationAt(jde)
 	centerState := evaluation.center.stateAt(center.Longitude*rad, center.Latitude*rad, 0)
 	maximum := solarEclipseMagnitudeAtTarget(centerState, magnitude)
 	if !finite(maximum) || maximum <= magnitude+1e-9 {
@@ -1020,7 +1020,7 @@ func (solver solarEclipseSolver) magnitudeContourGeographicSeedsAt(jd, magnitude
 				if refined {
 					state := evaluation.center.stateAt(seedLongitude*rad, seedLatitude*rad, 0)
 					candidate := SolarEclipsePathPoint{
-						JDE: jd, Longitude: seedLongitude, Latitude: seedLatitude,
+						JDE: jde, Longitude: seedLongitude, Latitude: seedLatitude,
 						SunAltitude: state.sunAltitudeRad / rad,
 					}
 					if !solarEclipseRiseSetPointExists(seeds, candidate) {
@@ -1103,14 +1103,14 @@ func solarEclipseMagnitudeAtTarget(state localSolarEclipseState, target float64)
 }
 
 func (solver solarEclipseSolver) magnitudeContourPointAt(
-	jd float64,
+	jde float64,
 	moon [3]float64,
 	axis solarEclipseAxis,
 	directionX, directionY, magnitude float64,
 ) (SolarEclipsePathPoint, bool) {
 	if magnitude == 0 {
-		_, _, sun := solver.besselGeometryAt(jd)
-		return solver.shadowFootprintPointAt(jd, moon, axis, sun, math.Atan2(directionY, directionX), solarEclipsePenumbralShadow)
+		_, _, sun := solver.besselGeometryAt(jde)
+		return solver.shadowFootprintPointAt(jde, moon, axis, sun, math.Atan2(directionY, directionX), solarEclipsePenumbralShadow)
 	}
 	radii := solver.shadowRadiiAt(moon[2])
 	radius := solarEclipseMagnitudeContourRadius(radii, magnitude)
@@ -1160,9 +1160,9 @@ func (solver solarEclipseSolver) magnitudeContourPointAt(
 		return SolarEclipsePathPoint{}, false
 	}
 	longitude, latitude := solarEclipseIntersectionGeodetic(intersection, axis)
-	sunAltitudeRad := solarEclipseSunAltitudeAtGreatest(jd, longitude, latitude, axis.gst)
+	sunAltitudeRad := solarEclipseSunAltitudeAtGreatest(jde, longitude, latitude, axis.gst)
 	return SolarEclipsePathPoint{
-		JDE:         jd,
+		JDE:         jde,
 		Longitude:   longitude,
 		Latitude:    latitude,
 		SunAltitude: sunAltitudeRad / rad,

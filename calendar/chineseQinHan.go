@@ -166,11 +166,11 @@ func qinHanEpoch(year int) (float64, int, int) {
 }
 
 func qinHanDateJDN(year, month, day int) int {
-	return int(math.Floor(basic.JDECalc(year, month, float64(day)) + 0.5))
+	return int(math.Floor(basic.JDCalc(year, month, float64(day)) + 0.5))
 }
 
 func qinHanJDNToDate(jdn int) time.Time {
-	return basic.JDE2DateByZone(float64(jdn)-0.5, getCst(), true)
+	return basic.JD2DateByZone(float64(jdn)-0.5, getCst(), true)
 }
 
 func floorDiv(a, b int) int {

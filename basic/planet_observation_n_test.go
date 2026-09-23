@@ -10,8 +10,8 @@ import (
 
 func TestBasicPlanetObservationNFullMatchesDefault(t *testing.T) {
 	date := time.Date(2026, 4, 26, 9, 30, 45, 123456789, time.FixedZone("CST", 8*3600))
-	ttJD := basic.TD2UT(basic.Date2JDE(date.UTC()), true)
-	jde := basic.Date2JDE(date)
+	ttJD := basic.UTC2TT(basic.Date2JD(date.UTC()))
+	jde := basic.Date2JD(date)
 	lon := 116.391
 	lat := 39.907
 	tz := 8.0

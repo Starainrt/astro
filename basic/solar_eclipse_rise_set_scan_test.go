@@ -10,12 +10,12 @@ import (
 
 func TestSolarEclipsePathTopologyAcrossSarosAnchors(t *testing.T) {
 	for _, year := range []int{1526, 1600, 1700, 1800, 1900, 2000, 2100, 2200, 2300, 2400, 2526} {
-		events := solarEclipseScanEvents(JDECalc(year, 1, 1), JDECalc(year+1, 1, 1))
+		events := solarEclipseScanEvents(JDCalc(year, 1, 1), JDCalc(year+1, 1, 1))
 		if len(events) == 0 {
 			t.Fatalf("%d has no solar eclipse candidate", year)
 		}
 		eventJDE := events[0]
-		name := JDE2Date(eventJDE).Format("2006-01-02")
+		name := JD2Date(eventJDE).Format("2006-01-02")
 		t.Run(name, func(t *testing.T) {
 			assertSolarEclipsePathTopology(t, eventJDE, 60.0/1440.0)
 		})

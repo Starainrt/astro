@@ -58,7 +58,7 @@ func solarEclipseContractLevelDiff(got, want []string) string {
 
 // 导出 TT/UTC 换算把力学时儒略日换回 UTC 时刻，口径与核心写进 PartialBegin/EndOnEarth 的一致。
 func solarEclipseContractTimeFromTT(ttJDE float64) time.Time {
-	return basic.JDE2DateByZone(ttJDE-basic.DeltaT(ttJDE, true)/86400, time.UTC, false)
+	return basic.JD2DateByZone(ttJDE-basic.DeltaT(ttJDE, true)/86400, time.UTC, false)
 }
 
 func TestSolarEclipseGreatestTimeLevelsContract(t *testing.T) {
@@ -160,8 +160,8 @@ func TestSolarEclipseGreatestTimeLevelsOnRealEclipseContract(t *testing.T) {
 		t.Fatal("missing 2009-07-22 eclipse")
 	}
 	// 同一力学时时刻经导出换算回 UTC，不依赖 eclipse 包内部的 TT→UTC 实现。
-	beginTT := basic.TD2UT(basic.Date2JDE(reported.PartialBeginOnEarth.UTC()), true)
-	endTT := basic.TD2UT(basic.Date2JDE(reported.PartialEndOnEarth.UTC()), true)
+	beginTT := basic.UTC2TT(basic.Date2JD(reported.PartialBeginOnEarth.UTC()))
+	endTT := basic.UTC2TT(basic.Date2JD(reported.PartialEndOnEarth.UTC()))
 	info := eclipsecore.SolarEclipseInfo{
 		PartialBeginOnEarth: solarEclipseContractTimeFromTT(beginTT),
 		PartialEndOnEarth:   solarEclipseContractTimeFromTT(endTT),

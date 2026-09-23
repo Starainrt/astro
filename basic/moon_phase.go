@@ -6,13 +6,13 @@ import (
 	. "github.com/starainrt/astro/tools"
 )
 
-func MoonPhase(jd float64) float64 {
-	moonBo := HMoonTrueBo(jd)
-	sunLo := HSunApparentLo(jd)
-	moonLo := HMoonApparentLo(jd)
+func MoonPhase(jde float64) float64 {
+	moonBo := HMoonTrueBo(jde)
+	sunLo := HSunApparentLo(jde)
+	moonLo := HMoonApparentLo(jde)
 	tmp := Cos(moonBo) * Cos(sunLo-moonLo)
-	earthSunDistance := Distance(jd) * 149597870.691
-	i := earthSunDistance * Sin(ArcCos(tmp)) / (HMoonAway(jd) - earthSunDistance*tmp)
+	earthSunDistance := Distance(jde) * 149597870.691
+	i := earthSunDistance * Sin(ArcCos(tmp)) / (HMoonAway(jde) - earthSunDistance*tmp)
 	i = ArcTan(i)
 	if i < 0 {
 		i += 180
@@ -197,8 +197,6 @@ func CalcMoonX(year float64, quarterType int) float64 {
 	A14 := 331.55 + 3.592518*k
 	planetaryCorrection := 325*Sin(A1) + 165*Sin(A2) + 164*Sin(A3) + 126*Sin(A4) + 110*Sin(A5) + 62*Sin(A6) + 60*Sin(A7) + 56*Sin(A8) + 47*Sin(A9) + 42*Sin(A10) + 40*Sin(A11) + 37*Sin(A12) + 35*Sin(A13) + 23*Sin(A14)
 	planetaryCorrection /= 1000000
-	//die(tmp2);
-	//die(JDE." ".tmp." ".tmp2." ".W);
 	jde = jde + planetaryCorrection + correction
 	if quarterType == 0 {
 		jde += W

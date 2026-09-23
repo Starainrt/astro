@@ -9,7 +9,7 @@ import (
 )
 
 func TestSolarEclipseHybridEnvelope21640323(t *testing.T) {
-	seed := JDECalc(2164, 3, 23)
+	seed := JDCalc(2164, 3, 23)
 	result := SolarEclipsePartialFootprints(seed, SolarEclipsePartialFootprintOptions{StepDays: 2.0 / 1440, BoundaryPoints: 96})
 	if len(result.CentralBandHorizonClosures) != 2 {
 		t.Fatal("missing hybrid horizon closures")
@@ -35,7 +35,7 @@ func TestSolarEclipseHybridEnvelope21640323(t *testing.T) {
 func TestSolarEclipseHybridSignedEnvelopeEvents(t *testing.T) {
 	for _, date := range [][3]int{{1144, 7, 3}, {1827, 10, 20}, {1854, 11, 20}, {1986, 10, 3}, {2013, 11, 3}, {2023, 4, 20}, {2164, 3, 23}, {2172, 10, 17}} {
 		t.Run(fmt.Sprintf("%04d-%02d-%02d", date[0], date[1], date[2]), func(t *testing.T) {
-			seed := JDECalc(date[0], date[1], float64(date[2]))
+			seed := JDCalc(date[0], date[1], float64(date[2]))
 			result := SolarEclipsePartialFootprints(seed, SolarEclipsePartialFootprintOptions{StepDays: 2.0 / 1440, BoundaryPoints: 96, CentralShadowStepDays: 2.0 / 1440})
 			if result.Eclipse.Type != SolarEclipseHybrid || len(result.CentralBandHorizonClosures) != 2 || len(result.CentralBandSegments) < 2 {
 				t.Fatalf("type=%s closures=%d segments=%d", result.Eclipse.Type, len(result.CentralBandHorizonClosures), len(result.CentralBandSegments))

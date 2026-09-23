@@ -4,7 +4,7 @@ import "testing"
 
 func TestSolarEclipse43290612PolarAnnularCentralBandCloses(t *testing.T) {
 	result := SolarEclipsePartialFootprints(
-		JDECalc(4329, 6, 12),
+		JDCalc(4329, 6, 12),
 		SolarEclipsePartialFootprintOptions{StepDays: 2.0 / 1440.0, BoundaryPoints: 96},
 	)
 	if result.Eclipse.Type != SolarEclipseAnnular || result.Eclipse.Centrality != SolarEclipseCentralTwoLimits {

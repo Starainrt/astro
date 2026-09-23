@@ -8,11 +8,11 @@ import (
 // StarHeight 星体的高度角
 // 传入 jde时间、瞬时赤经、瞬时赤纬、经度、纬度、时区，jde时间应为时区时间
 // 返回高度角，单位为度
-func StarHeight(jde, ra, dec, lon, lat, timezone float64) float64 {
+func StarHeight(localJD, ra, dec, lon, lat, timezone float64) float64 {
 	// 转换为世界时
-	utcJde := jde - timezone/24.0
+	utcJD := localJD - timezone/24.0
 	// 计算视恒星时
-	st := Limit360(ApparentSiderealTime(utcJde)*15 + lon)
+	st := Limit360(ApparentSiderealTime(UTC2UT1(utcJD))*15 + lon)
 	// 计算时角
 	hourAngle := Limit360(st - ra)
 	// 高度角、时角与天球座标三角转换公式
@@ -24,11 +24,11 @@ func StarHeight(jde, ra, dec, lon, lat, timezone float64) float64 {
 // StarAzimuth 星体的方位角
 // 传入 jde时间、瞬时赤经、瞬时赤纬、经度、纬度、时区，jde时间应为时区时间
 // 返回方位角，单位为度，正北为0，度数顺时针增加，取值范围[0-360)
-func StarAzimuth(jde, ra, dec, lon, lat, timezone float64) float64 {
+func StarAzimuth(localJD, ra, dec, lon, lat, timezone float64) float64 {
 	// 转换为世界时
-	utcJde := jde - timezone/24.0
+	utcJD := localJD - timezone/24.0
 	// 计算视恒星时
-	st := Limit360(ApparentSiderealTime(utcJde)*15 + lon)
+	st := Limit360(ApparentSiderealTime(UTC2UT1(utcJD))*15 + lon)
 	// 计算时角
 	hourAngle := Limit360(st - ra)
 	// 三角转换公式
@@ -49,11 +49,11 @@ func StarAzimuth(jde, ra, dec, lon, lat, timezone float64) float64 {
 // StarHourAngle 星体的时角
 // 传入 jde时间、瞬时赤经、瞬时赤纬、经度、时区，jde时间应为时区时间
 // 返回时角
-func StarHourAngle(jde, ra, lon, timezone float64) float64 {
+func StarHourAngle(localJD, ra, lon, timezone float64) float64 {
 	// 转换为世界时
-	utcJde := jde - timezone/24.0
+	utcJD := localJD - timezone/24.0
 	// 计算视恒星时
-	st := Limit360(ApparentSiderealTime(utcJde)*15 + lon)
+	st := Limit360(ApparentSiderealTime(UTC2UT1(utcJD))*15 + lon)
 	// 计算时角
 	return Limit360(st - ra)
 }
@@ -101,7 +101,7 @@ func EarthRotationAngle(jd_ut1 float64) float64 {
 // jd_tt: TT 时间的儒略日
 // 返回值: 格林尼治平恒星时 (弧度)
 func MeanSiderealTime2006(jd_ut1 float64) float64 {
-	jd_tt := TD2UT(jd_ut1, true)
+	jd_tt := UT12TT(jd_ut1)
 	t := (jd_tt - 2451545.0) / 36525.0
 	era := EarthRotationAngle(jd_ut1)
 
@@ -135,23 +135,23 @@ func ApparentSiderealTime2006(jd float64) float64 {
 	return value
 }
 
-func StarRiseTime(jde, ra, dec, lon, lat, height, timezone float64, aero bool) (float64, error) {
-	return StarRiseSetTime(jde, ra, dec, lon, lat, height, timezone, aero, true)
+func StarRiseTime(localJD, ra, dec, lon, lat, height, timezone float64, aero bool) (float64, error) {
+	return StarRiseSetTime(localJD, ra, dec, lon, lat, height, timezone, aero, true)
 }
 
-func StarSetTime(jde, ra, dec, lon, lat, height, timezone float64, aero bool) (float64, error) {
-	return StarRiseSetTime(jde, ra, dec, lon, lat, height, timezone, aero, false)
+func StarSetTime(localJD, ra, dec, lon, lat, height, timezone float64, aero bool) (float64, error) {
+	return StarRiseSetTime(localJD, ra, dec, lon, lat, height, timezone, aero, false)
 }
 
-func StarRiseSetTime(jde, ra, dec, lon, lat, height, timezone float64, aero, isRise bool) (float64, error) {
-	if !isFiniteFloat(jde) || !isFiniteFloat(ra) || !isFiniteFloat(dec) || !isFiniteFloat(lon) || !isFiniteFloat(lat) || !isFiniteFloat(height) || !isFiniteFloat(timezone) {
+func StarRiseSetTime(localJD, ra, dec, lon, lat, height, timezone float64, aero, isRise bool) (float64, error) {
+	if !isFiniteFloat(localJD) || !isFiniteFloat(ra) || !isFiniteFloat(dec) || !isFiniteFloat(lon) || !isFiniteFloat(lat) || !isFiniteFloat(height) || !isFiniteFloat(timezone) {
 		return 0, ErrInvalidObservationInput
 	}
-	//jde 世界时，非力学时，当地时区 0时，无需转换力学时
+	// localJD 是本地民用日锚点（当地 0 时），不是力学时。
 	//ra,dec 瞬时天球座标，非J2000等时间天球坐标
-	jde = math.Floor(jde) + 0.5
+	localJD = math.Floor(localJD) + 0.5
 	targetAltitude := StandardAltitudeStar(aero, height, lat)
-	sct := StarCulminationTime(jde, ra, lon, timezone)
+	sct := StarCulminationTime(localJD, ra, lon, timezone)
 	tmp := (Sin(targetAltitude) - Sin(dec)*Sin(lat)) / (Cos(dec) * Cos(lat))
 	if math.Abs(tmp) > 1 {
 		if StarHeight(sct, ra, dec, lon, lat, timezone) < 0 {
@@ -177,16 +177,16 @@ func StarRiseSetTime(jde, ra, dec, lon, lat, height, timezone float64, aero, isR
 	return estimateJD, nil
 }
 
-func StarCulminationTime(jde, ra, lon, timezone float64) float64 {
-	if !isFiniteFloat(jde) || !isFiniteFloat(ra) || !isFiniteFloat(lon) || !isFiniteFloat(timezone) {
+func StarCulminationTime(localJD, ra, lon, timezone float64) float64 {
+	if !isFiniteFloat(localJD) || !isFiniteFloat(ra) || !isFiniteFloat(lon) || !isFiniteFloat(timezone) {
 		return math.NaN()
 	}
-	//jde 世界时，非力学时，当地时区 0时，无需转换力学时
+	// localJD 是本地民用日锚点（当地 0 时），不是力学时。
 	//ra,dec 瞬时天球座标，非J2000等时间天球坐标
-	jde = math.Floor(jde) + 0.5
-	estimateJD := jde + Limit360(360-StarHourAngle(jde, ra, lon, timezone))/15.0/24.0*0.99726851851851851851
-	limitStarHA := func(jde, ra, lon, timezone float64) float64 {
-		ha := StarHourAngle(jde, ra, lon, timezone)
+	localJD = math.Floor(localJD) + 0.5
+	estimateJD := localJD + Limit360(360-StarHourAngle(localJD, ra, lon, timezone))/15.0/24.0*0.99726851851851851851
+	limitStarHA := func(localJD, ra, lon, timezone float64) float64 {
+		ha := StarHourAngle(localJD, ra, lon, timezone)
 		if ha < 180 {
 			ha += 360
 		}

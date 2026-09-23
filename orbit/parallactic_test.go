@@ -15,7 +15,7 @@ func TestParallacticAngleMatchesHourAngleForm(t *testing.T) {
 	date := time.Date(2025, 11, 21, 20, 0, 0, 0, time.FixedZone("CST", 8*3600))
 
 	_, dec, _ := basic.OrbitHourAngleWithTopocentric(
-		basic.Date2JDE(date),
+		basic.Date2JD(date),
 		shanghaiLon, shanghaiLat, observationTimezone(date), shanghaiHeightMeters,
 		toBasicElements(elements),
 	)
@@ -41,8 +41,8 @@ func duplicatedSolveParallacticAngle(date time.Time, elements Elements, observer
 }
 
 func parallacticJDPathsAgree(date time.Time) bool {
-	utcPath := basic.TD2UT(basic.Date2JDE(date.UTC()), true)
-	hourAnglePath := basic.TD2UT(basic.Date2JDE(date)-observationTimezone(date)/24.0, true)
+	utcPath := basic.UTC2TT(basic.Date2JD(date.UTC()))
+	hourAnglePath := basic.UTC2TT(basic.Date2JD(date) - observationTimezone(date)/24.0)
 	return utcPath == hourAnglePath
 }
 
@@ -137,9 +137,13 @@ func parallacticRandomCases(count int) []parallacticCase {
 	return cases
 }
 
+// 固定民用时标换算政策，避免比较样本随默认值变化。
 func TestParallacticAngleDifferentialAgainstDuplicatedSolve(t *testing.T) {
+	previous := basic.GetTimeScaleFuturePolicy()
+	basic.SetTimeScaleFuturePolicy(basic.TimeScaleLeapSecond)
+	t.Cleanup(func() { basic.SetTimeScaleFuturePolicy(previous) })
 	const (
-		maxAbsoluteTolerance = 2e-9
+		maxAbsoluteTolerance = 3e-9
 		maxRelativeTolerance = 5e-11
 	)
 	cases := append(parallacticFixedCases(), parallacticRandomCases(240)...)

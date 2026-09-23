@@ -14,9 +14,9 @@ func GetMoonLoops(year float64, loop int) []float64 {
 	i := 1
 	for j := 0; j < loop; j++ {
 		if year > 3000 {
-			newMoon = TD2UT(CalcMoonSH(start+float64(i-1)/12.5, 0)+8.0/24.0, false)
+			newMoon = TT2UTC(CalcMoonSH(start+float64(i-1)/12.5, 0) + 8.0/24.0)
 		} else {
-			newMoon = TD2UT(CalcMoonS(start+float64(i-1)/12.5, 0)+8.0/24.0, false)
+			newMoon = TT2UTC(CalcMoonS(start+float64(i-1)/12.5, 0) + 8.0/24.0)
 		}
 		if i != 1 {
 			if newMoon == lastNewMoon {
@@ -78,7 +78,7 @@ func GetJQTime(year, angle int) float64 {
 	}
 
 	// Calculate initial Julian date
-	initialJD := JDECalc(year, int(initialMonth), initialDay)
+	initialJD := JDCalc(year, int(initialMonth), initialDay)
 
 	// Set target angle for iteration; if angle is 0, use 360
 	targetAngle := float64(angle)
@@ -87,9 +87,9 @@ func GetJQTime(year, angle int) float64 {
 	}
 
 	// Newton-Raphson iteration to find precise Julian date
-	currentJD := initialJD
+	currentJDE := initialJD
 	var ok bool
-	currentJD, ok = eventNewtonRefine(currentJD, 0.00001, func(previousJD float64) float64 {
+	currentJDE, ok = eventNewtonRefine(currentJDE, 0.00001, func(previousJD float64) float64 {
 		errorValue := JQLospec(previousJD, targetAngle) - targetAngle
 		derivative := (JQLospec(previousJD+0.000005, targetAngle) - JQLospec(previousJD-0.000005, targetAngle)) / 0.00001
 		return errorValue / derivative
@@ -99,11 +99,11 @@ func GetJQTime(year, angle int) float64 {
 	}
 
 	// Convert to UT and return
-	return TD2UT(currentJD, false)
+	return TT2UTC(currentJDE)
 }
 
-func JQLospec(jd float64, target float64) float64 {
-	sunLo := HSunApparentLo(jd)
+func JQLospec(jde float64, target float64) float64 {
+	sunLo := HSunApparentLo(jde)
 	if target >= 345 {
 		if sunLo <= 12 {
 			sunLo += 360

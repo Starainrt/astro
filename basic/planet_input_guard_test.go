@@ -117,7 +117,7 @@ func TestMoonMaximumDeclinationEventsRejectNonFiniteQuery(t *testing.T) {
 			// A non-finite query used to seed an out-of-range cycle index and spin in the
 			// sampling sweep forever; it must return the zero event instead.
 			got := event.fn(query.jd)
-			if got.JDE != 0 || got.Declination != 0 {
+			if got.JD != 0 || got.Declination != 0 {
 				t.Fatalf("%s(%s) = %+v, want zero event", event.name, query.name, got)
 			}
 		}
@@ -126,11 +126,11 @@ func TestMoonMaximumDeclinationEventsRejectNonFiniteQuery(t *testing.T) {
 	// The finite path must keep working.
 	const jd = 2460310.5
 	north := NextMoonMaximumNorthDeclination(jd)
-	if !(north.JDE > jd) || north.Declination == 0 {
+	if !(north.JD > jd) || north.Declination == 0 {
 		t.Fatalf("NextMoonMaximumNorthDeclination(%v) = %+v, want a later event", jd, north)
 	}
 	south := LastMoonMaximumSouthDeclination(jd)
-	if !(south.JDE <= jd) || south.Declination == 0 {
+	if !(south.JD <= jd) || south.Declination == 0 {
 		t.Fatalf("LastMoonMaximumSouthDeclination(%v) = %+v, want an earlier event", jd, south)
 	}
 }
@@ -214,14 +214,14 @@ func TestOuterPlanetStationSecondCandidateKeepsSideInvariant(t *testing.T) {
 		{"Neptune", NextNeptuneProgradeToRetrograde},
 	}
 	for _, tc := range cases {
-		event := tc.fn(JDECalc(2025, 1, 1))
+		event := tc.fn(JDCalc(2025, 1, 1))
 		if math.IsNaN(event) {
 			t.Fatalf("%s: no station event found", tc.name)
 		}
 		query := event + offsetSeconds/86400.0
-		got := tc.fn(TD2UT(query, true))
+		got := tc.fn(UTC2TT(query))
 		if math.IsNaN(got) {
-			t.Fatalf("%s: second candidate rejected as NaN at %s", tc.name, JDE2Date(query))
+			t.Fatalf("%s: second candidate rejected as NaN at %s", tc.name, JD2Date(query))
 		}
 		if got < query-stationQueryToleranceUT {
 			t.Fatalf("%s: returned %.9f before the query %.9f", tc.name, got, query)

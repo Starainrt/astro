@@ -27,7 +27,7 @@ func TestLunarEclipseChauvenetAgainstLegacyBaseline(t *testing.T) {
 	testCases := []lunarEclipseBaseline{
 		{
 			name:                   "2022-11-08 total",
-			jde:                    JDECalc(2022, 11, 8),
+			jde:                    JDCalc(2022, 11, 8),
 			expectedType:           LunarEclipseTotal,
 			expectedMax:            2459891.9585873615,
 			expectedMag:            1.3635170051692678,
@@ -40,14 +40,14 @@ func TestLunarEclipseChauvenetAgainstLegacyBaseline(t *testing.T) {
 		},
 		{
 			name:                   "2023-05-05 penumbral",
-			jde:                    JDECalc(2023, 5, 5),
+			jde:                    JDCalc(2023, 5, 5),
 			expectedType:           LunarEclipsePenumbral,
 			expectedPenumbralStart: 2460070.1342392800,
 			expectedPenumbralEnd:   2460070.3159191823,
 		},
 		{
 			name:                   "2023-10-28 partial",
-			jde:                    JDECalc(2023, 10, 28),
+			jde:                    JDCalc(2023, 10, 28),
 			expectedType:           LunarEclipsePartial,
 			expectedMax:            2460246.3439460830,
 			expectedMag:            0.12723850274626405,
@@ -58,14 +58,14 @@ func TestLunarEclipseChauvenetAgainstLegacyBaseline(t *testing.T) {
 		},
 		{
 			name:                   "2024-03-25 penumbral",
-			jde:                    JDECalc(2024, 3, 25),
+			jde:                    JDCalc(2024, 3, 25),
 			expectedType:           LunarEclipsePenumbral,
 			expectedPenumbralStart: 2460394.7028870000,
 			expectedPenumbralEnd:   2460394.8999071894,
 		},
 		{
 			name:                   "2024-09-18 partial",
-			jde:                    JDECalc(2024, 9, 18),
+			jde:                    JDCalc(2024, 9, 18),
 			expectedType:           LunarEclipsePartial,
 			expectedMax:            2460571.6148748010,
 			expectedMag:            0.09042791952817894,
@@ -76,7 +76,7 @@ func TestLunarEclipseChauvenetAgainstLegacyBaseline(t *testing.T) {
 		},
 		{
 			name:                   "2025-03-14 total",
-			jde:                    JDECalc(2025, 3, 14),
+			jde:                    JDCalc(2025, 3, 14),
 			expectedType:           LunarEclipseTotal,
 			expectedMax:            2460748.7916214615,
 			expectedMag:            1.1828107517800281,
@@ -89,7 +89,7 @@ func TestLunarEclipseChauvenetAgainstLegacyBaseline(t *testing.T) {
 		},
 		{
 			name:                   "2025-09-07 total",
-			jde:                    JDECalc(2025, 9, 7),
+			jde:                    JDCalc(2025, 9, 7),
 			expectedType:           LunarEclipseTotal,
 			expectedMax:            2460926.2590034613,
 			expectedMag:            1.3672329695760280,
@@ -102,7 +102,7 @@ func TestLunarEclipseChauvenetAgainstLegacyBaseline(t *testing.T) {
 		},
 		{
 			name:                   "2026-03-03 total",
-			jde:                    JDECalc(2026, 3, 3),
+			jde:                    JDCalc(2026, 3, 3),
 			expectedType:           LunarEclipseTotal,
 			expectedMax:            2461102.9825476190,
 			expectedMag:            1.1556387222746651,
@@ -154,7 +154,7 @@ func TestLunarEclipseChauvenetAgainstLegacyBaseline(t *testing.T) {
 }
 
 func TestLunarEclipseDefaultUsesDanjon(t *testing.T) {
-	jde := JDECalc(2025, 3, 14)
+	jde := JDCalc(2025, 3, 14)
 	defaultResult := LunarEclipse(jde)
 	danjonResult := LunarEclipseDanjon(jde)
 	chauvenetResult := LunarEclipseChauvenet(jde)
@@ -176,9 +176,9 @@ func TestPenumbralLunarEclipseKeepsNegativeUmbralMagnitude(t *testing.T) {
 		jde  float64
 		calc func(float64) LunarEclipseResult
 	}{
-		{name: "default 2024-03-25", jde: JDECalc(2024, 3, 25), calc: LunarEclipse},
-		{name: "danjon 2024-03-25", jde: JDECalc(2024, 3, 25), calc: LunarEclipseDanjon},
-		{name: "chauvenet 2023-05-05", jde: JDECalc(2023, 5, 5), calc: LunarEclipseChauvenet},
+		{name: "default 2024-03-25", jde: JDCalc(2024, 3, 25), calc: LunarEclipse},
+		{name: "danjon 2024-03-25", jde: JDCalc(2024, 3, 25), calc: LunarEclipseDanjon},
+		{name: "chauvenet 2023-05-05", jde: JDCalc(2023, 5, 5), calc: LunarEclipseChauvenet},
 	}
 
 	for _, tc := range testCases {
@@ -210,28 +210,28 @@ func TestLunarEclipseDanjonMagnitudesCloserToNASA(t *testing.T) {
 	}{
 		{
 			name:                   "2023-10-28 partial",
-			jde:                    JDECalc(2023, 10, 28),
+			jde:                    JDCalc(2023, 10, 28),
 			expectedType:           LunarEclipsePartial,
 			nasaPenumbralMagnitude: 1.1181,
 			nasaUmbralMagnitude:    0.1220,
 		},
 		{
 			name:                   "2025-03-14 total",
-			jde:                    JDECalc(2025, 3, 14),
+			jde:                    JDCalc(2025, 3, 14),
 			expectedType:           LunarEclipseTotal,
 			nasaPenumbralMagnitude: 2.2595,
 			nasaUmbralMagnitude:    1.1784,
 		},
 		{
 			name:                   "2026-03-03 total",
-			jde:                    JDECalc(2026, 3, 3),
+			jde:                    JDCalc(2026, 3, 3),
 			expectedType:           LunarEclipseTotal,
 			nasaPenumbralMagnitude: 2.1838,
 			nasaUmbralMagnitude:    1.1507,
 		},
 		{
 			name:                   "2026-08-28 partial",
-			jde:                    JDECalc(2026, 8, 28),
+			jde:                    JDCalc(2026, 8, 28),
 			expectedType:           LunarEclipsePartial,
 			nasaPenumbralMagnitude: 1.9645,
 			nasaUmbralMagnitude:    0.9299,
@@ -277,7 +277,7 @@ func TestLunarEclipseNoEvent(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			result := tc.calc(JDECalc(2023, 6, 4))
+			result := tc.calc(JDCalc(2023, 6, 4))
 			if result.Type != LunarEclipseNone {
 				t.Fatalf("Type mismatch: got %s want %s", result.Type, LunarEclipseNone)
 			}

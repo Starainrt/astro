@@ -82,7 +82,7 @@ func TestPublicPlanetEventBoundaryIncludesCurrent(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			eventTime := basic.JDE2DateByZone(tc.eventUT, time.UTC, false)
+			eventTime := basic.JD2DateByZone(tc.eventUT, time.UTC, false)
 			assertSameEventTime(t, "last", tc.funcs.last(eventTime), eventTime)
 			assertSameEventTime(t, "next", tc.funcs.next(eventTime), eventTime)
 		})
@@ -132,7 +132,7 @@ func TestPublicMoonPlanetConjunctionBoundaryIncludesCurrent(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			eventTime := basic.JDE2DateByZone(tc.eventUT, time.UTC, false)
+			eventTime := basic.JD2DateByZone(tc.eventUT, time.UTC, false)
 			assertSameEventTime(t, "last", tc.funcs.last(eventTime), eventTime)
 			assertSameEventTime(t, "next", tc.funcs.next(eventTime), eventTime)
 		})
@@ -140,7 +140,7 @@ func TestPublicMoonPlanetConjunctionBoundaryIncludesCurrent(t *testing.T) {
 }
 
 func eventBoundaryTT(year int) float64 {
-	return basic.TD2UT(basic.Date2JDE(time.Date(year, 1, 1, 0, 0, 0, 0, time.UTC)), true)
+	return basic.UTC2TT(basic.Date2JD(time.Date(year, 1, 1, 0, 0, 0, 0, time.UTC)))
 }
 
 func assertSameEventTime(t *testing.T, name string, got, want time.Time) {

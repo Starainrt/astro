@@ -200,7 +200,7 @@ func TestLocalSolarEclipseVisibleAtGreatestRespectsHeight(t *testing.T) {
 }
 
 func solarEclipseUTToTTJDE(date time.Time) float64 {
-	return TD2UT(Date2JDE(date.UTC()), true)
+	return UTC2TT(Date2JD(date.UTC()))
 }
 
 func assertLocalSolarEclipseJDEClose(

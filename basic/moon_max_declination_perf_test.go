@@ -18,7 +18,7 @@ func moonMaximumDeclinationReferenceSearch(jd float64, coeffs moonMaxDeclination
 	var best DeclinationEvent
 	for offset := -moonMaxDeclinationSearchSpan; offset <= moonMaxDeclinationSearchSpan; offset++ {
 		event := moonMaximumDeclinationEvent(centerK+offset, coeffs, cfg)
-		delta := event.JDE - jd
+		delta := event.JD - jd
 		if !moonMaximumDeclinationMatchesDirection(delta, direction, includeCurrent) {
 			continue
 		}
@@ -38,8 +38,8 @@ func moonMaximumDeclinationReferenceClosest(jd float64, coeffs moonMaxDeclinatio
 	}
 	last := moonMaximumDeclinationReferenceSearch(jd, coeffs, -1, true)
 	next := moonMaximumDeclinationReferenceSearch(jd, coeffs, 1, false)
-	lastDistance := math.Abs(jd - last.JDE)
-	nextDistance := math.Abs(next.JDE - jd)
+	lastDistance := math.Abs(jd - last.JD)
+	nextDistance := math.Abs(next.JD - jd)
 	if lastDistance <= nextDistance {
 		return last
 	}
@@ -48,7 +48,7 @@ func moonMaximumDeclinationReferenceClosest(jd float64, coeffs moonMaxDeclinatio
 
 func TestMoonMaximumDeclinationPruningMatchesFullSearch(t *testing.T) {
 	for _, coeffs := range []moonMaxDeclinationCoefficients{moonMaxDeclinationNorthCoefficients, moonMaxDeclinationSouthCoefficients} {
-		for jd := JDECalc(2024, 1, 1); jd <= JDECalc(2025, 6, 1); jd += 2.5 {
+		for jd := JDCalc(2024, 1, 1); jd <= JDCalc(2025, 6, 1); jd += 2.5 {
 			for _, direction := range []struct {
 				name           string
 				dir            int
@@ -77,7 +77,7 @@ func TestMoonMaximumDeclinationPruningMatchesFullSearch(t *testing.T) {
 }
 
 func BenchmarkMoonMaximumDeclinationFullSearchReference(b *testing.B) {
-	jd := JDECalc(2025, 3, 1)
+	jd := JDCalc(2025, 3, 1)
 	b.Run("Next", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			_ = moonMaximumDeclinationReferenceSearch(jd, moonMaxDeclinationNorthCoefficients, 1, false)

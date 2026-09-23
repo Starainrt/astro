@@ -210,9 +210,9 @@ func (solver solarEclipseSolver) appendRefinedCentralPathSegment(
 	return solver.appendRefinedCentralPathSegment(points, mid, end, targetSpacingKM, depth+1)
 }
 
-func (solver solarEclipseSolver) centralPathPointAt(jd float64) (SolarEclipsePathPoint, bool) {
-	moon := solver.besselMoonAt(jd)
-	axis := solver.besselAxisAt(jd)
+func (solver solarEclipseSolver) centralPathPointAt(jde float64) (SolarEclipsePathPoint, bool) {
+	moon := solver.besselMoonAt(jde)
+	axis := solver.besselAxisAt(jde)
 	intersection := solarEclipseLineEar2(
 		moon[0],
 		moon[1],
@@ -229,7 +229,7 @@ func (solver solarEclipseSolver) centralPathPointAt(jd float64) (SolarEclipsePat
 	}
 
 	longitude, latitude := solarEclipseIntersectionGeodetic(intersection, axis)
-	sunAltitudeRad := solarEclipseSunAltitudeAtGreatest(jd, longitude, latitude, axis.gst)
+	sunAltitudeRad := solarEclipseSunAltitudeAtGreatest(jde, longitude, latitude, axis.gst)
 	radii := solver.shadowRadiiAt(moon[2] - intersection.r2)
 
 	widthKM := 0.0
@@ -238,7 +238,7 @@ func (solver solarEclipseSolver) centralPathPointAt(jd float64) (SolarEclipsePat
 	}
 
 	return SolarEclipsePathPoint{
-		JDE:         jd,
+		JDE:         jde,
 		Longitude:   longitude,
 		Latitude:    latitude,
 		SunAltitude: sunAltitudeRad / rad,
@@ -456,14 +456,14 @@ func (solver solarEclipseSolver) besselVelocityXYAt(jd float64) (float64, float6
 	return vx, vy, math.Hypot(vx, vy)
 }
 
-func solarEclipsePathPointFromBesselXY(jd, x, y float64, axis solarEclipseAxis) (SolarEclipsePathPoint, bool) {
+func solarEclipsePathPointFromBesselXY(jde, x, y float64, axis solarEclipseAxis) (SolarEclipsePathPoint, bool) {
 	longitude, latitude, ok := solarEclipseBesselXYToGeodetic(x, y, axis, true)
 	if !ok {
 		return SolarEclipsePathPoint{}, false
 	}
-	sunAltitudeRad := solarEclipseSunAltitudeAtGreatest(jd, longitude, latitude, axis.gst)
+	sunAltitudeRad := solarEclipseSunAltitudeAtGreatest(jde, longitude, latitude, axis.gst)
 	return SolarEclipsePathPoint{
-		JDE:         jd,
+		JDE:         jde,
 		Longitude:   longitude,
 		Latitude:    latitude,
 		SunAltitude: sunAltitudeRad / rad,
@@ -534,14 +534,14 @@ func (solver solarEclipseSolver) shadowContactRoot(
 }
 
 func (solver solarEclipseSolver) shadowContactResidual(
-	jd float64,
+	jde float64,
 	kind solarEclipseShadowKind,
 	internal bool,
 ) (float64, bool) {
 	if kind == solarEclipseCentralShadow && solver.exactCentralContact && !internal {
-		return solver.shadowContactResidualExact(jd)
+		return solver.shadowContactResidualExact(jde)
 	}
-	moon := solver.besselMoonAt(jd)
+	moon := solver.besselMoonAt(jde)
 	distanceSquared := moon[0]*moon[0] + moon[1]*moon[1]
 	if distanceSquared <= 0 {
 		return 0, false
@@ -561,18 +561,18 @@ func (solver solarEclipseSolver) shadowContactResidual(
 	return math.Sqrt(distanceSquared) - limit, true
 }
 
-func (solver solarEclipseSolver) shadowContactResidualExact(jd float64) (float64, bool) {
-	_, value, ok := solver.shadowContactMaximum(jd)
+func (solver solarEclipseSolver) shadowContactResidualExact(jde float64) (float64, bool) {
+	_, value, ok := solver.shadowContactMaximum(jde)
 	return -value, ok
 }
 
-func (solver solarEclipseSolver) shadowContactMaximum(jd float64) (float64, float64, bool) {
+func (solver solarEclipseSolver) shadowContactMaximum(jde float64) (float64, float64, bool) {
 	const samples = 32
 	step := 2 * math.Pi / samples
 	bestIndex := -1
 	bestValue := math.Inf(-1)
 	for index := 0; index < samples; index++ {
-		value, ok := solver.shadowBoundaryDiscriminant(jd, float64(index)*step)
+		value, ok := solver.shadowBoundaryDiscriminant(jde, float64(index)*step)
 		if !ok {
 			continue
 		}
@@ -586,7 +586,7 @@ func (solver solarEclipseSolver) shadowContactMaximum(jd float64) (float64, floa
 	left := float64(bestIndex)*step - step
 	right := float64(bestIndex)*step + step
 	valueAt := func(angle float64) float64 {
-		value, ok := solver.shadowBoundaryDiscriminant(jd, angle)
+		value, ok := solver.shadowBoundaryDiscriminant(jde, angle)
 		if !ok {
 			return math.Inf(-1)
 		}
@@ -619,8 +619,8 @@ func (solver solarEclipseSolver) shadowContactMaximum(jd float64) (float64, floa
 	return bestAngle, bestValue, true
 }
 
-func (solver solarEclipseSolver) shadowBoundaryDiscriminant(jd, angle float64) (float64, bool) {
-	moon, axis, _ := solver.besselGeometryAt(jd)
+func (solver solarEclipseSolver) shadowBoundaryDiscriminant(jde, angle float64) (float64, bool) {
+	moon, axis, _ := solver.besselGeometryAt(jde)
 	radius := solver.shadowRadiusAt(moon[2], solarEclipseCentralShadow)
 	if radius <= 0 {
 		return 0, false
@@ -674,37 +674,37 @@ func solarEclipseLineEllipsoidDiscriminant(
 }
 
 func (solver solarEclipseSolver) shadowContactPointAt(
-	jd float64,
+	jde float64,
 	kind solarEclipseShadowKind,
 	internal bool,
 ) (SolarEclipsePathPoint, bool) {
 	if kind == solarEclipseCentralShadow && solver.exactCentralContact && !internal {
-		angle, _, ok := solver.shadowContactMaximum(jd)
+		angle, _, ok := solver.shadowContactMaximum(jde)
 		if !ok {
 			return SolarEclipsePathPoint{}, false
 		}
-		if point, pointOK := solver.centralShadowPointAt(jd, angle); pointOK {
+		if point, pointOK := solver.centralShadowPointAt(jde, angle); pointOK {
 			return point, true
 		}
 		for _, offset := range []float64{-1e-8, 1e-8, -1e-7, 1e-7} {
-			offsetJDE := jd + offset
+			offsetJDE := jde + offset
 			offsetAngle, _, maximumOK := solver.shadowContactMaximum(offsetJDE)
 			if !maximumOK {
 				continue
 			}
 			if point, pointOK := solver.centralShadowPointAt(offsetJDE, offsetAngle); pointOK {
-				point.JDE = jd
+				point.JDE = jde
 				return point, true
 			}
 		}
 		return SolarEclipsePathPoint{}, false
 	}
-	moon := solver.besselMoonAt(jd)
+	moon := solver.besselMoonAt(jde)
 	distance := math.Hypot(moon[0], moon[1])
 	if distance <= 0 || solver.shadowRadiusAt(moon[2], kind) <= 0 {
 		return SolarEclipsePathPoint{}, false
 	}
-	axis := solver.besselAxisAt(jd)
+	axis := solver.besselAxisAt(jde)
 	unitX, unitY := moon[0]/distance, moon[1]/distance
 	insideScale, outsideScale := 0.0, 1.1
 	var intersection solarEclipseLineIntersection
@@ -726,9 +726,9 @@ func (solver solarEclipseSolver) shadowContactPointAt(
 		return SolarEclipsePathPoint{}, false
 	}
 	longitude, latitude := solarEclipseIntersectionGeodetic(intersection, axis)
-	sunAltitudeRad := solarEclipseSunAltitudeAtGreatest(jd, longitude, latitude, axis.gst)
+	sunAltitudeRad := solarEclipseSunAltitudeAtGreatest(jde, longitude, latitude, axis.gst)
 	return SolarEclipsePathPoint{
-		JDE:         jd,
+		JDE:         jde,
 		Longitude:   longitude,
 		Latitude:    latitude,
 		SunAltitude: sunAltitudeRad / rad,
@@ -743,27 +743,27 @@ func (solver solarEclipseSolver) shadowRadiusAt(moonBesselZ float64, kind solarE
 	return radii.penumbraRadius
 }
 
-func (solver solarEclipseSolver) partialFootprintAt(jd float64, boundaryPoints int) SolarEclipsePartialFootprint {
-	return solver.shadowFootprintAt(jd, boundaryPoints, solarEclipsePenumbralShadow)
+func (solver solarEclipseSolver) partialFootprintAt(jde float64, boundaryPoints int) SolarEclipsePartialFootprint {
+	return solver.shadowFootprintAt(jde, boundaryPoints, solarEclipsePenumbralShadow)
 }
 
 func (solver solarEclipseSolver) shadowFootprintAt(
-	jd float64,
+	jde float64,
 	boundaryPoints int,
 	kind solarEclipseShadowKind,
 ) SolarEclipsePartialFootprint {
-	return solver.shadowFootprintAtWithSpacing(jd, boundaryPoints, kind, 0)
+	return solver.shadowFootprintAtWithSpacing(jde, boundaryPoints, kind, 0)
 }
 
 func (solver solarEclipseSolver) shadowFootprintAtWithSpacing(
-	jd float64,
+	jde float64,
 	boundaryPoints int,
 	kind solarEclipseShadowKind,
 	targetSpacingKM float64,
 ) SolarEclipsePartialFootprint {
-	moon, axis, sun := solver.besselGeometryAt(jd)
+	moon, axis, sun := solver.besselGeometryAt(jde)
 	return solver.shadowFootprintAtWithGeometry(
-		jd, moon, axis, sun, boundaryPoints, kind, targetSpacingKM,
+		jde, moon, axis, sun, boundaryPoints, kind, targetSpacingKM,
 	)
 }
 

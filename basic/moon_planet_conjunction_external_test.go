@@ -92,9 +92,9 @@ func TestMoonPlanetConjunctionsMatchHorizonsBaseline(t *testing.T) {
 		if err != nil {
 			t.Fatalf("parse sample time %q: %v", sample.TimeUTC, err)
 		}
-		queryTT := TD2UT(Date2JDE(wantTime.Add(-12*time.Hour).UTC()), true)
+		queryTT := UTC2TT(Date2JD(wantTime.Add(-12 * time.Hour).UTC()))
 		gotUT := tc.next(queryTT, tc.planet)
-		gotTime := JDE2DateByZone(gotUT, time.UTC, false)
+		gotTime := JD2DateByZone(gotUT, time.UTC, false)
 		diff := gotTime.Sub(wantTime)
 		if diff < 0 {
 			diff = -diff
@@ -106,7 +106,7 @@ func TestMoonPlanetConjunctionsMatchHorizonsBaseline(t *testing.T) {
 			t.Fatalf("%s %04d-%02d time mismatch: got %s want %s tolerance %v", sample.Planet, sample.Year, sample.Month, gotTime.Format(time.RFC3339Nano), sample.TimeUTC, tolerance)
 		}
 
-		delta := math.Abs(moonPlanetConjunctionDeltaAt(TD2UT(gotUT, true), tc.planet, -1))
+		delta := math.Abs(moonPlanetConjunctionDeltaAt(UTC2TT(gotUT), tc.planet, -1))
 		if delta > 0.01 {
 			t.Fatalf("%s %04d-%02d event not near conjunction: delta=%.8f deg", sample.Planet, sample.Year, sample.Month, delta)
 		}
@@ -144,11 +144,11 @@ func TestMoonPlanetConjunctionDirectionalConsistencyAtComputedEvent(t *testing.T
 		if err != nil {
 			t.Fatalf("parse sample time %q: %v", sample.TimeUTC, err)
 		}
-		seedTT := TD2UT(Date2JDE(wantTime.Add(-12*time.Hour).UTC()), true)
+		seedTT := UTC2TT(Date2JD(wantTime.Add(-12 * time.Hour).UTC()))
 		eventUT := NextMoonPlanetConjunction(seedTT, planet)
-		eventTime := JDE2DateByZone(eventUT, time.UTC, false)
-		queryAtTT := TD2UT(Date2JDE(eventTime.UTC()), true)
-		queryAfterTT := TD2UT(Date2JDE(eventTime.Add(time.Hour).UTC()), true)
+		eventTime := JD2DateByZone(eventUT, time.UTC, false)
+		queryAtTT := UTC2TT(Date2JD(eventTime.UTC()))
+		queryAfterTT := UTC2TT(Date2JD(eventTime.Add(time.Hour).UTC()))
 
 		exactNext := NextMoonPlanetConjunction(queryAtTT, planet)
 		exactClosest := ClosestMoonPlanetConjunction(queryAtTT, planet)
@@ -159,7 +159,7 @@ func TestMoonPlanetConjunctionDirectionalConsistencyAtComputedEvent(t *testing.T
 			"exactClosest":   exactClosest,
 			"lastAfterEvent": exactLastAfter,
 		} {
-			gotTime := JDE2DateByZone(gotUT, time.UTC, false)
+			gotTime := JD2DateByZone(gotUT, time.UTC, false)
 			if diff := math.Abs(gotUT - eventUT); diff > 1e-9 {
 				t.Fatalf("%s %s mismatch: got %s want %s diff=%v", sample.Planet, name, gotTime.Format(time.RFC3339Nano), eventTime.Format(time.RFC3339Nano), diff*86400)
 			}
@@ -169,25 +169,25 @@ func TestMoonPlanetConjunctionDirectionalConsistencyAtComputedEvent(t *testing.T
 
 func TestMoonPlanetConjunctionRejectsOppositionBranchJump(t *testing.T) {
 	query := time.Date(1900, 11, 10, 12, 0, 0, 0, time.UTC)
-	queryTT := TD2UT(Date2JDE(query), true)
+	queryTT := UTC2TT(Date2JD(query))
 
 	lastUT := LastMoonPlanetConjunction(queryTT, MoonPlanetConjunctionSaturn)
 	nextUT := NextMoonPlanetConjunction(queryTT, MoonPlanetConjunctionSaturn)
 
-	if math.Abs(lastUT-Date2JDE(query)) <= 5.0/86400.0 {
-		t.Fatalf("last returned query time on branch jump: got %s", JDE2DateByZone(lastUT, time.UTC, false).Format(time.RFC3339Nano))
+	if math.Abs(lastUT-Date2JD(query)) <= 5.0/86400.0 {
+		t.Fatalf("last returned query time on branch jump: got %s", JD2DateByZone(lastUT, time.UTC, false).Format(time.RFC3339Nano))
 	}
-	if math.Abs(nextUT-Date2JDE(query)) <= 5.0/86400.0 {
-		t.Fatalf("next returned query time on branch jump: got %s", JDE2DateByZone(nextUT, time.UTC, false).Format(time.RFC3339Nano))
+	if math.Abs(nextUT-Date2JD(query)) <= 5.0/86400.0 {
+		t.Fatalf("next returned query time on branch jump: got %s", JD2DateByZone(nextUT, time.UTC, false).Format(time.RFC3339Nano))
 	}
 
 	for name, gotUT := range map[string]float64{
 		"last": lastUT,
 		"next": nextUT,
 	} {
-		delta := math.Abs(moonPlanetConjunctionDeltaAt(TD2UT(gotUT, true), MoonPlanetConjunctionSaturn, -1))
+		delta := math.Abs(moonPlanetConjunctionDeltaAt(UTC2TT(gotUT), MoonPlanetConjunctionSaturn, -1))
 		if delta > moonPlanetConjunctionEventTolerance {
-			t.Fatalf("%s returned non-event candidate: delta=%.8f event=%s", name, delta, JDE2DateByZone(gotUT, time.UTC, false).Format(time.RFC3339Nano))
+			t.Fatalf("%s returned non-event candidate: delta=%.8f event=%s", name, delta, JD2DateByZone(gotUT, time.UTC, false).Format(time.RFC3339Nano))
 		}
 	}
 }
@@ -208,7 +208,7 @@ func TestMoonPlanetConjunctionDirectionalOrderingOnSampleQueries(t *testing.T) {
 	}
 
 	for _, sample := range samples {
-		queryTT := TD2UT(Date2JDE(sample.query.UTC()), true)
+		queryTT := UTC2TT(Date2JD(sample.query.UTC()))
 		lastUT := LastMoonPlanetConjunction(queryTT, sample.planet)
 		nextUT := NextMoonPlanetConjunction(queryTT, sample.planet)
 		closestUT := ClosestMoonPlanetConjunction(queryTT, sample.planet)
@@ -217,22 +217,22 @@ func TestMoonPlanetConjunctionDirectionalOrderingOnSampleQueries(t *testing.T) {
 			t.Fatalf("planet=%v query=%s returned NaN event(s): last=%v next=%v closest=%v", sample.planet, sample.query.Format(time.RFC3339), lastUT, nextUT, closestUT)
 		}
 		if !eventUTQueryBeforeOrEqual(lastUT, queryTT) {
-			t.Fatalf("planet=%v last after query: last=%s query=%s", sample.planet, JDE2DateByZone(lastUT, time.UTC, false).Format(time.RFC3339Nano), sample.query.Format(time.RFC3339Nano))
+			t.Fatalf("planet=%v last after query: last=%s query=%s", sample.planet, JD2DateByZone(lastUT, time.UTC, false).Format(time.RFC3339Nano), sample.query.Format(time.RFC3339Nano))
 		}
 		if !eventUTQueryAfterOrEqual(nextUT, queryTT) {
-			t.Fatalf("planet=%v next before query: next=%s query=%s", sample.planet, JDE2DateByZone(nextUT, time.UTC, false).Format(time.RFC3339Nano), sample.query.Format(time.RFC3339Nano))
+			t.Fatalf("planet=%v next before query: next=%s query=%s", sample.planet, JD2DateByZone(nextUT, time.UTC, false).Format(time.RFC3339Nano), sample.query.Format(time.RFC3339Nano))
 		}
 		if closestUT != closestEventUTToQueryTT(queryTT, lastUT, nextUT) {
-			t.Fatalf("planet=%v closest mismatch: got=%s want=%s", sample.planet, JDE2DateByZone(closestUT, time.UTC, false).Format(time.RFC3339Nano), JDE2DateByZone(closestEventUTToQueryTT(queryTT, lastUT, nextUT), time.UTC, false).Format(time.RFC3339Nano))
+			t.Fatalf("planet=%v closest mismatch: got=%s want=%s", sample.planet, JD2DateByZone(closestUT, time.UTC, false).Format(time.RFC3339Nano), JD2DateByZone(closestEventUTToQueryTT(queryTT, lastUT, nextUT), time.UTC, false).Format(time.RFC3339Nano))
 		}
 		for name, gotUT := range map[string]float64{
 			"last":    lastUT,
 			"next":    nextUT,
 			"closest": closestUT,
 		} {
-			delta := math.Abs(moonPlanetConjunctionDeltaAt(TD2UT(gotUT, true), sample.planet, -1))
+			delta := math.Abs(moonPlanetConjunctionDeltaAt(UTC2TT(gotUT), sample.planet, -1))
 			if delta > moonPlanetConjunctionEventTolerance {
-				t.Fatalf("planet=%v %s returned non-event candidate: delta=%.8f event=%s", sample.planet, name, delta, JDE2DateByZone(gotUT, time.UTC, false).Format(time.RFC3339Nano))
+				t.Fatalf("planet=%v %s returned non-event candidate: delta=%.8f event=%s", sample.planet, name, delta, JD2DateByZone(gotUT, time.UTC, false).Format(time.RFC3339Nano))
 			}
 		}
 	}
@@ -240,7 +240,7 @@ func TestMoonPlanetConjunctionDirectionalOrderingOnSampleQueries(t *testing.T) {
 
 func TestMoonPlanetConjunctionKeepsImmediateNeighborEvents(t *testing.T) {
 	query := time.Date(1700, 4, 15, 12, 0, 0, 0, time.UTC)
-	queryTT := TD2UT(Date2JDE(query.UTC()), true)
+	queryTT := UTC2TT(Date2JD(query.UTC()))
 
 	lastUT := LastMoonPlanetConjunction(queryTT, MoonPlanetConjunctionSaturn)
 	nextUT := NextMoonPlanetConjunction(queryTT, MoonPlanetConjunctionSaturn)
@@ -250,35 +250,35 @@ func TestMoonPlanetConjunctionKeepsImmediateNeighborEvents(t *testing.T) {
 	wantNext := time.Date(1700, 5, 13, 0, 35, 5, 981616675, time.UTC)
 	const tolerance = 5.0 / 86400.0
 
-	if diff := math.Abs(lastUT - Date2JDE(wantLast)); diff > tolerance {
-		t.Fatalf("last mismatch: got=%s want=%s diff=%.3fs", JDE2DateByZone(lastUT, time.UTC, false).Format(time.RFC3339Nano), wantLast.Format(time.RFC3339Nano), diff*86400)
+	if diff := math.Abs(lastUT - Date2JD(wantLast)); diff > tolerance {
+		t.Fatalf("last mismatch: got=%s want=%s diff=%.3fs", JD2DateByZone(lastUT, time.UTC, false).Format(time.RFC3339Nano), wantLast.Format(time.RFC3339Nano), diff*86400)
 	}
-	if diff := math.Abs(nextUT - Date2JDE(wantNext)); diff > tolerance {
-		t.Fatalf("next mismatch: got=%s want=%s diff=%.3fs", JDE2DateByZone(nextUT, time.UTC, false).Format(time.RFC3339Nano), wantNext.Format(time.RFC3339Nano), diff*86400)
+	if diff := math.Abs(nextUT - Date2JD(wantNext)); diff > tolerance {
+		t.Fatalf("next mismatch: got=%s want=%s diff=%.3fs", JD2DateByZone(nextUT, time.UTC, false).Format(time.RFC3339Nano), wantNext.Format(time.RFC3339Nano), diff*86400)
 	}
 	if !sameEventJD(closestUT, lastUT) {
-		t.Fatalf("closest should keep immediate previous event: closest=%s last=%s", JDE2DateByZone(closestUT, time.UTC, false).Format(time.RFC3339Nano), JDE2DateByZone(lastUT, time.UTC, false).Format(time.RFC3339Nano))
+		t.Fatalf("closest should keep immediate previous event: closest=%s last=%s", JD2DateByZone(closestUT, time.UTC, false).Format(time.RFC3339Nano), JD2DateByZone(lastUT, time.UTC, false).Format(time.RFC3339Nano))
 	}
 }
 
 func TestMoonPlanetConjunctionNextAdvancesPastReturnedEvent(t *testing.T) {
-	seed := TD2UT(Date2JDE(time.Date(2026, 5, 1, 0, 0, 0, 0, time.UTC)), true)
+	seed := UTC2TT(Date2JD(time.Date(2026, 5, 1, 0, 0, 0, 0, time.UTC)))
 	eventUT := NextMoonPlanetConjunction(seed, MoonPlanetConjunctionMercury)
-	query := JDE2DateByZone(eventUT, time.UTC, false).Add(time.Second)
-	queryTT := TD2UT(Date2JDE(query.UTC()), true)
+	query := JD2DateByZone(eventUT, time.UTC, false).Add(time.Second)
+	queryTT := UTC2TT(Date2JD(query.UTC()))
 
 	nextUT := NextMoonPlanetConjunction(queryTT, MoonPlanetConjunctionMercury)
 	if eventUTQueryTTDelta(nextUT, queryTT) <= 0 {
 		t.Fatalf("expected next conjunction after query: query=%s next=%s delta=%.6fs",
 			query.Format(time.RFC3339Nano),
-			JDE2DateByZone(nextUT, time.UTC, false).Format(time.RFC3339Nano),
+			JD2DateByZone(nextUT, time.UTC, false).Format(time.RFC3339Nano),
 			eventUTQueryTTDelta(nextUT, queryTT)*86400,
 		)
 	}
 	if sameEventJD(nextUT, eventUT) {
 		t.Fatalf("next conjunction should advance to a later event: event=%s next=%s",
-			JDE2DateByZone(eventUT, time.UTC, false).Format(time.RFC3339Nano),
-			JDE2DateByZone(nextUT, time.UTC, false).Format(time.RFC3339Nano),
+			JD2DateByZone(eventUT, time.UTC, false).Format(time.RFC3339Nano),
+			JD2DateByZone(nextUT, time.UTC, false).Format(time.RFC3339Nano),
 		)
 	}
 }

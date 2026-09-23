@@ -179,11 +179,11 @@ func ApparentTopocentricEquatorial(date time.Time, elements Elements, observerLo
 
 // Altitude 视高度角 / apparent altitude.
 //
-// 返回目标在观测者所在地的视高度角，单位度；经度东正西负，纬度北正南负，海拔单位米。
+// 返回目标在观测者所在地的视高度角，单位度；经度东正西负，纬度北正南负，椭球高单位米。
 // Returns the apparent altitude of the target for the observing site, in degrees. Longitude is east-positive, latitude is north-positive, and height is in meters.
 func Altitude(date time.Time, elements Elements, observerLon, observerLat, observerHeight float64) float64 {
-	jde := basic.Date2JDE(date)
-	return basic.OrbitHeight(jde, observerLon, observerLat, observationTimezone(date), observerHeight, toBasicElements(elements))
+	localJD := basic.Date2JD(date)
+	return basic.OrbitHeight(localJD, observerLon, observerLat, observationTimezone(date), observerHeight, toBasicElements(elements))
 }
 
 // Zenith 天顶距 / zenith distance.
@@ -199,8 +199,8 @@ func Zenith(date time.Time, elements Elements, observerLon, observerLat, observe
 // 返回目标在观测者所在地的视方位角，按正北为 0°、向东增加。
 // Returns the apparent azimuth of the target for the observing site, measured from north toward east.
 func Azimuth(date time.Time, elements Elements, observerLon, observerLat, observerHeight float64) float64 {
-	jde := basic.Date2JDE(date)
-	return basic.OrbitAzimuth(jde, observerLon, observerLat, observationTimezone(date), observerHeight, toBasicElements(elements))
+	localJD := basic.Date2JD(date)
+	return basic.OrbitAzimuth(localJD, observerLon, observerLat, observationTimezone(date), observerHeight, toBasicElements(elements))
 }
 
 // HourAngle 站心视时角 / topocentric hour angle.
@@ -208,8 +208,8 @@ func Azimuth(date time.Time, elements Elements, observerLon, observerLat, observ
 // 返回目标在观测者所在地的站心视时角，单位度。
 // Returns the apparent topocentric hour angle of the target for the observing site, in degrees.
 func HourAngle(date time.Time, elements Elements, observerLon, observerLat, observerHeight float64) float64 {
-	jde := basic.Date2JDE(date)
-	return basic.OrbitHourAngle(jde, observerLon, observerLat, observationTimezone(date), observerHeight, toBasicElements(elements))
+	localJD := basic.Date2JD(date)
+	return basic.OrbitHourAngle(localJD, observerLon, observerLat, observationTimezone(date), observerHeight, toBasicElements(elements))
 }
 
 // CulminationTime 中天时刻 / culmination time.
@@ -217,13 +217,11 @@ func HourAngle(date time.Time, elements Elements, observerLon, observerLat, obse
 // 返回目标在给定当地日期内的中天时刻，结果保持输入 `date` 的时区。
 // Returns the culmination time of the target on the supplied local civil day. The result keeps the timezone of `date`.
 func CulminationTime(date time.Time, elements Elements, observerLon, observerLat, observerHeight float64) time.Time {
-	if date.Hour() > 12 {
-		date = date.Add(-12 * time.Hour)
-	}
+	date = time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, date.Location())
 	timezone := observationTimezone(date)
-	jde := basic.Date2JDE(date)
-	calcJde := basic.OrbitCulminationTime(jde, observerLon, observerLat, timezone, observerHeight, toBasicElements(elements)) - timezone/24.0
-	return basic.JDE2DateByZone(calcJde, date.Location(), false)
+	localJD := basic.Date2JD(date)
+	calcJD := basic.OrbitCulminationTime(localJD, observerLon, observerLat, timezone, observerHeight, toBasicElements(elements)) - timezone/24.0
+	return basic.JD2DateByZone(calcJD, date.Location(), false)
 }
 
 // RiseTime 升起时刻 / rise time.
@@ -235,13 +233,11 @@ func RiseTime(date time.Time, elements Elements, observerLon, observerLat, obser
 	if aero {
 		aeroFloat = 1
 	}
-	if date.Hour() > 12 {
-		date = date.Add(-12 * time.Hour)
-	}
+	date = time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, date.Location())
 	timezone := observationTimezone(date)
-	jde := basic.Date2JDE(date)
-	calcJde, err := basic.OrbitRiseTime(jde, observerLon, observerLat, timezone, aeroFloat, observerHeight, toBasicElements(elements))
-	return orbitRiseSetResult(date, calcJde, err)
+	localJD := basic.Date2JD(date)
+	calcJD, err := basic.OrbitRiseTime(localJD, observerLon, observerLat, timezone, aeroFloat, observerHeight, toBasicElements(elements))
+	return orbitRiseSetResult(date, calcJD, err)
 }
 
 // SetTime 落下时刻 / set time.
@@ -253,16 +249,14 @@ func SetTime(date time.Time, elements Elements, observerLon, observerLat, observ
 	if aero {
 		aeroFloat = 1
 	}
-	if date.Hour() > 12 {
-		date = date.Add(-12 * time.Hour)
-	}
+	date = time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, date.Location())
 	timezone := observationTimezone(date)
-	jde := basic.Date2JDE(date)
-	calcJde, err := basic.OrbitSetTime(jde, observerLon, observerLat, timezone, aeroFloat, observerHeight, toBasicElements(elements))
-	return orbitRiseSetResult(date, calcJde, err)
+	localJD := basic.Date2JD(date)
+	calcJD, err := basic.OrbitSetTime(localJD, observerLon, observerLat, timezone, aeroFloat, observerHeight, toBasicElements(elements))
+	return orbitRiseSetResult(date, calcJD, err)
 }
 
-func orbitRiseSetResult(date time.Time, jde float64, err error) (time.Time, error) {
+func orbitRiseSetResult(date time.Time, jd float64, err error) (time.Time, error) {
 	if err != nil {
 		switch {
 		case errors.Is(err, basic.ErrNeverRise):
@@ -273,7 +267,8 @@ func orbitRiseSetResult(date time.Time, jde float64, err error) (time.Time, erro
 			return time.Time{}, err
 		}
 	}
-	return basic.JDE2DateByZone(jde, date.Location(), true), nil
+	_, offset := date.Zone()
+	return basic.JD2DateByZone(jd-float64(offset)/86400, date.Location(), false), nil
 }
 
 func observationTimezone(date time.Time) float64 {
@@ -282,8 +277,8 @@ func observationTimezone(date time.Time) float64 {
 }
 
 func ttJulianDay(date time.Time) float64 {
-	jdeUTC := basic.Date2JDE(date.UTC())
-	return basic.TD2UT(jdeUTC, true)
+	jdUTC := basic.Date2JD(date.UTC())
+	return basic.UTC2TT(jdUTC)
 }
 
 func toBasicElements(elements Elements) basic.OrbitElements {

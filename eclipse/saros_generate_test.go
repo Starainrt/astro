@@ -9,6 +9,8 @@ import (
 	"sort"
 	"testing"
 	"time"
+
+	"github.com/starainrt/astro/basic"
 )
 
 // 默认只校验发布表的新鲜度与金标准；重新生成必须同时给出 -saros-generate 与环境变量。
@@ -19,6 +21,16 @@ import (
 var generateSarosTables = flag.Bool("saros-generate", false, "regenerate the extended Saros table")
 
 const sarosGenerateEnv = "ASTRO_REGENERATE_SAROS_TABLE"
+
+// 扩展表窗口按冻结偏移换算，不随默认政策变化。
+const sarosWindowPolicy = basic.TimeScaleFreezeUTCOffset
+
+func pinSarosWindowPolicy(t *testing.T) {
+	t.Helper()
+	previous := basic.GetTimeScaleFuturePolicy()
+	basic.SetTimeScaleFuturePolicy(sarosWindowPolicy)
+	t.Cleanup(func() { basic.SetTimeScaleFuturePolicy(previous) })
+}
 
 func sarosTableGenerationEnabled() bool {
 	return *generateSarosTables && os.Getenv(sarosGenerateEnv) == "1"
@@ -41,6 +53,7 @@ var sarosTableGoldens = []sarosTableGolden{
 
 // 发布表必须与文档化的窗口、生成时的序列总数和若干金标准行一致。
 func TestSarosExtensionTableIsFresh(t *testing.T) {
+	pinSarosWindowPolicy(t)
 	if sarosExtendedStartTT != timeToTTJDE(time.Date(-3000, 1, 1, 0, 0, 0, 0, time.UTC)) ||
 		sarosExtendedEndTT != timeToTTJDE(time.Date(6001, 1, 1, 0, 0, 0, 0, time.UTC)) {
 		t.Fatal("extended table window does not cover -3000..+6000")
@@ -110,6 +123,7 @@ func TestGenerateSarosExtensionTables(t *testing.T) {
 	if !sarosTableGenerationEnabled() {
 		t.Skipf("set %s=1 and pass -saros-generate to rewrite saros_table_extended.go", sarosGenerateEnv)
 	}
+	pinSarosWindowPolicy(t)
 	startTT := timeToTTJDE(time.Date(-3000, 1, 1, 0, 0, 0, 0, time.UTC))
 	endTT := timeToTTJDE(time.Date(6001, 1, 1, 0, 0, 0, 0, time.UTC))
 	var buf bytes.Buffer

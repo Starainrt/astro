@@ -455,7 +455,7 @@ func equirectangularSeamShift(view ClipView) float64 {
 func splitPolylineAtSeam(points []GeoPoint, shift float64) [][]GeoPoint {
 	segments := splitPolylineAntimeridian(rotateLongitudes(points, -shift))
 	for _, segment := range segments {
-		rotateLongitudesInPlace(segment, shift)
+		unshiftLongitudesInPlace(segment, shift)
 	}
 	return segments
 }
@@ -464,7 +464,7 @@ func splitPolylineAtSeam(points []GeoPoint, shift float64) [][]GeoPoint {
 func splitPolygonAtSeam(points []GeoPoint, shift float64) [][]GeoPoint {
 	fragments := splitPolygonAntimeridian(rotateLongitudes(points, -shift))
 	for _, fragment := range fragments {
-		rotateLongitudesInPlace(fragment, shift)
+		unshiftLongitudesInPlace(fragment, shift)
 	}
 	return fragments
 }
@@ -472,13 +472,25 @@ func splitPolygonAtSeam(points []GeoPoint, shift float64) [][]GeoPoint {
 func rotateLongitudes(points []GeoPoint, shift float64) []GeoPoint {
 	rotated := make([]GeoPoint, len(points))
 	copy(rotated, points)
-	rotateLongitudesInPlace(rotated, shift)
+	for index := range rotated {
+		rotated[index].Longitude = normalizeLongitude180(rotated[index].Longitude + shift)
+	}
 	return rotated
 }
 
-func rotateLongitudesInPlace(points []GeoPoint, shift float64) {
+// unshiftLongitudesInPlace 把接缝坐标系的分段转回地图窗口，结果落在 [shift-180, shift+180]。
+// 窗口两端是同一条接缝经线：分段落在 +180 的点贴的是右边缘，折回 -180 会让闭合边横穿整幅图。
+func unshiftLongitudesInPlace(points []GeoPoint, shift float64) {
+	left := shift - 180
 	for index := range points {
-		points[index].Longitude = normalizeLongitude180(points[index].Longitude + shift)
+		value := points[index].Longitude + shift
+		for value < left {
+			value += 360
+		}
+		for value > left+360 {
+			value -= 360
+		}
+		points[index].Longitude = value
 	}
 }
 

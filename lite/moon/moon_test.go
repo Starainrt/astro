@@ -156,7 +156,7 @@ func TestHorizontalEntriesMatchDuplicatedEvaluation(t *testing.T) {
 	}
 
 	for _, s := range samples {
-		jd := basic.Date2JDE(s.date.UTC())
+		jd := basic.Date2JD(s.date.UTC())
 		altitude, azimuth, hourAngle := lite.HorizontalCoordinates(ApparentRa(s.date, s.lon, s.lat), ApparentDec(s.date, s.lon, s.lat), jd, s.lon, s.lat)
 		checks := []struct {
 			name string

@@ -19,14 +19,14 @@ func TestNutationRegression(t *testing.T) {
 }
 
 func Benchmark_SunRise(b *testing.B) {
-	jde := GetNowJDE()
+	jde := GetNowJD()
 	for i := 0; i < b.N; i++ {
 		_, _ = GetSunRiseTime(jde, 115, 32, 8, 0, 10)
 	}
 }
 
 func Benchmark_SunLo(b *testing.B) {
-	jde := GetNowJDE()
+	jde := GetNowJD()
 	for i := 0; i < b.N; i++ {
 		HSunApparentLo(jde)
 	}

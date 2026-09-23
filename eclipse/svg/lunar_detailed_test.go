@@ -47,7 +47,7 @@ func TestLunarEclipseDetailedSVGCombinesBothCharts(t *testing.T) {
 // 地影几何要与 NASA 月食图逐项吻合：2009 之外的 2025-03-14 全食，Gamma 0.3481、P./U. Radius 1.1899/0.6537。
 func TestLunarEclipseShadowGeometryMatchesNASABulletin(t *testing.T) {
 	date := time.Date(2025, time.March, 14, 0, 0, 0, 0, time.UTC)
-	result := basic.LunarEclipse(basic.TD2UT(basic.Date2JDE(date), true))
+	result := basic.LunarEclipse(basic.UTC2TT(basic.Date2JD(date)))
 	geometry := basic.LunarEclipseShadowGeometryAt(result.Maximum)
 	t.Logf("gamma=%.4f P.Radius=%.4f U.Radius=%.4f umbral=%.4f penumbral=%.4f",
 		geometry.Gamma, geometry.PenumbralRadiusDegrees, geometry.UmbralRadiusDegrees,

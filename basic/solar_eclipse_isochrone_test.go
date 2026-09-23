@@ -8,12 +8,12 @@ import (
 
 func solarEclipseIsochroneTestSeed(t *testing.T, year int, month time.Month, day int) float64 {
 	t.Helper()
-	return TD2UT(Date2JDE(time.Date(year, month, day, 0, 0, 0, 0, time.UTC)), true)
+	return UTC2TT(Date2JD(time.Date(year, month, day, 0, 0, 0, 0, time.UTC)))
 }
 
 func solarEclipseIsochroneTestSeedB(b *testing.B, year int, month time.Month, day int) float64 {
 	b.Helper()
-	return TD2UT(Date2JDE(time.Date(year, month, day, 0, 0, 0, 0, time.UTC)), true)
+	return UTC2TT(Date2JD(time.Date(year, month, day, 0, 0, 0, 0, time.UTC)))
 }
 
 // 等时线必须与站心食甚定义自洽：支路上任意点由站心算法独立求出的食甚时刻等于该支路电平。
@@ -32,7 +32,7 @@ func TestSolarEclipseGreatestTimeContoursMatchLocalCircumstances(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			levels := make([]float64, 0, tc.count)
 			for index := 0; index < tc.count; index++ {
-				levels = append(levels, TD2UT(Date2JDE(tc.first.Add(time.Duration(index)*30*time.Minute)), true))
+				levels = append(levels, UTC2TT(Date2JD(tc.first.Add(time.Duration(index)*30*time.Minute))))
 			}
 			result := SolarEclipsePartialFootprintsNASABulletinSplitK(tc.seed, SolarEclipsePartialFootprintOptions{
 				StepDays:             10.0 / 1440.0,
@@ -124,8 +124,8 @@ func TestSolarEclipseGreatestTimeContoursHaveSingleBranchPerLevel(t *testing.T) 
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			// 用事件当天同一个世界时小时作为时刻取值。
-			seedTime := JDE2DateByZone(TD2UT(tc.seed, false), time.UTC, false)
-			eventLevel := TD2UT(Date2JDE(time.Date(seedTime.Year(), seedTime.Month(), seedTime.Day(), tc.hour, 0, 0, 0, time.UTC)), true)
+			seedTime := JD2DateByZone(TT2UTC(tc.seed), time.UTC, false)
+			eventLevel := UTC2TT(Date2JD(time.Date(seedTime.Year(), seedTime.Month(), seedTime.Day(), tc.hour, 0, 0, 0, time.UTC)))
 			result := SolarEclipsePartialFootprintsNASABulletinSplitK(tc.seed, SolarEclipsePartialFootprintOptions{
 				StepDays: 10.0 / 1440.0, BoundaryPoints: 24, DisableRiseSetCurves: true,
 				GreatestTimeValues: []float64{eventLevel},
@@ -188,8 +188,8 @@ func TestSolarEclipseGreatestTimeContoursCoverZeroSet(t *testing.T) {
 		{"2014NonCentral", solarEclipseIsochroneTestSeed(t, 2014, time.April, 29), 6},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			seedTime := JDE2DateByZone(TD2UT(tc.seed, false), time.UTC, false)
-			level := TD2UT(Date2JDE(time.Date(seedTime.Year(), seedTime.Month(), seedTime.Day(), tc.hour, 0, 0, 0, time.UTC)), true)
+			seedTime := JD2DateByZone(TT2UTC(tc.seed), time.UTC, false)
+			level := UTC2TT(Date2JD(time.Date(seedTime.Year(), seedTime.Month(), seedTime.Day(), tc.hour, 0, 0, 0, time.UTC)))
 			solver := newSolarEclipseSolver(CalcMoonSHByJDE(tc.seed, 0), SolarEclipseModelNASABulletinSplitK)
 			segments := solver.greatestTimeContourSegments(level)
 			if len(segments) == 0 {
@@ -267,12 +267,12 @@ func TestSolarEclipseGreatestTimeStepAlignsAndCapsLevels(t *testing.T) {
 		t.Fatalf("step request produced %d contours, want %d", len(result.GreatestTimeContours), len(want))
 	}
 	// 独立重算网格：只用导出的 TT/UTC 换算与整刻度截断，不经过被测的取值生成函数。
-	begin := JDE2DateByZone(TD2UT(result.Eclipse.PartialBeginOnEarth, false), time.UTC, false)
+	begin := JD2DateByZone(TT2UTC(result.Eclipse.PartialBeginOnEarth), time.UTC, false)
 	first := begin.Truncate(30 * time.Minute)
 	if first.Before(begin) {
 		first = first.Add(30 * time.Minute)
 	}
-	end := JDE2DateByZone(TD2UT(result.Eclipse.PartialEndOnEarth, false), time.UTC, false)
+	end := JD2DateByZone(TT2UTC(result.Eclipse.PartialEndOnEarth), time.UTC, false)
 	ticked := 0
 	for current := first; !current.After(end); current = current.Add(30 * time.Minute) {
 		ticked++
@@ -303,7 +303,7 @@ func BenchmarkSolarEclipseGreatestTimeContours(b *testing.B) {
 	seed := solarEclipseIsochroneTestSeedB(b, 2009, time.July, 22)
 	levels := make([]float64, 0, 6)
 	for index := 0; index < 6; index++ {
-		levels = append(levels, TD2UT(Date2JDE(time.Date(2009, time.July, 22, 1, 30, 0, 0, time.UTC).Add(time.Duration(index)*30*time.Minute)), true))
+		levels = append(levels, UTC2TT(Date2JD(time.Date(2009, time.July, 22, 1, 30, 0, 0, time.UTC).Add(time.Duration(index)*30*time.Minute))))
 	}
 	options := SolarEclipsePartialFootprintOptions{
 		StepDays: 10.0 / 1440.0, BoundaryPoints: 24, DisableRiseSetCurves: true,

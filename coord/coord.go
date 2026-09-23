@@ -31,51 +31,55 @@ type Horizontal struct {
 	HourAngle float64 // 时角，单位度 / hour angle in degrees.
 }
 
-func jdeUTC(date time.Time) float64 {
-	return basic.Date2JDE(date.UTC())
+// jdUTC 绝对时刻换算成 UTC 民用儒略日，本包所有入口共用这一个口径。
+//
+// 黄赤交角、章动与岁差按 TT 取用，这里给的是 UTC 民用 JD：两者的差比本包例程约 0.1″
+// 的精度低三个数量级，故不叠加 UTC2TT。
+func jdUTC(date time.Time) float64 {
+	return basic.Date2JD(date.UTC())
 }
 
 // EclipticToEquatorial 黄道坐标转赤道坐标 / converts ecliptic to equatorial coordinates.
 func EclipticToEquatorial(date time.Time, lon, lat float64) Equatorial {
-	ra, dec := basic.LoBoToRaDec(jdeUTC(date), lon, lat)
+	ra, dec := basic.LoBoToRaDec(jdUTC(date), lon, lat)
 	return Equatorial{RA: ra, Dec: dec}
 }
 
 // EquatorialToEcliptic 赤道坐标转黄道坐标 / converts equatorial to ecliptic coordinates.
 func EquatorialToEcliptic(date time.Time, ra, dec float64) Ecliptic {
-	lon, lat := basic.RaDecToLoBo(jdeUTC(date), ra, dec)
+	lon, lat := basic.RaDecToLoBo(jdUTC(date), ra, dec)
 	return Ecliptic{Lon: lon, Lat: lat}
 }
 
 // Precess 岁差修正 / precesses equatorial coordinates from one date to another.
 func Precess(from, to time.Time, ra, dec float64) Equatorial {
-	nextRA, nextDec := basic.Precess(ra, dec, jdeUTC(from), jdeUTC(to))
+	nextRA, nextDec := basic.Precess(ra, dec, jdUTC(from), jdUTC(to))
 	return Equatorial{RA: nextRA, Dec: nextDec}
 }
 
 // EclipticObliquity 黄赤交角 / ecliptic obliquity.
 func EclipticObliquity(date time.Time, nutation bool) float64 {
-	return basic.EclipticObliquity(jdeUTC(date), nutation)
+	return basic.EclipticObliquity(jdUTC(date), nutation)
 }
 
 // Nutation2000B IAU 2000B 章动 / IAU 2000B nutation.
 func Nutation2000B(date time.Time) (longitude, obliquity float64) {
-	return basic.Nutation2000B(jdeUTC(date))
+	return basic.Nutation2000B(jdUTC(date))
 }
 
 // Nutation1980 IAU 1980 章动 / IAU 1980 nutation.
 func Nutation1980(date time.Time) (longitude, obliquity float64) {
-	return basic.Nutation1980(jdeUTC(date))
+	return basic.Nutation1980(jdUTC(date))
 }
 
 // MeanSiderealTime 平恒星时，单位小时 / mean sidereal time in hours.
 func MeanSiderealTime(date time.Time) float64 {
-	return basic.MeanSiderealTime(jdeUTC(date))
+	return basic.MeanSiderealTime(basic.UTC2UT1(jdUTC(date)))
 }
 
 // ApparentSiderealTime 真恒星时，单位小时 / apparent sidereal time in hours.
 func ApparentSiderealTime(date time.Time) float64 {
-	return basic.ApparentSiderealTime(jdeUTC(date))
+	return basic.ApparentSiderealTime(basic.UTC2UT1(jdUTC(date)))
 }
 
 // HourAngle 时角 / hour angle.
@@ -83,7 +87,7 @@ func ApparentSiderealTime(date time.Time) float64 {
 // ra 为瞬时赤经；observerLon 为观测者经度，东正西负。
 // ra is apparent right ascension; observerLon is east-positive longitude.
 func HourAngle(date time.Time, ra, observerLon float64) float64 {
-	return basic.StarHourAngle(jdeUTC(date), ra, observerLon, 0)
+	return basic.StarHourAngle(jdUTC(date), ra, observerLon, 0)
 }
 
 // EquatorialToHorizontal 赤道坐标转地平坐标 / converts equatorial to horizontal coordinates.
@@ -91,33 +95,32 @@ func HourAngle(date time.Time, ra, observerLon float64) float64 {
 // ra/dec 为瞬时赤经赤纬；observerLon/observerLat 为观测者经纬度，东正西负、北正南负。
 // ra/dec are apparent coordinates; observerLon/observerLat are east-positive and north-positive.
 func EquatorialToHorizontal(date time.Time, ra, dec, observerLon, observerLat float64) Horizontal {
-	jde := jdeUTC(date)
-	altitude := basic.StarHeight(jde, ra, dec, observerLon, observerLat, 0)
+	jd := jdUTC(date)
+	altitude := basic.StarHeight(jd, ra, dec, observerLon, observerLat, 0)
 	return Horizontal{
-		Azimuth:   basic.StarAzimuth(jde, ra, dec, observerLon, observerLat, 0),
+		Azimuth:   basic.StarAzimuth(jd, ra, dec, observerLon, observerLat, 0),
 		Altitude:  altitude,
 		Zenith:    90 - altitude,
-		HourAngle: basic.StarHourAngle(jde, ra, observerLon, 0),
+		HourAngle: basic.StarHourAngle(jd, ra, observerLon, 0),
 	}
 }
 
 // TopocentricEquatorial 地心赤道坐标转站心赤道坐标 / converts geocentric to topocentric equatorial coordinates.
 //
-// distanceAU 为目标天体到地心距离，单位 AU；height 为观测者海拔，单位米。
+// distanceAU 为目标天体到地心距离，单位 AU；height 为观测者椭球高（大地高），单位米。
 // distanceAU is geocentric distance in AU; height is observer elevation in meters.
 func TopocentricEquatorial(date time.Time, ra, dec, observerLon, observerLat, distanceAU, height float64) Equatorial {
-	topRA, topDec := basic.TopocentricRaDec(ra, dec, observerLat, observerLon, jdeUTC(date), distanceAU, height)
+	topRA, topDec := basic.TopocentricRaDec(ra, dec, observerLat, observerLon, jdUTC(date), distanceAU, height)
 	return Equatorial{RA: topRA, Dec: topDec}
 }
 
 // TopocentricEcliptic 地心黄道坐标转站心黄道坐标 / converts geocentric to topocentric ecliptic coordinates.
 //
-// distanceAU 为目标天体到地心距离，单位 AU；height 为观测者海拔，单位米。
+// distanceAU 为目标天体到地心距离，单位 AU；height 为观测者椭球高（大地高），单位米。
 // distanceAU is geocentric distance in AU; height is observer elevation in meters.
 func TopocentricEcliptic(date time.Time, lon, lat, observerLon, observerLat, distanceAU, height float64) Ecliptic {
-	jde := jdeUTC(date)
-	topLon := basic.TopocentricLo(lon, lat, observerLat, observerLon, jde, distanceAU, height)
-	topLat := basic.TopocentricBo(lon, lat, observerLat, observerLon, jde, distanceAU, height)
+	jd := jdUTC(date)
+	topLon, topLat := basic.TopocentricLoBo(lon, lat, observerLat, observerLon, jd, distanceAU, height)
 	return Ecliptic{Lon: topLon, Lat: topLat}
 }
 

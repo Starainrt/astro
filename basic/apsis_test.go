@@ -62,7 +62,7 @@ func TestEarthApsisMatchesHorizonsBaseline(t *testing.T) {
 			t.Fatalf("unknown earth apsis kind %q", sample.Kind)
 		}
 
-		gotTime := JDE2DateByZone(got.JDE, time.UTC, false)
+		gotTime := JD2DateByZone(got.JD, time.UTC, false)
 		timeDiff := gotTime.Sub(wantTime)
 		if timeDiff < 0 {
 			timeDiff = -timeDiff
@@ -139,7 +139,7 @@ func TestMoonApsisMatchesHorizonsBaseline(t *testing.T) {
 			t.Fatalf("unknown moon apsis kind %q", sample.Kind)
 		}
 
-		gotTime := JDE2DateByZone(got.JDE, time.UTC, false)
+		gotTime := JD2DateByZone(got.JD, time.UTC, false)
 		timeDiff := gotTime.Sub(wantTime)
 		if timeDiff < 0 {
 			timeDiff = -timeDiff

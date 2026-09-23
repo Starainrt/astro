@@ -57,8 +57,8 @@ func OrbitEccentricAnomaly(jd float64, elements OrbitElements) float64 {
 }
 
 // OrbitTrueAnomaly 返回给定 TT/TDB 儒略日的真近点角，单位度。
-func OrbitTrueAnomaly(jd float64, elements OrbitElements) float64 {
-	trueAnomaly, _, _, ok := orbitTrueAnomalyAndRadius(jd, elements)
+func OrbitTrueAnomaly(jde float64, elements OrbitElements) float64 {
+	trueAnomaly, _, _, ok := orbitTrueAnomalyAndRadius(jde, elements)
 	if !ok {
 		return math.NaN()
 	}
@@ -149,25 +149,25 @@ func orbitHyperbolicAnomaly(meanAnomaly, eccentricity float64) (float64, bool) {
 	return hyperbolicAnomaly, true
 }
 
-func orbitTrueAnomalyAndRadius(jd float64, elements OrbitElements) (trueAnomaly, radius float64, resolved OrbitElements, ok bool) {
-	resolved = orbitElementsAt(jd, elements)
+func orbitTrueAnomalyAndRadius(jde float64, elements OrbitElements) (trueAnomaly, radius float64, resolved OrbitElements, ok bool) {
+	resolved = orbitElementsAt(jde, elements)
 	if resolved.usesPerihelionForm() {
 		if !resolved.validPerihelionForm() {
 			return math.NaN(), math.NaN(), resolved, false
 		}
 		switch {
 		case math.Abs(resolved.E-1) <= orbitParabolicTolerance:
-			return orbitParabolicTrueAnomalyAndRadius(jd, resolved)
+			return orbitParabolicTrueAnomalyAndRadius(jde, resolved)
 		case resolved.E < 1:
-			return orbitEllipticTrueAnomalyAndRadiusFromPerihelion(jd, resolved)
+			return orbitEllipticTrueAnomalyAndRadiusFromPerihelion(jde, resolved)
 		default:
-			return orbitHyperbolicTrueAnomalyAndRadius(jd, resolved)
+			return orbitHyperbolicTrueAnomalyAndRadius(jde, resolved)
 		}
 	}
 	if !resolved.validEllipticClassical() {
 		return math.NaN(), math.NaN(), resolved, false
 	}
-	meanAnomalyDeg, ok := orbitMeanAnomalyDegAt(jd, elements)
+	meanAnomalyDeg, ok := orbitMeanAnomalyDegAt(jde, elements)
 	if !ok {
 		return math.NaN(), math.NaN(), resolved, false
 	}

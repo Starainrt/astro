@@ -91,7 +91,7 @@ func lunarEclipseGeocentricPanelAt(date time.Time, calculator func(float64) basi
 	}
 	panel.SunRightAscensionDeg, panel.SunDeclinationDeg = basic.SunApparentRaDec(result.Maximum)
 	panel.MoonRightAscensionDeg, panel.MoonDeclinationDeg = basic.HMoonTrueRaDec(result.Maximum)
-	panel.SunSemidiameterArcsec = basic.SunSemidiameter(result.Maximum)
+	panel.SunSemidiameterArcsec = basic.SolarEclipseSunSemidiameter(result.Maximum, basic.SolarEclipseSunRadiusStandard)
 	panel.MoonSemidiameterArcsec = basic.MoonSemidiameter(result.Maximum)
 	panel.SunParallaxArcsec = horizontalParallaxArcsec(panel.SunSemidiameterArcsec, horizontalParallaxSunRatio)
 	panel.MoonParallaxArcsec = horizontalParallaxArcsec(panel.MoonSemidiameterArcsec, horizontalParallaxMoonRatio)

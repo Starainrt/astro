@@ -1,12 +1,14 @@
 package svg
 
 import (
+	"github.com/starainrt/astro/internal/timenote"
 	"fmt"
 	"html"
 	"math"
 	"strings"
 	"time"
 
+	"github.com/starainrt/astro"
 	"github.com/starainrt/astro/basic"
 	eclipsecore "github.com/starainrt/astro/eclipse"
 	"github.com/starainrt/astro/internal/svgchart"
@@ -64,6 +66,11 @@ type LocalSolarEclipseSVGOptions struct {
 	// Location 是图中显示时刻的时区；nil 时使用 UTC+8。
 	// Location is the display timezone for chart times; nil uses UTC+8.
 	Location *time.Location
+	// TimeScale 选择图中时刻的时标：零值 UTC；TimeScaleUT1 改用 UT1 时刻，此时 Location 必须是
+	// nil 或 UTC（否则返回 false），并在图注里声明尺度。
+	// TimeScale selects the label scale: the zero value is UTC; TimeScaleUT1 uses UT1 labels, requires
+	// Location to be nil or UTC (otherwise the renderer returns false) and declares the scale in the footer.
+	TimeScale astro.TimeScale
 }
 
 type localSolarEclipseSVGCalculator func(float64, float64, float64, float64, basic.LocalSolarEclipseDiagramOptions) basic.LocalSolarEclipseDiagramResult
@@ -106,6 +113,12 @@ func localSolarEclipseSVG(
 	calculator localSolarEclipseSVGCalculator,
 	finder localSolarEclipseSVGFinder,
 ) (string, bool) {
+	if options.TimeScale == astro.TimeScaleUT1 {
+		if options.Location != nil && options.Location != time.UTC {
+			return "", false
+		}
+		options.Location = time.UTC
+	}
 	options = normalizeLocalSolarEclipseSVGOptions(options)
 	diagram := calculator(
 		solarEclipseTimeToTTJDE(date),
@@ -117,7 +130,7 @@ func localSolarEclipseSVG(
 	if diagram.Eclipse.Type == basic.SolarEclipseNone || len(diagram.Frames) == 0 {
 		return "", false
 	}
-	info := localSolarEclipseInfoFromDiagram(diagram, lon, lat, height, options.Location)
+	info := localSolarEclipseInfoFromDiagram(diagram, lon, lat, height, options.Location, options.TimeScale)
 	if finder != nil {
 		coreInfo := finder(info.GreatestEclipse, lon, lat, height)
 		info.HasSaros = coreInfo.HasSaros
@@ -153,6 +166,14 @@ func renderLocalSolarEclipseSVG(
 	headerBottom := localSolarEclipseSVGHeaderBottom(headerTexts)
 	width := float64(options.Width)
 	height := float64(options.Height)
+	direction := localSolarEclipseSVGDirectionTextValue(options)
+	if options.DirectionText != "" {
+		direction = svgchart.EllipsizeText(direction, width-80, 12)
+	}
+	scaleNote := timenote.Scale(options.TimeScale, info.GreatestEclipse, options.Location, options.Language)
+	footerLines := localSolarEclipseSVGFooterLines(direction, localSolarEclipseSVGFooterNoteText(options), scaleNote, width, height, headerBottom)
+	footerBaselines, footerOccupied := svgchart.FooterBlock(len(footerLines), height, 12,
+		svgchart.FooterLineHeight(12), localDiagramFooterBottomPadding)
 	margin := math.Max(30, math.Min(46, width*0.05))
 	panelWidth := math.Max(230, math.Min(280, width*0.28))
 	diagramLeft := margin
@@ -160,7 +181,8 @@ func renderLocalSolarEclipseSVG(
 	if diagramRight-diagramLeft < width*0.48 {
 		diagramRight = width - margin
 	}
-	footerHeight := 72.0
+	// 页脚与图区之间留一点空，页脚高度按实际行数算出来，说明文字再多也不会顶到画布底边。
+	footerHeight := footerOccupied + 10
 	stageHeight := math.Max(160, math.Min(210, height*0.27))
 	stageTop := height - stageHeight - footerHeight
 	if stageTop < headerBottom+160 {
@@ -250,22 +272,13 @@ func renderLocalSolarEclipseSVG(
 	}
 	writeLocalSolarEclipseStagePanels(&b, info, eventFrames, options, margin, stageTop, width-2*margin, stageHeight)
 
-	direction := localSolarEclipseSVGDirectionTextValue(options)
-	if options.DirectionText != "" {
-		direction = svgchart.EllipsizeText(direction, width-80, 12)
-	}
-	fmt.Fprintf(&b, `<text x="%.3f" y="%.3f" fill="#333" font-family="Georgia, 'Times New Roman', serif" font-size="12">%s</text>`,
-		40.0, height-54, html.EscapeString(direction))
-	// 默认说明是单行；调用方文本折行后按画布底边截断，首行位置不变。
-	lines := []string{localSolarEclipseSVGFooterNoteText(options)}
-	if options.FooterNote != "" {
-		maxWidth := width - 80
-		lines = svgchart.TruncateTextLines(svgchart.WrapText(options.FooterNote, maxWidth, 12), maxWidth, 12,
-			svgchart.BaselineLineLimit(12, 15, height-34, height-4))
-	}
-	for index, line := range lines {
-		fmt.Fprintf(&b, `<text x="%.3f" y="%.3f" fill="#555" font-family="Georgia, 'Times New Roman', serif" font-size="12">%s</text>`,
-			40.0, height-34+float64(index)*15, html.EscapeString(line))
+	for index, line := range footerLines {
+		fill := "#555"
+		if index == 0 {
+			fill = "#333"
+		}
+		fmt.Fprintf(&b, `<text x="%.3f" y="%.3f" fill="%s" font-family="Georgia, 'Times New Roman', serif" font-size="12">%s</text>`,
+			40.0, footerBaselines[index], fill, html.EscapeString(line))
 	}
 	writeLocalSolarEclipseContacts(&b, info, options, panelX, math.Max(154, cy-92))
 	b.WriteString(`</svg>`)
@@ -359,6 +372,10 @@ func localSolarEclipseSVGDirectionTextValue(options LocalSolarEclipseSVGOptions)
 }
 
 func localSolarEclipseSVGFooterNoteText(options LocalSolarEclipseSVGOptions) string {
+	return localSolarEclipseSVGFooterNoteTextBase(options)
+}
+
+func localSolarEclipseSVGFooterNoteTextBase(options LocalSolarEclipseSVGOptions) string {
 	if options.FooterNote != "" {
 		return options.FooterNote
 	}
@@ -366,6 +383,62 @@ func localSolarEclipseSVGFooterNoteText(options LocalSolarEclipseSVGOptions) str
 		return "Overview omits C2/C3 Moon outlines; lower panels show each phase separately. Contact PAs are measured from celestial north toward east."
 	}
 	return "上方为全局路径，C2/C3 只标点位；下方为各阶段独立视圆图。接触点位置角从天球北点起向东量。"
+}
+
+// localSolarEclipseSVGFooterLines 折行页脚说明并按图区下限与画布高度截断行数，返回方向行在前的页脚各行。
+// localDiagramFooterBottomPadding 是站心图页脚末行基线距画布底边的留白：图框在画布内缩 18px，
+// 留白取 18px 框线 + 4px 间隙 + 12px 字的字下伸部，末行因此落在框线之内而不是压在框线上。
+const localDiagramFooterBottomPadding = 26.0
+
+func localSolarEclipseSVGFooterLines(direction, noteText, scaleNote string, width, height, headerBottom float64) []string {
+	const (
+		fontSize   = 12.0
+		stageFloor = 160.0
+		stageGap   = 10.0
+	)
+	lineHeight := svgchart.FooterLineHeight(fontSize)
+	padding := localDiagramFooterBottomPadding
+	// 先扣掉底边留白、方向行与图区下限，剩下的才是说明行能用的高度；再按画布高度两成封顶。
+	maxLines := svgchart.TextLineLimit(fontSize, lineHeight,
+		height-headerBottom-stageFloor-stageGap-padding-lineHeight)
+	if cap := int(height * 0.20 / lineHeight); maxLines > cap {
+		maxLines = cap
+	}
+	if maxLines < 1 {
+		maxLines = 1
+	}
+	maxWidth := width - 80
+	// 默认把时标声明并进说明一起均衡折行（行宽最接近方向说明），在放得下的行数里挑最均衡的一种。
+	mergedText := strings.TrimSpace(noteText + " " + scaleNote)
+	lines := svgchart.WrapTextBalanced(mergedText, maxWidth, fontSize)
+	for slots := 2; slots <= maxLines; slots++ {
+		candidate := svgchart.WrapTextBalancedLines(mergedText, maxWidth, fontSize, slots)
+		if len(candidate) > maxLines {
+			break
+		}
+		if solarEclipseLocalFooterSpread(direction, candidate) < solarEclipseLocalFooterSpread(direction, lines) {
+			lines = candidate
+		}
+	}
+	if len(lines) > maxLines {
+		// 说明太长折不下：截断说明，把时标声明单独留成最后一行。
+		notesOnly := svgchart.WrapTextBalanced(noteText, maxWidth, fontSize)
+		lines = svgchart.FooterLinesWithScale(notesOnly, scaleNote, maxWidth, fontSize, maxLines)
+	}
+	return append([]string{direction}, lines...)
+}
+
+// solarEclipseLocalFooterSpread 返回页脚各行估算宽度的最大最小比，用于在两种折行方案里取更整齐的一种。
+func solarEclipseLocalFooterSpread(direction string, lines []string) float64 {
+	minimum, maximum := svgchart.EstimatedTextWidth(direction, 12), svgchart.EstimatedTextWidth(direction, 12)
+	for _, line := range lines {
+		width := svgchart.EstimatedTextWidth(line, 12)
+		minimum, maximum = math.Min(minimum, width), math.Max(maximum, width)
+	}
+	if minimum <= 0 {
+		return math.Inf(1)
+	}
+	return maximum / minimum
 }
 
 func localSolarEclipseSVGHeaderLineY(index int) float64 {

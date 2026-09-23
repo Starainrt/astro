@@ -7,76 +7,76 @@ import (
 	. "github.com/starainrt/astro/tools"
 )
 
-func MercuryL(jd float64) float64 {
-	return planet.WherePlanet(1, 0, jd)
+func MercuryL(jde float64) float64 {
+	return planet.WherePlanet(1, 0, jde)
 }
 
-func MercuryB(jd float64) float64 {
-	return planet.WherePlanet(1, 1, jd)
+func MercuryB(jde float64) float64 {
+	return planet.WherePlanet(1, 1, jde)
 }
-func MercuryR(jd float64) float64 {
-	return planet.WherePlanet(1, 2, jd)
+func MercuryR(jde float64) float64 {
+	return planet.WherePlanet(1, 2, jde)
 }
-func AMercuryX(jd float64) float64 {
-	l := MercuryL(jd)
-	b := MercuryB(jd)
-	r := MercuryR(jd)
-	el := planet.WherePlanet(-1, 0, jd)
-	eb := planet.WherePlanet(-1, 1, jd)
-	er := planet.WherePlanet(-1, 2, jd)
+func AMercuryX(jde float64) float64 {
+	l := MercuryL(jde)
+	b := MercuryB(jde)
+	r := MercuryR(jde)
+	el := planet.WherePlanet(-1, 0, jde)
+	eb := planet.WherePlanet(-1, 1, jde)
+	er := planet.WherePlanet(-1, 2, jde)
 	x := r*Cos(b)*Cos(l) - er*Cos(eb)*Cos(el)
 	return x
 }
 
-func AMercuryY(jd float64) float64 {
+func AMercuryY(jde float64) float64 {
 
-	l := MercuryL(jd)
-	b := MercuryB(jd)
-	r := MercuryR(jd)
-	el := planet.WherePlanet(-1, 0, jd)
-	eb := planet.WherePlanet(-1, 1, jd)
-	er := planet.WherePlanet(-1, 2, jd)
+	l := MercuryL(jde)
+	b := MercuryB(jde)
+	r := MercuryR(jde)
+	el := planet.WherePlanet(-1, 0, jde)
+	eb := planet.WherePlanet(-1, 1, jde)
+	er := planet.WherePlanet(-1, 2, jde)
 	y := r*Cos(b)*Sin(l) - er*Cos(eb)*Sin(el)
 	return y
 }
-func AMercuryZ(jd float64) float64 {
-	//l := MercuryL(jd)
-	b := MercuryB(jd)
-	r := MercuryR(jd)
-	//	el := planet.WherePlanet(-1, 0, jd)
-	eb := planet.WherePlanet(-1, 1, jd)
-	er := planet.WherePlanet(-1, 2, jd)
+func AMercuryZ(jde float64) float64 {
+	//l := MercuryL(jde)
+	b := MercuryB(jde)
+	r := MercuryR(jde)
+	//	el := planet.WherePlanet(-1, 0, jde)
+	eb := planet.WherePlanet(-1, 1, jde)
+	er := planet.WherePlanet(-1, 2, jde)
 	z := r*Sin(b) - er*Sin(eb)
 	return z
 }
 
-func AMercuryXYZ(jd float64) (float64, float64, float64) {
-	l := MercuryL(jd)
-	b := MercuryB(jd)
-	r := MercuryR(jd)
-	el := planet.WherePlanet(-1, 0, jd)
-	eb := planet.WherePlanet(-1, 1, jd)
-	er := planet.WherePlanet(-1, 2, jd)
+func AMercuryXYZ(jde float64) (float64, float64, float64) {
+	l := MercuryL(jde)
+	b := MercuryB(jde)
+	r := MercuryR(jde)
+	el := planet.WherePlanet(-1, 0, jde)
+	eb := planet.WherePlanet(-1, 1, jde)
+	er := planet.WherePlanet(-1, 2, jde)
 	x := r*Cos(b)*Cos(l) - er*Cos(eb)*Cos(el)
 	y := r*Cos(b)*Sin(l) - er*Cos(eb)*Sin(el)
 	z := r*Sin(b) - er*Sin(eb)
 	return x, y, z
 }
 
-func MercuryApparentRa(jd float64) float64 {
-	lo, bo := MercuryApparentLoBo(jd)
-	return LoToRa(jd, lo, bo)
+func MercuryApparentRa(jde float64) float64 {
+	lo, bo := MercuryApparentLoBo(jde)
+	return LoToRa(jde, lo, bo)
 }
-func MercuryApparentDec(jd float64) float64 {
-	lo, bo := MercuryApparentLoBo(jd)
-	eps := TrueObliquity(jd)
+func MercuryApparentDec(jde float64) float64 {
+	lo, bo := MercuryApparentLoBo(jde)
+	eps := TrueObliquity(jde)
 	dec := ArcSin(Sin(bo)*Cos(eps) + Cos(bo)*Sin(eps)*Sin(lo))
 	return dec
 }
 
-func MercuryApparentRaDec(jd float64) (float64, float64) {
-	lo, bo := MercuryApparentLoBo(jd)
-	return LoBoToRaDec(jd, lo, bo)
+func MercuryApparentRaDec(jde float64) (float64, float64) {
+	lo, bo := MercuryApparentLoBo(jde)
+	return LoBoToRaDec(jde, lo, bo)
 }
 
 func EarthMercuryAway(jd float64) float64 {
@@ -98,22 +98,22 @@ func MercuryApparentLoBo(jd float64) (float64, float64) {
 	return geo.lo, geo.bo
 }
 
-func MercuryMag(jd float64) float64 {
-	sunDistance := MercuryR(jd)
-	earthDistance := EarthMercuryAway(jd)
-	earthSunDistance := planet.WherePlanet(-1, 2, jd)
+func MercuryMag(jde float64) float64 {
+	sunDistance := MercuryR(jde)
+	earthDistance := EarthMercuryAway(jde)
+	earthSunDistance := planet.WherePlanet(-1, 2, jde)
 	i := (sunDistance*sunDistance + earthDistance*earthDistance - earthSunDistance*earthSunDistance) / (2 * sunDistance * earthDistance)
 	i = ArcCos(i)
 	mag := -0.42 + 5*math.Log10(sunDistance*earthDistance) + 0.0380*i - 0.000273*i*i + 0.000002*i*i*i
 	return FloatRound(mag, 2)
 }
 
-func MercuryHeight(jde, lon, lat, timezone float64) float64 {
+func MercuryHeight(localJD, lon, lat, timezone float64) float64 {
 	// 转换为世界时
-	utcJde := jde - timezone/24.0
+	utcJD := localJD - timezone/24.0
 	// 计算视恒星时
-	ra, dec := MercuryApparentRaDec(TD2UT(utcJde, true))
-	st := Limit360(ApparentSiderealTime(utcJde)*15 + lon)
+	ra, dec := MercuryApparentRaDec(UTC2TT(utcJD))
+	st := Limit360(ApparentSiderealTime(UTC2UT1(utcJD))*15 + lon)
 	// 计算时角
 	hourAngle := Limit360(st - ra)
 	// 高度角、时角与天球座标三角转换公式
@@ -122,12 +122,12 @@ func MercuryHeight(jde, lon, lat, timezone float64) float64 {
 	return ArcSin(sinHeight)
 }
 
-func MercuryAzimuth(jde, lon, lat, timezone float64) float64 {
+func MercuryAzimuth(localJD, lon, lat, timezone float64) float64 {
 	// 转换为世界时
-	utcJde := jde - timezone/24.0
+	utcJD := localJD - timezone/24.0
 	// 计算视恒星时
-	ra, dec := MercuryApparentRaDec(TD2UT(utcJde, true))
-	st := Limit360(ApparentSiderealTime(utcJde)*15 + lon)
+	ra, dec := MercuryApparentRaDec(UTC2TT(utcJD))
+	st := Limit360(ApparentSiderealTime(UTC2UT1(utcJD))*15 + lon)
 	// 计算时角
 	hourAngle := Limit360(st - ra)
 	// 三角转换公式
@@ -146,21 +146,21 @@ func MercuryAzimuth(jde, lon, lat, timezone float64) float64 {
 }
 
 func MercuryHourAngle(jd, lon, timezone float64) float64 {
-	siderealLongitude := Limit360(ApparentSiderealTime(jd-timezone/24)*15 + lon)
-	hourAngle := siderealLongitude - MercuryApparentRa(TD2UT(jd-timezone/24.0, true))
+	siderealLongitude := Limit360(ApparentSiderealTime(UTC2UT1(jd-timezone/24))*15 + lon)
+	hourAngle := siderealLongitude - MercuryApparentRa(UTC2TT(jd-timezone/24.0))
 	if hourAngle < 0 {
 		hourAngle += 360
 	}
 	return hourAngle
 }
 
-func MercuryCulminationTime(jde, lon, timezone float64) float64 {
-	//jde 世界时，非力学时，当地时区 0时，无需转换力学时
+func MercuryCulminationTime(localJD, lon, timezone float64) float64 {
+	// localJD 是本地民用日锚点（当地 0 时），不是力学时。
 	//ra,dec 瞬时天球座标，非J2000等时间天球坐标
-	jde = math.Floor(jde) + 0.5
-	estimateJD := jde + Limit360(360-MercuryHourAngle(jde, lon, timezone))/15.0/24.0*0.99726851851851851851
-	normalizedHourAngle := func(jde, lon, timezone float64) float64 {
-		currentHourAngle := MercuryHourAngle(jde, lon, timezone)
+	localJD = math.Floor(localJD) + 0.5
+	estimateJD := localJD + Limit360(360-MercuryHourAngle(localJD, lon, timezone))/15.0/24.0*0.99726851851851851851
+	normalizedHourAngle := func(localJD, lon, timezone float64) float64 {
+		currentHourAngle := MercuryHourAngle(localJD, lon, timezone)
 		if currentHourAngle < 180 {
 			currentHourAngle += 360
 		}

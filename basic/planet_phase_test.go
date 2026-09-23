@@ -7,14 +7,14 @@ import (
 )
 
 func TestVenusIlluminatedFractionMeeusExample(t *testing.T) {
-	jd := Date2JDE(time.Date(1992, 12, 20, 0, 0, 0, 0, time.UTC))
+	jd := Date2JD(time.Date(1992, 12, 20, 0, 0, 0, 0, time.UTC))
 
 	assertPlanetPhaseClose(t, "VenusPhaseAngle", VenusPhaseAngle(jd), 72.96, 0.01)
 	assertPlanetPhaseClose(t, "VenusIlluminatedFraction", VenusIlluminatedFraction(jd), 0.647, 0.001)
 }
 
 func TestPlanetIlluminatedFractionRanges(t *testing.T) {
-	jd := TD2UT(Date2JDE(time.Date(2026, 4, 26, 9, 30, 45, 0, time.UTC)), true)
+	jd := UTC2TT(Date2JD(time.Date(2026, 4, 26, 9, 30, 45, 0, time.UTC)))
 	cases := []struct {
 		name          string
 		phaseAngle    func(float64) float64

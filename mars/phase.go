@@ -48,5 +48,5 @@ func BrightLimbPositionAngleN(date time.Time, n int) float64 {
 }
 
 func phaseJD(date time.Time) float64 {
-	return basic.TD2UT(calendar.Date2JDE(date.UTC()), true)
+	return basic.UTC2TT(calendar.Date2JD(date.UTC()))
 }

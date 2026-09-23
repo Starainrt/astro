@@ -13,8 +13,8 @@ import (
 // ra/dec are apparent equatorial coordinates in degrees; lon/lat are east-positive and north-positive.
 // Returns the signed parallactic angle in degrees.
 func ParallacticAngle(date time.Time, ra, dec, lon, lat float64) float64 {
-	jde := basic.Date2JDE(date)
+	localJD := basic.Date2JD(date)
 	_, loc := date.Zone()
 	timezone := float64(loc) / 3600.0
-	return basic.StarParallacticAngle(jde, ra, dec, lon, lat, timezone)
+	return basic.StarParallacticAngle(localJD, ra, dec, lon, lat, timezone)
 }

@@ -8,20 +8,21 @@ import (
 
 // CulminationTime 太阳中天时刻（按均时差计算）/ solar culmination time from the equation of time.
 //
-// 日期锚点是 floor(jd)（JD 整数 = 12:00 UT 的正午锚点），不是午夜；调用方要传“本地 0 时对应 JD + 0.5”
+// localJD 是本地民用日锚点，只取 floor(localJD)（JD 整数 = 12:00 的正午锚点），既不是午夜也不是力学时；
+// 调用方要传“本地 0 时对应 JD + 0.5”
 // 才能落在同一本地日（sun/sun.go 的 CulminationTime 就是这么补的）。地方时相对世界时的偏移按角度归化到
 // ±180°：超过 ±12 小时（如 UTC+14 配西经）时不归化会把中天推到相邻的一天。
-func CulminationTime(jd, lon, tz float64) float64 { //实际中天时间
-	jd = math.Floor(jd)
+func CulminationTime(localJD, lon, tz float64) float64 { //实际中天时间
+	localJD = math.Floor(localJD)
 	tmp := longitudeOffsetDegrees(tz*15-lon) * 4 / 60
-	return jd + tmp/24.0 - SunTime(jd)/24.0
+	return localJD + tmp/24.0 - SunTime(localJD)/24.0
 }
 
 // CulminationTimeN 截断项太阳中天时刻 / truncated solar culmination time.
-func CulminationTimeN(jd, lon, tz float64, n int) float64 { //实际中天时间
-	jd = math.Floor(jd)
+func CulminationTimeN(localJD, lon, tz float64, n int) float64 { //实际中天时间
+	localJD = math.Floor(localJD)
 	tmp := longitudeOffsetDegrees(tz*15-lon) * 4 / 60
-	return jd + tmp/24.0 - SunTimeN(jd, n)/24.0
+	return localJD + tmp/24.0 - SunTimeN(localJD, n)/24.0
 }
 
 func longitudeOffsetDegrees(offset float64) float64 {
@@ -34,13 +35,11 @@ func longitudeOffsetDegrees(offset float64) float64 {
 	return offset
 }
 
-/*
- * 昏朦影传入 当天0时时刻
- */
-func EveningTwilight(jd, lon, lat, tz, targetAltitude float64) (float64, error) {
-	jd = math.Floor(jd) + 1.5
+// EveningTwilight 昏朦影；localJD 是本地民用日锚点（当地 0 时），只取整数日。
+func EveningTwilight(localJD, lon, lat, tz, targetAltitude float64) (float64, error) {
+	localJD = math.Floor(localJD) + 1.5
 	localTimeZone := math.Round(lon / 15)
-	culminationTime := CulminationTime(jd, lon, localTimeZone)
+	culminationTime := CulminationTime(localJD, lon, localTimeZone)
 	if SunHeight(culminationTime, lon, lat, localTimeZone) < targetAltitude {
 		return 0, ErrNeverRise
 	}
@@ -76,10 +75,10 @@ func EveningTwilight(jd, lon, lat, tz, targetAltitude float64) (float64, error) 
 	return estimateJD - localTimeZone/24 + tz/24, nil
 }
 
-func EveningTwilightN(jd, lon, lat, tz, targetAltitude float64, n int) (float64, error) {
-	jd = math.Floor(jd) + 1.5
+func EveningTwilightN(localJD, lon, lat, tz, targetAltitude float64, n int) (float64, error) {
+	localJD = math.Floor(localJD) + 1.5
 	localTimeZone := math.Round(lon / 15)
-	culminationTime := CulminationTimeN(jd, lon, localTimeZone, n)
+	culminationTime := CulminationTimeN(localJD, lon, localTimeZone, n)
 	if SunHeightN(culminationTime, lon, lat, localTimeZone, n) < targetAltitude {
 		return 0, ErrNeverRise
 	}
@@ -115,15 +114,15 @@ func EveningTwilightN(jd, lon, lat, tz, targetAltitude float64, n int) (float64,
 	return estimateJD - localTimeZone/24 + tz/24, nil
 }
 
-func MorningTwilight(jd, lon, lat, tz, targetAltitude float64) (float64, error) {
+func MorningTwilight(localJD, lon, lat, tz, targetAltitude float64) (float64, error) {
 	// 调整到中午12点
-	jd = math.Floor(jd) + 1.5
+	localJD = math.Floor(localJD) + 1.5
 
 	// 计算时区
 	localTimeZone := math.Round(lon / 15)
 
 	// 计算太阳上中天时间
-	culminationTime := CulminationTime(jd, lon, localTimeZone)
+	culminationTime := CulminationTime(localJD, lon, localTimeZone)
 
 	// 检查极夜和极昼条件
 	if SunHeight(culminationTime, lon, lat, localTimeZone) < targetAltitude {
@@ -162,10 +161,10 @@ func MorningTwilight(jd, lon, lat, tz, targetAltitude float64) (float64, error) 
 	return estimateJD - localTimeZone/24 + tz/24, nil
 }
 
-func MorningTwilightN(jd, lon, lat, tz, targetAltitude float64, n int) (float64, error) {
-	jd = math.Floor(jd) + 1.5
+func MorningTwilightN(localJD, lon, lat, tz, targetAltitude float64, n int) (float64, error) {
+	localJD = math.Floor(localJD) + 1.5
 	localTimeZone := math.Round(lon / 15)
-	culminationTime := CulminationTimeN(jd, lon, localTimeZone, n)
+	culminationTime := CulminationTimeN(localJD, lon, localTimeZone, n)
 	if SunHeightN(culminationTime, lon, lat, localTimeZone, n) < targetAltitude {
 		return 0, ErrNeverRise
 	}
@@ -205,8 +204,8 @@ func MorningTwilightN(jd, lon, lat, tz, targetAltitude float64, n int) (float64,
  * 太阳时角
  */
 func SunTimeAngle(jd, lon, lat, tz float64) float64 {
-	startime := Limit360(ApparentSiderealTime(jd-tz/24)*15 + lon)
-	timeangle := startime - HSunApparentRa(TD2UT(jd-tz/24, true))
+	startime := Limit360(ApparentSiderealTime(UTC2UT1(jd-tz/24))*15 + lon)
+	timeangle := startime - HSunApparentRa(UTC2TT(jd-tz/24))
 	if timeangle < 0 {
 		timeangle += 360
 	}
@@ -214,8 +213,8 @@ func SunTimeAngle(jd, lon, lat, tz float64) float64 {
 }
 
 func SunTimeAngleN(jd, lon, lat, tz float64, n int) float64 {
-	startime := Limit360(ApparentSiderealTime(jd-tz/24)*15 + lon)
-	timeangle := startime - HSunApparentRaN(TD2UT(jd-tz/24, true), n)
+	startime := Limit360(ApparentSiderealTime(UTC2UT1(jd-tz/24))*15 + lon)
+	timeangle := startime - HSunApparentRaN(UTC2TT(jd-tz/24), n)
 	if timeangle < 0 {
 		timeangle += 360
 	}
@@ -229,8 +228,8 @@ type sunObservationState struct {
 
 func sunObservationStateN(jd, lon, lat, tz float64, n int) sunObservationState {
 	calculationJD := jd - tz/24.0
-	tt := TD2UT(calculationJD, true)
-	siderealTime := Limit360(ApparentSiderealTime(calculationJD)*15 + lon)
+	tt := UTC2TT(calculationJD)
+	siderealTime := Limit360(ApparentSiderealTime(UTC2UT1(calculationJD))*15 + lon)
 	ra, dec, distanceAU := hSunApparentRaDecDistanceN(tt, n)
 	hourAngle := Limit360(siderealTime - ra)
 	altitudeSine := Sin(lat)*Sin(dec) + Cos(dec)*Cos(lat)*Cos(hourAngle)
@@ -262,7 +261,7 @@ func sunRiseSetOnCivilDay(candidate, slope, civilDayStart, longitude, latitude, 
 	})
 }
 
-// GetSunRiseTime 精确计算日出时间，传入当日0时JDE
+// GetSunRiseTime 精确计算日出时间，传入本地民用日 0 时锚点
 func GetSunRiseTime(julianDay, longitude, latitude, timeZone, zenithShift, height float64) (float64, error) {
 	return calculateSunRiseSetTime(julianDay, longitude, latitude, timeZone, zenithShift, height, true)
 }
@@ -271,7 +270,7 @@ func GetSunRiseTimeN(julianDay, longitude, latitude, timeZone, zenithShift, heig
 	return calculateSunRiseSetTimeN(julianDay, longitude, latitude, timeZone, zenithShift, height, true, n)
 }
 
-// GetSunSetTime 精确计算日落时间，传入当日0时JDE
+// GetSunSetTime 精确计算日落时间，传入本地民用日 0 时锚点
 func GetSunSetTime(julianDay, longitude, latitude, timeZone, zenithShift, height float64) (float64, error) {
 	return calculateSunRiseSetTime(julianDay, longitude, latitude, timeZone, zenithShift, height, false)
 }
@@ -501,9 +500,9 @@ func LowSunHeight(jd, lon, lat, tz float64) float64 {
 	//tmp := (tz*15 - lon) * 4 / 60
 	//truejd := jd - tmp/24
 	calcjd := jd - tz/24
-	st := Limit360(ApparentSiderealTime(calcjd)*15 + lon)
-	hourAngle := Limit360(st - SunApparentRa(TD2UT(calcjd, true)))
-	dec := SunApparentDec(TD2UT(calcjd, true))
+	st := Limit360(ApparentSiderealTime(UTC2UT1(calcjd))*15 + lon)
+	hourAngle := Limit360(st - SunApparentRa(UTC2TT(calcjd)))
+	dec := SunApparentDec(UTC2TT(calcjd))
 	tmp2 := Sin(lat)*Sin(dec) + Cos(dec)*Cos(lat)*Cos(hourAngle)
 	return ArcSin(tmp2)
 }
@@ -519,9 +518,9 @@ func SunAzimuth(jd, lon, lat, tz float64) float64 {
 	//tmp := (tz*15 - lon) * 4 / 60
 	//truejd := jd - tmp/24
 	calcjd := jd - tz/24
-	st := Limit360(ApparentSiderealTime(calcjd)*15 + lon)
-	hourAngle := Limit360(st - HSunApparentRa(TD2UT(calcjd, true)))
-	tmp2 := Sin(hourAngle) / (Cos(hourAngle)*Sin(lat) - Tan(HSunApparentDec(TD2UT(calcjd, true)))*Cos(lat))
+	st := Limit360(ApparentSiderealTime(UTC2UT1(calcjd))*15 + lon)
+	hourAngle := Limit360(st - HSunApparentRa(UTC2TT(calcjd)))
+	tmp2 := Sin(hourAngle) / (Cos(hourAngle)*Sin(lat) - Tan(HSunApparentDec(UTC2TT(calcjd)))*Cos(lat))
 	azimuth := ArcTan(tmp2)
 	if azimuth < 0 {
 		if hourAngle/15 < 12 {
@@ -537,9 +536,9 @@ func SunAzimuth(jd, lon, lat, tz float64) float64 {
 
 func SunAzimuthN(jd, lon, lat, tz float64, n int) float64 {
 	calcjd := jd - tz/24
-	st := Limit360(ApparentSiderealTime(calcjd)*15 + lon)
-	hourAngle := Limit360(st - HSunApparentRaN(TD2UT(calcjd, true), n))
-	tmp2 := Sin(hourAngle) / (Cos(hourAngle)*Sin(lat) - Tan(HSunApparentDecN(TD2UT(calcjd, true), n))*Cos(lat))
+	st := Limit360(ApparentSiderealTime(UTC2UT1(calcjd))*15 + lon)
+	hourAngle := Limit360(st - HSunApparentRaN(UTC2TT(calcjd), n))
+	tmp2 := Sin(hourAngle) / (Cos(hourAngle)*Sin(lat) - Tan(HSunApparentDecN(UTC2TT(calcjd), n))*Cos(lat))
 	azimuth := ArcTan(tmp2)
 	if azimuth < 0 {
 		if hourAngle/15 < 12 {

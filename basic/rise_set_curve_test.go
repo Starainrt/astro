@@ -9,13 +9,13 @@ import (
 )
 
 func TestSolarEclipseRiseSetCurvesSatisfyLocalPhaseEquations(t *testing.T) {
-	result := SolarEclipsePartialFootprints(JDECalc(2024, 4, 8), SolarEclipsePartialFootprintOptions{
+	result := SolarEclipsePartialFootprints(JDCalc(2024, 4, 8), SolarEclipsePartialFootprintOptions{
 		StepDays: 10.0 / 1440.0,
 	})
 	if len(result.RiseSetCurves) != 6 {
 		t.Fatalf("solar rise/set curve count = %d, want 6", len(result.RiseSetCurves))
 	}
-	solver := newSolarEclipseSolver(CalcMoonSHByJDE(JDECalc(2024, 4, 8), 0), SolarEclipseModelNASABulletinSplitK)
+	solver := newSolarEclipseSolver(CalcMoonSHByJDE(JDCalc(2024, 4, 8), 0), SolarEclipseModelNASABulletinSplitK)
 	for _, curve := range result.RiseSetCurves {
 		for _, segment := range curve.Segments {
 			for _, point := range riseSetSolarTestSamples(segment) {
@@ -40,7 +40,7 @@ func TestSolarEclipseRiseSetCurvesSatisfyLocalPhaseEquations(t *testing.T) {
 }
 
 func TestSolarEclipseRiseSetCurvesCloseFoldsAndPhaseJunctions(t *testing.T) {
-	result := SolarEclipsePartialFootprints(JDECalc(2031, 5, 21), SolarEclipsePartialFootprintOptions{
+	result := SolarEclipsePartialFootprints(JDCalc(2031, 5, 21), SolarEclipsePartialFootprintOptions{
 		StepDays: 2.0 / 1440.0,
 	})
 	if len(result.RiseSetCurves) != 6 {
@@ -84,7 +84,7 @@ func TestSolarEclipseRiseSetCurvesCloseFoldsAndPhaseJunctions(t *testing.T) {
 }
 
 func TestSolarEclipseRiseSetCurvesCloseFoldsWithAdditionalBranches(t *testing.T) {
-	result := SolarEclipsePartialFootprints(JDECalc(2010, 1, 15), SolarEclipsePartialFootprintOptions{
+	result := SolarEclipsePartialFootprints(JDCalc(2010, 1, 15), SolarEclipsePartialFootprintOptions{
 		StepDays: 10.0 / 1440.0,
 	})
 	for _, phase := range []RiseSetPhase{RiseSetPhaseGreatest, RiseSetPhaseEnd} {
@@ -113,7 +113,7 @@ func TestSolarEclipseRiseSetCurvesCloseFoldsWithAdditionalBranches(t *testing.T)
 }
 
 func TestSolarEclipseRiseSetCurvesCloseSunsetPhaseJunctions20100115(t *testing.T) {
-	result := SolarEclipsePartialFootprints(JDECalc(2010, 1, 15), SolarEclipsePartialFootprintOptions{
+	result := SolarEclipsePartialFootprints(JDCalc(2010, 1, 15), SolarEclipsePartialFootprintOptions{
 		StepDays: 10.0 / 1440.0,
 	})
 	curves := make(map[solarEclipseRiseSetCurveKey]SolarEclipseRiseSetCurve, len(result.RiseSetCurves))
@@ -132,7 +132,7 @@ func TestSolarEclipseRiseSetCurvesCloseSunsetPhaseJunctions20100115(t *testing.T
 }
 
 func TestSolarEclipseRiseSetCurvesCloseSunsetPhaseJunctions23090609(t *testing.T) {
-	result := SolarEclipsePartialFootprints(JDECalc(2309, 6, 9), SolarEclipsePartialFootprintOptions{
+	result := SolarEclipsePartialFootprints(JDCalc(2309, 6, 9), SolarEclipsePartialFootprintOptions{
 		StepDays: 2.0 / 1440.0,
 	})
 	curves := make(map[solarEclipseRiseSetCurveKey]SolarEclipseRiseSetCurve, len(result.RiseSetCurves))
@@ -160,7 +160,7 @@ func TestSolarEclipseRiseSetCurveEndpointsAcrossEclipseTypes(t *testing.T) {
 	}
 	for _, test := range tests {
 		result := SolarEclipsePartialFootprints(
-			JDECalc(test.year, test.month, float64(test.day)),
+			JDCalc(test.year, test.month, float64(test.day)),
 			SolarEclipsePartialFootprintOptions{StepDays: 2.0 / 1440.0},
 		)
 		if len(result.RiseSetCurves) != 6 {
@@ -168,7 +168,7 @@ func TestSolarEclipseRiseSetCurveEndpointsAcrossEclipseTypes(t *testing.T) {
 				test.year, test.month, test.day, len(result.RiseSetCurves))
 		}
 		solver := newSolarEclipseSolver(
-			CalcMoonSHByJDE(JDECalc(test.year, test.month, float64(test.day)), 0),
+			CalcMoonSHByJDE(JDCalc(test.year, test.month, float64(test.day)), 0),
 			SolarEclipseModelNASABulletinSplitK,
 		)
 		curves := make(map[solarEclipseRiseSetCurveKey]SolarEclipseRiseSetCurve, len(result.RiseSetCurves))
@@ -201,7 +201,7 @@ func TestSolarEclipseRiseSetCurveEndpointsAcrossEclipseTypes(t *testing.T) {
 }
 
 func TestSolarEclipseNonCentralGreatestHorizonWithoutTimeFold(t *testing.T) {
-	seed := JDECalc(1957, 10, 23)
+	seed := JDCalc(1957, 10, 23)
 	solver := newSolarEclipseSolver(CalcMoonSHByJDE(seed, 0), SolarEclipseModelNASABulletinSplitK)
 	for _, stepSeconds := range []float64{120, 5} {
 		t.Run(fmt.Sprintf("step_%gs", stepSeconds), func(t *testing.T) {
@@ -933,7 +933,7 @@ func BenchmarkOccultationRiseSetRegression(b *testing.B) {
 }
 
 func TestSolarEclipseRiseSetStepAllowsCoarseSampling(t *testing.T) {
-	seed := JDECalc(2024, 4, 8)
+	seed := JDCalc(2024, 4, 8)
 	// Five- and thirty-minute inputs can both hit the spatial chord limit.
 	// Use a genuinely dense input so the test measures time decimation.
 	fine := SolarEclipsePartialFootprints(seed, SolarEclipsePartialFootprintOptions{

@@ -10,11 +10,11 @@ import (
 
 func TestPhysicalWrapperMatchesBasic(t *testing.T) {
 	date := time.Date(2026, 4, 28, 9, 30, 45, 0, time.UTC)
-	jde := basic.Date2JDE(date.UTC())
+	jde := basic.Date2JD(date.UTC())
 
 	got := Physical(date)
 	gotN := PhysicalN(date, -1)
-	want := basic.SunPhysicalN(basic.TD2UT(jde, true), -1)
+	want := basic.SunPhysicalN(basic.UTC2TT(jde), -1)
 
 	assertSamePhysicalFloat(t, "P", got.P, want.P)
 	assertSamePhysicalFloat(t, "B0", got.B0, want.B0)

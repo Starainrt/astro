@@ -7,79 +7,79 @@ import (
 	. "github.com/starainrt/astro/tools"
 )
 
-func JupiterL(jd float64) float64 {
-	return planet.WherePlanet(4, 0, jd)
+func JupiterL(jde float64) float64 {
+	return planet.WherePlanet(4, 0, jde)
 }
 
-func JupiterB(jd float64) float64 {
-	return planet.WherePlanet(4, 1, jd)
+func JupiterB(jde float64) float64 {
+	return planet.WherePlanet(4, 1, jde)
 }
-func JupiterR(jd float64) float64 {
-	return planet.WherePlanet(4, 2, jd)
+func JupiterR(jde float64) float64 {
+	return planet.WherePlanet(4, 2, jde)
 }
-func AJupiterX(jd float64) float64 {
-	l := JupiterL(jd)
-	b := JupiterB(jd)
-	r := JupiterR(jd)
-	el := planet.WherePlanet(-1, 0, jd)
-	eb := planet.WherePlanet(-1, 1, jd)
-	er := planet.WherePlanet(-1, 2, jd)
+func AJupiterX(jde float64) float64 {
+	l := JupiterL(jde)
+	b := JupiterB(jde)
+	r := JupiterR(jde)
+	el := planet.WherePlanet(-1, 0, jde)
+	eb := planet.WherePlanet(-1, 1, jde)
+	er := planet.WherePlanet(-1, 2, jde)
 	x := r*Cos(b)*Cos(l) - er*Cos(eb)*Cos(el)
 	return x
 }
 
-func AJupiterY(jd float64) float64 {
+func AJupiterY(jde float64) float64 {
 
-	l := JupiterL(jd)
-	b := JupiterB(jd)
-	r := JupiterR(jd)
-	el := planet.WherePlanet(-1, 0, jd)
-	eb := planet.WherePlanet(-1, 1, jd)
-	er := planet.WherePlanet(-1, 2, jd)
+	l := JupiterL(jde)
+	b := JupiterB(jde)
+	r := JupiterR(jde)
+	el := planet.WherePlanet(-1, 0, jde)
+	eb := planet.WherePlanet(-1, 1, jde)
+	er := planet.WherePlanet(-1, 2, jde)
 	y := r*Cos(b)*Sin(l) - er*Cos(eb)*Sin(el)
 	return y
 }
-func AJupiterZ(jd float64) float64 {
-	//l := JupiterL(jd)
-	b := JupiterB(jd)
-	r := JupiterR(jd)
-	//	el := planet.WherePlanet(-1, 0, jd)
-	eb := planet.WherePlanet(-1, 1, jd)
-	er := planet.WherePlanet(-1, 2, jd)
+func AJupiterZ(jde float64) float64 {
+	//l := JupiterL(jde)
+	b := JupiterB(jde)
+	r := JupiterR(jde)
+	//	el := planet.WherePlanet(-1, 0, jde)
+	eb := planet.WherePlanet(-1, 1, jde)
+	er := planet.WherePlanet(-1, 2, jde)
 	z := r*Sin(b) - er*Sin(eb)
 	return z
 }
 
-func AJupiterXYZ(jd float64) (float64, float64, float64) {
-	l := JupiterL(jd)
-	b := JupiterB(jd)
-	r := JupiterR(jd)
-	el := planet.WherePlanet(-1, 0, jd)
-	eb := planet.WherePlanet(-1, 1, jd)
-	er := planet.WherePlanet(-1, 2, jd)
+func AJupiterXYZ(jde float64) (float64, float64, float64) {
+	l := JupiterL(jde)
+	b := JupiterB(jde)
+	r := JupiterR(jde)
+	el := planet.WherePlanet(-1, 0, jde)
+	eb := planet.WherePlanet(-1, 1, jde)
+	er := planet.WherePlanet(-1, 2, jde)
 	x := r*Cos(b)*Cos(l) - er*Cos(eb)*Cos(el)
 	y := r*Cos(b)*Sin(l) - er*Cos(eb)*Sin(el)
 	z := r*Sin(b) - er*Sin(eb)
 	return x, y, z
 }
 
-func JupiterApparentRa(jd float64) float64 {
-	lo, bo := JupiterApparentLoBo(jd)
-	eps := TrueObliquity(jd)
+func JupiterApparentRa(jde float64) float64 {
+	lo, bo := JupiterApparentLoBo(jde)
+	eps := TrueObliquity(jde)
 	ra := math.Atan2((Sin(lo)*Cos(eps) - Tan(bo)*Sin(eps)), Cos(lo))
 	ra = ra * 180 / math.Pi
 	return Limit360(ra)
 }
-func JupiterApparentDec(jd float64) float64 {
-	lo, bo := JupiterApparentLoBo(jd)
-	eps := TrueObliquity(jd)
+func JupiterApparentDec(jde float64) float64 {
+	lo, bo := JupiterApparentLoBo(jde)
+	eps := TrueObliquity(jde)
 	dec := ArcSin(Sin(bo)*Cos(eps) + Cos(bo)*Sin(eps)*Sin(lo))
 	return dec
 }
 
-func JupiterApparentRaDec(jd float64) (float64, float64) {
-	lo, bo := JupiterApparentLoBo(jd)
-	eps := TrueObliquity(jd)
+func JupiterApparentRaDec(jde float64) (float64, float64) {
+	lo, bo := JupiterApparentLoBo(jde)
+	eps := TrueObliquity(jde)
 	ra := math.Atan2((Sin(lo)*Cos(eps) - Tan(bo)*Sin(eps)), Cos(lo))
 	ra = ra * 180 / math.Pi
 	dec := ArcSin(Sin(bo)*Cos(eps) + Cos(bo)*Sin(eps)*Sin(lo))
@@ -105,22 +105,22 @@ func JupiterApparentLoBo(jd float64) (float64, float64) {
 	return geo.lo, geo.bo
 }
 
-func JupiterMag(jd float64) float64 {
-	sunDistance := JupiterR(jd)
-	earthDistance := EarthJupiterAway(jd)
-	earthSunDistance := planet.WherePlanet(-1, 2, jd)
+func JupiterMag(jde float64) float64 {
+	sunDistance := JupiterR(jde)
+	earthDistance := EarthJupiterAway(jde)
+	earthSunDistance := planet.WherePlanet(-1, 2, jde)
 	i := (sunDistance*sunDistance + earthDistance*earthDistance - earthSunDistance*earthSunDistance) / (2 * sunDistance * earthDistance)
 	i = ArcCos(i)
 	mag := -9.40 + 5*math.Log10(sunDistance*earthDistance) + 0.0005*i
 	return FloatRound(mag, 2)
 }
 
-func JupiterHeight(jde, lon, lat, timezone float64) float64 {
+func JupiterHeight(localJD, lon, lat, timezone float64) float64 {
 	// 转换为世界时
-	utcJde := jde - timezone/24.0
+	utcJD := localJD - timezone/24.0
 	// 计算视恒星时
-	ra, dec := JupiterApparentRaDec(TD2UT(utcJde, true))
-	st := Limit360(ApparentSiderealTime(utcJde)*15 + lon)
+	ra, dec := JupiterApparentRaDec(UTC2TT(utcJD))
+	st := Limit360(ApparentSiderealTime(UTC2UT1(utcJD))*15 + lon)
 	// 计算时角
 	hourAngle := Limit360(st - ra)
 	// 高度角、时角与天球座标三角转换公式
@@ -129,12 +129,12 @@ func JupiterHeight(jde, lon, lat, timezone float64) float64 {
 	return ArcSin(sinHeight)
 }
 
-func JupiterAzimuth(jde, lon, lat, timezone float64) float64 {
+func JupiterAzimuth(localJD, lon, lat, timezone float64) float64 {
 	// 转换为世界时
-	utcJde := jde - timezone/24.0
+	utcJD := localJD - timezone/24.0
 	// 计算视恒星时
-	ra, dec := JupiterApparentRaDec(TD2UT(utcJde, true))
-	st := Limit360(ApparentSiderealTime(utcJde)*15 + lon)
+	ra, dec := JupiterApparentRaDec(UTC2TT(utcJD))
+	st := Limit360(ApparentSiderealTime(UTC2UT1(utcJD))*15 + lon)
 	// 计算时角
 	hourAngle := Limit360(st - ra)
 	// 三角转换公式
@@ -153,21 +153,21 @@ func JupiterAzimuth(jde, lon, lat, timezone float64) float64 {
 }
 
 func JupiterHourAngle(jd, lon, timezone float64) float64 {
-	siderealLongitude := Limit360(ApparentSiderealTime(jd-timezone/24)*15 + lon)
-	hourAngle := siderealLongitude - JupiterApparentRa(TD2UT(jd-timezone/24.0, true))
+	siderealLongitude := Limit360(ApparentSiderealTime(UTC2UT1(jd-timezone/24))*15 + lon)
+	hourAngle := siderealLongitude - JupiterApparentRa(UTC2TT(jd-timezone/24.0))
 	if hourAngle < 0 {
 		hourAngle += 360
 	}
 	return hourAngle
 }
 
-func JupiterCulminationTime(jde, lon, timezone float64) float64 {
-	//jde 世界时，非力学时，当地时区 0时，无需转换力学时
+func JupiterCulminationTime(localJD, lon, timezone float64) float64 {
+	// localJD 是本地民用日锚点（当地 0 时），不是力学时。
 	//ra,dec 瞬时天球座标，非J2000等时间天球坐标
-	jde = math.Floor(jde) + 0.5
-	estimateJD := jde + Limit360(360-JupiterHourAngle(jde, lon, timezone))/15.0/24.0*0.99726851851851851851
-	normalizedHourAngle := func(jde, lon, timezone float64) float64 {
-		currentHourAngle := JupiterHourAngle(jde, lon, timezone)
+	localJD = math.Floor(localJD) + 0.5
+	estimateJD := localJD + Limit360(360-JupiterHourAngle(localJD, lon, timezone))/15.0/24.0*0.99726851851851851851
+	normalizedHourAngle := func(localJD, lon, timezone float64) float64 {
+		currentHourAngle := JupiterHourAngle(localJD, lon, timezone)
 		if currentHourAngle < 180 {
 			currentHourAngle += 360
 		}

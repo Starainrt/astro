@@ -7,7 +7,7 @@ import (
 )
 
 func TestLunarEclipseDiagramIncludesContacts(t *testing.T) {
-	diagram := LunarEclipseDiagram(JDECalc(2026, 3, 3), LunarEclipseDiagramOptions{StepDays: 10.0 / 1440.0})
+	diagram := LunarEclipseDiagram(JDCalc(2026, 3, 3), LunarEclipseDiagramOptions{StepDays: 10.0 / 1440.0})
 	if diagram.Eclipse.Type != LunarEclipseTotal {
 		t.Fatalf("unexpected eclipse type: got %s want %s", diagram.Eclipse.Type, LunarEclipseTotal)
 	}
@@ -38,7 +38,7 @@ func TestLunarEclipseDiagramIncludesContacts(t *testing.T) {
 
 func TestLocalSolarEclipseDiagramIncludesContacts(t *testing.T) {
 	diagram := LocalSolarEclipseDiagram(
-		TD2UT(Date2JDE(time.Date(2024, 4, 8, 12, 0, 0, 0, time.UTC)), true),
+		UTC2TT(Date2JD(time.Date(2024, 4, 8, 12, 0, 0, 0, time.UTC))),
 		-96.7970,
 		32.7767,
 		0,

@@ -1,6 +1,7 @@
 package sun
 
 import (
+	"github.com/starainrt/astro/internal/civiltime"
 	"errors"
 	"math"
 	"time"
@@ -16,7 +17,7 @@ var (
 	ERR_TWILIGHT_NOT_EXISTS = errors.New("ERROR:今日晨昏朦影不存在！")
 )
 
-func riseSetResult(date time.Time, jde float64, err error) (time.Time, error) {
+func riseSetResult(date time.Time, jd float64, err error) (time.Time, error) {
 	if err != nil {
 		switch {
 		case errors.Is(err, basic.ErrNeverRise):
@@ -27,14 +28,16 @@ func riseSetResult(date time.Time, jde float64, err error) (time.Time, error) {
 			return time.Time{}, err
 		}
 	}
-	return basic.JDE2DateByZone(jde, date.Location(), true), nil
+	_, offset := date.Zone()
+	return basic.JD2DateByZone(jd-float64(offset)/86400, date.Location(), false), nil
 }
 
-func twilightResult(date time.Time, jde float64, err error) (time.Time, error) {
+func twilightResult(date time.Time, jd float64, err error) (time.Time, error) {
 	if err != nil {
 		return time.Time{}, ERR_TWILIGHT_NOT_EXISTS
 	}
-	return basic.JDE2DateByZone(jde, date.Location(), true), nil
+	_, offset := date.Zone()
+	return basic.JD2DateByZone(jd-float64(offset)/86400, date.Location(), false), nil
 }
 
 /*
@@ -49,25 +52,28 @@ func twilightResult(date time.Time, jde float64, err error) (time.Time, error) {
 // RiseTime 日出时刻 / sunrise time.
 //
 // date 取其所在时区的当地日期，返回值保持相同时区；lon/lat 为观测者经纬度，东正西负、北正南负；
-// height 为海拔高度，单位米；aero 为 true 时按动态标准大气折射和实时太阳视半径计算上缘过地平线。
+// height 为椭球高（大地高），单位米；aero 为 true 时按动态标准大气折射和实时太阳视半径计算上缘过地平线。
 // date is interpreted on its local civil day and the result keeps the same time zone. lon/lat are east-positive and north-positive;
-// height 为观测者海拔，单位米；aero 使用动态标准折射和实时太阳视半径计算上缘过地平线。
+// height 为观测者椭球高（大地高），单位米；aero 使用动态标准折射和实时太阳视半径计算上缘过地平线。
 // height is observer elevation in meters; aero uses dynamic standard refraction and the instantaneous solar semidiameter for an upper-limb crossing.
 func RiseTime(date time.Time, lon, lat, height float64, aero bool) (time.Time, error) {
+	if result, err, handled := civiltime.Event(date, basic.ErrNotOnThisDate, func(d time.Time) (time.Time, error) {
+		return RiseTime(d, lon, lat, height, aero)
+	}); handled {
+		return result, err
+	}
 	var aeroFloat float64
 	if aero {
 		aeroFloat = 1
 	}
-	if date.Hour() > 12 {
-		date = date.Add(time.Hour * -12)
-	}
+	date = time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, date.Location())
 	// 以 date 的当地日期为锚点，并读取其时区偏移参与地方时计算。
-	jde := basic.Date2JDE(date)
+	localJD := basic.Date2JD(date)
 	_, loc := date.Zone()
 	timezone := float64(loc) / 3600.0
 	// 返回值保持与输入 date 一致的时区。
-	riseJde, err := basic.GetSunRiseTime(jde, lon, lat, timezone, aeroFloat, height)
-	return riseSetResult(date, riseJde, err)
+	riseJD, err := basic.GetSunRiseTime(localJD, lon, lat, timezone, aeroFloat, height)
+	return riseSetResult(date, riseJD, err)
 }
 
 // RiseTimeN 截断项日出时刻 / truncated sunrise time.
@@ -75,18 +81,21 @@ func RiseTime(date time.Time, lon, lat, height float64, aero bool) (time.Time, e
 // 参数与 RiseTime 相同；n<0 使用当前仓库内嵌的全部 VSOP 项，其余值用于截断太阳位置级数。
 // Uses the same inputs as RiseTime. n<0 keeps all embedded VSOP terms in this repository; other values truncate the solar series.
 func RiseTimeN(date time.Time, lon, lat, height float64, aero bool, n int) (time.Time, error) {
+	if result, err, handled := civiltime.Event(date, basic.ErrNotOnThisDate, func(d time.Time) (time.Time, error) {
+		return RiseTimeN(d, lon, lat, height, aero, n)
+	}); handled {
+		return result, err
+	}
 	var aeroFloat float64
 	if aero {
 		aeroFloat = 1
 	}
-	if date.Hour() > 12 {
-		date = date.Add(time.Hour * -12)
-	}
-	jde := basic.Date2JDE(date)
+	date = time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, date.Location())
+	localJD := basic.Date2JD(date)
 	_, loc := date.Zone()
 	timezone := float64(loc) / 3600.0
-	riseJde, err := basic.GetSunRiseTimeN(jde, lon, lat, timezone, aeroFloat, height, n)
-	return riseSetResult(date, riseJde, err)
+	riseJD, err := basic.GetSunRiseTimeN(localJD, lon, lat, timezone, aeroFloat, height, n)
+	return riseSetResult(date, riseJD, err)
 }
 
 // DownTime 日落时刻别名 / deprecated sunset alias.
@@ -114,18 +123,21 @@ func DownTimeN(date time.Time, lon, lat, height float64, aero bool, n int) (time
 // 参数与 RiseTime 相同，返回给定当地日期内的日落时刻。
 // Uses the same inputs as RiseTime and returns the sunset time on the corresponding local civil day.
 func SetTime(date time.Time, lon, lat, height float64, aero bool) (time.Time, error) {
+	if result, err, handled := civiltime.Event(date, basic.ErrNotOnThisDate, func(d time.Time) (time.Time, error) {
+		return SetTime(d, lon, lat, height, aero)
+	}); handled {
+		return result, err
+	}
 	var aeroFloat float64
 	if aero {
 		aeroFloat = 1
 	}
-	if date.Hour() > 12 {
-		date = date.Add(time.Hour * -12)
-	}
-	jde := basic.Date2JDE(date)
+	date = time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, date.Location())
+	localJD := basic.Date2JD(date)
 	_, loc := date.Zone()
 	timezone := float64(loc) / 3600.0
-	downJde, err := basic.GetSunSetTime(jde, lon, lat, timezone, aeroFloat, height)
-	return riseSetResult(date, downJde, err)
+	downJD, err := basic.GetSunSetTime(localJD, lon, lat, timezone, aeroFloat, height)
+	return riseSetResult(date, downJD, err)
 }
 
 // SetTimeN 截断项日落时刻 / truncated sunset time.
@@ -133,18 +145,21 @@ func SetTime(date time.Time, lon, lat, height float64, aero bool) (time.Time, er
 // 参数与 RiseTimeN 相同，返回给定当地日期内的日落时刻。
 // Uses the same inputs as RiseTimeN and returns the sunset time on the corresponding local civil day.
 func SetTimeN(date time.Time, lon, lat, height float64, aero bool, n int) (time.Time, error) {
+	if result, err, handled := civiltime.Event(date, basic.ErrNotOnThisDate, func(d time.Time) (time.Time, error) {
+		return SetTimeN(d, lon, lat, height, aero, n)
+	}); handled {
+		return result, err
+	}
 	var aeroFloat float64
 	if aero {
 		aeroFloat = 1
 	}
-	if date.Hour() > 12 {
-		date = date.Add(time.Hour * -12)
-	}
-	jde := basic.Date2JDE(date)
+	date = time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, date.Location())
+	localJD := basic.Date2JD(date)
 	_, loc := date.Zone()
 	timezone := float64(loc) / 3600.0
-	downJde, err := basic.GetSunSetTimeN(jde, lon, lat, timezone, aeroFloat, height, n)
-	return riseSetResult(date, downJde, err)
+	downJD, err := basic.GetSunSetTimeN(localJD, lon, lat, timezone, aeroFloat, height, n)
+	return riseSetResult(date, downJD, err)
 }
 
 // MorningTwilight 晨光始时 / morning twilight.
@@ -154,14 +169,17 @@ func SetTimeN(date time.Time, lon, lat, height float64, aero bool, n int) (time.
 // date is interpreted on its local civil day and the result keeps the same time zone. lon/lat are east-positive and north-positive;
 // angle is the target solar altitude in degrees, typically -6, -12, or -18 for civil, nautical, and astronomical twilight.
 func MorningTwilight(date time.Time, lon, lat, angle float64) (time.Time, error) {
-	if date.Hour() > 12 {
-		date = date.Add(time.Hour * -12)
+	if result, err, handled := civiltime.Event(date, basic.ErrNotOnThisDate, func(d time.Time) (time.Time, error) {
+		return MorningTwilight(d, lon, lat, angle)
+	}); handled {
+		return result, err
 	}
-	jde := basic.Date2JDE(date)
+	date = time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, date.Location())
+	localJD := basic.Date2JD(date)
 	_, loc := date.Zone()
 	timezone := float64(loc) / 3600.0
-	calcJde, err := basic.MorningTwilight(jde, lon, lat, timezone, angle)
-	return twilightResult(date, calcJde, err)
+	calcJD, err := basic.MorningTwilight(localJD, lon, lat, timezone, angle)
+	return twilightResult(date, calcJD, err)
 }
 
 // MorningTwilightN 截断项晨光始时 / truncated morning twilight.
@@ -169,14 +187,17 @@ func MorningTwilight(date time.Time, lon, lat, angle float64) (time.Time, error)
 // 参数与 MorningTwilight 相同；n<0 使用当前仓库内嵌的全部 VSOP 项，其余值用于截断太阳位置级数。
 // Uses the same inputs as MorningTwilight. n<0 keeps all embedded VSOP terms in this repository; other values truncate the solar series.
 func MorningTwilightN(date time.Time, lon, lat, angle float64, n int) (time.Time, error) {
-	if date.Hour() > 12 {
-		date = date.Add(time.Hour * -12)
+	if result, err, handled := civiltime.Event(date, basic.ErrNotOnThisDate, func(d time.Time) (time.Time, error) {
+		return MorningTwilightN(d, lon, lat, angle, n)
+	}); handled {
+		return result, err
 	}
-	jde := basic.Date2JDE(date)
+	date = time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, date.Location())
+	localJD := basic.Date2JD(date)
 	_, loc := date.Zone()
 	timezone := float64(loc) / 3600.0
-	calcJde, err := basic.MorningTwilightN(jde, lon, lat, timezone, angle, n)
-	return twilightResult(date, calcJde, err)
+	calcJD, err := basic.MorningTwilightN(localJD, lon, lat, timezone, angle, n)
+	return twilightResult(date, calcJD, err)
 }
 
 // EveningTwilight 暮光终时 / evening twilight.
@@ -184,15 +205,18 @@ func MorningTwilightN(date time.Time, lon, lat, angle float64, n int) (time.Time
 // 参数与 MorningTwilight 相同，返回对应当地日期的暮光结束时刻。
 // Uses the same inputs as MorningTwilight and returns the evening-twilight time on the corresponding local civil day.
 func EveningTwilight(date time.Time, lon, lat, angle float64) (time.Time, error) {
-	if date.Hour() > 12 {
-		date = date.Add(time.Hour * -12)
+	if result, err, handled := civiltime.Event(date, basic.ErrNotOnThisDate, func(d time.Time) (time.Time, error) {
+		return EveningTwilight(d, lon, lat, angle)
+	}); handled {
+		return result, err
 	}
-	jde := basic.Date2JDE(date)
+	date = time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, date.Location())
+	localJD := basic.Date2JD(date)
 	_, loc := date.Zone()
 	timezone := float64(loc) / 3600.0
 	//不需要进行力学时转换，会在GetBanTime中转换
-	calcJde, err := basic.EveningTwilight(jde, lon, lat, timezone, angle)
-	return twilightResult(date, calcJde, err)
+	calcJD, err := basic.EveningTwilight(localJD, lon, lat, timezone, angle)
+	return twilightResult(date, calcJD, err)
 }
 
 // EveningTwilightN 截断项暮光终时 / truncated evening twilight.
@@ -200,14 +224,17 @@ func EveningTwilight(date time.Time, lon, lat, angle float64) (time.Time, error)
 // 参数与 MorningTwilightN 相同，返回对应当地日期的暮光结束时刻。
 // Uses the same inputs as MorningTwilightN and returns the evening-twilight time on the corresponding local civil day.
 func EveningTwilightN(date time.Time, lon, lat, angle float64, n int) (time.Time, error) {
-	if date.Hour() > 12 {
-		date = date.Add(time.Hour * -12)
+	if result, err, handled := civiltime.Event(date, basic.ErrNotOnThisDate, func(d time.Time) (time.Time, error) {
+		return EveningTwilightN(d, lon, lat, angle, n)
+	}); handled {
+		return result, err
 	}
-	jde := basic.Date2JDE(date)
+	date = time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, date.Location())
+	localJD := basic.Date2JD(date)
 	_, loc := date.Zone()
 	timezone := float64(loc) / 3600.0
-	calcJde, err := basic.EveningTwilightN(jde, lon, lat, timezone, angle, n)
-	return twilightResult(date, calcJde, err)
+	calcJD, err := basic.EveningTwilightN(localJD, lon, lat, timezone, angle, n)
+	return twilightResult(date, calcJD, err)
 }
 
 // EclipticObliquity 黄赤交角 / ecliptic obliquity.
@@ -216,9 +243,9 @@ func EveningTwilightN(date time.Time, lon, lat, angle float64, n int) (time.Time
 // Returns the obliquity of the ecliptic at the instant represented by date, in degrees. When nutation is true, obliquity nutation is included.
 func EclipticObliquity(date time.Time, nutation bool) float64 {
 	//转换为UTC时间
-	jde := basic.Date2JDE(date.UTC())
+	jd := basic.Date2JD(date.UTC())
 	//进行力学时转换
-	jde = basic.TD2UT(jde, true)
+	jde := basic.UTC2TT(jd)
 	//黄赤交角计算
 	return basic.EclipticObliquity(jde, nutation)
 }
@@ -229,9 +256,9 @@ func EclipticObliquity(date time.Time, nutation bool) float64 {
 // Returns nutation in longitude at the instant represented by date, in degrees.
 func EclipticNutation(date time.Time) float64 {
 	//转换为UTC时间
-	jde := basic.Date2JDE(date.UTC())
+	jd := basic.Date2JD(date.UTC())
 	//进行力学时转换与章动计算
-	return basic.Nutation2000Bi(basic.TD2UT(jde, true))
+	return basic.Nutation2000Bi(basic.UTC2TT(jd))
 }
 
 // EclipticNutation1980 黄经章动（IAU 1980） / nutation in longitude, IAU 1980.
@@ -240,9 +267,9 @@ func EclipticNutation(date time.Time) float64 {
 // Returns nutation in longitude at the instant represented by date, in degrees.
 func EclipticNutation1980(date time.Time) float64 {
 	//转换为UTC时间
-	jde := basic.Date2JDE(date.UTC())
+	jd := basic.Date2JD(date.UTC())
 	//进行力学时转换与章动计算
-	return basic.Nutation1980i(basic.TD2UT(jde, true))
+	return basic.Nutation1980i(basic.UTC2TT(jd))
 }
 
 // AxialtiltNutation 交角章动（IAU 2000B） / nutation in obliquity, IAU 2000B.
@@ -251,9 +278,9 @@ func EclipticNutation1980(date time.Time) float64 {
 // Returns nutation in obliquity at the instant represented by date, in degrees.
 func AxialtiltNutation(date time.Time) float64 {
 	//转换为UTC时间
-	jde := basic.Date2JDE(date.UTC())
+	jd := basic.Date2JD(date.UTC())
 	//进行力学时转换与章动计算
-	return basic.Nutation2000Bs(basic.TD2UT(jde, true))
+	return basic.Nutation2000Bs(basic.UTC2TT(jd))
 }
 
 // AxialtiltNutation1980 交角章动（IAU 1980） / nutation in obliquity, IAU 1980.
@@ -262,9 +289,9 @@ func AxialtiltNutation(date time.Time) float64 {
 // Returns nutation in obliquity at the instant represented by date, in degrees.
 func AxialtiltNutation1980(date time.Time) float64 {
 	//转换为UTC时间
-	jde := basic.Date2JDE(date.UTC())
+	jd := basic.Date2JD(date.UTC())
 	//进行力学时转换与章动计算
-	return basic.Nutation1980s(basic.TD2UT(jde, true))
+	return basic.Nutation1980s(basic.UTC2TT(jd))
 }
 
 // GeometricLo 太阳几何黄经 / geometric ecliptic longitude.
@@ -273,8 +300,8 @@ func AxialtiltNutation1980(date time.Time) float64 {
 // Returns the Sun's geometric ecliptic longitude at the instant represented by date, in degrees.
 func GeometricLo(date time.Time) float64 {
 	//转换为UTC时间
-	jde := basic.Date2JDE(date.UTC())
-	return basic.SunLo(basic.TD2UT(jde, true))
+	jd := basic.Date2JD(date.UTC())
+	return basic.SunLo(basic.UTC2TT(jd))
 }
 
 // TrueLo 太阳真黄经 / true ecliptic longitude.
@@ -283,8 +310,8 @@ func GeometricLo(date time.Time) float64 {
 // Returns the Sun's true ecliptic longitude at the instant represented by date, in degrees.
 func TrueLo(date time.Time) float64 {
 	//转换为UTC时间
-	jde := basic.Date2JDE(date.UTC())
-	return basic.HSunTrueLo(basic.TD2UT(jde, true))
+	jd := basic.Date2JD(date.UTC())
+	return basic.HSunTrueLo(basic.UTC2TT(jd))
 }
 
 // TrueLoN 截断项太阳真黄经 / truncated true ecliptic longitude.
@@ -292,8 +319,8 @@ func TrueLo(date time.Time) float64 {
 // 参数与 TrueLo 相同；n<0 使用当前仓库内嵌的全部 VSOP 项，其余值用于截断太阳位置级数。
 // Uses the same inputs as TrueLo. n<0 keeps all embedded VSOP terms in this repository; other values truncate the solar series.
 func TrueLoN(date time.Time, n int) float64 {
-	jde := basic.Date2JDE(date.UTC())
-	return basic.HSunTrueLoN(basic.TD2UT(jde, true), n)
+	jd := basic.Date2JD(date.UTC())
+	return basic.HSunTrueLoN(basic.UTC2TT(jd), n)
 }
 
 // TrueBo 太阳真黄纬 / true ecliptic latitude.
@@ -302,8 +329,8 @@ func TrueLoN(date time.Time, n int) float64 {
 // Returns the Sun's true ecliptic latitude at the instant represented by date, in degrees.
 func TrueBo(date time.Time) float64 {
 	//转换为UTC时间
-	jde := basic.Date2JDE(date.UTC())
-	return basic.HSunTrueBo(basic.TD2UT(jde, true))
+	jd := basic.Date2JD(date.UTC())
+	return basic.HSunTrueBo(basic.UTC2TT(jd))
 }
 
 // TrueBoN 截断项太阳真黄纬 / truncated true ecliptic latitude.
@@ -311,8 +338,8 @@ func TrueBo(date time.Time) float64 {
 // 参数与 TrueBo 相同；n<0 使用当前仓库内嵌的全部 VSOP 项，其余值用于截断太阳位置级数。
 // Uses the same inputs as TrueBo. n<0 keeps all embedded VSOP terms in this repository; other values truncate the solar series.
 func TrueBoN(date time.Time, n int) float64 {
-	jde := basic.Date2JDE(date.UTC())
-	return basic.HSunTrueBoN(basic.TD2UT(jde, true), n)
+	jd := basic.Date2JD(date.UTC())
+	return basic.HSunTrueBoN(basic.UTC2TT(jd), n)
 }
 
 // ApparentLo 太阳视黄经 / apparent ecliptic longitude.
@@ -321,8 +348,8 @@ func TrueBoN(date time.Time, n int) float64 {
 // Returns the Sun's apparent ecliptic longitude at the instant represented by date, in degrees.
 func ApparentLo(date time.Time) float64 {
 	//转换为UTC时间
-	jde := basic.Date2JDE(date.UTC())
-	return basic.HSunApparentLo(basic.TD2UT(jde, true))
+	jd := basic.Date2JD(date.UTC())
+	return basic.HSunApparentLo(basic.UTC2TT(jd))
 }
 
 // ApparentRa 太阳地心视赤经 / apparent geocentric right ascension.
@@ -331,8 +358,8 @@ func ApparentLo(date time.Time) float64 {
 // Returns the Sun's apparent geocentric right ascension at the instant represented by date, in degrees.
 func ApparentRa(date time.Time) float64 {
 	//转换为UTC时间
-	jde := basic.Date2JDE(date.UTC())
-	return basic.HSunApparentRa(basic.TD2UT(jde, true))
+	jd := basic.Date2JD(date.UTC())
+	return basic.HSunApparentRa(basic.UTC2TT(jd))
 }
 
 // ApparentDec 太阳地心视赤纬 / apparent geocentric declination.
@@ -341,8 +368,8 @@ func ApparentRa(date time.Time) float64 {
 // Returns the Sun's apparent geocentric declination at the instant represented by date, in degrees.
 func ApparentDec(date time.Time) float64 {
 	//转换为UTC时间
-	jde := basic.Date2JDE(date.UTC())
-	return basic.HSunApparentDec(basic.TD2UT(jde, true))
+	jd := basic.Date2JD(date.UTC())
+	return basic.HSunApparentDec(basic.UTC2TT(jd))
 }
 
 // ApparentRaDec 太阳地心视赤经、视赤纬 / apparent geocentric right ascension and declination.
@@ -351,8 +378,8 @@ func ApparentDec(date time.Time) float64 {
 // Returns the Sun's apparent geocentric right ascension and declination at the instant represented by date, in degrees.
 func ApparentRaDec(date time.Time) (float64, float64) {
 	//转换为UTC时间
-	jde := basic.Date2JDE(date.UTC())
-	return basic.HSunApparentRaDec(basic.TD2UT(jde, true))
+	jd := basic.Date2JD(date.UTC())
+	return basic.HSunApparentRaDec(basic.UTC2TT(jd))
 }
 
 // MidFunc 太阳中心差 / solar equation of center.
@@ -361,8 +388,8 @@ func ApparentRaDec(date time.Time) (float64, float64) {
 // Returns the Sun's equation of center at the instant represented by date, in degrees.
 func MidFunc(date time.Time) float64 {
 	//转换为UTC时间
-	jde := basic.Date2JDE(date.UTC())
-	return basic.SunMidFun(basic.TD2UT(jde, true))
+	jd := basic.Date2JD(date.UTC())
+	return basic.SunMidFun(basic.UTC2TT(jd))
 }
 
 // EquationTime 均时差 / equation of time.
@@ -371,8 +398,8 @@ func MidFunc(date time.Time) float64 {
 // Returns the equation of time at the instant represented by date, in hours.
 func EquationTime(date time.Time) float64 {
 	//转换为UTC时间
-	jde := basic.Date2JDE(date.UTC())
-	return basic.SunTime(basic.TD2UT(jde, true))
+	jd := basic.Date2JD(date.UTC())
+	return basic.SunTime(basic.UTC2TT(jd))
 }
 
 // HourAngle 太阳时角 / hour angle.
@@ -382,10 +409,10 @@ func EquationTime(date time.Time) float64 {
 // date is the observing instant and its zone offset participates in local-time calculations. lon is east-positive longitude and the result is in degrees.
 // lat is currently unused and kept only for API symmetry with the other observation helpers.
 func HourAngle(date time.Time, lon, lat float64) float64 {
-	jde := basic.Date2JDE(date)
+	localJD := basic.Date2JD(date)
 	_, loc := date.Zone()
 	timezone := float64(loc) / 3600.0
-	return basic.SunTimeAngle(jde, lon, lat, timezone)
+	return basic.SunTimeAngle(localJD, lon, lat, timezone)
 }
 
 // HourAngleN 截断项太阳时角 / truncated hour angle.
@@ -393,10 +420,10 @@ func HourAngle(date time.Time, lon, lat float64) float64 {
 // 参数与 HourAngle 相同；n<0 使用当前仓库内嵌的全部 VSOP 项，其余值用于截断太阳位置级数。
 // Uses the same inputs as HourAngle. n<0 keeps all embedded VSOP terms in this repository; other values truncate the solar series.
 func HourAngleN(date time.Time, lon, lat float64, n int) float64 {
-	jde := basic.Date2JDE(date)
+	localJD := basic.Date2JD(date)
 	_, loc := date.Zone()
 	timezone := float64(loc) / 3600.0
-	return basic.SunTimeAngleN(jde, lon, lat, timezone, n)
+	return basic.SunTimeAngleN(localJD, lon, lat, timezone, n)
 }
 
 // Azimuth 太阳方位角 / azimuth.
@@ -404,10 +431,10 @@ func HourAngleN(date time.Time, lon, lat float64, n int) float64 {
 // date 为观测时刻，会读取其时区参与地方时计算；lon/lat 为观测者经纬度，东正西负、北正南负；返回值按正北为 0°、向东增加。
 // date is the observing instant and its zone offset participates in local-time calculations. lon/lat are east-positive and north-positive; azimuth is measured from north toward east.
 func Azimuth(date time.Time, lon, lat float64) float64 {
-	jde := basic.Date2JDE(date)
+	localJD := basic.Date2JD(date)
 	_, loc := date.Zone()
 	timezone := float64(loc) / 3600.0
-	return basic.SunAzimuth(jde, lon, lat, timezone)
+	return basic.SunAzimuth(localJD, lon, lat, timezone)
 }
 
 // AzimuthN 截断项太阳方位角 / truncated azimuth.
@@ -415,10 +442,10 @@ func Azimuth(date time.Time, lon, lat float64) float64 {
 // 参数与 Azimuth 相同；n<0 使用当前仓库内嵌的全部 VSOP 项，其余值用于截断太阳位置级数。
 // Uses the same inputs as Azimuth. n<0 keeps all embedded VSOP terms in this repository; other values truncate the solar series.
 func AzimuthN(date time.Time, lon, lat float64, n int) float64 {
-	jde := basic.Date2JDE(date)
+	localJD := basic.Date2JD(date)
 	_, loc := date.Zone()
 	timezone := float64(loc) / 3600.0
-	return basic.SunAzimuthN(jde, lon, lat, timezone, n)
+	return basic.SunAzimuthN(localJD, lon, lat, timezone, n)
 }
 
 // Altitude 太阳高度角 / solar altitude.
@@ -426,10 +453,10 @@ func AzimuthN(date time.Time, lon, lat float64, n int) float64 {
 // date 为观测时刻，会读取其时区参与地方时计算；lon/lat 为观测者经纬度，东正西负、北正南负；返回值单位度。
 // date is the observing instant and its zone offset participates in local-time calculations. lon/lat are east-positive and north-positive; the result is in degrees.
 func Altitude(date time.Time, lon, lat float64) float64 {
-	jde := basic.Date2JDE(date)
+	localJD := basic.Date2JD(date)
 	_, loc := date.Zone()
 	timezone := float64(loc) / 3600.0
-	return basic.SunHeight(jde, lon, lat, timezone)
+	return basic.SunHeight(localJD, lon, lat, timezone)
 }
 
 // Zenith 太阳天顶距 / solar zenith distance.
@@ -445,10 +472,10 @@ func Zenith(date time.Time, lon, lat float64) float64 {
 // 参数与 Altitude 相同；n<0 使用当前仓库内嵌的全部 VSOP 项，其余值用于截断太阳位置级数。
 // Uses the same inputs as Altitude. n<0 keeps all embedded VSOP terms in this repository; other values truncate the solar series.
 func AltitudeN(date time.Time, lon, lat float64, n int) float64 {
-	jde := basic.Date2JDE(date)
+	localJD := basic.Date2JD(date)
 	_, loc := date.Zone()
 	timezone := float64(loc) / 3600.0
-	return basic.SunHeightN(jde, lon, lat, timezone, n)
+	return basic.SunHeightN(localJD, lon, lat, timezone, n)
 }
 
 // ZenithN 截断项太阳天顶距 / truncated solar zenith distance.
@@ -464,11 +491,12 @@ func ZenithN(date time.Time, lon, lat float64, n int) float64 {
 // date 取其所在时区的当地日期，返回值保持相同时区；lon 为观测者经度，东正西负。
 // date is interpreted on its local civil day and the result keeps the same time zone. lon is east-positive longitude.
 func CulminationTime(date time.Time, lon float64) time.Time {
-	jde := basic.Date2JDE(date.Add(time.Duration(-1*date.Hour())*time.Hour)) + 0.5
+	date = time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, date.Location())
+	localJD := basic.Date2JD(date) + 0.5
 	_, loc := date.Zone()
 	timezone := float64(loc) / 3600.0
-	calcJde := basic.CulminationTime(jde, lon, timezone) - timezone/24.00
-	return basic.JDE2DateByZone(calcJde, date.Location(), false)
+	calcJD := basic.CulminationTime(localJD, lon, timezone) - timezone/24.00
+	return basic.JD2DateByZone(calcJD, date.Location(), false)
 }
 
 // CulminationTimeN 截断项太阳中天时刻 / truncated culmination time.
@@ -476,11 +504,12 @@ func CulminationTime(date time.Time, lon float64) time.Time {
 // 参数与 CulminationTime 相同；n<0 使用当前仓库内嵌的全部 VSOP 项，其余值用于截断太阳位置级数。
 // Uses the same inputs as CulminationTime. n<0 keeps all embedded VSOP terms in this repository; other values truncate the solar series.
 func CulminationTimeN(date time.Time, lon float64, n int) time.Time {
-	jde := basic.Date2JDE(date.Add(time.Duration(-1*date.Hour())*time.Hour)) + 0.5
+	date = time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, date.Location())
+	localJD := basic.Date2JD(date) + 0.5
 	_, loc := date.Zone()
 	timezone := float64(loc) / 3600.0
-	calcJde := basic.CulminationTimeN(jde, lon, timezone, n) - timezone/24.00
-	return basic.JDE2DateByZone(calcJde, date.Location(), false)
+	calcJD := basic.CulminationTimeN(localJD, lon, timezone, n) - timezone/24.00
+	return basic.JD2DateByZone(calcJD, date.Location(), false)
 }
 
 // EarthDistance 日地距离 / Earth-Sun distance.
@@ -488,8 +517,8 @@ func CulminationTimeN(date time.Time, lon float64, n int) time.Time {
 // 返回 date 对应绝对时刻的日地距离，单位 AU。
 // Returns the Earth-Sun distance at the instant represented by date, in astronomical units.
 func EarthDistance(date time.Time) float64 {
-	jde := basic.Date2JDE(date.UTC())
-	jde = basic.TD2UT(jde, true)
+	jd := basic.Date2JD(date.UTC())
+	jde := basic.UTC2TT(jd)
 	return basic.EarthAway(jde)
 }
 

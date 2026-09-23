@@ -15,7 +15,7 @@ func TestMaximumDeclinationWrappersMatchBasic(t *testing.T) {
 		t.Fatalf("north count mismatch: got %d want %d", len(northWrapped), len(north))
 	}
 	for i, event := range north {
-		wantTime := basic.JDE2DateByZone(event.JDE, time.UTC, false)
+		wantTime := basic.JD2DateByZone(event.JD, time.UTC, false)
 		if !northWrapped[i].Time.Equal(wantTime) {
 			t.Fatalf("north #%d time mismatch: got %s want %s", i+1, northWrapped[i].Time.Format(time.RFC3339Nano), wantTime.Format(time.RFC3339Nano))
 		}
@@ -30,7 +30,7 @@ func TestMaximumDeclinationWrappersMatchBasic(t *testing.T) {
 		t.Fatalf("south count mismatch: got %d want %d", len(southWrapped), len(south))
 	}
 	for i, event := range south {
-		wantTime := basic.JDE2DateByZone(event.JDE, time.UTC, false)
+		wantTime := basic.JD2DateByZone(event.JD, time.UTC, false)
 		if !southWrapped[i].Time.Equal(wantTime) {
 			t.Fatalf("south #%d time mismatch: got %s want %s", i+1, southWrapped[i].Time.Format(time.RFC3339Nano), wantTime.Format(time.RFC3339Nano))
 		}
@@ -43,20 +43,20 @@ func TestMaximumDeclinationWrappersMatchBasic(t *testing.T) {
 func TestMaximumDeclinationSearchWrappersMatchBasic(t *testing.T) {
 	loc := time.FixedZone("CST", 8*3600)
 	query := time.Date(2026, time.January, 10, 18, 30, 0, 0, loc)
-	queryJDE := basic.Date2JDE(query.UTC())
+	queryJD := basic.Date2JD(query.UTC())
 
-	assertMaximumDeclinationInfoMatchesBasic(t, "last north", LastMaximumNorthDeclination(query), basic.LastMoonMaximumNorthDeclination(queryJDE), loc)
-	assertMaximumDeclinationInfoMatchesBasic(t, "next north", NextMaximumNorthDeclination(query), basic.NextMoonMaximumNorthDeclination(queryJDE), loc)
-	assertMaximumDeclinationInfoMatchesBasic(t, "closest north", ClosestMaximumNorthDeclination(query), basic.ClosestMoonMaximumNorthDeclination(queryJDE), loc)
+	assertMaximumDeclinationInfoMatchesBasic(t, "last north", LastMaximumNorthDeclination(query), basic.LastMoonMaximumNorthDeclination(queryJD), loc)
+	assertMaximumDeclinationInfoMatchesBasic(t, "next north", NextMaximumNorthDeclination(query), basic.NextMoonMaximumNorthDeclination(queryJD), loc)
+	assertMaximumDeclinationInfoMatchesBasic(t, "closest north", ClosestMaximumNorthDeclination(query), basic.ClosestMoonMaximumNorthDeclination(queryJD), loc)
 
-	assertMaximumDeclinationInfoMatchesBasic(t, "last south", LastMaximumSouthDeclination(query), basic.LastMoonMaximumSouthDeclination(queryJDE), loc)
-	assertMaximumDeclinationInfoMatchesBasic(t, "next south", NextMaximumSouthDeclination(query), basic.NextMoonMaximumSouthDeclination(queryJDE), loc)
-	assertMaximumDeclinationInfoMatchesBasic(t, "closest south", ClosestMaximumSouthDeclination(query), basic.ClosestMoonMaximumSouthDeclination(queryJDE), loc)
+	assertMaximumDeclinationInfoMatchesBasic(t, "last south", LastMaximumSouthDeclination(query), basic.LastMoonMaximumSouthDeclination(queryJD), loc)
+	assertMaximumDeclinationInfoMatchesBasic(t, "next south", NextMaximumSouthDeclination(query), basic.NextMoonMaximumSouthDeclination(queryJD), loc)
+	assertMaximumDeclinationInfoMatchesBasic(t, "closest south", ClosestMaximumSouthDeclination(query), basic.ClosestMoonMaximumSouthDeclination(queryJD), loc)
 }
 
 func assertMaximumDeclinationInfoMatchesBasic(t *testing.T, name string, got MaximumDeclinationInfo, want basic.DeclinationEvent, loc *time.Location) {
 	t.Helper()
-	wantTime := basic.JDE2DateByZone(want.JDE, loc, false)
+	wantTime := basic.JD2DateByZone(want.JD, loc, false)
 	if got.Time.Location() != loc {
 		t.Fatalf("%s location mismatch: got %q want %q", name, got.Time.Location().String(), loc.String())
 	}

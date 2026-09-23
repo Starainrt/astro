@@ -8,8 +8,8 @@ import (
 func TestDefaultDeltaTFractionalYear(t *testing.T) {
 	for _, year := range []float64{-700.5, -0.5, 0, 1000.5, 1582.75, 1800.5, 2000.5, 2026.5} {
 		whole := math.Floor(year)
-		start := JDECalc(int(whole), 1, 1)
-		end := JDECalc(int(whole)+1, 1, 1)
+		start := JDCalc(int(whole), 1, 1)
+		end := JDCalc(int(whole)+1, 1, 1)
 		want := DefaultDeltaTv2(start+(year-whole)*(end-start), true)
 		got := DefaultDeltaTv2(year, false)
 		if math.IsNaN(got) || math.Abs(got-want) > 1e-10 {
@@ -28,36 +28,42 @@ func TestDefaultDeltaTInvalidInput(t *testing.T) {
 	}
 }
 
-func TestDeltaTLeapSecondBoundary(t *testing.T) {
+// 闰秒只改 TT−UTC，不改 TT−UT1：ΔT 在闰秒两侧连续，TT−UTC 才跳 1 秒。
+func TestDeltaTStaysContinuousAcrossLeapSecond(t *testing.T) {
 	boundary := 2457754.5
-	if got := DeltaTv2(boundary); got != 69.184 {
-		t.Fatalf("DeltaT at leap-second boundary=%v, want 69.184", got)
+	before := DeltaTv2(boundary - 1e-6)
+	after := DeltaTv2(boundary + 1e-6)
+	if math.Abs(after-before) > 1e-3 {
+		t.Fatalf("ΔT should stay continuous at a leap second: %v → %v", before, after)
+	}
+	if step := TTMinusUTCSeconds(boundary+1e-6) - TTMinusUTCSeconds(boundary-1e-6); math.Abs(step-1) > 1e-9 {
+		t.Fatalf("TT−UTC should step by one second: %v", step)
 	}
 	if got := DeltaTSplineY(math.NaN()); !math.IsNaN(got) {
 		t.Fatalf("DeltaTSplineY(NaN)=%v, want NaN", got)
 	}
 }
 
-func TestTD2UTRoundTrip(t *testing.T) {
+func TestUTC2TTRoundTrip(t *testing.T) {
 	for _, year := range []int{-2000, -720, 0, 26, 1426, 2025, 2027, 3627, 4026, 5000} {
-		ut := JDECalc(year, 9, 20.123456)
-		tt := TD2UT(ut, true)
-		if got := TD2UT(tt, false); math.Abs(got-ut) > math.Nextafter(ut, math.Inf(1))-ut {
-			t.Errorf("year=%d UT round trip differs by %.9f seconds", year, (got-ut)*86400)
+		utc := JDCalc(year, 9, 20.123456)
+		tt := UTC2TT(utc)
+		if got := TT2UTC(tt); math.Abs(got-utc) > math.Nextafter(utc, math.Inf(1))-utc {
+			t.Errorf("year=%d UTC round trip differs by %.9f seconds", year, (got-utc)*86400)
 		}
-		if got := TD2UT(TD2UT(tt, false), true); got != tt {
+		if got := UTC2TT(TT2UTC(tt)); got != tt {
 			t.Errorf("year=%d TT round trip differs by %.9f seconds", year, (got-tt)*86400)
 		}
 	}
 	for _, seconds := range []float64{-70, -1, -0.1, 0, 0.1, 1, 70} {
-		ut := 2457754.5 + seconds/86400
-		if got := TD2UT(TD2UT(ut, true), false); got != ut {
-			t.Errorf("leap second offset=%g round trip differs by %.9f seconds", seconds, (got-ut)*86400)
+		utc := 2457754.5 + seconds/86400
+		if got := TT2UTC(UTC2TT(utc)); got != utc {
+			t.Errorf("leap second offset=%g round trip differs by %.9f seconds", seconds, (got-utc)*86400)
 		}
 	}
 }
 
-func TestTD2UTCustomDeltaT(t *testing.T) {
+func TestUTC2TTRoundTripUnderCustomDeltaT(t *testing.T) {
 	original := GetDeltaTFn()
 	t.Cleanup(func() { SetDeltaTFn(original) })
 	for _, slope := range []float64{0, 0.01} {
@@ -67,9 +73,9 @@ func TestTD2UTCustomDeltaT(t *testing.T) {
 			}
 			return 10000 + slope*(jd-2451545)
 		})
-		ut := 3000000.123456
-		if got := TD2UT(TD2UT(ut, true), false); got != ut {
-			t.Errorf("custom slope=%g round trip differs by %.9f seconds", slope, (got-ut)*86400)
+		utc := 3000000.123456
+		if got := TT2UTC(UTC2TT(utc)); got != utc {
+			t.Errorf("custom slope=%g round trip differs by %.9f seconds", slope, (got-utc)*86400)
 		}
 	}
 }

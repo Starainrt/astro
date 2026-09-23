@@ -59,7 +59,7 @@ type GalileanPhenomenonContactEvent struct {
 func LastGalileanPhenomenonContactEvent(date time.Time, satellite int, phenomenonType GalileanPhenomenonType) GalileanPhenomenonContactEvent {
 	return galileanPhenomenonContactEventFromBasic(
 		basic.LastJupiterGalileanPhenomenonContactEvent(
-			basic.Date2JDE(date.UTC()),
+			basic.Date2JD(date.UTC()),
 			satellite,
 			basic.JupiterGalileanPhenomenonType(phenomenonType),
 		),
@@ -71,7 +71,7 @@ func LastGalileanPhenomenonContactEvent(date time.Time, satellite int, phenomeno
 func NextGalileanPhenomenonContactEvent(date time.Time, satellite int, phenomenonType GalileanPhenomenonType) GalileanPhenomenonContactEvent {
 	return galileanPhenomenonContactEventFromBasic(
 		basic.NextJupiterGalileanPhenomenonContactEvent(
-			basic.Date2JDE(date.UTC()),
+			basic.Date2JD(date.UTC()),
 			satellite,
 			basic.JupiterGalileanPhenomenonType(phenomenonType),
 		),
@@ -83,7 +83,7 @@ func NextGalileanPhenomenonContactEvent(date time.Time, satellite int, phenomeno
 func ClosestGalileanPhenomenonContactEvent(date time.Time, satellite int, phenomenonType GalileanPhenomenonType) GalileanPhenomenonContactEvent {
 	return galileanPhenomenonContactEventFromBasic(
 		basic.ClosestJupiterGalileanPhenomenonContactEvent(
-			basic.Date2JDE(date.UTC()),
+			basic.Date2JD(date.UTC()),
 			satellite,
 			basic.JupiterGalileanPhenomenonType(phenomenonType),
 		),
@@ -95,7 +95,7 @@ func galileanPhenomenonContactEventFromBasic(event basic.JupiterGalileanPhenomen
 	if !event.Valid {
 		return GalileanPhenomenonContactEvent{}
 	}
-	greatest := basic.JDE2DateByZone(event.Greatest, loc, false)
+	greatest := basic.JD2DateByZone(event.Greatest, loc, false)
 	return GalileanPhenomenonContactEvent{
 		Valid:         true,
 		Satellite:     event.Satellite,
@@ -111,9 +111,9 @@ func galileanPhenomenonContactFromBasic(contact basic.JupiterGalileanPhenomenonC
 	if !contact.Valid {
 		return GalileanPhenomenonContact{}
 	}
-	start := basic.JDE2DateByZone(contact.Start, loc, false)
-	modelCrossing := basic.JDE2DateByZone(contact.ModelCrossing, loc, false)
-	end := basic.JDE2DateByZone(contact.End, loc, false)
+	start := basic.JD2DateByZone(contact.Start, loc, false)
+	modelCrossing := basic.JD2DateByZone(contact.ModelCrossing, loc, false)
+	end := basic.JD2DateByZone(contact.End, loc, false)
 	return GalileanPhenomenonContact{
 		Valid:         true,
 		Phase:         GalileanPhenomenonContactPhase(contact.Phase),

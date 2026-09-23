@@ -3,16 +3,14 @@ package basic
 import "math"
 
 func GetLunar(year, month, day int, tz float64) (lyear, lmonth, lday int, leap bool, result string) {
-	julianDayEpoch := JDECalc(year, month, float64(day))
+	julianDayEpoch := JDCalc(year, month, float64(day))
 	// 确定农历年份
 	lyear = year
 	adjustedYear := year
 	if month == 11 || month == 12 {
 		winterSolsticeDay := GetJQTime(year, 270) + tz
-		//firstNewMoonDay := TD2UT(CalcMoonS(float64(year)+11.0/12.0+5.0/30.0/12.0, 0), true) + tz
-		//nextNewMoonDay := TD2UT(CalcMoonS(float64(year)+1.0, 0), true) + tz
-		firstNewMoonDay := TD2UT(CalcMoonSHByJDE(winterSolsticeDay-16, 0), false) + tz
-		nextNewMoonDay := TD2UT(CalcMoonSHByJDE(firstNewMoonDay+28, 0), false) + tz
+		firstNewMoonDay := TT2UTC(CalcMoonSHByJDE(winterSolsticeDay-16, 0)) + tz
+		nextNewMoonDay := TT2UTC(CalcMoonSHByJDE(firstNewMoonDay+28, 0)) + tz
 
 		firstNewMoonDay = normalizeTimePoint(firstNewMoonDay)
 		nextNewMoonDay = normalizeTimePoint(nextNewMoonDay)

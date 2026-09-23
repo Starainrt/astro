@@ -11,7 +11,7 @@ import (
 func TestConjunctionPlanetWrappersMatchBasic(t *testing.T) {
 	loc := time.FixedZone("CST", 8*3600)
 	query := time.Date(2026, 1, 15, 20, 0, 0, 0, loc)
-	queryTT := basic.TD2UT(basic.Date2JDE(query.UTC()), true)
+	queryTT := basic.UTC2TT(basic.Date2JD(query.UTC()))
 
 	cases := []struct {
 		name   string
@@ -38,7 +38,7 @@ func TestConjunctionPlanetWrappersMatchBasic(t *testing.T) {
 
 func assertSameConjunctionTime(t *testing.T, name string, got time.Time, wantJDE float64, loc *time.Location) {
 	t.Helper()
-	want := basic.JDE2DateByZone(wantJDE, loc, false)
+	want := basic.JD2DateByZone(wantJDE, loc, false)
 	if got.Location() != loc {
 		t.Fatalf("%s location mismatch: got %q want %q", name, got.Location().String(), loc.String())
 	}

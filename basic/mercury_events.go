@@ -51,11 +51,11 @@ type mercuryConjunctionResult struct {
 	geoLightDays float64
 }
 
-func mercuryHelioN(planetIndex int, jd float64, n int) mercuryConjunctionLBR {
+func mercuryHelioN(planetIndex int, jde float64, n int) mercuryConjunctionLBR {
 	return mercuryConjunctionLBR{
-		lo: planet.WherePlanetN(planetIndex, 0, jd, n),
-		bo: planet.WherePlanetN(planetIndex, 1, jd, n),
-		r:  planet.WherePlanetN(planetIndex, 2, jd, n),
+		lo: planet.WherePlanetN(planetIndex, 0, jde, n),
+		bo: planet.WherePlanetN(planetIndex, 1, jde, n),
+		r:  planet.WherePlanetN(planetIndex, 2, jde, n),
 	}
 }
 
@@ -82,9 +82,9 @@ func mercuryConjunctionAngleDelta(diff float64) float64 {
 	return diff
 }
 
-func mercuryConjunctionHeliocentricDelta(jd, targetDeg float64, n int) float64 {
-	planetLo := planet.WherePlanetN(1, 0, jd, n)
-	earthLo := planet.WherePlanetN(-1, 0, jd, n)
+func mercuryConjunctionHeliocentricDelta(jde, targetDeg float64, n int) float64 {
+	planetLo := planet.WherePlanetN(1, 0, jde, n)
+	earthLo := planet.WherePlanetN(-1, 0, jde, n)
 	return mercuryConjunctionAngleDelta(planetLo - earthLo - targetDeg)
 }
 
@@ -101,8 +101,8 @@ func mercuryConjunctionDifference(jd float64, n int, targetDeg, sunLightDays, ge
 	}
 }
 
-func mercuryConjunctionExactDelta(jd float64) float64 {
-	return mercuryConjunctionAngleDelta(MercuryApparentLo(jd) - HSunApparentLo(jd))
+func mercuryConjunctionExactDelta(jde float64) float64 {
+	return mercuryConjunctionAngleDelta(MercuryApparentLo(jde) - HSunApparentLo(jde))
 }
 
 func mercuryConjunctionApproxTT(seed float64, inferior bool) float64 {
@@ -110,32 +110,32 @@ func mercuryConjunctionApproxTT(seed float64, inferior bool) float64 {
 	if inferior {
 		heliocentricTarget = 0
 	}
-	jd := seed
+	jde := seed
 	for i := 0; i < 6; i++ {
-		jd -= mercuryConjunctionHeliocentricDelta(jd, heliocentricTarget, 8) / (360.0 / MERCURY_S_PERIOD)
+		jde -= mercuryConjunctionHeliocentricDelta(jde, heliocentricTarget, 8) / (360.0 / MERCURY_S_PERIOD)
 	}
 
-	startSample := mercuryConjunctionDifference(jd, 8, 0, 0, 0)
-	nextSample := mercuryConjunctionDifference(jd+mercuryConjunctionDerivativeStepDay, 8, 0, 0, 0)
+	startSample := mercuryConjunctionDifference(jde, 8, 0, 0, 0)
+	nextSample := mercuryConjunctionDifference(jde+mercuryConjunctionDerivativeStepDay, 8, 0, 0, 0)
 	diffSlope := mercuryConjunctionAngleDelta(nextSample.diff-startSample.diff) / mercuryConjunctionDerivativeStepDay
 
-	refined := mercuryConjunctionDifference(jd, 40, 0, startSample.sunLightDays, startSample.geoLightDays)
-	jd -= refined.diff / diffSlope
-	final := mercuryConjunctionDifference(jd, -1, 0, refined.sunLightDays, refined.geoLightDays)
-	jd -= final.diff / diffSlope
-	return jd
+	refined := mercuryConjunctionDifference(jde, 40, 0, startSample.sunLightDays, startSample.geoLightDays)
+	jde -= refined.diff / diffSlope
+	final := mercuryConjunctionDifference(jde, -1, 0, refined.sunLightDays, refined.geoLightDays)
+	jde -= final.diff / diffSlope
+	return jde
 }
 
 func mercuryConjunctionExactTT(seed float64, inferior bool) float64 {
 	estimateJD := mercuryConjunctionApproxTT(seed, inferior)
 	converged := false
 	for i := 0; i < eventNewtonMaxIterations; i++ {
-		prevJD := estimateJD
-		longitudeDelta := mercuryConjunctionExactDelta(prevJD)
-		longitudeSlope := (mercuryConjunctionExactDelta(prevJD+0.000005) - mercuryConjunctionExactDelta(prevJD-0.000005)) / 0.00001
-		nextJD := prevJD - longitudeDelta/longitudeSlope
+		prevJDE := estimateJD
+		longitudeDelta := mercuryConjunctionExactDelta(prevJDE)
+		longitudeSlope := (mercuryConjunctionExactDelta(prevJDE+0.000005) - mercuryConjunctionExactDelta(prevJDE-0.000005)) / 0.00001
+		nextJD := prevJDE - longitudeDelta/longitudeSlope
 		estimateJD = nextJD
-		if math.Abs(nextJD-prevJD) <= 0.00001 {
+		if math.Abs(nextJD-prevJDE) <= 0.00001 {
 			converged = true
 			break
 		}
@@ -161,7 +161,7 @@ func mercuryConjunction(jde float64, next uint8) float64 {
 	if math.Abs(mercuryConjunctionExactDelta(jde)) <= mercuryConjunctionSameInstantDegrees {
 		best := math.NaN()
 		consider := func(inferior bool) {
-			eventUT := TD2UT(mercuryConjunctionExactTT(jde, inferior), false)
+			eventUT := TT2UTC(mercuryConjunctionExactTT(jde, inferior))
 			if !isFiniteFloat(eventUT) {
 				return
 			}
@@ -186,80 +186,80 @@ func mercuryConjunction(jde float64, next uint8) float64 {
 	if next == 0 {
 		direction = -1
 	}
-	leftJD := jde
-	leftValue := mercuryConjunctionDeltaN(leftJD, mercuryEventSearchN)
+	leftJDE := jde
+	leftValue := mercuryConjunctionDeltaN(leftJDE, mercuryEventSearchN)
 	if !isFiniteFloat(leftValue) {
 		return math.NaN()
 	}
 	for i := 0; i < mercuryConjunctionScanMaxSteps; i++ {
-		rightJD := jde + direction*mercuryConjunctionScanStepDay*float64(i+1)
-		rightValue := mercuryConjunctionDeltaN(rightJD, mercuryEventSearchN)
+		rightJDE := jde + direction*mercuryConjunctionScanStepDay*float64(i+1)
+		rightValue := mercuryConjunctionDeltaN(rightJDE, mercuryEventSearchN)
 		if !isFiniteFloat(rightValue) {
 			return math.NaN()
 		}
 		if leftValue == 0 || rightValue == 0 || leftValue*rightValue < 0 {
-			return mercuryConjunctionPolish(jde, leftJD, rightJD, direction)
+			return mercuryConjunctionPolish(jde, leftJDE, rightJDE, direction)
 		}
-		leftJD, leftValue = rightJD, rightValue
+		leftJDE, leftValue = rightJDE, rightValue
 	}
 	return math.NaN()
 }
 
 // mercuryConjunctionDeltaN 截断级数下的水星-太阳视黄经差（度，[-180,180]），用于方向性括号扫描。
-func mercuryConjunctionDeltaN(jd float64, n int) float64 {
-	return mercuryConjunctionAngleDelta(MercuryApparentLoN(jd, n) - HSunApparentLoN(jd, n))
+func mercuryConjunctionDeltaN(jde float64, n int) float64 {
+	return mercuryConjunctionAngleDelta(MercuryApparentLoN(jde, n) - HSunApparentLoN(jde, n))
 }
 
 // mercuryConjunctionPolish 用全项级数在截断级数给出的括号内抛光。
 // 截断误差可能让括号两端在全项函数上同号（罕见），此时沿扫描方向再扩一两个扫描步；
 // 若仍未被确认（典型情形：查询几乎正好落在合上，截断级数在根两侧的符号与全项不一致），
 // 退回全项级数的方向扫描，保证有界且不返回 NaN。
-func mercuryConjunctionPolish(jde, leftJD, rightJD, direction float64) float64 {
+func mercuryConjunctionPolish(jde, leftJDE, rightJDE, direction float64) float64 {
 	for attempt := 0; attempt < 3; attempt++ {
-		leftValue := mercuryConjunctionExactDelta(leftJD)
-		rightValue := mercuryConjunctionExactDelta(rightJD)
+		leftValue := mercuryConjunctionExactDelta(leftJDE)
+		rightValue := mercuryConjunctionExactDelta(rightJDE)
 		if !isFiniteFloat(leftValue) || !isFiniteFloat(rightValue) {
 			return math.NaN()
 		}
 		if leftValue == 0 || rightValue == 0 || leftValue*rightValue < 0 {
-			root, ok := eventBracketSecantRoot(leftJD, rightJD, leftValue, rightValue,
+			root, ok := eventBracketSecantRoot(leftJDE, rightJDE, leftValue, rightValue,
 				mercuryConjunctionPolishToleranceDay, mercuryConjunctionExactDelta)
 			if !ok {
 				return math.NaN()
 			}
-			return TD2UT(root, false)
+			return TT2UTC(root)
 		}
 		if direction > 0 {
-			rightJD += mercuryConjunctionScanStepDay
+			rightJDE += mercuryConjunctionScanStepDay
 			continue
 		}
-		leftJD -= mercuryConjunctionScanStepDay
+		leftJDE -= mercuryConjunctionScanStepDay
 	}
 	return mercuryConjunctionFullDirectionalScan(jde, direction)
 }
 
 // mercuryConjunctionFullDirectionalScan 全项级数的方向扫描（截断括号未被确认时的兜底）。
 func mercuryConjunctionFullDirectionalScan(jde, direction float64) float64 {
-	leftJD := jde
-	leftValue := mercuryConjunctionExactDelta(leftJD)
+	leftJDE := jde
+	leftValue := mercuryConjunctionExactDelta(leftJDE)
 	if !isFiniteFloat(leftValue) {
 		return math.NaN()
 	}
 	for i := 0; i < mercuryConjunctionScanMaxSteps; i++ {
-		rightJD := jde + direction*mercuryConjunctionScanStepDay*float64(i+1)
-		rightValue := mercuryConjunctionExactDelta(rightJD)
+		rightJDE := jde + direction*mercuryConjunctionScanStepDay*float64(i+1)
+		rightValue := mercuryConjunctionExactDelta(rightJDE)
 		if !isFiniteFloat(rightValue) {
 			return math.NaN()
 		}
 		if leftValue == 0 || rightValue == 0 || leftValue*rightValue < 0 {
-			root, ok := eventBracketSecantRoot(leftJD, rightJD, leftValue, rightValue,
+			root, ok := eventBracketSecantRoot(leftJDE, rightJDE, leftValue, rightValue,
 				mercuryConjunctionPolishToleranceDay, mercuryConjunctionExactDelta)
 			if !ok {
 				return math.NaN()
 			}
-			return TD2UT(root, false)
+			return TT2UTC(root)
 		}
-		leftJD, leftValue = rightJD, rightValue
+		leftJDE, leftValue = rightJDE, rightValue
 	}
 	return math.NaN()
 }
@@ -335,12 +335,12 @@ func mercuryRADerivativeN(jde, delta float64, n int) float64 {
 }
 
 func mercuryStationInWindow(startTT, endTT float64) float64 {
-	bestJD := zeroEventInWindow(startTT, endTT, mercuryStationCoarseStepDay, mercuryStationHalfWindowDay, 30.0/86400.0, func(jd float64) float64 {
+	bestJDE := zeroEventInWindow(startTT, endTT, mercuryStationCoarseStepDay, mercuryStationHalfWindowDay, 30.0/86400.0, func(jd float64) float64 {
 		return mercuryRADerivativeN(jd, mercuryStationDerivativeStepDay, mercuryEventSearchN)
 	}, func(jd float64) float64 {
 		return mercuryRADerivative(jd, mercuryStationDerivativeStepDay)
 	})
-	return TD2UT(bestJD, false)
+	return TT2UTC(bestJDE)
 }
 
 func mercuryStationBetween(startTT, endTT float64) bool {
@@ -377,12 +377,12 @@ func mercuryStationBetween(startTT, endTT float64) bool {
 }
 
 func mercuryProgradeToRetrogradeAroundInferior(inferiorUT float64) float64 {
-	inferiorTT := TD2UT(inferiorUT, true)
+	inferiorTT := UTC2TT(inferiorUT)
 	return mercuryStationInWindow(inferiorTT-mercuryStationWindowDays, inferiorTT)
 }
 
 func mercuryRetrogradeToProgradeAroundInferior(inferiorUT float64) float64 {
-	inferiorTT := TD2UT(inferiorUT, true)
+	inferiorTT := UTC2TT(inferiorUT)
 	return mercuryStationInWindow(inferiorTT, inferiorTT+mercuryStationWindowDays)
 }
 
@@ -488,7 +488,7 @@ func NextMercuryRetrograde(jde float64) float64 {
 	motion := mercuryRADerivative(jde, mercuryStationDerivativeStepDay)
 	if motion > mercuryStationMotionTolerance {
 		p2r := NextMercuryProgradeToRetrograde(jde)
-		if isFiniteFloat(p2r) && !mercuryStationBetween(jde, TD2UT(p2r, true)) {
+		if isFiniteFloat(p2r) && !mercuryStationBetween(jde, UTC2TT(p2r)) {
 			return p2r
 		}
 		best := earliestFiniteEventUT(p2r, NextMercuryRetrogradeToPrograde(jde))
@@ -499,7 +499,7 @@ func NextMercuryRetrograde(jde float64) float64 {
 	}
 	if motion < -mercuryStationMotionTolerance {
 		r2p := NextMercuryRetrogradeToPrograde(jde)
-		if isFiniteFloat(r2p) && !mercuryStationBetween(jde, TD2UT(r2p, true)) {
+		if isFiniteFloat(r2p) && !mercuryStationBetween(jde, UTC2TT(r2p)) {
 			return r2p
 		}
 		best := earliestFiniteEventUT(NextMercuryProgradeToRetrograde(jde), r2p)
@@ -522,7 +522,7 @@ func LastMercuryRetrograde(jde float64) float64 {
 	motion := mercuryRADerivative(jde, mercuryStationDerivativeStepDay)
 	if motion > mercuryStationMotionTolerance {
 		r2p := LastMercuryRetrogradeToPrograde(jde)
-		if isFiniteFloat(r2p) && !mercuryStationBetween(TD2UT(r2p, true), jde) {
+		if isFiniteFloat(r2p) && !mercuryStationBetween(UTC2TT(r2p), jde) {
 			return r2p
 		}
 		best := latestFiniteEventUT(LastMercuryProgradeToRetrograde(jde), r2p)
@@ -533,7 +533,7 @@ func LastMercuryRetrograde(jde float64) float64 {
 	}
 	if motion < -mercuryStationMotionTolerance {
 		p2r := LastMercuryProgradeToRetrograde(jde)
-		if isFiniteFloat(p2r) && !mercuryStationBetween(TD2UT(p2r, true), jde) {
+		if isFiniteFloat(p2r) && !mercuryStationBetween(UTC2TT(p2r), jde) {
 			return p2r
 		}
 		best := latestFiniteEventUT(p2r, LastMercuryRetrogradeToPrograde(jde))
@@ -572,9 +572,9 @@ func mercurySunElongationN(jde float64, n int) float64 {
 // 窗口两端是世界时，目标函数收力学时，因此逐次换算。
 func mercuryGreatestElongationInWindow(start, end float64) float64 {
 	return maximizeInWindow(start, end, 2.0, func(utJD float64) float64 {
-		return mercurySunElongationN(TD2UT(utJD, true), mercuryEventSearchN)
+		return mercurySunElongationN(UTC2TT(utJD), mercuryEventSearchN)
 	}, func(utJD float64) float64 {
-		return MercurySunElongation(TD2UT(utJD, true))
+		return MercurySunElongation(UTC2TT(utJD))
 	})
 }
 

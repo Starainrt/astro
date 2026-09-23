@@ -991,7 +991,12 @@ func occultationStationEnvelopeJacobian(
 	tt := referenceTT + coordinates[2]/occultationStationEnvelopeTimeScale
 	longitude, latitude := normalizeLongitude(coordinates[0]), coordinates[1]
 	evaluation := cache.evaluation(tt)
-	residual, ok := model.residual(evaluation, longitude, latitude)
+	// 点源目标（恒星）没有盘面半径项，接触度量可用解析速率；有限盘面行星保持中心差分。
+	residualAt := model.residual
+	if evaluation.center.targetRadiusKM <= 0 {
+		residualAt = model.residualWithRate
+	}
+	residual, ok := residualAt(evaluation, longitude, latitude)
 	if !ok {
 		return [2]float64{}, [2][3]float64{}, false
 	}
@@ -1002,7 +1007,7 @@ func occultationStationEnvelopeJacobian(
 		shifted[column] += steps[column]
 		shiftedTT := referenceTT + shifted[2]/occultationStationEnvelopeTimeScale
 		shiftedEvaluation := cache.evaluation(shiftedTT)
-		shiftedResidual, shiftedOK := model.residual(
+		shiftedResidual, shiftedOK := residualAt(
 			shiftedEvaluation, normalizeLongitude(shifted[0]), shifted[1],
 		)
 		if !shiftedOK {
@@ -1026,6 +1031,30 @@ func (model occultationStationEnvelopeModel) residual(
 	}
 	derivative := evaluation.contactDerivative(longitude, latitude)
 	return [2]float64{state.contactMetric, derivative}, state.valid && finite(derivative)
+}
+
+// residualWithRate 与 residual 取值完全相同，但把时间导数换成解析速率：每列只需一次站心几何求值，
+// 不再为前后时刻各求一次状态。接受判据仍走 residual 的精确中心差分。
+func (model occultationStationEnvelopeModel) residualWithRate(
+	evaluation occultationRiseSetEvaluation,
+	longitude, latitude float64,
+) ([2]float64, bool) {
+	state := evaluation.center.stateAt(longitude, latitude)
+	if !state.valid {
+		return [2]float64{}, false
+	}
+	if model.kind == occultationStationVisibilityEnvelope {
+		rate := evaluation.moonAltitudeRateAt(longitude, latitude)
+		if !finite(rate) {
+			return [2]float64{}, false
+		}
+		return [2]float64{state.moonAltitude, rate}, true
+	}
+	rate := evaluation.contactRateAt(longitude, latitude)
+	if !finite(rate) {
+		return [2]float64{}, false
+	}
+	return [2]float64{state.contactMetric, rate}, true
 }
 
 func (model occultationStationEnvelopeModel) valueTolerance() float64 {
@@ -1530,7 +1559,7 @@ func occultationStationOracleSampleAt(
 ) occultationStationBoundarySample {
 	rotation := occultationPathEarthRotationAt(tt)
 	inertial := occultationStationInverseEarthRotation(fixed, rotation)
-	longitude, latitude := occultationPathGeodeticWithSidereal(inertial, ApparentSiderealTime(TD2UT(tt, false))*15)
+	longitude, latitude := occultationPathGeodeticWithSidereal(inertial, ApparentSiderealTime(TT2UT1(tt))*15)
 	return occultationStationBoundarySample{
 		point: OccultationPathPoint{
 			Time:         occultationTTToLocation(tt, location),

@@ -11,11 +11,11 @@ func TestSolarEclipseLocalEphemerisBoundedError(t *testing.T) {
 		name string
 		seed float64
 	}{
-		{"2010-01-15", JDECalc(2010, 1, 15)},
-		{"2014-04-29", JDECalc(2014, 4, 29)},
-		{"2023-04-20", JDECalc(2023, 4, 20)},
-		{"2031-05-21", JDECalc(2031, 5, 21)},
-		{"2309-06-09", JDECalc(2309, 6, 9)},
+		{"2010-01-15", JDCalc(2010, 1, 15)},
+		{"2014-04-29", JDCalc(2014, 4, 29)},
+		{"2023-04-20", JDCalc(2023, 4, 20)},
+		{"2031-05-21", JDCalc(2031, 5, 21)},
+		{"2309-06-09", JDCalc(2309, 6, 9)},
 	}
 	for _, event := range events {
 		t.Run(event.name, func(t *testing.T) {
@@ -132,4 +132,26 @@ func TestOccultationLocalEphemerisFullWindowBoundedError(t *testing.T) {
 
 func vectorDifferenceKM(a, b [3]float64) float64 {
 	return math.Sqrt((a[0]-b[0])*(a[0]-b[0]) + (a[1]-b[1])*(a[1]-b[1]) + (a[2]-b[2])*(a[2]-b[2]))
+}
+
+// 矢量回读的赤经必须落在 [0,360)：atan2 给 (−180,180]，而精确分支
+// （LoBoToRaDec、starMeanToApparentRaDec）与 rise/set 的矢量回读都在 [0,360)，
+// 不归一会让同一时刻的密集/精确状态相差 360 度，误导比较与日志。
+func TestOccultationPathVectorRaDecKeepsNormalizedRA(t *testing.T) {
+	for _, want := range []float64{0.5, 90, 189.1975, 270, 359.9} {
+		vector := occultationPathRaDecVector(want, -5.8, 2.5)
+		got, dec, distance, ok := occultationPathVectorRaDec(vector)
+		if !ok {
+			t.Fatalf("RA %.4f 的回读失败", want)
+		}
+		if math.Abs(got-want) > 1e-9 {
+			t.Fatalf("RA %.4f 回读为 %.4f，want [0,360) 内的同一读数", want, got)
+		}
+		if math.Abs(dec+5.8) > 1e-9 || math.Abs(distance-2.5) > 1e-12 {
+			t.Fatalf("RA %.4f 的赤纬/距离 = %.6f / %.6f，want -5.8 / 2.5", want, dec, distance)
+		}
+	}
+	if _, _, _, ok := occultationPathVectorRaDec(occultationPathVector{}); ok {
+		t.Fatal("零矢量应判为无效")
+	}
 }

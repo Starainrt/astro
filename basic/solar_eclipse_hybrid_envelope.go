@@ -21,7 +21,7 @@ func solarCentralBandSkyOffset(context localSolarEclipseStateContext, longitude,
 	east := [3]float64{-sun[1] / equatorial, sun[0] / equatorial, 0}
 	north := [3]float64{-sun[2] * east[1], sun[2] * east[0], equatorial}
 	radius := math.Asin(solarEclipseEarthEquatorialRadiusKM*context.params.umbralK*localSolarMoonRadiusScale/moonDistance) -
-		math.Asin(solarEclipseEarthEquatorialRadiusKM*solarEclipseSolarRadiusRatio/sunDistance)
+		math.Asin(solarEclipseEarthEquatorialRadiusKM*context.params.sunRadiusRatio/sunDistance)
 	return [3]float64{dotSolarEclipse3(moon, east), dotSolarEclipse3(moon, north), math.Sin(radius)}
 }
 
@@ -85,8 +85,8 @@ func (solver solarEclipseSolver) correctCentralBandVectorBoundary(predictor, tan
 		}
 		plane := dotSolarEclipse3(subtractSolarEclipse3(coordinates, predictor), tangent)
 		if math.Hypot(residual[0], residual[1]) <= solarEclipseCentralVectorTolerance && math.Abs(plane) <= 1e-9 {
-			jd := referenceJDE + coordinates[2]/solarEclipseNonCentralBandTimeScale
-			evaluation := solver.magnitudeEvaluationAt(jd)
+			jde := referenceJDE + coordinates[2]/solarEclipseNonCentralBandTimeScale
+			evaluation := solver.magnitudeEvaluationAt(jde)
 			check, valid := solarCentralBandVectorResidual(evaluation, coordinates[0], coordinates[1], side)
 			if !valid || math.Hypot(check[0], check[1]) > solarEclipseCentralVectorTolerance {
 				exact = true
@@ -96,7 +96,7 @@ func (solver solarEclipseSolver) correctCentralBandVectorBoundary(predictor, tan
 			state := evaluation.center.stateAt(coordinates[0]*rad, coordinates[1]*rad, 0)
 			return solarEclipseNonCentralBandState{
 				coordinates: coordinates, tangent: nextTangent,
-				point: SolarEclipsePathPoint{JDE: jd, Longitude: normalizeLongitude(coordinates[0]), Latitude: coordinates[1], SunAltitude: state.sunAltitudeRad / rad},
+				point: SolarEclipsePathPoint{JDE: jde, Longitude: normalizeLongitude(coordinates[0]), Latitude: coordinates[1], SunAltitude: state.sunAltitudeRad / rad},
 			}, valid
 		}
 		delta, valid := solveSolarEclipse3x3([3][3]float64{jacobian[0], jacobian[1], tangent}, [3]float64{-residual[0], -residual[1], -plane})
@@ -252,19 +252,19 @@ func (solver solarEclipseSolver) hybridCentralBandTransition(seed SolarEclipsePa
 	coordinates := [3]float64{seed.Longitude, seed.Latitude, (seed.JDE - referenceJDE) * solarEclipseNonCentralBandTimeScale}
 	steps := [3]float64{1e-4, 1e-4, solarEclipseNonCentralBandTimeScale / 86400}
 	for iteration := 0; iteration < 12; iteration++ {
-		jd := referenceJDE + coordinates[2]/solarEclipseNonCentralBandTimeScale
-		context := solver.localStateContextAt(jd)
+		jde := referenceJDE + coordinates[2]/solarEclipseNonCentralBandTimeScale
+		context := solver.localStateContextAt(jde)
 		residual := solarCentralBandSkyOffset(context, coordinates[0], coordinates[1])
 		if math.Hypot(residual[0], residual[1]) < solarEclipseCentralVectorTolerance/2 && math.Abs(residual[2]) < 1e-12 {
 			state := context.stateAt(coordinates[0]*rad, coordinates[1]*rad, 0)
-			return SolarEclipsePathPoint{JDE: jd, Longitude: normalizeLongitude(coordinates[0]), Latitude: coordinates[1], SunAltitude: state.sunAltitudeRad / rad}, true
+			return SolarEclipsePathPoint{JDE: jde, Longitude: normalizeLongitude(coordinates[0]), Latitude: coordinates[1], SunAltitude: state.sunAltitudeRad / rad}, true
 		}
 		var jacobian [3][3]float64
 		for column := range coordinates {
 			shifted, shiftedContext := coordinates, context
 			shifted[column] += steps[column]
 			if column == 2 {
-				shiftedContext = solver.localStateContextAt(jd + steps[column]/solarEclipseNonCentralBandTimeScale)
+				shiftedContext = solver.localStateContextAt(jde + steps[column]/solarEclipseNonCentralBandTimeScale)
 			}
 			value := solarCentralBandSkyOffset(shiftedContext, shifted[0], shifted[1])
 			for row := range residual {
@@ -301,16 +301,16 @@ func (solver solarEclipseSolver) centralBandVectorHorizonRoots(axisContactJDE, d
 			if !valid {
 				break
 			}
-			jd := axisContactJDE + coordinates[2]/solarEclipseNonCentralBandTimeScale
-			context := solver.localStateContextAt(jd)
+			jde := axisContactJDE + coordinates[2]/solarEclipseNonCentralBandTimeScale
+			context := solver.localStateContextAt(jde)
 			state := context.stateAt(coordinates[0]*rad, coordinates[1]*rad, 0)
 			if math.Hypot(residual[0], residual[1]) <= solarEclipseCentralVectorTolerance && math.Abs(state.sunAltitudeRad) < 1e-8 {
-				roots[i] = SolarEclipsePathPoint{JDE: jd, Longitude: normalizeLongitude(coordinates[0]), Latitude: coordinates[1], SunAltitude: state.sunAltitudeRad / rad}
+				roots[i] = SolarEclipsePathPoint{JDE: jde, Longitude: normalizeLongitude(coordinates[0]), Latitude: coordinates[1], SunAltitude: state.sunAltitudeRad / rad}
 				// Grazing horizon roots can be many minutes from axis contact.
 				// Bound them by the shadow's limb-crossing interval, not a fixed
 				// window around the seed.
-				found = jd >= startJDE-solarEclipseCentralLimitHorizonContactMarginDays &&
-					jd <= endJDE+solarEclipseCentralLimitHorizonContactMarginDays && math.Abs(coordinates[1]) <= 90
+				found = jde >= startJDE-solarEclipseCentralLimitHorizonContactMarginDays &&
+					jde <= endJDE+solarEclipseCentralLimitHorizonContactMarginDays && math.Abs(coordinates[1]) <= 90
 				break
 			}
 			matrix := [3][3]float64{jacobian[0], jacobian[1], {}}
@@ -318,7 +318,7 @@ func (solver solarEclipseSolver) centralBandVectorHorizonRoots(axisContactJDE, d
 				shifted, shiftedContext := coordinates, context
 				shifted[column] += steps[column]
 				if column == 2 {
-					shiftedContext = solver.localStateContextAt(jd + steps[column]/solarEclipseNonCentralBandTimeScale)
+					shiftedContext = solver.localStateContextAt(jde + steps[column]/solarEclipseNonCentralBandTimeScale)
 				}
 				value := shiftedContext.stateAt(shifted[0]*rad, shifted[1]*rad, 0)
 				matrix[2][column] = (value.sunAltitudeRad - state.sunAltitudeRad) / steps[column]

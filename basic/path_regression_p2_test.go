@@ -9,7 +9,7 @@ import "testing"
 // used by GeoJSON and SVG consumers.
 func TestSolarEclipseSarosPathSeriesRemainFiniteWithinBudget(t *testing.T) {
 	const sarosDays = 6585.321314
-	seed := JDECalc(2024, 4, 8)
+	seed := JDCalc(2024, 4, 8)
 	for _, familyIndex := range []int{-28, -21, -14, -7, 0, 7, 14, 21, 28} {
 		familyIndex := familyIndex
 		t.Run("saros-"+formatSignedRegressionIndex(familyIndex), func(t *testing.T) {
@@ -54,7 +54,7 @@ func TestSolarEclipseHighResolutionSamplingHonorsPointBudget(t *testing.T) {
 		{name: "partial-and-central-shadow", shadowStep: 1.0 / 86400.0},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			result := SolarEclipsePartialFootprints(JDECalc(2024, 4, 8), SolarEclipsePartialFootprintOptions{
+			result := SolarEclipsePartialFootprints(JDCalc(2024, 4, 8), SolarEclipsePartialFootprintOptions{
 				StepDays:              1.0 / 86400.0,
 				BoundaryPoints:        solarEclipsePartialFootprintMaxBoundaryPoints,
 				CentralShadowStepDays: test.shadowStep,

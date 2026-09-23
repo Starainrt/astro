@@ -29,7 +29,7 @@ func TestSolarEclipseAgainstNASABaseline(t *testing.T) {
 	testCases := []solarEclipseBaseline{
 		{
 			name:               "2023-04-20 hybrid",
-			jde:                JDECalc(2023, 4, 20),
+			jde:                JDCalc(2023, 4, 20),
 			expectedType:       SolarEclipseHybrid,
 			expectedCentrality: SolarEclipseCentralTwoLimits,
 			expectedGreatestTT: solarEclipseTTJDE(2023, time.April, 20, 4, 17, 56),
@@ -41,7 +41,7 @@ func TestSolarEclipseAgainstNASABaseline(t *testing.T) {
 		},
 		{
 			name:               "2024-04-08 total",
-			jde:                JDECalc(2024, 4, 8),
+			jde:                JDCalc(2024, 4, 8),
 			expectedType:       SolarEclipseTotal,
 			expectedCentrality: SolarEclipseCentralTwoLimits,
 			expectedGreatestTT: solarEclipseTTJDE(2024, time.April, 8, 18, 18, 29),
@@ -53,7 +53,7 @@ func TestSolarEclipseAgainstNASABaseline(t *testing.T) {
 		},
 		{
 			name:               "2024-10-02 annular",
-			jde:                JDECalc(2024, 10, 2),
+			jde:                JDCalc(2024, 10, 2),
 			expectedType:       SolarEclipseAnnular,
 			expectedCentrality: SolarEclipseCentralTwoLimits,
 			expectedGreatestTT: solarEclipseTTJDE(2024, time.October, 2, 18, 46, 13),
@@ -65,7 +65,7 @@ func TestSolarEclipseAgainstNASABaseline(t *testing.T) {
 		},
 		{
 			name:               "2025-03-29 partial",
-			jde:                JDECalc(2025, 3, 29),
+			jde:                JDCalc(2025, 3, 29),
 			expectedType:       SolarEclipsePartial,
 			expectedCentrality: SolarEclipseNonCentral,
 			expectedGreatestTT: solarEclipseTTJDE(2025, time.March, 29, 10, 48, 36),
@@ -120,7 +120,7 @@ func TestSolarEclipseAgainstNASABaseline(t *testing.T) {
 }
 
 func TestSolarEclipseBesselGeometryCacheSeparatesExactAndCandidate(t *testing.T) {
-	seed := JDECalc(2024, 4, 8)
+	seed := JDCalc(2024, 4, 8)
 	solver := newSolarEclipseSolver(CalcMoonSHByJDE(seed, 0), SolarEclipseModelNASABulletinSplitK)
 	tt := solver.newMoonJDE + 0.125
 	exactMoon, exactAxis, exactSun := solver.besselGeometryAt(tt)
@@ -165,7 +165,7 @@ func TestSolarEclipseBesselGeometryCacheIsBounded(t *testing.T) {
 
 func BenchmarkSolarEclipseBesselGeometryCache(b *testing.B) {
 	solver := newSolarEclipseSolver(
-		CalcMoonSHByJDE(JDECalc(2024, 4, 8), 0),
+		CalcMoonSHByJDE(JDCalc(2024, 4, 8), 0),
 		SolarEclipseModelNASABulletinSplitK,
 	)
 	tt := solver.newMoonJDE + 0.125
@@ -180,7 +180,7 @@ func BenchmarkSolarEclipseBesselGeometryCache(b *testing.B) {
 }
 
 func BenchmarkSolarEclipseRepresentativePath(b *testing.B) {
-	seed := JDECalc(2024, 4, 8)
+	seed := JDCalc(2024, 4, 8)
 	options := SolarEclipsePathOptions{StepDays: 5.0 / 1440.0, TargetSpacingKM: 200}
 	b.ReportAllocs()
 	for index := 0; index < b.N; index++ {
@@ -189,7 +189,7 @@ func BenchmarkSolarEclipseRepresentativePath(b *testing.B) {
 }
 
 func TestSolarEclipseDefaultUsesNASABulletinSplitK(t *testing.T) {
-	jde := JDECalc(2024, 4, 8)
+	jde := JDCalc(2024, 4, 8)
 	defaultResult := SolarEclipse(jde)
 	nasaResult := SolarEclipseNASABulletinSplitK(jde)
 	iauResult := SolarEclipseIAUSingleK(jde)
@@ -229,7 +229,7 @@ func TestSolarEclipseNoEvent(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			result := tc.calc(JDECalc(2023, 5, 15))
+			result := tc.calc(JDCalc(2023, 5, 15))
 			if result.Type != SolarEclipseNone {
 				t.Fatalf("Type mismatch: got %s want %s", result.Type, SolarEclipseNone)
 			}
@@ -244,7 +244,7 @@ func TestSolarEclipseNoEvent(t *testing.T) {
 }
 
 func BenchmarkSolarEclipseGlobal(b *testing.B) {
-	seed := JDECalc(2010, 1, 15)
+	seed := JDCalc(2010, 1, 15)
 	b.ReportAllocs()
 	for iteration := 0; iteration < b.N; iteration++ {
 		result := SolarEclipse(seed)
@@ -255,7 +255,7 @@ func BenchmarkSolarEclipseGlobal(b *testing.B) {
 }
 
 func solarEclipseTTJDE(year int, month time.Month, day, hour, minute, second int) float64 {
-	return Date2JDE(time.Date(year, month, day, hour, minute, second, 0, time.UTC))
+	return Date2JD(time.Date(year, month, day, hour, minute, second, 0, time.UTC))
 }
 
 func assertSolarEclipseJDEClose(t *testing.T, name string, got, want, tolerance float64) {

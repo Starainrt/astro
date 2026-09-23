@@ -14,8 +14,8 @@ func AscendingNode(date time.Time) float64 {
 
 // AscendingNodeN 水星升交点黄经（截断版） / truncated ascending node longitude of Mercury.
 func AscendingNodeN(date time.Time, n int) float64 {
-	jde := calendar.Date2JDE(date.UTC())
-	return basic.MercuryAscendingNodeN(basic.TD2UT(jde, true), n)
+	jd := calendar.Date2JD(date.UTC())
+	return basic.MercuryAscendingNodeN(basic.UTC2TT(jd), n)
 }
 
 // DescendingNode 水星降交点黄经 / descending node longitude of Mercury.
@@ -25,6 +25,6 @@ func DescendingNode(date time.Time) float64 {
 
 // DescendingNodeN 水星降交点黄经（截断版） / truncated descending node longitude of Mercury.
 func DescendingNodeN(date time.Time, n int) float64 {
-	jde := calendar.Date2JDE(date.UTC())
-	return basic.MercuryDescendingNodeN(basic.TD2UT(jde, true), n)
+	jd := calendar.Date2JD(date.UTC())
+	return basic.MercuryDescendingNodeN(basic.UTC2TT(jd), n)
 }

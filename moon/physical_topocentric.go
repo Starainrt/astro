@@ -8,7 +8,7 @@ import (
 
 // TopocentricPhysical 月球站心物理观测参数 / topocentric physical observing parameters of the Moon.
 //
-// date 为观测时刻；observerLon/observerLat 为观测者经纬度，东正西负、北正南负；height 为海拔高度，单位米。
+// date 为观测时刻；observerLon/observerLat 为观测者经纬度，东正西负、北正南负；height 为椭球高（大地高），单位米。
 // date is the observing instant; observerLon/observerLat are east-positive and north-positive; height is observer elevation in meters.
 func TopocentricPhysical(date time.Time, observerLon, observerLat, height float64) PhysicalInfo {
 	return TopocentricPhysicalN(date, observerLon, observerLat, height, -1)

@@ -16,6 +16,8 @@ const (
 	occultationLimitExactTolerance          = 1e-9
 	occultationLimitAnchorToleranceKM       = 0.5
 	occultationLimitRatioTolerance          = 0.002
+	// 掠射端点锚点的容差：只钉住端点补采带来的百公里级缺口，不追求末位。
+	occultationLimitGrazingAnchorToleranceKM = 0.01
 )
 
 type occultationLimitFixture struct {
@@ -140,6 +142,11 @@ func occultationLimitIndependentGroundWidth(tt float64, frameAt occultationPathF
 			if vector, _, pointOK := occultationPathBoundaryVector(frame, theta); pointOK {
 				consider(vector)
 			}
+		}
+		// 掠射时横向极值恰好落在可见 θ 区间的相切端点上，端点判别式为 0：等差写法的末样本
+		// 与 interval.right 相差 1 ULP，足以把判别式推成负值而丢掉端点，端点必须按原值补采。
+		if vector, _, pointOK := occultationPathBoundaryVector(frame, interval.right); pointOK {
+			consider(vector)
 		}
 	}
 	for index := 0; index < occultationPathBoundaryScanPoints; index++ {
@@ -325,5 +332,72 @@ func TestStarOccultationLimitSeparationMatchesExportedLimits(t *testing.T) {
 	ratio := path.GreatestLimitSeparationKM / path.Greatest.WidthKM
 	if math.Abs(ratio-1.023508) > occultationLimitRatioTolerance {
 		t.Fatalf("greatest limit separation/width=%.6f, want 1.023508 within %.4f", ratio, occultationLimitRatioTolerance)
+	}
+}
+
+// TestPlanetOccultationGrazingEndpointWidthAnchors 钉住两个掠射相切端点样本的带宽。
+//
+// 这两个时刻的横向极值恰好落在可见 θ 区间的相切端点上，只能靠端点原值取到：等差写法
+// left+(right-left)*n/n 与端点相差 1 ULP，该 ULP 会把端点判别式推成负值而被判"无地面交点"，
+// 于是 Saturn 2024-08-21 的 CenterLine[160] 少 47.9 km（3810.7491 对 3858.7641）、
+// Venus 1227-05-19 的 CenterLine[15] 少 158.6 km（6047.4858 对 6206.0535）。
+func TestPlanetOccultationGrazingEndpointWidthAnchors(t *testing.T) {
+	testCases := []struct {
+		name    string
+		planet  OccultationPlanet
+		start   time.Time
+		options OccultationPathOptions
+		tt      float64
+		widthKM float64
+	}{
+		{
+			name: "Saturn 2024-08-21 center-line[160]", planet: OccultationSaturn,
+			start:   time.Date(2024, time.August, 21, 0, 0, 0, 0, time.UTC),
+			tt:      2460543.661859489,
+			widthKM: 3858.7641,
+		},
+		{
+			name: "Venus 1227-05-19 center-line[15]", planet: OccultationVenus,
+			start: time.Date(1227, time.May, 18, 12, 0, 0, 0, time.UTC),
+			options: OccultationPathOptions{
+				Algorithm: OccultationPathAlgorithmExact, Step: 20 * time.Minute,
+				TargetSpacingKM: 900, DisableFootprints: true, RiseSetStep: time.Minute,
+			},
+			tt:      2169357.811307699,
+			widthKM: 6206.0535,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			paths, err := FindPlanetOccultationPaths(tc.start, tc.start.Add(24*time.Hour), tc.planet, tc.options)
+			if err != nil || len(paths) != 1 {
+				t.Fatalf("paths=%d err=%v, want one", len(paths), err)
+			}
+			path := paths[0]
+			frameAt := occultationLimitExactFrame(t, tc.planet, centerTimeTT(path.Greatest.Time))
+			matched := 0
+			for _, point := range append([]OccultationPathPoint{path.Greatest}, path.CenterLine...) {
+				tt := centerTimeTT(point.Time)
+				if math.Abs(tt-tc.tt) > 1e-6 {
+					continue
+				}
+				matched++
+				if difference := math.Abs(point.WidthKM - tc.widthKM); difference > occultationLimitGrazingAnchorToleranceKM {
+					t.Fatalf("width at %v = %.6f km, want %.4f within %.4f km",
+						point.Time, point.WidthKM, tc.widthKM, occultationLimitGrazingAnchorToleranceKM)
+				}
+				independent, ok := occultationLimitIndependentGroundWidth(tt, frameAt)
+				if !ok || independent <= 0 {
+					t.Fatalf("independent ground width at %v is unavailable", point.Time)
+				}
+				if difference := math.Abs(point.WidthKM - independent); difference > occultationLimitIndependentTolerance*independent {
+					t.Fatalf("width at %v field=%.9f independent=%.9f, want within %.3e relative",
+						point.Time, point.WidthKM, independent, occultationLimitIndependentTolerance)
+				}
+			}
+			if matched != 1 {
+				t.Fatalf("matched %d samples at tt=%.9f, want exactly one", matched, tc.tt)
+			}
+		})
 	}
 }

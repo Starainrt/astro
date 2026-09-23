@@ -60,7 +60,7 @@ func TestPlanetRiseSetMatchesHorizonsBaseline(t *testing.T) {
 		if err != nil {
 			t.Fatalf("parse input time %q: %v", sample.InputUTC, err)
 		}
-		jd := Date2JDE(inputTime.UTC())
+		jd := Date2JD(inputTime.UTC())
 
 		riseJD, err := tc.rise(jd, sample.Longitude, sample.Latitude, 0, 1, 0)
 		if err != nil {
@@ -98,7 +98,7 @@ func assertEventTimeClose(t *testing.T, name string, gotJD float64, wantUTC stri
 		t.Fatalf("parse %s baseline time %q: %v", name, wantUTC, err)
 	}
 
-	gotTime := JDE2DateByZone(gotJD, time.UTC, false)
+	gotTime := JD2DateByZone(gotJD, time.UTC, false)
 	diff := gotTime.Sub(wantTime)
 	if diff < 0 {
 		diff = -diff

@@ -7,8 +7,11 @@ import "math"
 // 所有时刻字段都使用力学时儒略日（JDE, TT）。
 // 输入 seedJDE 只需要落在目标朔月附近，允许相差数天。
 type LocalSolarEclipseResult struct {
-	Model SolarEclipseRadiusModel
-	Type  SolarEclipseType
+	// 下列字段是决定上述数值的口径，随结果一起保留。
+	// The fields below are the conventions that fix the numbers above.
+	Model          SolarEclipseRadiusModel
+	SunRadiusModel SolarEclipseSunRadiusModel
+	Type           SolarEclipseType
 
 	// GreatestEclipse 是站心盘面中心角距最小的时刻。
 	GreatestEclipse float64
@@ -91,27 +94,40 @@ const (
 // LocalSolarEclipse 计算给定近朔时刻附近的一次站心日食，默认使用 NASA bulletin Split-K 模型。
 //
 // seedJDE 为力学时儒略日（TT），只需落在目标朔月附近，允许相差数天。
-// lon 为经度，东正西负；lat 为纬度，北正南负；height 为海拔高度，单位米。
+// LocalSolarEclipse 计算给定近朔时刻附近的一次站心日食，使用 NASA bulletin Split-K 模型与标准太阳半径。
+//
+// lon 为经度，东正西负；lat 为纬度，北正南负；height 为观测点高度，单位米，按椭球高（大地高）解读：
+// 只有正高 H 时须由调用方先加上大地水准面差距 N，即 height = H + N；本库不建模 N。
+// LocalSolarEclipse computes one local solar eclipse with the NASA bulletin Split-K model and
+// the standard solar radius. height is the ellipsoidal height in metres; convert an orthometric
+// height H with height = H + N, since the geoid undulation N is not modelled here.
 func LocalSolarEclipse(seedJDE, lon, lat, height float64) LocalSolarEclipseResult {
 	return LocalSolarEclipseNASABulletinSplitK(seedJDE, lon, lat, height)
 }
 
+// LocalSolarEclipseWithOptions 计算给定近朔时刻附近的一次站心日食，半径口径由 options 指定 / computes one local solar eclipse with the given radius conventions.
+func LocalSolarEclipseWithOptions(seedJDE, lon, lat, height float64, options SolarEclipseOptions) LocalSolarEclipseResult {
+	return localSolarEclipse(seedJDE, lon, lat, height, options)
+}
+
 // LocalSolarEclipseIAUSingleK 计算给定近朔时刻附近的一次站心日食，使用 IAU Single-K 模型。
 func LocalSolarEclipseIAUSingleK(seedJDE, lon, lat, height float64) LocalSolarEclipseResult {
-	return localSolarEclipse(seedJDE, lon, lat, height, SolarEclipseModelIAUSingleK)
+	return localSolarEclipse(seedJDE, lon, lat, height, SolarEclipseOptions{RadiusModel: SolarEclipseModelIAUSingleK})
 }
 
 // LocalSolarEclipseNASABulletinSplitK 计算给定近朔时刻附近的一次站心日食，使用 NASA bulletin Split-K 模型。
 func LocalSolarEclipseNASABulletinSplitK(seedJDE, lon, lat, height float64) LocalSolarEclipseResult {
-	return localSolarEclipse(seedJDE, lon, lat, height, SolarEclipseModelNASABulletinSplitK)
+	return localSolarEclipse(seedJDE, lon, lat, height, SolarEclipseOptions{RadiusModel: SolarEclipseModelNASABulletinSplitK})
 }
 
-func localSolarEclipse(seedJDE, lonDeg, latDeg, heightMeters float64, model SolarEclipseRadiusModel) LocalSolarEclipseResult {
+func localSolarEclipse(seedJDE, lonDeg, latDeg, heightMeters float64, options SolarEclipseOptions) LocalSolarEclipseResult {
 	newMoonJDE := CalcMoonSHByJDE(seedJDE, 0)
 	lonRad := lonDeg * rad
 	latRad := latDeg * rad
 	heightKM := heightMeters / 1000.0
-	params := solarEclipseModelParams(model)
+	options.RadiusModel = normalizeSolarEclipseRadiusModel(options.RadiusModel)
+	options.SunRadiusModel = normalizeSolarEclipseSunRadiusModel(options.SunRadiusModel)
+	params := solarEclipseModelParams(options.RadiusModel, options.SunRadiusModel)
 
 	greatestEclipseJDE := localSolarEclipseGreatest(newMoonJDE, lonRad, latRad, heightKM, params)
 	state := localSolarEclipseStateAt(greatestEclipseJDE, lonRad, latRad, heightKM, params)
@@ -122,7 +138,8 @@ func localSolarEclipse(seedJDE, lonDeg, latDeg, heightMeters float64, model Sola
 	}
 
 	result := LocalSolarEclipseResult{
-		Model:             model,
+		Model:             options.RadiusModel,
+		SunRadiusModel:    options.SunRadiusModel,
 		Type:              SolarEclipseNone,
 		GreatestEclipse:   greatestEclipseJDE,
 		Separation:        state.separationRad / rad,
@@ -181,13 +198,24 @@ func localSolarEclipse(seedJDE, lonDeg, latDeg, heightMeters float64, model Sola
 	return result
 }
 
-func solarEclipseModelParams(model SolarEclipseRadiusModel) solarEclipseModelParameters {
-	params := solarEclipseModelParameters{
-		penumbralK: solarEclipsePenumbralK,
-		umbralK:    solarEclipsePenumbralK,
+// solarEclipsePenumbralRadiusNumerator 是半影外半径公式的分子（地球赤道半径 × k1 × 月亮半径尺度）。
+// Split-K 的 k1 是编译期常量，这里保持常量折叠后的末位，使该模型的既有输出逐字节不变；IAU Single-K 只能走运行时值。
+func solarEclipsePenumbralRadiusNumerator(params solarEclipseModelParameters) float64 {
+	if params.penumbralK == solarEclipsePenumbralK {
+		return solarEclipseEarthEquatorialRadiusKM * solarEclipsePenumbralK * localSolarMoonRadiusScale
 	}
-	if model == SolarEclipseModelNASABulletinSplitK {
-		params.umbralK = solarEclipseUmbralK
+	return solarEclipseEarthEquatorialRadiusKM * params.penumbralK * localSolarMoonRadiusScale
+}
+
+func solarEclipseModelParams(model SolarEclipseRadiusModel, sunRadiusModel SolarEclipseSunRadiusModel) solarEclipseModelParameters {
+	params := solarEclipseModelParameters{
+		penumbralK:     solarEclipsePenumbralK,
+		umbralK:        solarEclipseUmbralK,
+		sunRadiusRatio: solarEclipseSunRadiusRatio(sunRadiusModel),
+	}
+	if model == SolarEclipseModelIAUSingleK {
+		params.penumbralK = solarEclipseIAUSingleRadiusK
+		params.umbralK = solarEclipseIAUSingleRadiusK
 	}
 	return params
 }
@@ -218,19 +246,19 @@ func localSolarEclipseGreatestWith(
 
 // centralPhaseDurationDaysAt 用事件局部插值星历求解某点的中心相时长（日）：先求局部食甚，
 // 再解本影/反本影的内切接触。没有中心相或接触退化时返回 0。
-func (solver solarEclipseSolver) centralPhaseDurationDaysAt(jd, lonDeg, latDeg float64) float64 {
+func (solver solarEclipseSolver) centralPhaseDurationDaysAt(jde, lonDeg, latDeg float64) float64 {
 	solver = solver.withLocalEphemeris()
 	lonRad, latRad := lonDeg*rad, latDeg*rad
-	stateAt := func(jd float64) localSolarEclipseState {
-		return solver.localStateContextCandidateAt(jd).stateAt(lonRad, latRad, 0)
+	stateAt := func(jde float64) localSolarEclipseState {
+		return solver.localStateContextCandidateAt(jde).stateAt(lonRad, latRad, 0)
 	}
 	greatestJDE := localSolarEclipseGreatestWith(solver.newMoonJDE, stateAt)
 	contactState := stateAt(greatestJDE).movingDiskContactState()
 	if !contactState.valid || contactState.internalContactGap() > 0 {
 		return 0
 	}
-	evaluator := newMovingDiskContactEvaluator(func(jd float64) (movingDiskContactState, bool) {
-		contact := stateAt(jd).movingDiskContactState()
+	evaluator := newMovingDiskContactEvaluator(func(jde float64) (movingDiskContactState, bool) {
+		contact := stateAt(jde).movingDiskContactState()
 		return contact, contact.valid
 	})
 	evaluator.prime(greatestJDE, contactState, true)
@@ -311,14 +339,14 @@ func newLocalSolarEclipseStateContextWithOverride(
 	params solarEclipseModelParameters,
 ) localSolarEclipseStateContext {
 	sunEquatorial, moonEquatorial := solarEclipseSunMoonEquatorial(jdTT)
-	utJDE := TD2UT(jdTT, false)
+	ut1JDE := TT2UT1(jdTT)
 	if !math.IsNaN(deltaTSeconds) {
-		utJDE = jdTT - deltaTSeconds/86400
+		ut1JDE = jdTT - deltaTSeconds/86400
 	}
 	return localSolarEclipseStateContext{
 		sunXYZ:  solarEclipseLLRToXYZ(sunEquatorial[0], sunEquatorial[1], sunEquatorial[2]),
 		moonXYZ: solarEclipseLLRToXYZ(moonEquatorial[0], moonEquatorial[1], moonEquatorial[2]),
-		gst:     ApparentSiderealTime(utJDE) * 15 * rad,
+		gst:     ApparentSiderealTime(ut1JDE) * 15 * rad,
 		params:  params,
 	}
 }
@@ -348,10 +376,10 @@ func (context localSolarEclipseStateContext) stateAt(lonRad, latRad, heightKM fl
 	}
 
 	sunRadiusRad := math.Asin(localSolarEclipseClampUnit(
-		solarEclipseEarthEquatorialRadiusKM * solarEclipseSolarRadiusRatio / sunTopocentric[2],
+		solarEclipseEarthEquatorialRadiusKM * context.params.sunRadiusRatio / sunTopocentric[2],
 	))
 	moonOuterRadiusRad := math.Asin(localSolarEclipseClampUnit(
-		solarEclipseEarthEquatorialRadiusKM * solarEclipsePenumbralK * localSolarMoonRadiusScale / moonTopocentric[2],
+		solarEclipsePenumbralRadiusNumerator(context.params) / moonTopocentric[2],
 	))
 	moonInnerRadiusRad := math.Asin(localSolarEclipseClampUnit(
 		solarEclipseEarthEquatorialRadiusKM * context.params.umbralK * localSolarMoonRadiusScale / moonTopocentric[2],

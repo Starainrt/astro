@@ -1,6 +1,7 @@
 package svg
 
 import (
+	"github.com/starainrt/astro/internal/timenote"
 	"fmt"
 	"html"
 	"math"
@@ -8,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/starainrt/astro"
 	"github.com/starainrt/astro/basic"
 	eclipsecore "github.com/starainrt/astro/eclipse"
 	"github.com/starainrt/astro/internal/svgasset"
@@ -66,6 +68,11 @@ type LunarEclipseSVGOptions struct {
 	// Location 是图中显示时刻的时区；nil 时使用 UTC+8。
 	// Location is the display timezone for chart times; nil uses UTC+8.
 	Location *time.Location
+	// TimeScale 选择图中时刻的时标：零值 UTC；TimeScaleUT1 改用 UT1 时刻，此时 Location 必须是
+	// nil 或 UTC（否则返回 false）。nil Location 在 UTC 下默认 UTC+8，UT1 下强制为 UTC。
+	// TimeScale selects the label scale: the zero value is UTC; TimeScaleUT1 uses UT1 labels and requires
+	// Location to be nil or UTC (otherwise the renderer returns false).
+	TimeScale astro.TimeScale
 }
 
 type lunarEclipseSVGCalculator func(float64, basic.LunarEclipseDiagramOptions) basic.LunarEclipseDiagramResult
@@ -149,6 +156,12 @@ func lunarEclipseSVG(
 	calculator lunarEclipseSVGCalculator,
 	finder lunarEclipseSVGFinder,
 ) (string, bool) {
+	if options.TimeScale == astro.TimeScaleUT1 {
+		if options.Location != nil && options.Location != time.UTC {
+			return "", false
+		}
+		options.Location = time.UTC
+	}
 	options = normalizeLunarEclipseSVGOptions(options)
 	diagram := calculator(timeToTTJDE(date), basic.LunarEclipseDiagramOptions{
 		StepDays: durationToDays(options.Step),
@@ -162,7 +175,7 @@ func lunarEclipseSVG(
 		info.HasSaros = coreInfo.HasSaros
 		info.Saros = coreInfo.Saros
 	}
-	return renderLunarEclipseSVG(info, diagram, options), true
+	return renderLunarEclipseSVG(lunarEclipseDisplayInfo(info, options.TimeScale), info, diagram, options), true
 }
 
 func normalizeLunarEclipseSVGOptions(options LunarEclipseSVGOptions) LunarEclipseSVGOptions {
@@ -319,11 +332,21 @@ func writeLunarEclipseEventLabels(
 
 func renderLunarEclipseSVG(
 	info LunarEclipseInfo,
+	geometry LunarEclipseInfo,
 	diagram basic.LunarEclipseDiagramResult,
 	options LunarEclipseSVGOptions,
 ) string {
-	headerTexts := lunarEclipseSVGHeaderTexts(info, options)
-	layout := lunarEclipseSVGLayoutFor(diagram, options, lunarEclipseSVGHeaderBottom(headerTexts))
+	headerTexts := lunarEclipseSVGHeaderTexts(info, geometry, options)
+	headerBottom := lunarEclipseSVGHeaderBottom(headerTexts)
+	direction := lunarEclipseSVGDirectionTextValue(options)
+	if options.DirectionText != "" {
+		direction = svgchart.EllipsizeText(direction, float64(options.Width)-80, 12)
+	}
+	footerLines := lunarEclipseSVGFooterLines(direction, info, options, headerBottom)
+	footerBaselines, footerOccupied := svgchart.FooterBlock(len(footerLines), float64(options.Height), 12,
+		svgchart.FooterLineHeight(12), localDiagramFooterBottomPadding)
+	// 页脚高度按实际行数算，再留一点与图区的空，说明文字不会顶到画布底边。
+	layout := lunarEclipseSVGLayoutFor(diagram, options, headerBottom, footerOccupied+10)
 	title := lunarEclipseSVGTitleText(info, options)
 
 	var b strings.Builder
@@ -351,7 +374,7 @@ func renderLunarEclipseSVG(
 	writeLunarEclipseDiagram(&b, layout, diagram, options.Language, labels)
 
 	writeLunarEclipseContacts(&b, info, options, layout.panelX, layout.panelY)
-	writeLunarEclipseFooter(&b, info, options, layout)
+	writeLunarEclipseFooter(&b, footerLines, footerBaselines)
 
 	b.WriteString(`</svg>`)
 	return b.String()
@@ -360,7 +383,7 @@ func renderLunarEclipseSVG(
 func lunarEclipseSVGLayoutFor(
 	diagram basic.LunarEclipseDiagramResult,
 	options LunarEclipseSVGOptions,
-	headerBottom float64,
+	headerBottom, footerHeight float64,
 ) lunarEclipseSVGLayout {
 	width := float64(options.Width)
 	height := float64(options.Height)
@@ -372,7 +395,7 @@ func lunarEclipseSVGLayoutFor(
 		diagramRight = width - margin
 	}
 	topReserved := math.Max(166, headerBottom+24)
-	bottomReserved := 82.0
+	bottomReserved := footerHeight
 	extent := diagram.PenumbraRadius + diagram.MoonRadius + 0.72
 	scale := math.Min((diagramRight-diagramLeft)/(2*extent), (height-topReserved-bottomReserved)/(2*extent))
 	if scale <= 0 || math.IsNaN(scale) || math.IsInf(scale, 0) {
@@ -413,11 +436,15 @@ func lunarEclipseSVGTitleText(info LunarEclipseInfo, options LunarEclipseSVGOpti
 	return lunarEclipseSVGTitle(info, options.Language)
 }
 
-func lunarEclipseSVGHeaderTexts(info LunarEclipseInfo, options LunarEclipseSVGOptions) []string {
+func lunarEclipseSVGHeaderTexts(
+	info LunarEclipseInfo,
+	geometry LunarEclipseInfo,
+	options LunarEclipseSVGOptions,
+) []string {
 	lines := []string{
 		lunarEclipseSVGSummaryText(info, options),
 		lunarEclipseSVGMaximumTextValue(info, options),
-		lunarEclipseSVGCoordinatesTextValue(info, options),
+		lunarEclipseSVGCoordinatesTextValue(geometry, options),
 		lunarEclipseSVGDurationTextValue(info, options),
 		lunarEclipseSVGMetaTextValue(info, options),
 	}
@@ -484,6 +511,10 @@ func lunarEclipseSVGDirectionTextValue(options LunarEclipseSVGOptions) string {
 }
 
 func lunarEclipseSVGFooterNoteText(options LunarEclipseSVGOptions) string {
+	return lunarEclipseSVGFooterNoteTextBase(options)
+}
+
+func lunarEclipseSVGFooterNoteTextBase(options LunarEclipseSVGOptions) string {
 	if options.FooterNote != "" {
 		return options.FooterNote
 	}
@@ -997,29 +1028,40 @@ func writeLunarEclipseContacts(
 	}
 }
 
-func writeLunarEclipseFooter(
-	b *strings.Builder,
-	info LunarEclipseInfo,
-	options LunarEclipseSVGOptions,
-	layout lunarEclipseSVGLayout,
-) {
-	_ = info
-	direction := lunarEclipseSVGDirectionTextValue(options)
-	if options.DirectionText != "" {
-		direction = svgchart.EllipsizeText(direction, layout.width-80, 12)
+// lunarEclipseSVGFooterLines 返回方向行在前的页脚各行：行数上限由图区下限与画布高度决定。
+func lunarEclipseSVGFooterLines(direction string, info LunarEclipseInfo, options LunarEclipseSVGOptions, headerBottom float64) []string {
+	const (
+		fontSize     = 12.0
+		diagramFloor = 160.0
+		stageGap     = 10.0
+	)
+	height := float64(options.Height)
+	lineHeight := svgchart.FooterLineHeight(fontSize)
+	padding := localDiagramFooterBottomPadding
+	maxLines := svgchart.TextLineLimit(fontSize, lineHeight, height-headerBottom-diagramFloor-stageGap-padding-lineHeight)
+	if cap := int(height * 0.20 / lineHeight); maxLines > cap {
+		maxLines = cap
 	}
-	fmt.Fprintf(b, `<text x="%.3f" y="%.3f" fill="#333" font-family="Georgia, 'Times New Roman', serif" font-size="12">%s</text>`,
-		40.0, layout.height-54, html.EscapeString(direction))
-	// 默认说明是单行；调用方文本折行后按画布底边截断，首行位置不变。
+	if maxLines < 1 {
+		maxLines = 1
+	}
+	note := timenote.Scale(options.TimeScale, info.Maximum, options.Location, options.Language)
 	lines := []string{lunarEclipseSVGFooterNoteText(options)}
 	if options.FooterNote != "" {
-		maxWidth := layout.width - 80
-		lines = svgchart.TruncateTextLines(svgchart.WrapText(options.FooterNote, maxWidth, 12), maxWidth, 12,
-			svgchart.BaselineLineLimit(12, 15, layout.height-34, layout.height-4))
+		lines = svgchart.WrapText(options.FooterNote, float64(options.Width)-80, fontSize)
 	}
+	lines = svgchart.FooterLinesWithScale(lines, note, float64(options.Width)-80, fontSize, maxLines)
+	return append([]string{direction}, lines...)
+}
+
+func writeLunarEclipseFooter(b *strings.Builder, lines []string, baselines []float64) {
 	for index, line := range lines {
-		fmt.Fprintf(b, `<text x="%.3f" y="%.3f" fill="#555" font-family="Georgia, 'Times New Roman', serif" font-size="12">%s</text>`,
-			40.0, layout.height-34+float64(index)*15, html.EscapeString(line))
+		fill := "#555"
+		if index == 0 {
+			fill = "#333"
+		}
+		fmt.Fprintf(b, `<text x="%.3f" y="%.3f" fill="%s" font-family="Georgia, 'Times New Roman', serif" font-size="12">%s</text>`,
+			40.0, baselines[index], fill, html.EscapeString(line))
 	}
 }
 

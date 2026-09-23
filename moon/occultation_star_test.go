@@ -149,13 +149,13 @@ func TestFindStarOccultationsReturnsCompleteContactsOutsideQueryWindow(t *testin
 }
 
 func occultationTestTimeToTT(value time.Time) float64 {
-	return basic.TD2UT(basic.Date2JDE(value.UTC()), true)
+	return basic.UTC2TT(basic.Date2JD(value.UTC()))
 }
 
 func occultationTestMoonTopocentricRaDec(tt float64, observer Observer, n int) (float64, float64) {
 	ra, dec := basic.HMoonGeocentricApparentRaDecN(tt, n)
 	distanceAU := basic.HMoonAwayN(tt, n) / 149597870.7
-	ra, dec = basic.TopocentricRaDec(ra, dec, observer.Latitude, observer.Longitude, basic.TD2UT(tt, false), distanceAU, observer.Height)
+	ra, dec = basic.TopocentricRaDec(ra, dec, observer.Latitude, observer.Longitude, basic.TT2UTC(tt), distanceAU, observer.Height)
 	ra = math.Mod(ra, 360)
 	if ra < 0 {
 		ra += 360

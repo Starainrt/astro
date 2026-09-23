@@ -189,7 +189,7 @@ func legacyOccultationRiseSetStateAt(
 	targetRA, targetDec, targetDistanceKM, targetRadiusKM,
 	longitude, latitude float64,
 ) occultationRiseSetState {
-	siderealDegrees := ApparentSiderealTime(TD2UT(tt, false)) * 15
+	siderealDegrees := ApparentSiderealTime(TT2UT1(tt)) * 15
 	observer := Observer{Longitude: longitude, Latitude: latitude}
 	moonTopocentricRA, moonTopocentricDec := topocentricRaDecWithSidereal(
 		moonRA, moonDec, latitude, longitude, siderealDegrees,

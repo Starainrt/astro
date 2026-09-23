@@ -23,7 +23,7 @@ var solarEclipseCatalogueCentralDurations = []struct {
 
 func TestSolarEclipseCentralDurationMatchesCatalogue(t *testing.T) {
 	for _, item := range solarEclipseCatalogueCentralDurations {
-		seed := JDECalc(item.date[0], item.date[1], float64(item.date[2]))
+		seed := JDCalc(item.date[0], item.date[1], float64(item.date[2]))
 		result := SolarEclipseNASABulletinSplitK(seed)
 		if !result.HasCentral {
 			t.Fatalf("%04d-%02d-%02d is not a central eclipse", item.date[0], item.date[1], item.date[2])
@@ -54,7 +54,7 @@ func TestSolarEclipsePathWidthStaysPhysical(t *testing.T) {
 		{[3]int{1874, 10, 10}, true},
 	}
 	for _, item := range cases {
-		seed := JDECalc(item.date[0], item.date[1], float64(item.date[2]))
+		seed := JDCalc(item.date[0], item.date[1], float64(item.date[2]))
 		path := SolarEclipseCentralPathNASABulletinSplitK(seed, SolarEclipsePathOptions{})
 		if len(path.CenterLine) == 0 {
 			t.Fatalf("%04d-%02d-%02d exported no center line", item.date[0], item.date[1], item.date[2])

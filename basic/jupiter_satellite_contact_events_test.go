@@ -18,13 +18,13 @@ func TestJupiterGalileanPhenomenonContactEventsAgainstIMCCEBaseline(t *testing.T
 		queryMid := startUTC.Add(endUTC.Sub(startUTC) / 2)
 		phenomenonType := parseBasicGalileanPhenomenonType(t, record.Type)
 
-		event := ClosestJupiterGalileanPhenomenonContactEvent(Date2JDE(queryMid.UTC()), record.Satellite, phenomenonType)
+		event := ClosestJupiterGalileanPhenomenonContactEvent(Date2JD(queryMid.UTC()), record.Satellite, phenomenonType)
 		if !event.Valid {
 			t.Fatalf("%s invalid contact event", record.Label)
 		}
 
-		gotStart := JDE2DateByZone(event.Disappearance.Start, time.UTC, false)
-		gotEnd := JDE2DateByZone(event.Reappearance.Start, time.UTC, false)
+		gotStart := JD2DateByZone(event.Disappearance.Start, time.UTC, false)
+		gotEnd := JD2DateByZone(event.Reappearance.Start, time.UTC, false)
 		startDiff := math.Abs(gotStart.Sub(startUTC).Seconds())
 		endDiff := math.Abs(gotEnd.Sub(endUTC).Seconds())
 		startDurationDiff := math.Abs((event.Disappearance.End-event.Disappearance.Start)*86400 - record.StartDurationMinutes*60)
@@ -61,7 +61,7 @@ func TestJupiterGalileanPhenomenonContactEventsAgainstIMCCEBaseline(t *testing.T
 		if !(event.Reappearance.Start <= event.Reappearance.ModelCrossing && event.Reappearance.ModelCrossing <= event.Reappearance.End) {
 			t.Fatalf("%s reappearance ordering invalid", record.Label)
 		}
-		fullEvent := ClosestJupiterGalileanPhenomenonEvent(Date2JDE(queryMid.UTC()), record.Satellite, phenomenonType)
+		fullEvent := ClosestJupiterGalileanPhenomenonEvent(Date2JD(queryMid.UTC()), record.Satellite, phenomenonType)
 		if phenomenonType != JupiterGalileanShadowTransit {
 			if math.Abs(event.Disappearance.ModelCrossing-fullEvent.Start)*86400 > 2 {
 				t.Fatalf("%s disappearance model crossing mismatch", record.Label)

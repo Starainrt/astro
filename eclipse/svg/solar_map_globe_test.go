@@ -114,16 +114,16 @@ func TestSolarEclipseMapOrthographicIsExplicitOnly(t *testing.T) {
 	}
 }
 
-// 图上时刻都按展示时区，必须显式写出与 UT 的偏差，且 详细版式的所有内容都不得溢出图框。
+// 图上时刻必须同时写明时标（UTC）与展示时区相对它的偏差，且详细版式的所有内容都不得溢出图框。
 func TestSolarEclipseMapStatesTimeZoneOffset(t *testing.T) {
 	date := time.Date(2009, time.July, 22, 0, 0, 0, 0, time.UTC)
 	cases := []struct {
 		location *time.Location
 		want     string
 	}{
-		{location: time.UTC, want: "图中时刻为 UT"},
-		{location: time.FixedZone("CST", 8*3600), want: "UT+08:00"},
-		{location: time.FixedZone("EST", -5*3600), want: "UT-05:00"},
+		{location: time.UTC, want: "图中时刻为 UTC"},
+		{location: time.FixedZone("CST", 8*3600), want: "UTC+08:00"},
+		{location: time.FixedZone("EST", -5*3600), want: "UTC-05:00"},
 	}
 	for _, test := range cases {
 		options := SolarEclipseMapSVGOptions{

@@ -34,7 +34,7 @@ func TestInnerPlanetExactEventBoundaryIncludesCurrent(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			queryTT := TD2UT(tc.seed, true)
+			queryTT := UTC2TT(tc.seed)
 			last := tc.lastFn(queryTT)
 			next := tc.nextFn(queryTT)
 			if !sameEventJD(last, tc.seed) {
@@ -64,7 +64,7 @@ func TestInnerPlanetNextEventAdvancesPastReturnedEvent(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			first := tc.next(tc.seed)
-			query := TD2UT(Date2JDE(JDE2DateByZone(first, time.UTC, false).Add(time.Second)), true)
+			query := UTC2TT(Date2JD(JD2DateByZone(first, time.UTC, false).Add(time.Second)))
 			next := tc.next(query)
 			if !eventUTQueryAfterOrEqual(next, query) {
 				t.Fatalf("next should be after query: first=%.12f query=%.12f next=%.12f", first, query, next)
@@ -91,7 +91,7 @@ func TestInnerPlanetTypedConjunctionExactBoundaryIncludesCurrent(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			queryTT := TD2UT(tc.seed, true)
+			queryTT := UTC2TT(tc.seed)
 			last := tc.last(queryTT)
 			next := tc.next(queryTT)
 			if !sameEventJD(last, tc.seed) {

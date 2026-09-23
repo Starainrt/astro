@@ -77,7 +77,7 @@ func planetRiseDown(jd, lon, lat, timezone, aeroCorrection, observerHeight float
 		return 0, ErrNeverSet
 	}
 
-	dec := declination(TD2UT(culminationJD-localTimezone/24, true))
+	dec := declination(UTC2TT(culminationJD - localTimezone/24))
 	cosHourAngle := (Sin(targetAltitude) - Sin(dec)*Sin(lat)) / (Cos(dec) * Cos(lat))
 	if !isFiniteFloat(dec) || !isFiniteFloat(cosHourAngle) {
 		return 0, ErrInvalidObservationInput

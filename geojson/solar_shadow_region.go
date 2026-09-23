@@ -56,7 +56,7 @@ func appendSolarHorizonClosedShadowFootprint(
 	regionProperties["source_boundary_closed"] = false
 	regionProperties["geometry_role"] = "horizon-closed-region"
 	regionProperties["closure"] = solarHorizonClosureProperties(
-		footprint.Time, solarHorizonClosureExact(footprint.Boundaries, footprint.HorizonEnds),
+		footprint.Time, footprint.Time, solarHorizonClosureExact(footprint.Boundaries, footprint.HorizonEnds),
 	)
 	regionProperties["interp_signature"] = solarShadowFootprintSignature(
 		footprint.Boundaries, false, eclipsecore.SolarEclipseShadowUmbra,
@@ -229,12 +229,13 @@ func solarHorizonClosureExact(
 }
 
 // solarHorizonClosureProperties 声明式闭合弧；exact 为假表示缺精确擦地点、按采样端点近似闭合。
-func solarHorizonClosureProperties(value time.Time, exact bool) map[string]interface{} {
-	subsolar := solarSubsolarPoint(value)
+// 月下点按几何时刻算，time 属性写输出时标的时刻。
+func solarHorizonClosureProperties(geometryTime, labelTime time.Time, exact bool) map[string]interface{} {
+	subsolar := solarSubsolarPoint(geometryTime)
 	return map[string]interface{}{
 		"kind":     "horizon",
 		"exact":    exact,
-		"time":     formatTime(value),
+		"time":     formatTime(labelTime),
 		"subsolar": []float64{subsolar.Longitude, subsolar.Latitude},
 	}
 }

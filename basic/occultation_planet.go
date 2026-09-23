@@ -370,7 +370,7 @@ func planetMoonPositionAt(tt float64, config planetOccultationConfig, observer *
 	moonRA, moonDec := HMoonGeocentricApparentRaDecN(tt, n)
 	planetRA, planetDec := config.apparentRaDecN(tt, n)
 	if observer != nil {
-		ut := TD2UT(tt, false)
+		ut := TT2UTC(tt)
 		moonDistanceAU := HMoonAwayN(tt, n) / angularDiameterAstronomicalUnitKM
 		planetDistanceAU := config.earthDistanceN(tt, n)
 		moonRA, moonDec = TopocentricRaDec(moonRA, moonDec, observer.Latitude, observer.Longitude, ut, moonDistanceAU, observer.Height)
@@ -425,7 +425,7 @@ func planetTopocentricSemidiameterN(tt float64, config planetOccultationConfig, 
 	if !finite(ra) || !finite(dec) || !finite(distanceKM) || distanceKM <= 0 {
 		return math.NaN()
 	}
-	distanceKM = topocentricDistanceKM(ra, dec, distanceKM, observer, TD2UT(tt, false))
+	distanceKM = topocentricDistanceKM(ra, dec, distanceKM, observer, TT2UTC(tt))
 	if !finite(distanceKM) || distanceKM <= config.equatorialRadiusKM {
 		return math.NaN()
 	}

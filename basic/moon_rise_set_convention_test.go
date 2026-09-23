@@ -39,10 +39,10 @@ func TestMoonRiseSetMissingEventConvention(t *testing.T) {
 		lon, lat, tz    float64
 		riseErr, setErr error
 	}{
-		{"极昼：全天在地平线上", JDECalc(2023, 6, 21), 0, 85, 0, ErrNeverSet, ErrNeverSet},
-		{"极夜：全天在地平线下", JDECalc(2023, 12, 22), 0, -85, 0, ErrNeverRise, ErrNeverRise},
-		{"当日无升起但别日有", JDECalc(2024, 2, 29), 0, 60, 0, ErrNotOnThisDate, nil},
-		{"正常日两侧都有", JDECalc(2025, 6, 5), 116.4074, 39.9042, 8, nil, nil},
+		{"极昼：全天在地平线上", JDCalc(2023, 6, 21), 0, 85, 0, ErrNeverSet, ErrNeverSet},
+		{"极夜：全天在地平线下", JDCalc(2023, 12, 22), 0, -85, 0, ErrNeverRise, ErrNeverRise},
+		{"当日无升起但别日有", JDCalc(2024, 2, 29), 0, 60, 0, ErrNotOnThisDate, nil},
+		{"正常日两侧都有", JDCalc(2025, 6, 5), 116.4074, 39.9042, 8, nil, nil},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -58,8 +58,8 @@ func TestMoonRiseSetMissingEventConvention(t *testing.T) {
 
 func TestMoonRiseSetMissingEventMatchesDailyGeometry(t *testing.T) {
 	dates := []float64{
-		JDECalc(2023, 6, 21), JDECalc(2023, 12, 22), JDECalc(2024, 2, 29),
-		JDECalc(2025, 6, 21), JDECalc(2025, 12, 22), JDECalc(2026, 3, 3),
+		JDCalc(2023, 6, 21), JDCalc(2023, 12, 22), JDCalc(2024, 2, 29),
+		JDCalc(2025, 6, 21), JDCalc(2025, 12, 22), JDCalc(2026, 3, 3),
 	}
 	latitudes := []float64{-89, -85, -75, -66, -60, 60, 66, 75, 85, 89}
 	for _, jd := range dates {

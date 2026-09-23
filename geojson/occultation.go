@@ -5,6 +5,7 @@ import (
 	"math"
 	"time"
 
+	"github.com/starainrt/astro"
 	"github.com/starainrt/astro/internal/geodata"
 	"github.com/starainrt/astro/internal/occultationgeo"
 	"github.com/starainrt/astro/moon"
@@ -118,6 +119,13 @@ func marshalStarOccultation(path moon.StarOccultationPath, markerOptions *TimeMa
 		if err := validateTimeMarkerOptions(*markerOptions); err != nil {
 			return nil, err
 		}
+	}
+	timeScale, scaleErr := timeScaleForMarkers(markerOptions)
+	if scaleErr != nil {
+		return nil, scaleErr
+	}
+	if timeScale == astro.TimeScaleUT1 {
+		path = moon.StarOccultationPathInUT1(path)
 	}
 	if err := validateStarOccultationPathData(path); err != nil {
 		return nil, err
@@ -233,7 +241,7 @@ func marshalStarOccultation(path moon.StarOccultationPath, markerOptions *TimeMa
 			return nil, err
 		}
 	}
-	return marshalFeatureCollection(features)
+	return marshalFeatureCollectionWithTimeScale(features, timeScale)
 }
 
 // MarshalPlanetOccultation 将月掩行星的部分掩、全掩和中心线编码为 GeoJSON。
@@ -256,6 +264,13 @@ func marshalPlanetOccultation(path moon.PlanetOccultationPath, markerOptions *Ti
 		if err := validateTimeMarkerOptions(*markerOptions); err != nil {
 			return nil, err
 		}
+	}
+	timeScale, scaleErr := timeScaleForMarkers(markerOptions)
+	if scaleErr != nil {
+		return nil, scaleErr
+	}
+	if timeScale == astro.TimeScaleUT1 {
+		path = moon.PlanetOccultationPathInUT1(path)
 	}
 	if err := path.Planet.Validate(); err != nil {
 		return nil, fmt.Errorf("geojson: planetary occultation target: %w", err)
@@ -501,7 +516,7 @@ func marshalPlanetOccultation(path moon.PlanetOccultationPath, markerOptions *Ti
 			return nil, err
 		}
 	}
-	return marshalFeatureCollection(features)
+	return marshalFeatureCollectionWithTimeScale(features, timeScale)
 }
 
 // roundAuthoritativePlanetBandJunctions runs after the partial/total

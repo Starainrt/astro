@@ -10,7 +10,7 @@ import (
 // 调用方按各自约定补偿后，两者都必须落在同一个本地民用日，并接近当日本地日的真实中天。
 //
 // 框架约定（由各自调用方固定下来）：
-//   - SunHeight/HMoonHeight 的 jd 是本地民用时框架，本地民用日从 Date2JDE(本地 0 时) 起算；
+//   - SunHeight/HMoonHeight 的 jd 是本地民用时框架，本地民用日从 Date2JD(本地 0 时) 起算；
 //   - basic.CulminationTime 的返回值是本地民用时框架，sun/sun.go 减 tz/24 得到 UT；
 //   - basic.MoonCulminationTime 的返回值就是本地民用时框架，moon/moon.go 按 byZone=true 使用。
 
@@ -33,7 +33,7 @@ var culminationAnchorSites = []culminationAnchorSite{
 func culminationAnchorLocalMidnight(site culminationAnchorSite, timestamp time.Time) (time.Time, float64) {
 	location := time.FixedZone("anchor", int(site.tz*3600))
 	local := time.Date(timestamp.Year(), timestamp.Month(), timestamp.Day(), 0, 0, 0, 0, location)
-	return local, Date2JDE(local)
+	return local, Date2JD(local)
 }
 
 func TestSunCulminationAnchorKeepsLocalDay(t *testing.T) {
@@ -42,7 +42,7 @@ func TestSunCulminationAnchorKeepsLocalDay(t *testing.T) {
 		local, midnightJD := culminationAnchorLocalMidnight(site, timestamp)
 		location := local.Location()
 		// sun/sun.go 的补偿：本地 0 时 JD 再加半天，使 floor 落在同一本地日；随后减 tz/24 得 UT。
-		got := JDE2DateByZone(CulminationTime(midnightJD+0.5, site.lon, site.tz)-site.tz/24, location, false)
+		got := JD2DateByZone(CulminationTime(midnightJD+0.5, site.lon, site.tz)-site.tz/24, location, false)
 		truthJD, truthAltitude := 0.0, -999.0
 		for minute := 0; minute <= 24*60; minute++ {
 			jd := midnightJD + float64(minute)/1440.0
@@ -50,7 +50,7 @@ func TestSunCulminationAnchorKeepsLocalDay(t *testing.T) {
 				truthAltitude, truthJD = altitude, jd
 			}
 		}
-		truth := JDE2DateByZone(truthJD-site.tz/24, location, false)
+		truth := JD2DateByZone(truthJD-site.tz/24, location, false)
 		if got.Day() != local.Day() || got.Month() != local.Month() {
 			t.Fatalf("%s: sun culmination = %s, want local day %s", site.name, got.Format("2006-01-02 15:04"), local.Format("2006-01-02"))
 		}
@@ -65,7 +65,7 @@ func TestMoonCulminationAnchorKeepsLocalDay(t *testing.T) {
 	for _, site := range culminationAnchorSites {
 		local, midnightJD := culminationAnchorLocalMidnight(site, timestamp)
 		location := local.Location()
-		got := JDE2DateByZone(MoonCulminationTime(midnightJD, site.lon, site.lat, site.tz), location, true)
+		got := JD2DateByZone(MoonCulminationTime(midnightJD, site.lon, site.lat, site.tz), location, true)
 		truthJD, truthAltitude := 0.0, -999.0
 		for minute := 0; minute <= 24*60; minute++ {
 			jd := midnightJD + float64(minute)/1440.0
@@ -73,7 +73,7 @@ func TestMoonCulminationAnchorKeepsLocalDay(t *testing.T) {
 				truthAltitude, truthJD = altitude, jd
 			}
 		}
-		truth := JDE2DateByZone(truthJD, location, true)
+		truth := JD2DateByZone(truthJD, location, true)
 		if got.Day() != local.Day() || got.Month() != local.Month() {
 			t.Fatalf("%s: moon culmination = %s, want local day %s", site.name, got.Format("2006-01-02 15:04"), local.Format("2006-01-02"))
 		}

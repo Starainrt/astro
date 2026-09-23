@@ -26,6 +26,24 @@ const (
 	SolarEclipseModelNASABulletinSplitK SolarEclipseRadiusModel = "nasa_bulletin_split_k"
 )
 
+// SolarEclipseSunRadiusModel 日食太阳半径口径, solar radius convention for solar eclipses.
+type SolarEclipseSunRadiusModel = basic.SolarEclipseSunRadiusModel
+
+const (
+	// SolarEclipseSunRadiusStandard 标准档，1 AU 处 959.639″, standard solar radius for catalogue reproduction.
+	SolarEclipseSunRadiusStandard = basic.SolarEclipseSunRadiusStandard
+	// SolarEclipseSunRadiusMeasured 边缘档，1 AU 处 959.95″, measured eclipse solar radius.
+	SolarEclipseSunRadiusMeasured = basic.SolarEclipseSunRadiusMeasured
+)
+
+// SolarEclipseOptions 日食搜索的半径口径, radius conventions for a solar eclipse search.
+type SolarEclipseOptions struct {
+	// RadiusModel 月亮半径模型，非 IAU Single-K 一律按 NASA bulletin Split-K, lunar radius model.
+	RadiusModel SolarEclipseRadiusModel
+	// SunRadiusModel 太阳半径口径，零值为标准档, solar radius convention.
+	SunRadiusModel SolarEclipseSunRadiusModel
+}
+
 // SolarEclipseType 全局日食食型, global solar eclipse type.
 type SolarEclipseType string
 
@@ -61,6 +79,8 @@ const (
 type SolarEclipseInfo struct {
 	// Model 日食月亮半径模型, eclipse lunar radius model.
 	Model SolarEclipseRadiusModel
+	// SunRadiusModel 日食太阳半径口径, solar radius convention.
+	SunRadiusModel SolarEclipseSunRadiusModel
 	// Type 全局食型, global eclipse type.
 	Type SolarEclipseType
 	// Centrality 中心性, eclipse centrality.
@@ -81,6 +101,12 @@ type SolarEclipseInfo struct {
 	CentralBeginOnEarth time.Time
 	// CentralEndOnEarth 地球范围中心食终, central eclipse ends on Earth.
 	CentralEndOnEarth time.Time
+	// GreatestJDE 是食甚的力学时儒略日；与 DeltaTSeconds 配对即可复现上列民用时刻。
+	// GreatestJDE is the TT Julian ephemeris day of greatest eclipse; with DeltaTSeconds it reproduces the civil times above.
+	GreatestJDE float64
+	// DeltaTSeconds 是本次计算实际使用的 TT−UT1，单位秒。
+	// DeltaTSeconds is the TT−UT1 used by this computation, in seconds.
+	DeltaTSeconds float64
 
 	// Magnitude 全局食分, global eclipse magnitude.
 	Magnitude float64
@@ -92,8 +118,17 @@ type SolarEclipseInfo struct {
 	// value catalogues publish; SolarEclipsePath.MaxCentralDuration is the maximum
 	// along the whole track.
 	CentralDuration time.Duration
-	// PathWidthKM 食甚处中心食带宽度, central path width at greatest eclipse.
+	// PathWidthKM 是食甚处中心食带宽度；非中心食为 0；单侧极限（中心带仅触及地球边缘）时该解析式失效
+	// 并一并置 0，此时 PathWidthDefined 为 false，NASA 目录该栏印 '-'。
+	// PathWidthKM is the central path width at greatest eclipse, 0 for a non-central
+	// event, and 0 when the analytic formula fails at a single-sided limit where the
+	// band only grazes the Earth's limb; PathWidthDefined is false there and
+	// catalogues print '-' for this column.
 	PathWidthKM float64
+	// PathWidthDefined 表示上面的带宽是否有定义：只有南北两限都存在时才为 true。
+	// PathWidthDefined reports whether the width above is defined: it is true only
+	// when both band limits exist.
+	PathWidthDefined bool
 
 	// GreatestLongitude 食甚点经度，东正西负, longitude of greatest eclipse, east positive.
 	GreatestLongitude float64
@@ -128,6 +163,43 @@ func SolarEclipseOnDateNASABulletinSplitK(date time.Time) (SolarEclipseInfo, boo
 // Determine whether a global solar eclipse overlaps the local date with the IAU Single-K model.
 func SolarEclipseOnDateIAUSingleK(date time.Time) (SolarEclipseInfo, bool) {
 	return solarEclipseOnDate(date, basic.SolarEclipseIAUSingleK)
+}
+
+// SolarEclipseOnDateWithOptions 当地自然日全局日食查询（自定义半径口径） / local-date global solar eclipse query with custom radius conventions.
+func SolarEclipseOnDateWithOptions(date time.Time, options SolarEclipseOptions) (SolarEclipseInfo, bool) {
+	return solarEclipseOnDate(date, solarEclipseCalculatorFor(options))
+}
+
+// LastSolarEclipseWithOptions 上次日食（自定义半径口径） / previous solar eclipse with custom radius conventions.
+func LastSolarEclipseWithOptions(date time.Time, options SolarEclipseOptions) SolarEclipseInfo {
+	info, _ := searchSolarEclipse(date, -1, true, solarEclipseCalculatorFor(options))
+	return info
+}
+
+// NextSolarEclipseWithOptions 下次日食（自定义半径口径） / next solar eclipse with custom radius conventions.
+func NextSolarEclipseWithOptions(date time.Time, options SolarEclipseOptions) SolarEclipseInfo {
+	info, _ := searchSolarEclipse(date, 1, false, solarEclipseCalculatorFor(options))
+	return info
+}
+
+// ClosestSolarEclipseWithOptions 最近一次日食（自定义半径口径） / closest solar eclipse with custom radius conventions.
+func ClosestSolarEclipseWithOptions(date time.Time, options SolarEclipseOptions) SolarEclipseInfo {
+	last, hasLast := searchSolarEclipse(date, -1, true, solarEclipseCalculatorFor(options))
+	next, hasNext := searchSolarEclipse(date, 1, false, solarEclipseCalculatorFor(options))
+	return closestSolarEclipse(date, last, hasLast, next, hasNext)
+}
+
+func solarEclipseCalculatorFor(options SolarEclipseOptions) solarEclipseCalculator {
+	basicOptions := basic.SolarEclipseOptions{
+		RadiusModel:    basic.SolarEclipseRadiusModel(options.RadiusModel),
+		SunRadiusModel: basic.SolarEclipseSunRadiusModel(options.SunRadiusModel),
+	}
+	if basicOptions.RadiusModel != basic.SolarEclipseModelIAUSingleK {
+		basicOptions.RadiusModel = basic.SolarEclipseModelNASABulletinSplitK
+	}
+	return func(seed float64) basic.SolarEclipseResult {
+		return basic.SolarEclipseWithOptions(seed, basicOptions)
+	}
 }
 
 func solarEclipseOnDate(date time.Time, calculator solarEclipseCalculator) (SolarEclipseInfo, bool) {
@@ -287,6 +359,7 @@ func solarEclipseInfoFromBasic(result basic.SolarEclipseResult, location *time.L
 	saros, hasSaros := solarSarosInfo(result.GreatestEclipse)
 	return SolarEclipseInfo{
 		Model:               mapBasicSolarEclipseModel(result.Model),
+		SunRadiusModel:      result.SunRadiusModel,
 		Type:                mapBasicSolarEclipseType(result.Type),
 		Centrality:          mapBasicSolarEclipseCentrality(result.Centrality),
 		HasSaros:            hasSaros,
@@ -296,10 +369,13 @@ func solarEclipseInfoFromBasic(result basic.SolarEclipseResult, location *time.L
 		PartialEndOnEarth:   solarEclipseTTJDEToTime(result.PartialEndOnEarth, location),
 		CentralBeginOnEarth: solarEclipseTTJDEToTime(result.CentralBeginOnEarth, location),
 		CentralEndOnEarth:   solarEclipseTTJDEToTime(result.CentralEndOnEarth, location),
+		GreatestJDE:         result.GreatestEclipse,
+		DeltaTSeconds:       basic.DeltaT(result.GreatestEclipse, true),
 		Magnitude:           result.Magnitude,
 		Gamma:               result.Gamma,
 		CentralDuration:     solarEclipseDurationFromDays(result.CentralDurationDays),
 		PathWidthKM:         result.PathWidthKM,
+		PathWidthDefined:    result.PathWidthDefined,
 		GreatestLongitude:   result.GreatestLongitude,
 		GreatestLatitude:    result.GreatestLatitude,
 		HasPartial:          result.HasPartial,
@@ -361,25 +437,15 @@ func solarEclipseRange(info SolarEclipseInfo) (time.Time, time.Time, bool) {
 }
 
 func solarEclipseTTJDEToTime(ttJDE float64, location *time.Location) time.Time {
-	return solarEclipseTTJDEToTimeWithDeltaT(ttJDE, basic.DeltaT(ttJDE, true), location)
-}
-
-// solarEclipseTTJDEToTimeWithDeltaT 用显式 ΔT 把 TT 换算为时刻：显式 ΔT 的单时刻入口
-// 必须走这条路径，否则回填出来的 UT 会落到进程级模型上，与几何使用的 ΔT 不一致。
-// solarEclipseTTJDEToTimeWithDeltaT converts TT with an explicit ΔT; the single-instant
-// entries must use it so the reported UT matches the ΔT their geometry used.
-func solarEclipseTTJDEToTimeWithDeltaT(
-	ttJDE, deltaTSeconds float64, location *time.Location,
-) time.Time {
-	// 与 lunar 侧一致：0 与 NaN/±Inf 都表示“该时刻不存在”。
+	// 回填的是民用时刻，偏移必须与正向的 UTC2TT 成对（窗口内即闰秒表，窗口外按未来政策）。
+	// 用 ΔT（TT−UT1）会让时刻整体偏一个 DUT1，并破坏等时线网格的整刻度对齐。
 	if ttJDE == 0 || math.IsNaN(ttJDE) || math.IsInf(ttJDE, 0) {
 		return time.Time{}
 	}
-	utcJDE := ttJDE - deltaTSeconds/86400
-	return basic.JDE2DateByZone(utcJDE, location, false)
+	return basic.JD2DateByZone(basic.TT2UTC(ttJDE), location, false)
 }
 
 func solarEclipseTimeToTTJDE(date time.Time) float64 {
-	utcJDE := basic.Date2JDE(date.UTC())
-	return basic.TD2UT(utcJDE, true)
+	utcJD := basic.Date2JD(date.UTC())
+	return basic.UTC2TT(utcJD)
 }

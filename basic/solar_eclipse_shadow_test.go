@@ -6,7 +6,7 @@ import (
 )
 
 func TestSolarEclipseShadowInstantMatchesPackagedSamples(t *testing.T) {
-	result := SolarEclipsePartialFootprints(JDECalc(2009, 7, 22), SolarEclipsePartialFootprintOptions{
+	result := SolarEclipsePartialFootprints(JDCalc(2009, 7, 22), SolarEclipsePartialFootprintOptions{
 		StepDays: 2.0 / 1440.0, BoundaryPoints: 96, CentralShadowStepDays: 2.0 / 1440.0,
 		DisableRiseSetCurves: true,
 	})
@@ -54,7 +54,7 @@ func TestSolarEclipseShadowInstantMatchesPackagedSamples(t *testing.T) {
 func TestSolarEclipseShadowInstantEmptyOffPath(t *testing.T) {
 	solver := NewSolarEclipseShadowSolver(SolarEclipseShadowSolverOptions{})
 	// 2009-07-22 食甚前后 12 小时已经远离地球上的本影。
-	instant, ok := solver.ShadowAtJDE(JDECalc(2009, 7, 22) + 0.6)
+	instant, ok := solver.ShadowAtJDE(JDCalc(2009, 7, 22) + 0.6)
 	if ok || !instant.Empty() {
 		t.Fatalf("off-path instant reported ok=%v empty=%v", ok, instant.Empty())
 	}
@@ -67,7 +67,7 @@ func TestSolarEclipseShadowInstantEmptyOffPath(t *testing.T) {
 }
 
 func TestSolarEclipseShadowTopologySignatureChangesAtHorizonCut(t *testing.T) {
-	result := SolarEclipsePartialFootprints(JDECalc(2009, 7, 22), SolarEclipsePartialFootprintOptions{
+	result := SolarEclipsePartialFootprints(JDCalc(2009, 7, 22), SolarEclipsePartialFootprintOptions{
 		StepDays: 2.0 / 1440.0, BoundaryPoints: 96, CentralShadowStepDays: 2.0 / 1440.0,
 		DisableRiseSetCurves: true,
 	})
@@ -95,7 +95,7 @@ func TestSolarEclipseShadowTopologySignatureChangesAtHorizonCut(t *testing.T) {
 }
 
 func TestSolarEclipseStationStateMatchesLocalEclipse(t *testing.T) {
-	seed := JDECalc(2024, 4, 8)
+	seed := JDCalc(2024, 4, 8)
 	const lon, lat = -96.8, 32.8
 	local := LocalSolarEclipse(seed, lon, lat, 0)
 	if !local.HasTotal {
@@ -122,7 +122,7 @@ func TestSolarEclipseStationStateMatchesLocalEclipse(t *testing.T) {
 }
 
 func TestSolarEclipseShadowDeltaTMovesOnlyEarthRotation(t *testing.T) {
-	result := SolarEclipsePartialFootprints(JDECalc(2009, 7, 22), SolarEclipsePartialFootprintOptions{
+	result := SolarEclipsePartialFootprints(JDCalc(2009, 7, 22), SolarEclipsePartialFootprintOptions{
 		StepDays: 2.0 / 1440.0, BoundaryPoints: 96, CentralShadowStepDays: 2.0 / 1440.0,
 		DisableRiseSetCurves: true,
 	})
@@ -171,7 +171,7 @@ func TestSolarEclipseShadowDeltaTMovesOnlyEarthRotation(t *testing.T) {
 
 func BenchmarkSolarEclipseShadowAtJDE(b *testing.B) {
 	solver := NewSolarEclipseShadowSolver(SolarEclipseShadowSolverOptions{})
-	result := SolarEclipsePartialFootprints(JDECalc(2009, 7, 22), SolarEclipsePartialFootprintOptions{
+	result := SolarEclipsePartialFootprints(JDCalc(2009, 7, 22), SolarEclipsePartialFootprintOptions{
 		StepDays: 2.0 / 1440.0, BoundaryPoints: 96, CentralShadowStepDays: 2.0 / 1440.0,
 		DisableRiseSetCurves: true,
 	})
@@ -186,7 +186,7 @@ func BenchmarkSolarEclipseShadowAtJDE(b *testing.B) {
 
 func BenchmarkSolarEclipseStationStateAtJDE(b *testing.B) {
 	solver := NewSolarEclipseShadowSolver(SolarEclipseShadowSolverOptions{})
-	jde := JDECalc(2024, 4, 8) + 0.78
+	jde := JDCalc(2024, 4, 8) + 0.78
 	b.ResetTimer()
 	for index := 0; index < b.N; index++ {
 		_ = solver.StationStateAtJDE(jde+float64(index)*1e-9, -96.8, 32.8, 0)
@@ -194,7 +194,7 @@ func BenchmarkSolarEclipseStationStateAtJDE(b *testing.B) {
 }
 
 func TestSolarEclipseShadowClampsBoundaryPoints(t *testing.T) {
-	result := SolarEclipsePartialFootprints(JDECalc(2009, 7, 22), SolarEclipsePartialFootprintOptions{
+	result := SolarEclipsePartialFootprints(JDCalc(2009, 7, 22), SolarEclipsePartialFootprintOptions{
 		StepDays: 2.0 / 1440.0, BoundaryPoints: 96, CentralShadowStepDays: 2.0 / 1440.0,
 		DisableRiseSetCurves: true,
 	})
@@ -243,7 +243,7 @@ func TestSolarEclipseShadowHandleSeesDeltaTChange(t *testing.T) {
 	SetDeltaTFn(DefaultDeltaTv2)
 	// 取 2009-07-22 本影阶段内的一个真实时刻（与相邻测试同一取法）。
 	// Use a real instant inside the 2009-07-22 umbral phase, derived like the neighbour test.
-	samples := SolarEclipsePartialFootprints(JDECalc(2009, 7, 22), SolarEclipsePartialFootprintOptions{
+	samples := SolarEclipsePartialFootprints(JDCalc(2009, 7, 22), SolarEclipsePartialFootprintOptions{
 		StepDays: 2.0 / 1440.0, BoundaryPoints: 96, CentralShadowStepDays: 2.0 / 1440.0,
 		DisableRiseSetCurves: true,
 	})
@@ -298,7 +298,7 @@ func TestSolarEclipseShadowHandleSeesDeltaTChange(t *testing.T) {
 }
 
 func TestSolarEclipseShadowPenumbraMatchesPackagedSamples(t *testing.T) {
-	result := SolarEclipsePartialFootprints(JDECalc(2009, 7, 22), SolarEclipsePartialFootprintOptions{
+	result := SolarEclipsePartialFootprints(JDCalc(2009, 7, 22), SolarEclipsePartialFootprintOptions{
 		StepDays: 2.0 / 1440.0, BoundaryPoints: 96, CentralShadowStepDays: 2.0 / 1440.0,
 		DisableRiseSetCurves: true,
 	})
@@ -339,7 +339,7 @@ func TestSolarEclipseShadowPenumbraMatchesPackagedSamples(t *testing.T) {
 }
 
 func TestSolarEclipseShadowKindChangesFootprint(t *testing.T) {
-	result := SolarEclipsePartialFootprints(JDECalc(2009, 7, 22), SolarEclipsePartialFootprintOptions{
+	result := SolarEclipsePartialFootprints(JDCalc(2009, 7, 22), SolarEclipsePartialFootprintOptions{
 		StepDays: 2.0 / 1440.0, BoundaryPoints: 96, CentralShadowStepDays: 2.0 / 1440.0,
 		DisableRiseSetCurves: true,
 	})

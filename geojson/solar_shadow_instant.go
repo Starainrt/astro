@@ -52,7 +52,7 @@ func MarshalSolarEclipseShadowInstant(
 	regionProperties["source_boundary_closed"] = false
 	regionProperties["geometry_role"] = "horizon-closed-region"
 	regionProperties["closure"] = solarHorizonClosureProperties(
-		instant.Time, solarHorizonClosureExact(instant.Boundaries, instant.HorizonEnds),
+		instant.Time, instant.Time, solarHorizonClosureExact(instant.Boundaries, instant.HorizonEnds),
 	)
 	ring, boundary := solarShadowFootprintHorizonRing(
 		instant.Time, instant.Boundaries, instant.HorizonEnds, curve,

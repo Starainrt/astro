@@ -13,7 +13,7 @@ func TestSarosNumberAgainstAllCatalogAnchors(t *testing.T) {
 	for phase, anchors := range [][]sarosMagic{solarSarosAnchors[:], lunarSarosAnchors[:]} {
 		for index, magic := range anchors {
 			anchor := decodeSarosMagic(magic, phase+index)
-			k, ok := sarosLunation(basic.JDECalc(int(anchor.Year), int(anchor.Month), float64(anchor.Day)), phase)
+			k, ok := sarosLunation(basic.JDCalc(int(anchor.Year), int(anchor.Month), float64(anchor.Day)), phase)
 			if !ok {
 				t.Fatalf("invalid catalog anchor: %+v", anchor)
 			}
@@ -133,6 +133,7 @@ func TestExtendedSarosMatchesLiveSeries(t *testing.T) {
 }
 
 func TestExtendedSarosRangeAndInvalidInput(t *testing.T) {
+	pinSarosWindowPolicy(t)
 	if sarosExtendedStartTT != timeToTTJDE(time.Date(-3000, 1, 1, 0, 0, 0, 0, time.UTC)) || sarosExtendedEndTT != timeToTTJDE(time.Date(6001, 1, 1, 0, 0, 0, 0, time.UTC)) {
 		t.Fatal("precomputed range must include both end years")
 	}

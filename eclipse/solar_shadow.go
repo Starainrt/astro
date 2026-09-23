@@ -56,7 +56,9 @@ func (topology SolarEclipseShadowTopology) Signature() string {
 
 // SolarEclipseShadowInstant 某瞬时的全球本影或半影足迹 / instantaneous shadow footprint.
 type SolarEclipseShadowInstant struct {
-	// Time 记录对应的时刻：UTC 入口为调用方所给，TT 入口按句柄 ΔT 换算 / instant this record describes.
+	// Time 记录对应的时刻：UTC 入口为调用方所给，TT 入口回填民用时刻（TT2UTC），与句柄 ΔT 无关。
+	// Time is the instant this record describes: the caller's value for the UTC entry, and the civil
+	// time recovered with TT2UTC for the TT entry, independently of the handle's ΔT.
 	Time time.Time
 	// JDE 几何使用的力学时儒略日，ΔT 不改变它 / TT instant used by the geometry.
 	JDE float64
@@ -82,6 +84,8 @@ func (instant SolarEclipseShadowInstant) Empty() bool {
 
 // SolarEclipseStationState 某瞬时的站心日月几何 / topocentric geometry at one instant.
 type SolarEclipseStationState struct {
+	// Time 是该状态对应的时刻。
+	// Time is the instant this state describes.
 	Time time.Time
 	// JDE 本次计算使用的力学时儒略日 / TT instant used.
 	JDE float64
@@ -106,7 +110,7 @@ type SolarEclipseStationState struct {
 	HasAnnularPhase bool
 	// CentralPhaseType 中心食类型，非中心食为 SolarEclipseNone / central phase kind.
 	CentralPhaseType SolarEclipseType
-	// Visible 太阳中心在地平线上，海拔用俯仰角修正 / Sun center above the horizon.
+	// Visible 太阳中心在地平线上，高度用俯仰角修正 / Sun center above the horizon.
 	Visible bool
 }
 
@@ -131,11 +135,9 @@ func NewSolarEclipseShadowSolver(options SolarEclipseShadowSolverOptions) *Solar
 }
 
 func (solver *SolarEclipseShadowSolver) ttJDE(value time.Time) float64 {
-	utJDE := basic.Date2JDE(value.UTC())
-	if solver.options.DeltaTSeconds > 0 {
-		return utJDE + solver.options.DeltaTSeconds/86400
-	}
-	return basic.TD2UT(utJDE, true)
+	// 入参是民用时刻：TT = UTC + (TT−UTC)，与闰秒表一致。显式 ΔT 是 TT−UT1，
+	// 只改自转相位，不能掺进这条换算，否则报告值与实用偏移会差一个 DUT1。
+	return basic.UTC2TT(basic.Date2JD(value.UTC()))
 }
 
 // ShadowAt 给定 UTC 时刻的阴影足迹；不在地球上时返回 (零值, false) / footprint at one UTC instant.
@@ -164,7 +166,7 @@ func solarEclipseShadowInstantFromBasic(
 ) SolarEclipseShadowInstant {
 	location := value.Location()
 	if value.IsZero() {
-		value = solarEclipseTTJDEToTimeWithDeltaT(instant.JDE, instant.DeltaTSeconds, time.UTC)
+		value = solarEclipseTTJDEToTime(instant.JDE, time.UTC)
 		location = time.UTC
 	}
 	return SolarEclipseShadowInstant{
@@ -202,7 +204,7 @@ func (solver *SolarEclipseShadowSolver) StationStateAtJDE(
 	}
 	state := solver.inner.StationStateAtJDE(jdeTT, lon, lat, height)
 	result := solarEclipseStationStateFromBasic(time.Time{}, state)
-	result.Time = solarEclipseTTJDEToTimeWithDeltaT(jdeTT, state.DeltaTSeconds, time.UTC)
+	result.Time = solarEclipseTTJDEToTime(jdeTT, time.UTC)
 	return result
 }
 

@@ -43,7 +43,7 @@ func TestMoonPhysicalSampleSweepFiniteAndInRange(t *testing.T) {
 	}
 
 	for _, date := range dates {
-		jd := TD2UT(Date2JDE(date.UTC()), true)
+		jd := UTC2TT(Date2JD(date.UTC()))
 		info := MoonPhysical(jd)
 		prefix := date.Format(time.RFC3339)
 

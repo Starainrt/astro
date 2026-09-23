@@ -1,6 +1,7 @@
 package svg
 
 import (
+	"github.com/starainrt/astro/internal/timenote"
 	"errors"
 	"fmt"
 	"html"
@@ -8,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/starainrt/astro"
 	"github.com/starainrt/astro/basic"
 	"github.com/starainrt/astro/internal/svgchart"
 	"github.com/starainrt/astro/internal/svgmap"
@@ -27,18 +29,30 @@ const (
 )
 
 // OccultationDetailedSVGOptions 控制详细版式的月掩星组合图。
+// OccultationDetailedSVGOptions configures the detailed-layout occultation chart.
 type OccultationDetailedSVGOptions struct {
 	// Width 与 Height 是画布尺寸；<=0 使用 1000x1414 的整页开本。
 	// 版式必须容得下地图与数据块，否则返回 ErrInvalidOccultationDetailedSVGOptions。
+	// Width and Height are the canvas size; <=0 uses the 1000x1414 whole-page format.
+	// The layout must fit the map and the data block, otherwise the renderer returns ErrInvalidOccultationDetailedSVGOptions.
 	Width  int
 	Height int
 	// Language 为 "en" 时使用英文，其他值使用中文。
+	// Language renders English for "en" and Chinese for any other value.
 	Language string
 	// Location 控制显示时刻的时区；nil 使用 UTC+8。
+	// Location sets the zone of displayed instants; nil uses UTC+8.
 	Location *time.Location
+	// TimeScale 选择图中时刻的时标：零值 UTC；TimeScaleUT1 改用 UT1 时刻，此时 Location 必须是
+	// nil 或 UTC（否则渲染器返回错误），并在图注里声明尺度。
+	// TimeScale selects the label scale: the zero value is UTC; TimeScaleUT1 uses UT1 labels, requires
+	// Location to be nil or UTC (otherwise the renderer returns an error) and declares the scale.
+	TimeScale astro.TimeScale
 	// TimeLabelStep 控制中心线上的时刻标签；零值用 30 分钟，负值禁用。
+	// TimeLabelStep controls the time labels along the center line; zero uses 30 minutes and a negative value disables them.
 	TimeLabelStep time.Duration
 	// Title 与 FooterNote 为空时自动生成。
+	// Title and FooterNote are generated automatically when left empty.
 	Title      string
 	FooterNote string
 }
@@ -200,7 +214,7 @@ func writeOccultationDetailedGrid(b *strings.Builder, view occultationDetailedVi
 
 // occultationDetailedMoonRows 月亮的地心坐标；S.D./H.P. 由地心月距换算，与日食月食同口径。
 func occultationDetailedMoonRows(at time.Time, language string) []svgchart.PanelRow {
-	jde := basic.TD2UT(basic.Date2JDE(at.UTC()), true)
+	jde := basic.UTC2TT(basic.Date2JD(at.UTC()))
 	ra, dec := basic.HMoonTrueRaDec(jde)
 	sd := basic.MoonSemidiameter(jde)
 	hp := math.Asin(math.Sin(sd/3600*math.Pi/180)*6378.137/1737.4) * 180 / math.Pi * 3600
@@ -247,10 +261,18 @@ func StarOccultationDetailedSVG(
 	star moon.StarCoordinate,
 	options OccultationDetailedSVGOptions,
 ) (string, error) {
+	if options.TimeScale == astro.TimeScaleUT1 && options.Location != nil && options.Location != time.UTC {
+		return "", fmt.Errorf("occultation SVG: UT1 labels do not take a non-UTC location")
+	}
 	if err := validateStarOccultationPath(path); err != nil {
 		return "", err
 	}
-	return renderOccultationDetailedSVG(path, star, nil, options)
+	civilGreatest := path.Greatest.Time
+	if options.TimeScale == astro.TimeScaleUT1 {
+		options.Location = time.UTC
+		path = moon.StarOccultationPathInUT1(path)
+	}
+	return renderOccultationDetailedSVG(path, star, nil, civilGreatest, options)
 }
 
 // PlanetOccultationDetailedSVG 生成详细版式的行星月掩星图。
@@ -259,21 +281,31 @@ func PlanetOccultationDetailedSVG(
 	path moon.PlanetOccultationPath,
 	options OccultationDetailedSVGOptions,
 ) (string, error) {
+	if options.TimeScale == astro.TimeScaleUT1 && options.Location != nil && options.Location != time.UTC {
+		return "", fmt.Errorf("occultation SVG: UT1 labels do not take a non-UTC location")
+	}
 	if err := validatePlanetOccultationPath(path); err != nil {
 		return "", err
 	}
+	civilGreatest := path.Greatest.Time
+	if options.TimeScale == astro.TimeScaleUT1 {
+		options.Location = time.UTC
+		path = moon.PlanetOccultationPathInUT1(path)
+	}
+
 	// 中文标题与目标块要写"木星"这类中文行星名，不能直接用 TargetID 里的英文。
 	shape := planetOccultationStarShape(path, path.TargetID)
 	if options.Language == starOccultationSVGLanguageChinese {
 		shape.TargetID = planetOccultationChineseName(path.Planet)
 	}
-	return renderOccultationDetailedSVG(shape, moon.StarCoordinate{}, &path, options)
+	return renderOccultationDetailedSVG(shape, moon.StarCoordinate{}, &path, civilGreatest, options)
 }
 
 func renderOccultationDetailedSVG(
 	path moon.StarOccultationPath,
 	star moon.StarCoordinate,
 	planetPath *moon.PlanetOccultationPath,
+	civilGreatest time.Time,
 	options OccultationDetailedSVGOptions,
 ) (string, error) {
 	if err := validateOccultationDetailedSVGOptions(options); err != nil {
@@ -326,12 +358,12 @@ func renderOccultationDetailedSVG(
 			return "", fmt.Errorf("planetary occultation detailed band geometry: %w", err)
 		}
 	}
-	blocks := occultationDetailedBlocks(path, star, planetPath, options)
+	blocks := occultationDetailedBlocks(path, star, planetPath, civilGreatest, options)
 	if err := validateOccultationDetailedBlocks(view, blocks); err != nil {
 		return "", err
 	}
 	writeOccultationDetailedGrid(&b, view, blocks)
-	writeOccultationDetailedFooter(&b, view, options)
+	writeOccultationDetailedFooter(&b, view, options, occultationScaleInstant(path, planetPath))
 	b.WriteString(`</svg>`)
 	return b.String(), nil
 }
@@ -401,7 +433,7 @@ func writeOccultationDetailedSummary(
 	}
 }
 
-func writeOccultationDetailedFooter(b *strings.Builder, view occultationDetailedView, options OccultationDetailedSVGOptions) {
+func writeOccultationDetailedFooter(b *strings.Builder, view occultationDetailedView, options OccultationDetailedSVGOptions, instant time.Time) {
 	text := options.FooterNote
 	if text == "" {
 		if options.Language == starOccultationSVGLanguageEnglish {
@@ -411,15 +443,18 @@ func writeOccultationDetailedFooter(b *strings.Builder, view occultationDetailed
 		}
 	}
 	maxWidth := view.width - 2*view.margin
-	// 默认说明本来就是单行，只有调用方文本才折行截断。
+	// 默认说明本来就是单行，只有调用方文本才折行截断；时标声明单独占一行。
 	lines := []string{text}
 	if options.FooterNote != "" {
-		lines = svgchart.TruncateTextLines(svgchart.WrapText(text, maxWidth, 11), maxWidth, 11,
-			svgchart.BaselineLineLimit(11, 15, view.footerY, view.height))
+		lines = svgchart.WrapText(text, maxWidth, 11)
 	}
+	lines = svgchart.FooterLinesWithScale(lines, timenote.Scale(options.TimeScale, instant, options.Location, options.Language),
+		maxWidth, 11,
+		svgchart.BaselineLineLimit(11, svgchart.FooterLineHeight(11), view.footerY,
+			view.height-svgchart.FooterBottomPadding(11)))
 	for index, line := range lines {
 		fmt.Fprintf(b, `<text x="%.3f" y="%.3f" fill="#596164" font-family="Georgia, 'Times New Roman', serif" font-size="11">%s</text>`,
-			view.margin, view.footerY+float64(index)*15, html.EscapeString(line))
+			view.margin, view.footerY+float64(index)*svgchart.FooterLineHeight(11), html.EscapeString(line))
 	}
 }
 
@@ -431,7 +466,7 @@ func occultationDetailedTargetRows(
 	language string,
 ) []svgchart.PanelRow {
 	english := language == starOccultationSVGLanguageEnglish
-	jde := basic.TD2UT(basic.Date2JDE(at.UTC()), true)
+	jde := basic.UTC2TT(basic.Date2JD(at.UTC()))
 	rows := []svgchart.PanelRow{{Label: "目标", Value: star.ID}}
 	if english {
 		rows[0].Label = "Target"
@@ -511,6 +546,7 @@ func occultationDetailedBlocks(
 	path moon.StarOccultationPath,
 	star moon.StarCoordinate,
 	planetPath *moon.PlanetOccultationPath,
+	civilGreatest time.Time,
 	options OccultationDetailedSVGOptions,
 ) []svgchart.PanelBlock {
 	english := options.Language == starOccultationSVGLanguageEnglish
@@ -550,15 +586,15 @@ func occultationDetailedBlocks(
 	}
 	ephemeris := []svgchart.PanelRow{
 		{Label: name("投影", "Projection"), Value: name("正射球面", "Orthographic")},
-		{Label: "ΔT", Value: fmt.Sprintf("%.1f s", basic.DeltaT(basic.TD2UT(basic.Date2JDE(path.Greatest.Time.UTC()), true), true))},
-		{Label: name("月距", "Moon distance"), Value: fmt.Sprintf("%.0f km", basic.HMoonAway(basic.TD2UT(basic.Date2JDE(path.Greatest.Time.UTC()), true)))},
+		{Label: "ΔT", Value: fmt.Sprintf("%.1f s", basic.DeltaT(basic.UTC2TT(basic.Date2JD(civilGreatest.UTC())), true))},
+		{Label: name("月距", "Moon distance"), Value: fmt.Sprintf("%.0f km", basic.HMoonAway(basic.UTC2TT(basic.Date2JD(civilGreatest.UTC()))))},
 		{Label: name("部分掩带宽", "Partial-band width"), Value: fmt.Sprintf("%.1f km", partialWidth)},
 	}
 	if planetPath != nil && planetPath.HasTotalBand {
 		ephemeris = append(ephemeris, svgchart.PanelRow{Label: name("全掩带宽", "Total-band width"),
 			Value: fmt.Sprintf("%.1f km", planetPath.GreatestTotalWidthKM)})
 	}
-	jde := basic.TD2UT(basic.Date2JDE(path.Greatest.Time.UTC()), true)
+	jde := basic.UTC2TT(basic.Date2JD(civilGreatest.UTC()))
 	physical := basic.MoonPhysical(jde)
 	libration := []svgchart.PanelRow{
 		{Label: name("经天平动 l", "Libration l"), Value: fmt.Sprintf("%+.2f°", physical.LibrationLongitude)},
@@ -580,8 +616,8 @@ func occultationDetailedBlocks(
 	contacts = append(contacts, svgchart.PanelRow{Label: name("外掩终", "Partial ends"), Value: format(path.End.Time)})
 
 	return []svgchart.PanelBlock{
-		{Title: name("月亮（地心坐标）", "Moon (geocentric)"), Rows: occultationDetailedMoonRows(path.Greatest.Time, options.Language)},
-		{Title: name("目标天体", "Target body"), Rows: occultationDetailedTargetRows(star, planetPath, path.Greatest.Time, options.Language)},
+		{Title: name("月亮（地心坐标）", "Moon (geocentric)"), Rows: occultationDetailedMoonRows(civilGreatest, options.Language)},
+		{Title: name("目标天体", "Target body"), Rows: occultationDetailedTargetRows(star, planetPath, civilGreatest, options.Language)},
 		{Title: name("掩带路径点", "Band path points"), Rows: pathRows},
 		{Title: name("接触时刻", "Contacts"), Rows: contacts},
 		{Title: name("历表与常数", "Ephemeris and constants"), Rows: ephemeris},

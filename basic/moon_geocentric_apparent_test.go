@@ -6,7 +6,7 @@ import (
 )
 
 func TestHMoonGeocentricApparentRaDecComponentsMatch(t *testing.T) {
-	jd := TD2UT(JDECalc(2026, 1, 1.25), true)
+	jd := UTC2TT(JDCalc(2026, 1, 1.25))
 
 	ra, dec := HMoonGeocentricApparentRaDec(jd)
 	if diff := math.Abs(ra - HMoonGeocentricApparentRa(jd)); diff > 1e-12 {
@@ -18,7 +18,7 @@ func TestHMoonGeocentricApparentRaDecComponentsMatch(t *testing.T) {
 }
 
 func TestHMoonGeocentricTrueRaDecComponentsMatch(t *testing.T) {
-	jd := TD2UT(JDECalc(2026, 1, 1.25), true)
+	jd := UTC2TT(JDCalc(2026, 1, 1.25))
 
 	ra, dec := HMoonGeocentricTrueRaDec(jd)
 	if diff := math.Abs(ra - HMoonGeocentricTrueRa(jd)); diff > 1e-12 {

@@ -14,8 +14,8 @@ func AscendingNode(date time.Time) float64 {
 
 // AscendingNodeN 木星升交点黄经（截断版） / truncated ascending node longitude of Jupiter.
 func AscendingNodeN(date time.Time, n int) float64 {
-	jde := calendar.Date2JDE(date.UTC())
-	return basic.JupiterAscendingNodeN(basic.TD2UT(jde, true), n)
+	jd := calendar.Date2JD(date.UTC())
+	return basic.JupiterAscendingNodeN(basic.UTC2TT(jd), n)
 }
 
 // DescendingNode 木星降交点黄经 / descending node longitude of Jupiter.
@@ -25,6 +25,6 @@ func DescendingNode(date time.Time) float64 {
 
 // DescendingNodeN 木星降交点黄经（截断版） / truncated descending node longitude of Jupiter.
 func DescendingNodeN(date time.Time, n int) float64 {
-	jde := calendar.Date2JDE(date.UTC())
-	return basic.JupiterDescendingNodeN(basic.TD2UT(jde, true), n)
+	jd := calendar.Date2JD(date.UTC())
+	return basic.JupiterDescendingNodeN(basic.UTC2TT(jd), n)
 }

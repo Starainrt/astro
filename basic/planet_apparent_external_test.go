@@ -59,7 +59,7 @@ func TestPlanetApparentCoordinatesMatchHorizonsBaseline(t *testing.T) {
 		if err != nil {
 			t.Fatalf("parse sample time %q: %v", sample.InputUTC, err)
 		}
-		jd := TD2UT(Date2JDE(date.UTC()), true)
+		jd := UTC2TT(Date2JD(date.UTC()))
 		prefix := sample.Body + "." + sample.InputUTC
 
 		assertPlanetApparentAngleClose(t, prefix+".RightAscension", tc.ra(jd), sample.RightAscension, 0.001)

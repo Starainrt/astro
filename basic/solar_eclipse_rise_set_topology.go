@@ -531,7 +531,7 @@ func solarEclipseRiseSetEndpointTimeDirectionValid(
 }
 
 func (solver solarEclipseSolver) refineRiseSetDirectionJunction(
-	jd, longitude, latitude float64,
+	jde, longitude, latitude float64,
 	greatest bool,
 ) (SolarEclipsePathPoint, bool) {
 	const (
@@ -539,7 +539,7 @@ func (solver solarEclipseSolver) refineRiseSetDirectionJunction(
 		timeStep       = 1.0 / 86400.0
 	)
 	for iteration := 0; iteration < 24; iteration++ {
-		evaluation := solver.magnitudeEvaluationAt(jd)
+		evaluation := solver.magnitudeEvaluationAt(jde)
 		residual, ok := solarEclipseRiseSetDirectionJunctionResidualAt(evaluation, longitude, latitude, greatest)
 		if !ok {
 			return SolarEclipsePathPoint{}, false
@@ -554,7 +554,7 @@ func (solver solarEclipseSolver) refineRiseSetDirectionJunction(
 			evaluation, longitude, latitude+geographicStep, greatest,
 		)
 		timeResidual, timeOK := solver.riseSetDirectionJunctionResidual(
-			jd+timeStep, longitude, latitude, greatest,
+			jde+timeStep, longitude, latitude, greatest,
 		)
 		if !longitudeOK || !latitudeOK || !timeOK {
 			return SolarEclipsePathPoint{}, false
@@ -579,16 +579,16 @@ func (solver solarEclipseSolver) refineRiseSetDirectionJunction(
 		}
 		longitude = normalizeLongitude(longitude + delta[0])
 		latitude += delta[1]
-		jd += delta[2]
+		jde += delta[2]
 		if latitude <= -89.999999 || latitude >= 89.999999 {
 			return SolarEclipsePathPoint{}, false
 		}
 	}
-	residual, ok := solver.riseSetDirectionJunctionResidual(jd, longitude, latitude, greatest)
+	residual, ok := solver.riseSetDirectionJunctionResidual(jde, longitude, latitude, greatest)
 	if !ok || math.Abs(residual[0]) > 1e-7 || math.Abs(residual[1]) > 1e-8 || math.Abs(residual[2]) > 1e-7 {
 		return SolarEclipsePathPoint{}, false
 	}
-	evaluation := solver.magnitudeEvaluationAt(jd)
+	evaluation := solver.magnitudeEvaluationAt(jde)
 	state := evaluation.center.stateAt(longitude*rad, latitude*rad, 0)
 	if greatest {
 		if solarEclipsePartialContactGap(state) > 1e-7 || evaluation.separationSecondDerivative(longitude, latitude) <= 0 {
@@ -598,15 +598,15 @@ func (solver solarEclipseSolver) refineRiseSetDirectionJunction(
 		return SolarEclipsePathPoint{}, false
 	}
 	return SolarEclipsePathPoint{
-		JDE: jd, Longitude: longitude, Latitude: latitude, SunAltitude: residual[1] / rad,
+		JDE: jde, Longitude: longitude, Latitude: latitude, SunAltitude: residual[1] / rad,
 	}, true
 }
 
 func (solver solarEclipseSolver) riseSetDirectionJunctionResidual(
-	jd, longitude, latitude float64,
+	jde, longitude, latitude float64,
 	greatest bool,
 ) ([3]float64, bool) {
-	evaluation := solver.magnitudeEvaluationAt(jd)
+	evaluation := solver.magnitudeEvaluationAt(jde)
 	return solarEclipseRiseSetDirectionJunctionResidualAt(evaluation, longitude, latitude, greatest)
 }
 

@@ -24,15 +24,16 @@ func BenchmarkTopocentricEcliptic(b *testing.B) {
 	benchmarkEclipticSink = sink
 }
 
-func BenchmarkTopocentricEclipticLegacy(b *testing.B) {
+// BenchmarkTopocentricEclipticTwoWrappers 量的是分别调用 Lo/Bo 两个包装（各解一次）与组合入口的差距。
+func BenchmarkTopocentricEclipticTwoWrappers(b *testing.B) {
 	date, lon, lat, observerLon, observerLat, distanceAU, height := benchmarkEclipticInputs()
 	b.ReportAllocs()
 	b.ResetTimer()
 	sink := Ecliptic{}
 	for i := 0; i < b.N; i++ {
 		sink = Ecliptic{
-			Lon: basic.TopocentricLo(lon, lat, observerLat, observerLon, jdeUTC(date), distanceAU, height),
-			Lat: basic.TopocentricBo(lon, lat, observerLat, observerLon, jdeUTC(date), distanceAU, height),
+			Lon: basic.TopocentricLo(lon, lat, observerLat, observerLon, jdUTC(date), distanceAU, height),
+			Lat: basic.TopocentricBo(lon, lat, observerLat, observerLon, jdUTC(date), distanceAU, height),
 		}
 	}
 	benchmarkEclipticSink = sink

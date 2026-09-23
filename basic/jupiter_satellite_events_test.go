@@ -33,9 +33,9 @@ func TestJupiterGalileanPhenomenonEventsAgainstIMCCEBaseline(t *testing.T) {
 		queryMid := startUTC.Add(endUTC.Sub(startUTC) / 2)
 		phenomenonType := parseBasicGalileanPhenomenonType(t, record.Type)
 
-		next := NextJupiterGalileanPhenomenonEvent(Date2JDE(queryBefore.UTC()), record.Satellite, phenomenonType)
-		last := LastJupiterGalileanPhenomenonEvent(Date2JDE(queryAfter.UTC()), record.Satellite, phenomenonType)
-		closest := ClosestJupiterGalileanPhenomenonEvent(Date2JDE(queryMid.UTC()), record.Satellite, phenomenonType)
+		next := NextJupiterGalileanPhenomenonEvent(Date2JD(queryBefore.UTC()), record.Satellite, phenomenonType)
+		last := LastJupiterGalileanPhenomenonEvent(Date2JD(queryAfter.UTC()), record.Satellite, phenomenonType)
+		closest := ClosestJupiterGalileanPhenomenonEvent(Date2JD(queryMid.UTC()), record.Satellite, phenomenonType)
 
 		assertGalileanEventMatchesBaseline(t, record.Label+" next", next, record, startUTC, endUTC, &maxStartDiff, &maxEndDiff)
 		assertGalileanEventMatchesBaseline(t, record.Label+" last", last, record, startUTC, endUTC, &maxStartDiff, &maxEndDiff)
@@ -62,8 +62,8 @@ func assertGalileanEventMatchesBaseline(
 	if string(event.Type) != record.Type {
 		t.Fatalf("%s type mismatch: got %q want %q", name, event.Type, record.Type)
 	}
-	gotStart := JDE2DateByZone(event.Start, time.UTC, false)
-	gotEnd := JDE2DateByZone(event.End, time.UTC, false)
+	gotStart := JD2DateByZone(event.Start, time.UTC, false)
+	gotEnd := JD2DateByZone(event.End, time.UTC, false)
 	startDiff := math.Abs(gotStart.Sub(startUTC).Seconds())
 	endDiff := math.Abs(gotEnd.Sub(endUTC).Seconds())
 	if startDiff > *maxStartDiff {

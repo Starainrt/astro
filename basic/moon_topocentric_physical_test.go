@@ -8,7 +8,7 @@ import (
 )
 
 func TestMoonTopocentricPhysicalMatchesCorrectionMethod(t *testing.T) {
-	jd := TD2UT(Date2JDE(testTime(2026, 4, 28, 9, 30, 45)), true)
+	jd := UTC2TT(Date2JD(testTime(2026, 4, 28, 9, 30, 45)))
 	observerLon := 121.4737
 	observerLat := 31.2304
 
@@ -28,8 +28,8 @@ func TestMoonTopocentricPhysicalSampleSweepFiniteAndInRange(t *testing.T) {
 		observerLat float64
 		height      float64
 	}{
-		{"shanghai", TD2UT(Date2JDE(testTime(2026, 4, 28, 9, 30, 45)), true), 121.4737, 31.2304, 4},
-		{"chicago", TD2UT(Date2JDE(testTime(2024, 3, 25, 7, 0, 0)), true), -87.65, 41.85, 180},
+		{"shanghai", UTC2TT(Date2JD(testTime(2026, 4, 28, 9, 30, 45))), 121.4737, 31.2304, 4},
+		{"chicago", UTC2TT(Date2JD(testTime(2024, 3, 25, 7, 0, 0))), -87.65, 41.85, 180},
 	}
 
 	for _, sample := range samples {
@@ -50,7 +50,7 @@ func moonTopocentricPhysicalByCorrection(jd, observerLon, observerLat float64) M
 	geocentric := MoonPhysical(jd)
 	moonRA := HMoonTrueRa(jd)
 	moonDec := HMoonTrueDec(jd)
-	hourAngle := StarHourAngle(TD2UT(jd, false), moonRA, observerLon, 0)
+	hourAngle := StarHourAngle(TT2UTC(jd), moonRA, observerLon, 0)
 	horizontalParallax := ArcSin(6378.1366 / HMoonAway(jd))
 
 	Q := ArcTan2(

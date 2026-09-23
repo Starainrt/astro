@@ -26,15 +26,15 @@ func TestKnownMercuryTransits(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			result := NextMercuryTransit(Date2JDE(tc.query))
+			result := NextMercuryTransit(Date2JD(tc.query))
 			if !result.Valid {
 				t.Fatal("expected valid transit")
 			}
-			got := JDE2DateByZone(result.Greatest, time.UTC, false)
+			got := JD2DateByZone(result.Greatest, time.UTC, false)
 			t.Logf("start=%s greatest=%s end=%s min=%.3f sun=%.3f planet=%.3f",
-				JDE2DateByZone(result.ExternalIngress, time.UTC, false),
+				JD2DateByZone(result.ExternalIngress, time.UTC, false),
 				got,
-				JDE2DateByZone(result.ExternalEgress, time.UTC, false),
+				JD2DateByZone(result.ExternalEgress, time.UTC, false),
 				result.MinimumSeparationArcsec,
 				result.SunSemidiameterArcsec,
 				result.PlanetSemidiameterArcsec,
@@ -75,15 +75,15 @@ func TestKnownVenusTransits(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			result := NextVenusTransit(Date2JDE(tc.query))
+			result := NextVenusTransit(Date2JD(tc.query))
 			if !result.Valid {
 				t.Fatal("expected valid transit")
 			}
-			got := JDE2DateByZone(result.Greatest, time.UTC, false)
+			got := JD2DateByZone(result.Greatest, time.UTC, false)
 			t.Logf("start=%s greatest=%s end=%s min=%.3f sun=%.3f planet=%.3f",
-				JDE2DateByZone(result.ExternalIngress, time.UTC, false),
+				JD2DateByZone(result.ExternalIngress, time.UTC, false),
 				got,
-				JDE2DateByZone(result.ExternalEgress, time.UTC, false),
+				JD2DateByZone(result.ExternalEgress, time.UTC, false),
 				result.MinimumSeparationArcsec,
 				result.SunSemidiameterArcsec,
 				result.PlanetSemidiameterArcsec,
@@ -105,27 +105,27 @@ func TestKnownVenusTransits(t *testing.T) {
 }
 
 func TestTransitSearchSkipsSparseEvents(t *testing.T) {
-	mercuryResult := NextMercuryTransit(Date2JDE(time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)))
+	mercuryResult := NextMercuryTransit(Date2JD(time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)))
 	if !mercuryResult.Valid {
 		t.Fatal("expected Mercury transit")
 	}
-	mercuryGreatest := JDE2DateByZone(mercuryResult.Greatest, time.UTC, false)
+	mercuryGreatest := JD2DateByZone(mercuryResult.Greatest, time.UTC, false)
 	if mercuryGreatest.Year() != 2032 || mercuryGreatest.Month() != time.November {
 		t.Fatalf("unexpected next Mercury transit: %s", mercuryGreatest)
 	}
 
-	venusResult := NextVenusTransit(Date2JDE(time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)))
+	venusResult := NextVenusTransit(Date2JD(time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)))
 	if !venusResult.Valid {
 		t.Fatal("expected Venus transit")
 	}
-	venusGreatest := JDE2DateByZone(venusResult.Greatest, time.UTC, false)
+	venusGreatest := JD2DateByZone(venusResult.Greatest, time.UTC, false)
 	if venusGreatest.Year() != 2117 || venusGreatest.Month() != time.December {
 		t.Fatalf("unexpected next Venus transit: %s", venusGreatest)
 	}
 }
 
 func BenchmarkNextMercuryTransitFrom2026(b *testing.B) {
-	jd := Date2JDE(time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC))
+	jd := Date2JD(time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC))
 	for i := 0; i < b.N; i++ {
 		result := NextMercuryTransit(jd)
 		if !result.Valid {
@@ -135,7 +135,7 @@ func BenchmarkNextMercuryTransitFrom2026(b *testing.B) {
 }
 
 func BenchmarkNextVenusTransitFrom2026(b *testing.B) {
-	jd := Date2JDE(time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC))
+	jd := Date2JD(time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC))
 	for i := 0; i < b.N; i++ {
 		result := NextVenusTransit(jd)
 		if !result.Valid {

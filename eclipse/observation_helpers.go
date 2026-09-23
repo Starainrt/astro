@@ -8,57 +8,34 @@ import (
 )
 
 func moonSunLoDiff(date time.Time) float64 {
-	jde := basic.TD2UT(basic.Date2JDE(date.UTC()), true)
+	jde := basic.UTC2TT(basic.Date2JD(date.UTC()))
 	sunLo := basic.HSunApparentLo(jde)
 	moonLo := basic.HMoonApparentLo(jde)
 	return tools.Limit360(moonLo - sunLo)
 }
 
 func solarAltitude(date time.Time, lon, lat float64) float64 {
-	jde := basic.Date2JDE(date)
+	localJD := basic.Date2JD(date)
 	_, loc := date.Zone()
-	return basic.SunHeight(jde, lon, lat, float64(loc)/3600.0)
+	return basic.SunHeight(localJD, lon, lat, float64(loc)/3600.0)
 }
 
 func solarCulminationTime(date time.Time, lon float64) time.Time {
-	jde := basic.Date2JDE(date.Add(time.Duration(-1*date.Hour())*time.Hour)) + 0.5
+	localJD := basic.Date2JD(date.Add(time.Duration(-1*date.Hour())*time.Hour)) + 0.5
 	_, loc := date.Zone()
 	timezone := float64(loc) / 3600.0
-	calcJde := basic.CulminationTime(jde, lon, timezone) - timezone/24.0
-	return basic.JDE2DateByZone(calcJde, date.Location(), false)
+	calcJD := basic.CulminationTime(localJD, lon, timezone) - timezone/24.0
+	return basic.JD2DateByZone(calcJD, date.Location(), false)
 }
 
 func lunarAzimuth(date time.Time, lon, lat float64) float64 {
-	jde := basic.Date2JDE(date)
+	localJD := basic.Date2JD(date)
 	_, loc := date.Zone()
-	return basic.HMoonAzimuth(jde, lon, lat, float64(loc)/3600.0)
+	return basic.HMoonAzimuth(localJD, lon, lat, float64(loc)/3600.0)
 }
 
 func lunarAltitude(date time.Time, lon, lat float64) float64 {
-	jde := basic.Date2JDE(date)
+	localJD := basic.Date2JD(date)
 	_, loc := date.Zone()
-	return basic.HMoonHeight(jde, lon, lat, float64(loc)/3600.0)
-}
-
-func lunarCulminationTime(date time.Time, lon, lat float64) time.Time {
-	if date.Hour() > 12 {
-		date = date.Add(-12 * time.Hour)
-	}
-	jde := basic.Date2JDE(date)
-	_, loc := date.Zone()
-	culmination := basic.JDE2DateByZone(basic.MoonCulminationTime(jde, lon, lat, float64(loc)/3600.0), date.Location(), true)
-	// MoonCulminationTime returns the nearest root to its internal midnight
-	// seed, which can land one civil day later when the input is local noon.
-	// Visibility scans need the root belonging to the supplied local day.
-	if culmination.Year() != date.Year() || culmination.YearDay() != date.YearDay() {
-		// Preserve the solved local clock time while moving it onto the
-		// requested civil date. This also avoids assuming every DST day is
-		// exactly 24 elapsed hours.
-		culmination = time.Date(
-			date.Year(), date.Month(), date.Day(),
-			culmination.Hour(), culmination.Minute(), culmination.Second(), culmination.Nanosecond(),
-			date.Location(),
-		)
-	}
-	return culmination
+	return basic.HMoonHeight(localJD, lon, lat, float64(loc)/3600.0)
 }

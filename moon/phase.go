@@ -18,7 +18,7 @@ func BrightLimbPositionAngleN(date time.Time, n int) float64 {
 
 // TopocentricBrightLimbPositionAngle 月亮站心明亮边缘位置角，单位度 / topocentric position angle of the Moon's bright limb in degrees.
 //
-// date 为观测时刻；observerLon/observerLat 为观测者经纬度，东正西负、北正南负；height 为海拔高度，单位米。
+// date 为观测时刻；observerLon/observerLat 为观测者经纬度，东正西负、北正南负；height 为椭球高（大地高），单位米。
 // date is the observing instant; observerLon/observerLat are east-positive and north-positive; height is observer elevation in meters.
 func TopocentricBrightLimbPositionAngle(date time.Time, observerLon, observerLat, height float64) float64 {
 	return TopocentricBrightLimbPositionAngleN(date, observerLon, observerLat, height, -1)
@@ -30,5 +30,5 @@ func TopocentricBrightLimbPositionAngleN(date time.Time, observerLon, observerLa
 }
 
 func observationTT(date time.Time) float64 {
-	return basic.TD2UT(basic.Date2JDE(date.UTC()), true)
+	return basic.UTC2TT(basic.Date2JD(date.UTC()))
 }

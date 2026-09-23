@@ -90,7 +90,7 @@ func TestGeometricOrbitMatchesJPLBaseline(t *testing.T) {
 		basicElements := toBasicElements(elements)
 
 		for _, sample := range object.Samples {
-			date := basic.JDE2DateByZone(basic.TD2UT(sample.JDTT, false), time.UTC, false)
+			date := basic.JD2DateByZone(basic.TT2UTC(sample.JDTT), time.UTC, false)
 
 			helVector := basic.OrbitHeliocentricXYZJ2000(sample.JDTT, basicElements)
 			helVectorDiff := vectorDiffAU(helVector, sample.Heliocentric.Vector)
@@ -213,7 +213,7 @@ func runObservationBaseline(
 	for _, object := range objects {
 		elements := elementsFromBaseline(object)
 		for _, sample := range object.Samples {
-			date := basic.JDE2DateByZone(basic.TD2UT(sample.JDTT, false), time.UTC, false)
+			date := basic.JD2DateByZone(basic.TT2UTC(sample.JDTT), time.UTC, false)
 			got := gotFn(date, elements)
 			want := wantFn(sample)
 			raDiff := angleDiffAbs(got.RA, want.RA)
@@ -366,10 +366,10 @@ func TestObservationHelpersMatchTopocentricCoordinates(t *testing.T) {
 		}
 	}
 
-	jde := basic.Date2JDE(date)
+	jde := basic.Date2JD(date)
 	_, offsetSeconds := date.Zone()
 	timezone := float64(offsetSeconds) / 3600.0
-	siderealLongitude := normalize360(basic.ApparentSiderealTime(jde-timezone/24.0)*15 + shanghaiLon)
+	siderealLongitude := normalize360(basic.ApparentSiderealTime(basic.UTC2UT1(jde-timezone/24.0))*15 + shanghaiLon)
 	wantHourAngle := normalize360(siderealLongitude - topocentric.RA)
 	if angleDiffAbs(hourAngle, wantHourAngle) > 1e-9 {
 		t.Fatalf("hour angle mismatch: got %.12f want %.12f", hourAngle, wantHourAngle)

@@ -9,11 +9,11 @@ import (
 const ancientStationTolerance = 10.0 / 1440.0
 
 func ancientStationTT(year int, month time.Month, day int) float64 {
-	return TD2UT(Date2JDE(time.Date(year, month, day, 0, 0, 0, 0, time.UTC)), true)
+	return UTC2TT(Date2JD(time.Date(year, month, day, 0, 0, 0, 0, time.UTC)))
 }
 
 func ancientStationUT(year int, month time.Month, day, hour, minute int) float64 {
-	return Date2JDE(time.Date(year, month, day, hour, minute, 0, 0, time.UTC))
+	return Date2JD(time.Date(year, month, day, hour, minute, 0, 0, time.UTC))
 }
 
 func assertAncientNextStation(t *testing.T, queryTT, gotUT, wantUT float64) {
@@ -23,7 +23,7 @@ func assertAncientNextStation(t *testing.T, queryTT, gotUT, wantUT float64) {
 	}
 	if diff := math.Abs(gotUT - wantUT); diff > ancientStationTolerance {
 		t.Fatalf("station differs by %.3f minutes: got %s, want %s", diff*1440,
-			JDE2DateByZone(gotUT, time.UTC, false), JDE2DateByZone(wantUT, time.UTC, false))
+			JD2DateByZone(gotUT, time.UTC, false), JD2DateByZone(wantUT, time.UTC, false))
 	}
 }
 

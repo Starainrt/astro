@@ -71,7 +71,9 @@ func occultationPathVectorRaDec(vector occultationPathVector) (float64, float64,
 	if !finite(distance) || distance <= 0 {
 		return 0, 0, 0, false
 	}
-	ra := math.Atan2(vector.y, vector.x) / rad
+	// atan2 给 (−180,180]，统一到 [0,360)：与精确分支（LoBoToRaDec、starMeanToApparentRaDec）
+	// 和 occultationRiseSetBodyFromVector 的 normalizeRA 一致；下游只按周期量使用，数值不变。
+	ra := normalizeRA(math.Atan2(vector.y, vector.x) / rad)
 	dec := math.Asin(math.Max(-1, math.Min(1, vector.z/distance))) / rad
 	return ra, dec, distance, finite(ra) && finite(dec)
 }
@@ -112,6 +114,9 @@ type starOccultationLocalEphemeris struct {
 	star  StarCoordinate
 	nodes []localEphemerisVectorNode
 	dense bool
+	// distanceKM 是中心时刻的当日距离；hasDistance 为假表示恒星距离未知，几何按无穷远处理。
+	distanceKM  float64
+	hasDistance bool
 }
 
 func newStarOccultationLocalEphemeris(center float64, star StarCoordinate) *starOccultationLocalEphemeris {
@@ -133,7 +138,16 @@ func newStarOccultationLocalEphemeris(center float64, star StarCoordinate) *star
 			next:  [3]float64{target.x, target.y, target.z},
 		}
 	}
-	return &starOccultationLocalEphemeris{star: star, nodes: nodes}
+	return newStarOccultationLocalEphemerisFromNodes(center, star, nodes, false)
+}
+
+// newStarOccultationLocalEphemerisFromNodes 装配局部星历：距离必须与节点同源，密集分支同样要带上。
+func newStarOccultationLocalEphemerisFromNodes(center float64, star StarCoordinate, nodes []localEphemerisVectorNode, dense bool) *starOccultationLocalEphemeris {
+	_, _, distanceAU := starApparentRaDecDistanceGeocentric(center, star)
+	return &starOccultationLocalEphemeris{
+		star: star, nodes: nodes, dense: dense,
+		distanceKM: distanceAU * occultationPathAstronomicalUnitKM, hasDistance: distanceAU > 0,
+	}
 }
 
 func (ephemeris *starOccultationLocalEphemeris) stateAt(tt float64) (starOccultationEphemerisState, bool) {
@@ -144,15 +158,20 @@ func (ephemeris *starOccultationLocalEphemeris) stateAt(tt float64) (starOcculta
 	moonRA, moonDec, moonDistance, moonOK := occultationPathVectorRaDec(occultationPathVector{
 		x: moonXYZ[0], y: moonXYZ[1], z: moonXYZ[2],
 	})
-	targetRA, targetDec, _, targetOK := occultationPathVectorRaDec(occultationPathVector{
+	targetRA, targetDec, targetDistance, targetOK := occultationPathVectorRaDec(occultationPathVector{
 		x: targetXYZ[0], y: targetXYZ[1], z: targetXYZ[2],
 	})
 	if !moonOK || !targetOK {
 		return starOccultationEphemerisState{}, false
 	}
+	// 距离取插值矢量自身的模长，才与同一次插值给出的方向同源；距离未知时按 0 上报。
+	starDistanceKM := 0.0
+	if ephemeris.hasDistance {
+		starDistanceKM = targetDistance
+	}
 	return starOccultationEphemerisState{
 		moonRA: moonRA, moonDec: moonDec, moonDistanceKM: moonDistance,
-		starRA: targetRA, starDec: targetDec, starDistanceKM: ephemeris.starDistanceKM(),
+		starRA: targetRA, starDec: targetDec, starDistanceKM: starDistanceKM,
 		valid: true,
 	}, true
 }
@@ -168,10 +187,7 @@ func (ephemeris *starOccultationLocalEphemeris) vectorsAt(tt float64) ([3]float6
 }
 
 func (ephemeris *starOccultationLocalEphemeris) starDistanceKM() float64 {
-	if ephemeris.star.ParallaxMas <= 0 {
-		return 0
-	}
-	return 206264806.247 / ephemeris.star.ParallaxMas * occultationPathAstronomicalUnitKM
+	return ephemeris.distanceKM
 }
 
 type planetOccultationLocalEphemeris struct {

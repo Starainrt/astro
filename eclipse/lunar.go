@@ -108,6 +108,12 @@ type LunarEclipseInfo struct {
 	PartialEnd time.Time
 	// PenumbralEnd 半影终, penumbral eclipse ends.
 	PenumbralEnd time.Time
+	// GreatestJDE 是食甚的力学时儒略日；与 DeltaTSeconds 配对即可复现上列民用时刻。
+	// GreatestJDE is the TT Julian ephemeris day of greatest eclipse; with DeltaTSeconds it reproduces the civil times above.
+	GreatestJDE float64
+	// DeltaTSeconds 是本次计算实际使用的 TT−UT1，单位秒。
+	// DeltaTSeconds is the TT−UT1 used by this computation, in seconds.
+	DeltaTSeconds float64
 
 	// ContactPoints 是各接触时刻在月面上的接触点方位。
 	// ContactPoints are Moon-limb contact position angles at eclipse contacts.
@@ -370,6 +376,8 @@ func lunarEclipseInfoFromBasic(result basic.LunarEclipseResult, location *time.L
 		TotalEnd:               ttJDEToTime(result.TotalEnd, location),
 		PartialEnd:             ttJDEToTime(result.PartialEnd, location),
 		PenumbralEnd:           ttJDEToTime(result.PenumbralEnd, location),
+		GreatestJDE:            result.Maximum,
+		DeltaTSeconds:          basic.DeltaT(result.Maximum, true),
 		ContactPoints:          lunarEclipseContactPointsFromBasic(result, location),
 		HasPenumbral:           result.HasPenumbral,
 		HasPartial:             result.HasPartial,
@@ -482,13 +490,13 @@ func ttJDEToTime(ttJDE float64, location *time.Location) time.Time {
 	if ttJDE == 0 || math.IsNaN(ttJDE) || math.IsInf(ttJDE, 0) {
 		return time.Time{}
 	}
-	utcJDE := basic.TD2UT(ttJDE, false)
-	return basic.JDE2DateByZone(utcJDE, location, false)
+	utcJD := basic.TT2UTC(ttJDE)
+	return basic.JD2DateByZone(utcJD, location, false)
 }
 
 func timeToTTJDE(date time.Time) float64 {
-	utcJDE := basic.Date2JDE(date.UTC())
-	return basic.TD2UT(utcJDE, true)
+	utcJD := basic.Date2JD(date.UTC())
+	return basic.UTC2TT(utcJD)
 }
 
 func normalizeDegree180(angle float64) float64 {

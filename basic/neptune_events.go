@@ -74,15 +74,15 @@ func neptuneConjunctionFull(jde, degree float64, next uint8) float64 {
 	} else {
 		jde += daysPerDegree * currentDelta
 	}
-	estimateJD := jde
+	estimateJDE := jde
 	converged := false
 	for i := 0; i < eventNewtonMaxIterations; i++ {
-		prevJD := estimateJD
-		longitudeDelta := neptuneSunLongitudeDelta(prevJD, degree, true)
-		longitudeSlope := (neptuneSunLongitudeDelta(prevJD+0.000005, degree, true) - neptuneSunLongitudeDelta(prevJD-0.000005, degree, true)) / 0.00001
-		nextJD := prevJD - longitudeDelta/longitudeSlope
-		estimateJD = nextJD
-		if math.Abs(nextJD-prevJD) <= 0.00001 {
+		prevJDE := estimateJDE
+		longitudeDelta := neptuneSunLongitudeDelta(prevJDE, degree, true)
+		longitudeSlope := (neptuneSunLongitudeDelta(prevJDE+0.000005, degree, true) - neptuneSunLongitudeDelta(prevJDE-0.000005, degree, true)) / 0.00001
+		nextJD := prevJDE - longitudeDelta/longitudeSlope
+		estimateJDE = nextJD
+		if math.Abs(nextJD-prevJDE) <= 0.00001 {
 			converged = true
 			break
 		}
@@ -90,7 +90,7 @@ func neptuneConjunctionFull(jde, degree float64, next uint8) float64 {
 	if !converged {
 		return math.NaN()
 	}
-	return TD2UT(estimateJD, false)
+	return TT2UTC(estimateJDE)
 }
 
 func neptuneConjunction(jde, degree float64, next uint8) float64 {
@@ -105,15 +105,15 @@ func neptuneConjunction(jde, degree float64, next uint8) float64 {
 	} else {
 		jde += daysPerDegree * currentDelta
 	}
-	estimateJD := jde
+	estimateJDE := jde
 	converged := false
 	for i := 0; i < eventNewtonMaxIterations; i++ {
-		prevJD := estimateJD
-		longitudeDelta := neptuneSunLongitudeDeltaN(prevJD, degree, true, neptuneEventSearchN)
-		longitudeSlope := (neptuneSunLongitudeDeltaN(prevJD+0.000005, degree, true, neptuneEventSearchN) - neptuneSunLongitudeDeltaN(prevJD-0.000005, degree, true, neptuneEventSearchN)) / 0.00001
-		nextJD := prevJD - longitudeDelta/longitudeSlope
-		estimateJD = nextJD
-		if math.Abs(nextJD-prevJD) <= neptunePhaseCoarseTolerance {
+		prevJDE := estimateJDE
+		longitudeDelta := neptuneSunLongitudeDeltaN(prevJDE, degree, true, neptuneEventSearchN)
+		longitudeSlope := (neptuneSunLongitudeDeltaN(prevJDE+0.000005, degree, true, neptuneEventSearchN) - neptuneSunLongitudeDeltaN(prevJDE-0.000005, degree, true, neptuneEventSearchN)) / 0.00001
+		nextJD := prevJDE - longitudeDelta/longitudeSlope
+		estimateJDE = nextJD
+		if math.Abs(nextJD-prevJDE) <= neptunePhaseCoarseTolerance {
 			converged = true
 			break
 		}
@@ -123,12 +123,12 @@ func neptuneConjunction(jde, degree float64, next uint8) float64 {
 	}
 	converged = false
 	for i := 0; i < eventNewtonMaxIterations; i++ {
-		prevJD := estimateJD
-		longitudeDelta := neptuneSunLongitudeDelta(prevJD, degree, true)
-		longitudeSlope := (neptuneSunLongitudeDelta(prevJD+0.000005, degree, true) - neptuneSunLongitudeDelta(prevJD-0.000005, degree, true)) / 0.00001
-		nextJD := prevJD - longitudeDelta/longitudeSlope
-		estimateJD = nextJD
-		if math.Abs(nextJD-prevJD) <= 0.00001 {
+		prevJDE := estimateJDE
+		longitudeDelta := neptuneSunLongitudeDelta(prevJDE, degree, true)
+		longitudeSlope := (neptuneSunLongitudeDelta(prevJDE+0.000005, degree, true) - neptuneSunLongitudeDelta(prevJDE-0.000005, degree, true)) / 0.00001
+		nextJD := prevJDE - longitudeDelta/longitudeSlope
+		estimateJDE = nextJD
+		if math.Abs(nextJD-prevJDE) <= 0.00001 {
 			converged = true
 			break
 		}
@@ -136,7 +136,7 @@ func neptuneConjunction(jde, degree float64, next uint8) float64 {
 	if !converged {
 		return math.NaN()
 	}
-	return TD2UT(estimateJD, false)
+	return TT2UTC(estimateJDE)
 }
 
 func LastNeptuneConjunction(jde float64) float64 {
@@ -175,22 +175,22 @@ func neptuneRetrogradeAroundOpposition(oppositionJD float64, searchBeforeOpposit
 	if !isFiniteFloat(oppositionJD) {
 		return math.NaN()
 	}
-	oppositionTT := TD2UT(oppositionJD, true)
+	oppositionTT := UTC2TT(oppositionJD)
 	startTT := oppositionTT
 	endTT := oppositionTT
 	if searchBeforeOpposition {
 		easternQuadratureUT := neptuneConjunction(oppositionTT, 90, 0)
-		startTT = TD2UT(easternQuadratureUT, true)
+		startTT = UTC2TT(easternQuadratureUT)
 	} else {
 		westernQuadratureUT := neptuneConjunction(oppositionTT, 270, 1)
-		endTT = TD2UT(westernQuadratureUT, true)
+		endTT = UTC2TT(westernQuadratureUT)
 	}
-	bestJD := zeroEventInWindow(startTT, endTT, 2.0, 2.0, 30.0/86400.0, func(jd float64) float64 {
+	bestJDE := zeroEventInWindow(startTT, endTT, 2.0, 2.0, 30.0/86400.0, func(jd float64) float64 {
 		return neptuneRADerivativeN(jd, stationDerivativeStepDay, neptuneEventSearchN)
 	}, func(jd float64) float64 {
 		return neptuneRADerivative(jd, stationDerivativeStepDay)
 	})
-	return TD2UT(bestJD, false)
+	return TT2UTC(bestJDE)
 }
 
 func NextNeptuneRetrogradeToPrograde(jde float64) float64 {

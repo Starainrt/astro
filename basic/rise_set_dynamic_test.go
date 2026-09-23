@@ -16,7 +16,7 @@ func TestSunRiseSetDynamicResidual(t *testing.T) {
 		timeZone  = 8.0
 		height    = 0.0
 	)
-	jd := JDECalc(2025, 6, 5)
+	jd := JDCalc(2025, 6, 5)
 
 	for _, event := range []struct {
 		name string
@@ -54,7 +54,7 @@ func TestSunApparentStateReusesDistanceWithoutChangingCoordinates(t *testing.T) 
 
 func TestSunRiseSetDynamicGrazingKeepsDateAndDirection(t *testing.T) {
 	date := time.Date(2025, 6, 10, 0, 0, 0, 0, time.UTC)
-	jd := Date2JDE(date)
+	jd := Date2JD(date)
 	dayStart := math.Floor(jd) + 0.5
 
 	rise, err := GetSunRiseTime(jd, 0, 66, 0, 1, 0)
@@ -76,7 +76,7 @@ func TestSunRiseSetDynamicGrazingKeepsDateAndDirection(t *testing.T) {
 
 func TestMoonSetDynamicGrazingKeepsDirection(t *testing.T) {
 	date := time.Date(2025, 1, 31, 0, 0, 0, 0, time.UTC)
-	jd := Date2JDE(date)
+	jd := Date2JD(date)
 	dayStart := math.Floor(jd) + 0.5
 	set, err := GetMoonSetTime(jd, 0, 80, 0, 1, 0)
 	if err != nil {
@@ -89,7 +89,7 @@ func TestMoonSetDynamicGrazingKeepsDirection(t *testing.T) {
 
 func TestMoonRiseSetDirectionalFallbackPreservesMissingEventError(t *testing.T) {
 	date := time.Date(2024, 2, 29, 0, 0, 0, 0, time.UTC)
-	jd := Date2JDE(date)
+	jd := Date2JD(date)
 	_, err := GetMoonRiseTime(jd, -42.6043, 71.7069, -3, 1, 0)
 	if !errors.Is(err, ErrNeverRise) {
 		t.Fatalf("moonrise error = %v, want %v", err, ErrNeverRise)
@@ -98,7 +98,7 @@ func TestMoonRiseSetDirectionalFallbackPreservesMissingEventError(t *testing.T) 
 
 func TestMoonRiseSetDynamicUsesObserverHeightForParallax(t *testing.T) {
 	date := time.Date(2025, 6, 5, 0, 0, 0, 0, time.UTC)
-	jd := Date2JDE(date)
+	jd := Date2JD(date)
 	const (
 		longitude = 116.4074
 		latitude  = 39.9042
@@ -133,12 +133,12 @@ func assertRiseSetEvent(t *testing.T, name string, eventJD, dayStart float64, is
 }
 
 func moonRiseSetResidualAtObserverHeight(jd, longitude, latitude, timeZone, zenithShift, height float64) float64 {
-	calculationJD := TD2UT(jd-timeZone/24, true)
+	calculationJD := UTC2TT(jd - timeZone/24)
 	ra, dec := HMoonTrueRaDecN(calculationJD, -1)
 	distanceKM := HMoonAwayN(calculationJD, -1)
 	topocentricRA, topocentricDec := TopocentricRaDec(ra, dec, latitude, longitude,
 		jd-timeZone/24, distanceKM/angularDiameterAstronomicalUnitKM, height)
-	siderealTime := Limit360(ApparentSiderealTime(jd-timeZone/24)*15 + longitude)
+	siderealTime := Limit360(ApparentSiderealTime(UTC2UT1(jd-timeZone/24))*15 + longitude)
 	hourAngle := Limit360(siderealTime - topocentricRA)
 	altitude := ArcSin(Sin(latitude)*Sin(topocentricDec) + Cos(topocentricDec)*Cos(latitude)*Cos(hourAngle))
 	residual := altitude + HeightDegreeByLat(height, latitude)

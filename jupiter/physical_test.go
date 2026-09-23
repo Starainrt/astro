@@ -10,12 +10,12 @@ import (
 
 func TestPhysicalWrapperMatchesBasic(t *testing.T) {
 	date := time.Date(2026, 4, 28, 9, 30, 45, 0, time.UTC)
-	jde := basic.Date2JDE(date.UTC())
+	jde := basic.Date2JD(date.UTC())
 
 	got := Physical(date)
 	gotN := PhysicalN(date, -1)
-	want := basic.JupiterPhysicalN(basic.TD2UT(jde, true), -1)
-	wantMeridians := basic.JupiterCentralMeridiansN(basic.TD2UT(jde, true), -1)
+	want := basic.JupiterPhysicalN(basic.UTC2TT(jde), -1)
+	wantMeridians := basic.JupiterCentralMeridiansN(basic.UTC2TT(jde), -1)
 	gotMeridians := CentralMeridians(date)
 	gotMeridiansN := CentralMeridiansN(date, -1)
 
@@ -24,7 +24,7 @@ func TestPhysicalWrapperMatchesBasic(t *testing.T) {
 	assertSamePhysicalFloat(t, "SubSolarLongitude", got.SubSolarLongitude, want.SubSolarLongitude)
 	assertSamePhysicalFloat(t, "SubSolarLatitude", got.SubSolarLatitude, want.SubSolarLatitude)
 	assertSamePhysicalFloat(t, "NorthPolePositionAngle", got.NorthPolePositionAngle, want.NorthPolePositionAngle)
-	wantDS, wantDE := basic.JupiterDSDEN(basic.TD2UT(jde, true), -1)
+	wantDS, wantDE := basic.JupiterDSDEN(basic.UTC2TT(jde), -1)
 	assertSamePhysicalFloat(t, "DS", got.DS, wantDS)
 	assertSamePhysicalFloat(t, "DE", got.DE, wantDE)
 	assertSamePhysicalFloat(t, "CentralMeridianSystemI", got.CentralMeridianSystemI, wantMeridians.SystemI)

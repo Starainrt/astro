@@ -11,7 +11,7 @@ func TestMoonBrightLimbPositionAngleMeeusExample(t *testing.T) {
 }
 
 func TestMoonBrightLimbPositionAngleNFullMatchesDefault(t *testing.T) {
-	jd := TD2UT(Date2JDE(time.Date(2026, 4, 28, 9, 30, 45, 0, time.UTC)), true)
+	jd := UTC2TT(Date2JD(time.Date(2026, 4, 28, 9, 30, 45, 0, time.UTC)))
 
 	got := MoonBrightLimbPositionAngle(jd)
 	gotN := MoonBrightLimbPositionAngleN(jd, -1)
@@ -21,7 +21,7 @@ func TestMoonBrightLimbPositionAngleNFullMatchesDefault(t *testing.T) {
 }
 
 func TestMoonTopocentricBrightLimbPositionAngleSampleFiniteAndInRange(t *testing.T) {
-	jd := TD2UT(Date2JDE(time.Date(2026, 4, 28, 9, 30, 45, 0, time.UTC)), true)
+	jd := UTC2TT(Date2JD(time.Date(2026, 4, 28, 9, 30, 45, 0, time.UTC)))
 	got := MoonTopocentricBrightLimbPositionAngle(jd, 121.4737, 31.2304, 4)
 
 	assertFiniteRange(t, "MoonTopocentricBrightLimbPositionAngle", got, 0, 360, true)

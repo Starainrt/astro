@@ -441,12 +441,12 @@ func (solver solarEclipseSolver) appendRefinedSolarEclipseCentralHorizonSegment(
 		depth >= 16 || end.JDE-start.JDE <= solarEclipsePathMinStepDays {
 		return append(points, end)
 	}
-	jd := (start.JDE + end.JDE) / 2
+	jde := (start.JDE + end.JDE) / 2
 	longitude := normalizeLongitude(
 		start.Longitude + math.Remainder(end.Longitude-start.Longitude, 360)/2,
 	)
 	latitude := (start.Latitude + end.Latitude) / 2
-	evaluation := solver.magnitudeEvaluationAt(jd)
+	evaluation := solver.magnitudeEvaluationAt(jde)
 	longitude, latitude, ok := riseSetRefineGeographicRoot(
 		longitude,
 		latitude,
@@ -465,7 +465,7 @@ func (solver solarEclipseSolver) appendRefinedSolarEclipseCentralHorizonSegment(
 		return append(points, end)
 	}
 	middle := SolarEclipsePathPoint{
-		JDE: jd, Longitude: longitude, Latitude: latitude, SunAltitude: state.sunAltitudeRad / rad,
+		JDE: jde, Longitude: longitude, Latitude: latitude, SunAltitude: state.sunAltitudeRad / rad,
 	}
 	points = solver.appendRefinedSolarEclipseCentralHorizonSegment(points, start, middle, depth+1)
 	return solver.appendRefinedSolarEclipseCentralHorizonSegment(points, middle, end, depth+1)
@@ -558,9 +558,9 @@ func (solver solarEclipseSolver) validNonCentralBandState(
 	referenceJDE float64,
 	iterations int,
 ) (solarEclipseNonCentralBandState, int, bool) {
-	jd := referenceJDE + coordinates[2]/solarEclipseNonCentralBandTimeScale
+	jde := referenceJDE + coordinates[2]/solarEclipseNonCentralBandTimeScale
 	longitude, latitude := normalizeLongitude(coordinates[0]), coordinates[1]
-	evaluation := solver.magnitudeEvaluationAt(jd)
+	evaluation := solver.magnitudeEvaluationAt(jde)
 	state := evaluation.center.stateAt(longitude*rad, latitude*rad, 0)
 	if math.Abs(solarEclipseCentralContactGap(state)) > 1e-6 ||
 		math.Abs(evaluation.centralContactDerivative(longitude, latitude)) >
@@ -576,7 +576,7 @@ func (solver solarEclipseSolver) validNonCentralBandState(
 		coordinates: coordinates,
 		tangent:     tangent,
 		point: SolarEclipsePathPoint{
-			JDE: jd, Longitude: longitude, Latitude: latitude, SunAltitude: state.sunAltitudeRad / rad,
+			JDE: jde, Longitude: longitude, Latitude: latitude, SunAltitude: state.sunAltitudeRad / rad,
 		},
 	}, iterations, true
 }
@@ -585,9 +585,9 @@ func (solver solarEclipseSolver) nonCentralBandBoundaryJacobian(
 	coordinates [3]float64,
 	referenceJDE float64,
 ) ([2]float64, [2][3]float64, bool) {
-	jd := referenceJDE + coordinates[2]/solarEclipseNonCentralBandTimeScale
+	jde := referenceJDE + coordinates[2]/solarEclipseNonCentralBandTimeScale
 	longitude, latitude := normalizeLongitude(coordinates[0]), coordinates[1]
-	evaluation := solver.magnitudeEvaluationAt(jd)
+	evaluation := solver.magnitudeEvaluationAt(jde)
 	residual, ok := solarEclipseNonCentralBandBoundaryResidualAt(evaluation, longitude, latitude)
 	if !ok {
 		return [2]float64{}, [2][3]float64{}, false
@@ -605,7 +605,7 @@ func (solver solarEclipseSolver) nonCentralBandBoundaryJacobian(
 			jacobian[row][column] = (shiftedResidual[row] - residual[row]) / steps[column]
 		}
 	}
-	timeEvaluation := solver.magnitudeEvaluationAt(jd + steps[2]/solarEclipseNonCentralBandTimeScale)
+	timeEvaluation := solver.magnitudeEvaluationAt(jde + steps[2]/solarEclipseNonCentralBandTimeScale)
 	timeResidual, timeOK := solarEclipseNonCentralBandBoundaryResidualAt(
 		timeEvaluation, longitude, latitude,
 	)
@@ -668,13 +668,13 @@ func (solver solarEclipseSolver) refineNonCentralBandHorizonGapCrossing(
 		best, bestGap = second, math.Abs(secondGap)
 	}
 	for iteration := 0; iteration < 64; iteration++ {
-		jd := (first.JDE + second.JDE) / 2
-		fraction := (jd - first.JDE) / (second.JDE - first.JDE)
+		jde := (first.JDE + second.JDE) / 2
+		fraction := (jde - first.JDE) / (second.JDE - first.JDE)
 		longitude := normalizeLongitude(
 			first.Longitude + fraction*math.Remainder(second.Longitude-first.Longitude, 360),
 		)
 		latitude := first.Latitude + fraction*(second.Latitude-first.Latitude)
-		evaluation := solver.magnitudeEvaluationAt(jd)
+		evaluation := solver.magnitudeEvaluationAt(jde)
 		longitude, latitude, ok := riseSetRefineGeographicRoot(
 			longitude,
 			latitude,
@@ -690,7 +690,7 @@ func (solver solarEclipseSolver) refineNonCentralBandHorizonGapCrossing(
 		state := evaluation.center.stateAt(longitude*rad, latitude*rad, 0)
 		middleGap := solarEclipseCentralContactGap(state)
 		middle := SolarEclipsePathPoint{
-			JDE: jd, Longitude: longitude, Latitude: latitude, SunAltitude: state.sunAltitudeRad / rad,
+			JDE: jde, Longitude: longitude, Latitude: latitude, SunAltitude: state.sunAltitudeRad / rad,
 		}
 		if math.Abs(middleGap) < bestGap {
 			best, bestGap = middle, math.Abs(middleGap)

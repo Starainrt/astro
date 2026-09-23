@@ -83,14 +83,14 @@ func buildSarosAnchorRanges() {
 		ranges := make(map[int]sarosAnchorRange, len(anchors)+len(overrides))
 		for index, magic := range anchors {
 			anchor := decodeSarosMagic(magic, base+index)
-			headTT := basic.JDECalc(int(anchor.Year), int(anchor.Month), float64(anchor.Day))
+			headTT := basic.JDCalc(int(anchor.Year), int(anchor.Month), float64(anchor.Day))
 			if math.IsNaN(headTT) {
 				continue
 			}
 			ranges[int(anchor.Series)] = sarosAnchorRange{headTT: headTT, count: int(anchor.Count)}
 		}
 		for _, override := range overrides {
-			headTT := basic.JDECalc(int(override.HeadYear), int(override.HeadMonth), float64(override.HeadDay))
+			headTT := basic.JDCalc(int(override.HeadYear), int(override.HeadMonth), float64(override.HeadDay))
 			if math.IsNaN(headTT) {
 				continue
 			}
@@ -246,7 +246,7 @@ func matchSarosMagicOverrides(overrides []sarosHeadOverride, ttJDE float64) (Sar
 }
 
 func matchSarosMagicCandidate(ttJDE float64, anchor sarosAnchor, memberOffset int) (SarosInfo, float64, bool) {
-	headTT := basic.JDECalc(int(anchor.Year), int(anchor.Month), float64(anchor.Day))
+	headTT := basic.JDCalc(int(anchor.Year), int(anchor.Month), float64(anchor.Day))
 	if math.IsNaN(headTT) {
 		return SarosInfo{}, 0, false
 	}

@@ -144,7 +144,7 @@ func venusConjunction(jde float64, next uint8) float64 {
 	leftVal := venusSunLongitudeDeltaN(left, venusEventSearchN)
 	if math.Abs(venusSunLongitudeDelta(queryTT)) <= venusConjunctionSameInstantDegrees {
 		if exact, ok := venusConjunctionRefine(left, 1.0); ok {
-			eventUT := TD2UT(exact, false)
+			eventUT := TT2UTC(exact)
 			if next == 0 && eventUTQueryBeforeOrEqual(eventUT, queryTT) {
 				return eventUT
 			}
@@ -161,7 +161,7 @@ func venusConjunction(jde float64, next uint8) float64 {
 			center := (left + right) / 2.0
 			halfWindow := math.Abs(right-left) / 2.0
 			if exact, ok := venusConjunctionRefine(center, halfWindow); ok {
-				return TD2UT(exact, false)
+				return TT2UTC(exact)
 			}
 			// 截断级数在根附近的符号可能与全项不一致（查询几乎正好落在合上），
 			// 此时改用全项级数做方向扫描兜底，而不是直接有界失败。
@@ -198,7 +198,7 @@ func venusConjunctionFullDirectionalScan(queryTT, direction float64) float64 {
 		if leftVal == 0 || rightVal == 0 || leftVal*rightVal < 0 {
 			center := (left + right) / 2.0
 			if exact, ok := venusConjunctionRefine(center, math.Abs(right-left)/2.0); ok {
-				return TD2UT(exact, false)
+				return TT2UTC(exact)
 			}
 			return math.NaN()
 		}
@@ -209,16 +209,16 @@ func venusConjunctionFullDirectionalScan(queryTT, direction float64) float64 {
 }
 
 func venusConjunctionRefine(seed, halfWindow float64) (float64, bool) {
-	leftJD := seed - halfWindow
-	centerJD := seed
-	rightJD := seed + halfWindow
-	leftVal := venusSunLongitudeDelta(leftJD)
-	centerVal := venusSunLongitudeDelta(centerJD)
-	rightVal := venusSunLongitudeDelta(rightJD)
+	leftJDE := seed - halfWindow
+	centerJDE := seed
+	rightJDE := seed + halfWindow
+	leftVal := venusSunLongitudeDelta(leftJDE)
+	centerVal := venusSunLongitudeDelta(centerJDE)
+	rightVal := venusSunLongitudeDelta(rightJDE)
 	if !isFiniteFloat(leftVal) || !isFiniteFloat(centerVal) || !isFiniteFloat(rightVal) {
 		return math.NaN(), false
 	}
-	if _, _, _, _, ok := eventZeroBracket(leftJD, leftVal, centerJD, centerVal, rightJD, rightVal); !ok {
+	if _, _, _, _, ok := eventZeroBracket(leftJDE, leftVal, centerJDE, centerVal, rightJDE, rightVal); !ok {
 		return math.NaN(), false
 	}
 	return eventZeroRefine(seed, halfWindow, 0.000005, venusSunLongitudeDelta), true
@@ -325,7 +325,7 @@ func venusStationInWindow(start, end float64, progradeToRetrograde bool) float64
 	if polished, ok := venusStationPolish(best, progradeToRetrograde); ok {
 		best = polished
 	}
-	return TD2UT(best, false)
+	return TT2UTC(best)
 }
 
 // venusStationPolish 在抛物顶点结果附近求 RA 变化率的零点。
@@ -441,9 +441,9 @@ func VenusSunElongation(jde float64) float64 {
 // 窗口两端是世界时，目标函数收力学时，因此逐次换算。
 func venusGreatestElongationInWindow(start, end float64) float64 {
 	return maximizeInWindow(start, end, 5.0, func(utJD float64) float64 {
-		return venusSunElongationN(TD2UT(utJD, true), venusEventSearchN)
+		return venusSunElongationN(UTC2TT(utJD), venusEventSearchN)
 	}, func(utJD float64) float64 {
-		return VenusSunElongation(TD2UT(utJD, true))
+		return VenusSunElongation(UTC2TT(utJD))
 	})
 }
 

@@ -62,8 +62,43 @@ func TestSolarEclipseGeocentricPanelMatchesNASABulletin(t *testing.T) {
 		t.Fatalf("right-ascension conjunction %s differs from NASA by %.1f s",
 			panel.RightAscensionConjunction.Format("15:04:05.0"), delta)
 	}
-	// 朔（视黄经相等）比它晚约 90 s，两者不是同一个量。
+	// 该时差只约束本事件，不代表两种合时刻的普遍关系。
 	if delta := panel.Conjunction.Sub(panel.RightAscensionConjunction).Seconds(); delta < 60 || delta > 120 {
-		t.Fatalf("new moon is %.1f s after the right-ascension conjunction, want about 90 s", delta)
+		t.Fatalf("for 2009-07-22 the new moon is %.1f s after the right-ascension conjunction (event-specific, want 60..120 s)", delta)
+	}
+}
+
+// 两种合时刻的差值随几何变化，符号也会改变。
+func TestGeocentricConjunctionGapIsNotConstant(t *testing.T) {
+	cases := []struct {
+		date string
+		want float64
+	}{
+		{"2004-04-19", -3090.6},
+		{"2007-09-11", 3529.6},
+		{"2009-07-22", -90.2},
+		{"2025-09-21", 3368.4},
+	}
+	minGap, maxGap := math.Inf(1), math.Inf(-1)
+	for _, tc := range cases {
+		date, err := time.Parse("2006-01-02", tc.date)
+		if err != nil {
+			t.Fatal(err)
+		}
+		panel, ok := SolarEclipseGeocentricPanelAt(date.Add(12 * time.Hour))
+		if !ok {
+			t.Fatalf("%s 不是日食日", tc.date)
+		}
+		gap := panel.RightAscensionConjunction.Sub(panel.Conjunction).Seconds()
+		if math.Abs(gap-tc.want) > 30 {
+			t.Errorf("%s 两者相差 %.1f s, want %.1f±30 s", tc.date, gap, tc.want)
+		}
+		minGap, maxGap = math.Min(minGap, gap), math.Max(maxGap, gap)
+	}
+	if minGap > -1200 || maxGap < 1200 {
+		t.Errorf("样本应同时出现提前与推后超过 20 分钟的事件，got %.1f … %.1f s", minGap, maxGap)
+	}
+	if maxGap-minGap < 3000 {
+		t.Errorf("样本跨度 %.1f s，不足以说明该差值不是常数", maxGap-minGap)
 	}
 }

@@ -440,7 +440,7 @@ func planetOccultationFootprintAtWithResolution(
 	if !ok {
 		return PlanetOccultationFootprint{}, false
 	}
-	siderealDegrees := ApparentSiderealTime(TD2UT(tt, false)) * 15
+	siderealDegrees := ApparentSiderealTime(TT2UT1(tt)) * 15
 	samples := make([]planetOccultationFootprintSample, boundaryPoints)
 	for index := range samples {
 		theta := 2 * math.Pi * float64(index) / float64(len(samples))
@@ -954,7 +954,7 @@ func planetOccultationHorizonCircle(
 	secondAxis := occultationPathCross(centerDirection, firstAxis)
 	centerDistance := 1 / distance
 	circleRadius := math.Sqrt(math.Max(0, 1-centerDistance*centerDistance))
-	siderealDegrees := ApparentSiderealTime(TD2UT(tt, false)) * 15
+	siderealDegrees := ApparentSiderealTime(TT2UT1(tt)) * 15
 	points := make([]OccultationPathPoint, count)
 	for index := range points {
 		angle := 2 * math.Pi * float64(index) / float64(count)

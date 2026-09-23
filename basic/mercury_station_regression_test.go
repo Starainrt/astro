@@ -8,7 +8,7 @@ import (
 
 func mercuryTTJDJST(year int, month time.Month, day, hour, minute, second int) float64 {
 	loc := time.FixedZone("JST", 9*3600)
-	return TD2UT(Date2JDE(time.Date(year, month, day, hour, minute, second, 0, loc).UTC()), true)
+	return UTC2TT(Date2JD(time.Date(year, month, day, hour, minute, second, 0, loc).UTC()))
 }
 
 func TestMercuryTypedStationRegression1929(t *testing.T) {
@@ -22,19 +22,19 @@ func TestMercuryTypedStationRegression1929(t *testing.T) {
 	nextP2R := NextMercuryProgradeToRetrograde(query)
 	nextR2P := NextMercuryRetrogradeToPrograde(query)
 	if math.Abs(nextP2R-wantP2R) > tolerance {
-		t.Fatalf("next P2R mismatch: got %s want %s", JDE2DateByZone(nextP2R, loc, false), JDE2DateByZone(wantP2R, loc, false))
+		t.Fatalf("next P2R mismatch: got %s want %s", JD2DateByZone(nextP2R, loc, false), JD2DateByZone(wantP2R, loc, false))
 	}
 	if math.Abs(nextR2P-wantR2P) > tolerance {
-		t.Fatalf("next R2P mismatch: got %s want %s", JDE2DateByZone(nextR2P, loc, false), JDE2DateByZone(wantR2P, loc, false))
+		t.Fatalf("next R2P mismatch: got %s want %s", JD2DateByZone(nextR2P, loc, false), JD2DateByZone(wantR2P, loc, false))
 	}
 
 	query = mercuryTTJDJST(1929, time.October, 20, 0, 0, 0)
 	lastP2R := LastMercuryProgradeToRetrograde(query)
 	lastR2P := LastMercuryRetrogradeToPrograde(query)
 	if math.Abs(lastP2R-wantP2R) > tolerance {
-		t.Fatalf("last P2R mismatch: got %s want %s", JDE2DateByZone(lastP2R, loc, false), JDE2DateByZone(wantP2R, loc, false))
+		t.Fatalf("last P2R mismatch: got %s want %s", JD2DateByZone(lastP2R, loc, false), JD2DateByZone(wantP2R, loc, false))
 	}
 	if math.Abs(lastR2P-wantR2P) > tolerance {
-		t.Fatalf("last R2P mismatch: got %s want %s", JDE2DateByZone(lastR2P, loc, false), JDE2DateByZone(wantR2P, loc, false))
+		t.Fatalf("last R2P mismatch: got %s want %s", JD2DateByZone(lastR2P, loc, false), JD2DateByZone(wantR2P, loc, false))
 	}
 }

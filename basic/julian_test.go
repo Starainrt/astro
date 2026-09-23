@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-func TestGetNowJDEUsesSingleTimestamp(t *testing.T) {
+func TestGetNowJDUsesSingleTimestamp(t *testing.T) {
 	oldTimeNow := timeNow
 	defer func() {
 		timeNow = oldTimeNow
@@ -23,12 +23,12 @@ func TestGetNowJDEUsesSingleTimestamp(t *testing.T) {
 		return second
 	}
 
-	got := GetNowJDE()
-	want := Date2JDE(first)
+	got := GetNowJD()
+	want := Date2JD(first)
 	if calls != 1 {
-		t.Fatalf("GetNowJDE should read current time once, got %d calls", calls)
+		t.Fatalf("GetNowJD should read current time once, got %d calls", calls)
 	}
 	if math.Float64bits(got) != math.Float64bits(want) {
-		t.Fatalf("GetNowJDE mismatch: got %.15f want %.15f", got, want)
+		t.Fatalf("GetNowJD mismatch: got %.15f want %.15f", got, want)
 	}
 }

@@ -21,6 +21,7 @@ import (
 	"math"
 	"time"
 
+	"github.com/starainrt/astro"
 	"github.com/starainrt/astro/internal/geodata"
 )
 
@@ -33,6 +34,8 @@ const (
 type featureCollection struct {
 	Type     string    `json:"type"`
 	Features []feature `json:"features"`
+	// TimeScale 只在 UT1 导出时出现；UTC 导出与既有输出逐字节一致。
+	TimeScale string `json:"time_scale,omitempty"`
 }
 
 type feature struct {
@@ -68,6 +71,30 @@ type TimeMarkerOptions struct {
 	// Location 是格式化 HH:MM 标签时使用的时区；nil 使用 UTC。
 	// Location is the timezone used to format HH:MM labels; nil uses UTC.
 	Location *time.Location
+	// TimeScale 选择时间属性的时标：零值 UTC；TimeScaleUT1 时所有 time 与 HH:MM 标注都写 UT1 时刻，
+	// 并在集合上输出 time_scale 成员消歧（RFC 3339 的 Z 后缀严格说不等于 UT1）。此时 Location 必须是 nil 或 UTC。
+	// TimeScale selects the scale of time properties: the zero value is UTC; TimeScaleUT1 writes UT1 labels
+	// and adds a time_scale member (a RFC 3339 Z suffix is not exactly UT1). Location must then be nil or UTC.
+	TimeScale astro.TimeScale
+}
+
+// dropFeaturesByRole 按 role 属性丢弃要素；空列表原样返回。
+func dropFeaturesByRole(features []feature, skip []string) []feature {
+	if len(skip) == 0 {
+		return features
+	}
+	skipped := make(map[string]bool, len(skip))
+	for _, role := range skip {
+		skipped[role] = true
+	}
+	kept := make([]feature, 0, len(features))
+	for _, item := range features {
+		if role, _ := item.Properties["role"].(string); skipped[role] {
+			continue
+		}
+		kept = append(kept, item)
+	}
+	return kept
 }
 
 func marshalFeatureCollection(features []feature) ([]byte, error) {
@@ -81,8 +108,23 @@ func marshalEmptyFeatureCollection() ([]byte, error) {
 	return encodeFeatureCollection(make([]feature, 0))
 }
 
+func marshalFeatureCollectionWithTimeScale(features []feature, scale astro.TimeScale) ([]byte, error) {
+	if len(features) == 0 {
+		return nil, fmt.Errorf("geojson: no geographic features")
+	}
+	return encodeFeatureCollectionWithTimeScale(features, scale)
+}
+
 func encodeFeatureCollection(features []feature) ([]byte, error) {
-	value, err := json.Marshal(featureCollection{Type: featureCollectionType, Features: features})
+	return encodeFeatureCollectionWithTimeScale(features, astro.TimeScaleUTC)
+}
+
+func encodeFeatureCollectionWithTimeScale(features []feature, scale astro.TimeScale) ([]byte, error) {
+	member := ""
+	if scale == astro.TimeScaleUT1 {
+		member = "UT1"
+	}
+	value, err := json.Marshal(featureCollection{Type: featureCollectionType, Features: features, TimeScale: member})
 	if err != nil {
 		return nil, fmt.Errorf("geojson: encode feature collection: %w", err)
 	}
@@ -513,7 +555,10 @@ func splitTimedLine(points []pathSample, requireIncreasingTimes bool) ([][]pathS
 		fraction := (unwrappedBoundary - previousUnwrapped.Longitude) /
 			(b.Longitude - previousUnwrapped.Longitude)
 		crossing := interpolatePathSample(previousUnwrapped, b, fraction, boundary)
-		if !crossing.Time.Equal(current[len(current)-1].Time) {
+		// 按位置而不是时刻判断是否重复：食甚等时线整条支路共用同一时刻，按时刻判断会把接缝点丢掉，
+		// 于是反经线两侧各留一个端点，屏幕上就是一条缺口。
+		last := current[len(current)-1]
+		if crossing.Longitude != last.Longitude || crossing.Latitude != last.Latitude {
 			current = append(current, crossing)
 		}
 		if len(current) >= 2 {

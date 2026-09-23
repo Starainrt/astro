@@ -74,15 +74,15 @@ func uranusConjunctionFull(jde, degree float64, next uint8) float64 {
 	} else {
 		jde += daysPerDegree * currentDelta
 	}
-	estimateJD := jde
+	estimateJDE := jde
 	converged := false
 	for i := 0; i < eventNewtonMaxIterations; i++ {
-		prevJD := estimateJD
-		longitudeDelta := uranusSunLongitudeDelta(prevJD, degree, true)
-		longitudeSlope := (uranusSunLongitudeDelta(prevJD+0.000005, degree, true) - uranusSunLongitudeDelta(prevJD-0.000005, degree, true)) / 0.00001
-		nextJD := prevJD - longitudeDelta/longitudeSlope
-		estimateJD = nextJD
-		if math.Abs(nextJD-prevJD) <= 0.00001 {
+		prevJDE := estimateJDE
+		longitudeDelta := uranusSunLongitudeDelta(prevJDE, degree, true)
+		longitudeSlope := (uranusSunLongitudeDelta(prevJDE+0.000005, degree, true) - uranusSunLongitudeDelta(prevJDE-0.000005, degree, true)) / 0.00001
+		nextJD := prevJDE - longitudeDelta/longitudeSlope
+		estimateJDE = nextJD
+		if math.Abs(nextJD-prevJDE) <= 0.00001 {
 			converged = true
 			break
 		}
@@ -90,7 +90,7 @@ func uranusConjunctionFull(jde, degree float64, next uint8) float64 {
 	if !converged {
 		return math.NaN()
 	}
-	return TD2UT(estimateJD, false)
+	return TT2UTC(estimateJDE)
 }
 
 func uranusConjunction(jde, degree float64, next uint8) float64 {
@@ -105,15 +105,15 @@ func uranusConjunction(jde, degree float64, next uint8) float64 {
 	} else {
 		jde += daysPerDegree * currentDelta
 	}
-	estimateJD := jde
+	estimateJDE := jde
 	converged := false
 	for i := 0; i < eventNewtonMaxIterations; i++ {
-		prevJD := estimateJD
-		longitudeDelta := uranusSunLongitudeDeltaN(prevJD, degree, true, uranusEventSearchN)
-		longitudeSlope := (uranusSunLongitudeDeltaN(prevJD+0.000005, degree, true, uranusEventSearchN) - uranusSunLongitudeDeltaN(prevJD-0.000005, degree, true, uranusEventSearchN)) / 0.00001
-		nextJD := prevJD - longitudeDelta/longitudeSlope
-		estimateJD = nextJD
-		if math.Abs(nextJD-prevJD) <= uranusPhaseCoarseTolerance {
+		prevJDE := estimateJDE
+		longitudeDelta := uranusSunLongitudeDeltaN(prevJDE, degree, true, uranusEventSearchN)
+		longitudeSlope := (uranusSunLongitudeDeltaN(prevJDE+0.000005, degree, true, uranusEventSearchN) - uranusSunLongitudeDeltaN(prevJDE-0.000005, degree, true, uranusEventSearchN)) / 0.00001
+		nextJD := prevJDE - longitudeDelta/longitudeSlope
+		estimateJDE = nextJD
+		if math.Abs(nextJD-prevJDE) <= uranusPhaseCoarseTolerance {
 			converged = true
 			break
 		}
@@ -123,12 +123,12 @@ func uranusConjunction(jde, degree float64, next uint8) float64 {
 	}
 	converged = false
 	for i := 0; i < eventNewtonMaxIterations; i++ {
-		prevJD := estimateJD
-		longitudeDelta := uranusSunLongitudeDelta(prevJD, degree, true)
-		longitudeSlope := (uranusSunLongitudeDelta(prevJD+0.000005, degree, true) - uranusSunLongitudeDelta(prevJD-0.000005, degree, true)) / 0.00001
-		nextJD := prevJD - longitudeDelta/longitudeSlope
-		estimateJD = nextJD
-		if math.Abs(nextJD-prevJD) <= 0.00001 {
+		prevJDE := estimateJDE
+		longitudeDelta := uranusSunLongitudeDelta(prevJDE, degree, true)
+		longitudeSlope := (uranusSunLongitudeDelta(prevJDE+0.000005, degree, true) - uranusSunLongitudeDelta(prevJDE-0.000005, degree, true)) / 0.00001
+		nextJD := prevJDE - longitudeDelta/longitudeSlope
+		estimateJDE = nextJD
+		if math.Abs(nextJD-prevJDE) <= 0.00001 {
 			converged = true
 			break
 		}
@@ -136,7 +136,7 @@ func uranusConjunction(jde, degree float64, next uint8) float64 {
 	if !converged {
 		return math.NaN()
 	}
-	return TD2UT(estimateJD, false)
+	return TT2UTC(estimateJDE)
 }
 
 func LastUranusConjunction(jde float64) float64 {
@@ -175,22 +175,22 @@ func uranusRetrogradeAroundOpposition(oppositionJD float64, searchBeforeOppositi
 	if !isFiniteFloat(oppositionJD) {
 		return math.NaN()
 	}
-	oppositionTT := TD2UT(oppositionJD, true)
+	oppositionTT := UTC2TT(oppositionJD)
 	startTT := oppositionTT
 	endTT := oppositionTT
 	if searchBeforeOpposition {
 		easternQuadratureUT := uranusConjunction(oppositionTT, 90, 0)
-		startTT = TD2UT(easternQuadratureUT, true)
+		startTT = UTC2TT(easternQuadratureUT)
 	} else {
 		westernQuadratureUT := uranusConjunction(oppositionTT, 270, 1)
-		endTT = TD2UT(westernQuadratureUT, true)
+		endTT = UTC2TT(westernQuadratureUT)
 	}
-	bestJD := zeroEventInWindow(startTT, endTT, 2.0, 2.0, 30.0/86400.0, func(jd float64) float64 {
+	bestJDE := zeroEventInWindow(startTT, endTT, 2.0, 2.0, 30.0/86400.0, func(jd float64) float64 {
 		return uranusRADerivativeN(jd, stationDerivativeStepDay, uranusEventSearchN)
 	}, func(jd float64) float64 {
 		return uranusRADerivative(jd, stationDerivativeStepDay)
 	})
-	return TD2UT(bestJD, false)
+	return TT2UTC(bestJDE)
 }
 
 func NextUranusRetrogradeToPrograde(jde float64) float64 {

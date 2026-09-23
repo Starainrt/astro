@@ -145,6 +145,91 @@ func TestPlanetOccultationGreatestTimeContoursMatchLocalGreatest(t *testing.T) {
 	}
 }
 
+// 只要存在落在可见域内的序列种子，就必须至少有一个被投影接受：全部被拒会让整条等时线退回 5° 粗扫，
+// 产生相位错开的重复支路。投影判据只能按位置偏移给（残差量纲随口径变化），不能用绝对残差阈值。
+func TestOccultationGreatestTimeContourSeedsConvergeInVisibleDomain(t *testing.T) {
+	star := occultationIsochroneTestStar()
+	starPaths, err := FindStarOccultationPaths(
+		time.Date(2025, time.August, 22, 0, 0, 0, 0, time.UTC),
+		time.Date(2025, time.August, 24, 0, 0, 0, 0, time.UTC), star,
+		OccultationPathOptions{Step: 2 * time.Minute, DisableFootprints: true, GreatestTimeStep: 15 * time.Minute},
+	)
+	if err != nil || len(starPaths) == 0 {
+		t.Fatalf("star: %v", err)
+	}
+	planetPaths, err := FindPlanetOccultationPaths(
+		time.Date(2025, time.February, 1, 0, 0, 0, 0, time.UTC),
+		time.Date(2025, time.February, 2, 0, 0, 0, 0, time.UTC), OccultationSaturn,
+		OccultationPathOptions{Step: 2 * time.Minute, DisableFootprints: true, GreatestTimeStep: 30 * time.Minute},
+	)
+	if err != nil || len(planetPaths) == 0 {
+		t.Fatalf("planet: %v", err)
+	}
+	config, _ := planetOccultationConfigFor(OccultationSaturn)
+	starCache := newStarOccultationEventCache(star)
+	planetCache := newPlanetOccultationEventCache(config)
+	cases := []struct {
+		name     string
+		contours []OccultationGreatestTimeContour
+		series   [][]OccultationPathPoint
+		arcAt    func(level float64) occultationGreatestTimeArc
+	}{
+		{
+			name:     "star",
+			contours: starPaths[0].GreatestTimeContours,
+			series: [][]OccultationPathPoint{
+				starPaths[0].CenterLine, starPaths[0].NorthernLimit, starPaths[0].SouthernLimit,
+			},
+			arcAt: func(level float64) occultationGreatestTimeArc {
+				return occultationGreatestTimeArc{
+					evaluation: starCache.riseSetCache.evaluation(level), location: time.UTC,
+				}
+			},
+		},
+		{
+			name:     "planet",
+			contours: planetPaths[0].GreatestTimeContours,
+			series: [][]OccultationPathPoint{
+				planetPaths[0].CenterLine, planetPaths[0].NorthernLimit, planetPaths[0].SouthernLimit,
+			},
+			arcAt: func(level float64) occultationGreatestTimeArc {
+				return occultationGreatestTimeArc{
+					evaluation:       planetCache.riseSetCache.evaluation(level),
+					location:         time.UTC,
+					useContactMetric: true,
+				}
+			},
+		},
+	}
+	sampled := 0
+	for _, tc := range cases {
+		if len(tc.contours) == 0 {
+			t.Fatalf("%s: no contours", tc.name)
+		}
+		for _, contour := range tc.contours {
+			arc := tc.arcAt(contour.JDE)
+			inDomain, accepted := 0, 0
+			for _, seed := range occultationGreatestTimeContourSeeds(tc.series, contour.JDE) {
+				if _, _, ok := arc.sample(seed[0], seed[1]); !ok {
+					continue
+				}
+				inDomain++
+				if _, _, _, corrected := arc.correct(seed[0], seed[1]); corrected {
+					accepted++
+				}
+			}
+			sampled += inDomain
+			if inDomain > 0 && accepted == 0 {
+				t.Fatalf("%s contour %s: %d in-domain seeds, none accepted",
+					tc.name, contour.Time.Format("15:04"), inDomain)
+			}
+		}
+	}
+	if sampled == 0 {
+		t.Fatalf("no in-domain seeds sampled")
+	}
+}
+
 // 同一时刻取值的等时线必须是单条连通曲线：曾因"覆盖判据用点到顶点距离"而被重复延拓
 // （行星掩星每个取值 3 条重叠支路）。
 func TestOccultationGreatestTimeContoursHaveSingleBranchPerLevel(t *testing.T) {

@@ -303,8 +303,8 @@ func TestLocalSolarEclipseContactPoints(t *testing.T) {
 		points[point.Label] = point
 	}
 	assertSolarFloatClose(t, "C1.ContactPositionAngle", points["C1"].ContactPositionAngle, 226.219228, 1e-3)
-	assertSolarFloatClose(t, "C2.ContactPositionAngle", points["C2"].ContactPositionAngle, 19.137089, 1e-3)
-	assertSolarFloatClose(t, "C2.MoonCenterPositionAngle", points["C2"].MoonCenterPositionAngle, 199.137089, 1e-3)
+	assertSolarFloatClose(t, "C2.ContactPositionAngle", points["C2"].ContactPositionAngle, 19.133602, 1e-3)
+	assertSolarFloatClose(t, "C2.MoonCenterPositionAngle", points["C2"].MoonCenterPositionAngle, 199.133602, 1e-3)
 	assertSolarFloatClose(t, "C4.ContactClockwiseAngle", points["C4"].ContactClockwiseAngle, 310.781438, 1e-3)
 }
 

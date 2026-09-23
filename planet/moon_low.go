@@ -201,26 +201,26 @@ var lowMoonBTerms = []lowMoonTerm{
 	{d: 2, m: -2, mp: 0, f: 1, amp: 107},
 }
 
-func MoonLo(JD float64) float64 { //'月球平黄经
-	T := (JD - 2451545) / 36525
+func MoonLo(JDE float64) float64 { //'月球平黄经
+	T := (JDE - 2451545) / 36525
 	MoonLo := 218.3164591 + 481267.88134236*T - 0.0013268*T*T + T*T*T/538841 - T*T*T*T/65194000
 	return MoonLo
 }
 
-func SunMoonAngle(JD float64) float64 { // '月日距角
-	T := (JD - 2451545) / 36525
+func SunMoonAngle(JDE float64) float64 { // '月日距角
+	T := (JDE - 2451545) / 36525
 	SunMoonAngle := 297.8502042 + 445267.1115168*T - 0.00163*T*T + T*T*T/545868 - T*T*T*T/113065000
 	return SunMoonAngle
 }
 
-func MoonM(JD float64) float64 { // '月平近点角
-	T := (JD - 2451545) / 36525
+func MoonM(JDE float64) float64 { // '月平近点角
+	T := (JDE - 2451545) / 36525
 	MoonM := 134.9634114 + 477198.8676313*T + 0.008997*T*T + T*T*T/69699 - T*T*T*T/14712000
 	return MoonM
 }
 
-func MoonLonX(JD float64) float64 { // As Double '月球经度参数(到升交点的平角距离)
-	T := (JD - 2451545) / 36525
+func MoonLonX(JDE float64) float64 { // As Double '月球经度参数(到升交点的平角距离)
+	T := (JDE - 2451545) / 36525
 	MoonLonX := 93.2720993 + 483202.0175273*T - 0.0034029*T*T - T*T*T/3526000 + T*T*T*T/863310000
 	return MoonLonX
 }
@@ -237,12 +237,12 @@ func lowMoonTermValue(term lowMoonTerm, D, IsunM, IMoonM, F, E float64, trig fun
 	}
 }
 
-func MoonI(JD float64) float64 {
-	T := (JD - 2451545) / 36525
-	D := Limit360(SunMoonAngle(JD))
-	IsunM := SunM(JD)
-	IMoonM := MoonM(JD)
-	F := Limit360(MoonLonX(JD))
+func MoonI(JDE float64) float64 {
+	T := (JDE - 2451545) / 36525
+	D := Limit360(SunMoonAngle(JDE))
+	IsunM := SunM(JDE)
+	IMoonM := MoonM(JDE)
+	F := Limit360(MoonLonX(JDE))
 	E := 1 - 0.002516*T - 0.0000074*T*T
 	A1 := 119.75 + 131.849*T
 	A2 := Limit360(53.09 + 479264.29*T)
@@ -250,16 +250,16 @@ func MoonI(JD float64) float64 {
 	for _, term := range lowMoonITerms {
 		MoonI += lowMoonTermValue(term, D, IsunM, IMoonM, F, E, Sin)
 	}
-	MoonI = MoonI + 3958*Sin(A1) + 1962*Sin(MoonLo(JD)-F) + 318*Sin(A2)
+	MoonI = MoonI + 3958*Sin(A1) + 1962*Sin(MoonLo(JDE)-F) + 318*Sin(A2)
 	return FR(MoonI)
 }
 
-func MoonR(JD float64) float64 {
-	T := (JD - 2451545) / 36525
-	D := SunMoonAngle(JD)
-	IsunM := SunM(JD)
-	IMoonM := Limit360(MoonM(JD))
-	F := Limit360(MoonLonX(JD))
+func MoonR(JDE float64) float64 {
+	T := (JDE - 2451545) / 36525
+	D := SunMoonAngle(JDE)
+	IsunM := SunM(JDE)
+	IMoonM := Limit360(MoonM(JDE))
+	F := Limit360(MoonLonX(JDE))
 	E := 1 - 0.002516*T - 0.0000074*T*T
 	var MoonR float64
 	for _, term := range lowMoonRTerms {
@@ -268,12 +268,12 @@ func MoonR(JD float64) float64 {
 	return MoonR
 }
 
-func MoonB(JD float64) float64 {
-	T := (JD - 2451545) / 36525
-	D := Limit360(SunMoonAngle(JD))
-	IsunM := Limit360(SunM(JD))
-	IMoonM := Limit360(MoonM(JD))
-	F := Limit360(MoonLonX(JD))
+func MoonB(JDE float64) float64 {
+	T := (JDE - 2451545) / 36525
+	D := Limit360(SunMoonAngle(JDE))
+	IsunM := Limit360(SunM(JDE))
+	IMoonM := Limit360(MoonM(JDE))
+	F := Limit360(MoonLonX(JDE))
 	E := 1 - 0.002516*T - 0.0000074*T*T
 	A1 := Limit360(119.75 + 131.849*T)
 	A3 := Limit360(313.45 + 481266.484*T)
@@ -281,19 +281,19 @@ func MoonB(JD float64) float64 {
 	for _, term := range lowMoonBTerms {
 		MoonB += lowMoonTermValue(term, D, IsunM, IMoonM, F, E, Sin)
 	}
-	MoonB += -2235*Sin(MoonLo(JD)) + 382*Sin(A3) + 175*Sin(A1-F) + 175*Sin(A1+F) + 127*Sin(MoonLo(JD)-IMoonM) - 115*Sin(MoonLo(JD)+IMoonM)
+	MoonB += -2235*Sin(MoonLo(JDE)) + 382*Sin(A3) + 175*Sin(A1-F) + 175*Sin(A1+F) + 127*Sin(MoonLo(JDE)-IMoonM) - 115*Sin(MoonLo(JDE)+IMoonM)
 	return MoonB
 }
 
-func MoonTrueLo(JD float64) float64 {
-	return Limit360(MoonLo(JD) + (MoonI(JD) / 1000000))
+func MoonTrueLo(JDE float64) float64 {
+	return Limit360(MoonLo(JDE) + (MoonI(JDE) / 1000000))
 }
 
-func MoonTrueBo(JD float64) float64 {
-	return MoonB(JD) / 1000000
+func MoonTrueBo(JDE float64) float64 {
+	return MoonB(JDE) / 1000000
 }
 
-func MoonAway(JD float64) float64 { //'月地距离
-	MoonAway := 385000.56 + MoonR(JD)/1000
+func MoonAway(JDE float64) float64 { //'月地距离
+	MoonAway := 385000.56 + MoonR(JDE)/1000
 	return MoonAway
 }

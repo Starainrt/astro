@@ -16,6 +16,28 @@ const (
 	localLunarEclipseQueryGeometric
 )
 
+// LocalLunarEclipseVisibility 站点在本次月食中的可见性类别 / how much of the eclipse stays above the local horizon.
+type LocalLunarEclipseVisibility string
+
+const (
+	// LocalLunarEclipseInvisible 食内月亮始终在地平线下 / the Moon never clears the local horizon.
+	LocalLunarEclipseInvisible LocalLunarEclipseVisibility = "invisible"
+	// LocalLunarEclipseMoonrise 带食月出：食始时月亮尚未升起 / moonrise falls inside the eclipse.
+	LocalLunarEclipseMoonrise LocalLunarEclipseVisibility = "moonrise"
+	// LocalLunarEclipseMoonset 带食月落：食终时月亮已经落下 / moonset falls inside the eclipse.
+	LocalLunarEclipseMoonset LocalLunarEclipseVisibility = "moonset"
+	// LocalLunarEclipseRiseAndSet 食内先月出后月落：半影首尾都在地平线下 / both a moonrise and a moonset fall inside the eclipse.
+	LocalLunarEclipseRiseAndSet LocalLunarEclipseVisibility = "rise-and-set"
+	// LocalLunarEclipseInterrupted 半影首尾可见，中途却落到地平线下 / above the horizon at both penumbral contacts but not in between.
+	LocalLunarEclipseInterrupted LocalLunarEclipseVisibility = "interrupted"
+	// LocalLunarEclipseFull 半影全程可见 / the Moon stays above the horizon for the whole eclipse.
+	LocalLunarEclipseFull LocalLunarEclipseVisibility = "full"
+	// LocalLunarEclipsePenumbraMoonrise 仅见半影的月出：月出落在食内，本影阶段整段在地平线下 / moonrise inside the eclipse with the whole umbral phase below the horizon.
+	LocalLunarEclipsePenumbraMoonrise LocalLunarEclipseVisibility = "penumbra-moonrise"
+	// LocalLunarEclipsePenumbraMoonset 仅见半影的月落：月落落在食内，本影阶段整段在地平线下 / moonset inside the eclipse with the whole umbral phase below the horizon.
+	LocalLunarEclipsePenumbraMoonset LocalLunarEclipseVisibility = "penumbra-moonset"
+)
+
 // LocalLunarEclipseInfo 站点月食信息, local lunar eclipse information.
 //
 // 所有时刻字段都保持用户输入的时区。
@@ -33,7 +55,7 @@ type LocalLunarEclipseInfo struct {
 	Longitude float64
 	// Latitude 观测点纬度，北正南负, observer latitude, north positive.
 	Latitude float64
-	// Height 观测点海拔高度，单位米, observer height in meters.
+	// Height 观测点椭球高（大地高），单位米；只有正高 H 时须先加大地水准面差距 N, observer ellipsoidal height in meters.
 	Height float64
 
 	// PenumbralMagnitude 半影食分, penumbral magnitude.
@@ -62,6 +84,11 @@ type LocalLunarEclipseInfo struct {
 	MoonAzimuth float64
 	// VisibleAtMaximum 食甚时月亮中心在本地几何地平线上方, Moon center above the local geometric horizon at maximum.
 	VisibleAtMaximum bool
+	// Visibility 本次月食在站点的可见性类别；月出/月落落在食内且本影阶段整段在地平线下时取
+	// penumbra-moonrise / penumbra-moonset（只看到半影）/ how much of the eclipse is above the local
+	// horizon; of the umbral phase stays below it, moonrise and moonset are reported as
+	// penumbra-moonrise and penumbra-moonset.
+	Visibility LocalLunarEclipseVisibility
 
 	// HasPenumbral 有半影阶段, has penumbral phase.
 	HasPenumbral bool
@@ -386,7 +413,7 @@ func localLunarEclipseInfoFromBasic(
 	moonAltitude := lunarAltitude(maximum, lon, lat)
 	saros, hasSaros := lunarSarosInfo(result.Maximum)
 
-	return LocalLunarEclipseInfo{
+	info := LocalLunarEclipseInfo{
 		HasSaros:           hasSaros,
 		Saros:              saros,
 		Type:               mapBasicLunarEclipseType(result.Type),
@@ -409,6 +436,8 @@ func localLunarEclipseInfoFromBasic(
 		HasPartial:         result.HasPartial,
 		HasTotal:           result.HasTotal,
 	}
+	info.Visibility = localLunarEclipseVisibility(info)
+	return info
 }
 
 func localLunarEclipseOverlapsDate(info LocalLunarEclipseInfo, dayStart, dayEnd time.Time) bool {
@@ -454,23 +483,103 @@ func localLunarEclipseVisibleOnDate(info LocalLunarEclipseInfo, dayStart, dayEnd
 	return localLunarEclipseVisibleDuring(info, segmentStart, segmentEnd)
 }
 
+// localLunarEclipseVisibility 按站点自己的中天对食内高度分类。
+func localLunarEclipseVisibility(info LocalLunarEclipseInfo) LocalLunarEclipseVisibility {
+	start, end, ok := localLunarEclipseRange(info)
+	if !ok {
+		return LocalLunarEclipseInvisible
+	}
+	startVisible := localLunarEclipseAltitudeVisible(start, info)
+	endVisible := localLunarEclipseAltitudeVisible(end, info)
+	umbralVisible := localLunarEclipseUmbralVisible(info)
+	switch {
+	case startVisible && endVisible:
+		if localLunarEclipseExtremumAltitude(info, start, end, false) > localLunarEclipseVisibilityThreshold(info.Height, info.Latitude) {
+			return LocalLunarEclipseFull
+		}
+		return LocalLunarEclipseInterrupted
+	case endVisible:
+		if !umbralVisible {
+			return LocalLunarEclipsePenumbraMoonrise
+		}
+		return LocalLunarEclipseMoonrise
+	case startVisible:
+		if !umbralVisible {
+			return LocalLunarEclipsePenumbraMoonset
+		}
+		return LocalLunarEclipseMoonset
+	case localLunarEclipseVisibleDuring(info, start, end):
+		return LocalLunarEclipseRiseAndSet
+	default:
+		return LocalLunarEclipseInvisible
+	}
+}
+
+// localLunarEclipseUmbralVisible 本影阶段是否有任何时刻月亮在地平线上；纯半影月食没有本影可看，
+// 恒为 true，不把这类站点降级成"仅见半影"。极区掠射时 U1、食甚、U4 三点都可能在地平下而中途
+// 短暂露出，所以这里取整个本影区间的高度极值，不能只比三个采样点。
+func localLunarEclipseUmbralVisible(info LocalLunarEclipseInfo) bool {
+	if !info.HasPartial {
+		return true
+	}
+	start, end := info.PartialStart, info.PartialEnd
+	if start.IsZero() || end.IsZero() || !start.Before(end) {
+		return false
+	}
+	if localLunarEclipseAltitudeVisible(start, info) || localLunarEclipseAltitudeVisible(end, info) {
+		return true
+	}
+	return localLunarEclipseExtremumAltitude(info, start, end, true) >
+		localLunarEclipseVisibilityThreshold(info.Height, info.Latitude)
+}
+
+const lunarEclipseVisibilityScanSamples = 48
+
+// localLunarEclipseExtremumAltitude 先粗扫定位、再在相邻两格内三分细化地取有限窗口内的月心高度极值。
+func localLunarEclipseExtremumAltitude(info LocalLunarEclipseInfo, start, end time.Time, maximum bool) float64 {
+	if !start.Before(end) {
+		return lunarAltitude(start, info.Longitude, info.Latitude)
+	}
+	step := end.Sub(start) / lunarEclipseVisibilityScanSamples
+	best := lunarAltitude(start, info.Longitude, info.Latitude)
+	bestIndex := 0
+	for index := 1; index <= lunarEclipseVisibilityScanSamples; index++ {
+		value := lunarAltitude(start.Add(step*time.Duration(index)), info.Longitude, info.Latitude)
+		if (value > best) == maximum {
+			best, bestIndex = value, index
+		}
+	}
+	lowIndex, highIndex := bestIndex-1, bestIndex+1
+	if lowIndex < 0 {
+		lowIndex = 0
+	}
+	if highIndex > lunarEclipseVisibilityScanSamples {
+		highIndex = lunarEclipseVisibilityScanSamples
+	}
+	low := start.Add(step * time.Duration(lowIndex))
+	high := start.Add(step * time.Duration(highIndex))
+	for iteration := 0; iteration < 30; iteration++ {
+		third := high.Sub(low) / 3
+		first, second := low.Add(third), high.Add(-third)
+		if (lunarAltitude(first, info.Longitude, info.Latitude) < lunarAltitude(second, info.Longitude, info.Latitude)) == maximum {
+			low = first
+		} else {
+			high = second
+		}
+	}
+	refined := lunarAltitude(low.Add(high.Sub(low)/2), info.Longitude, info.Latitude)
+	if maximum {
+		return math.Max(best, refined)
+	}
+	return math.Min(best, refined)
+}
+
 func localLunarEclipseVisibleDuring(info LocalLunarEclipseInfo, start, end time.Time) bool {
 	if localLunarEclipseAltitudeVisible(start, info) || localLunarEclipseAltitudeVisible(end, info) {
 		return true
 	}
-
-	for dayStart, _, _ := lunarEclipseLocalDayBounds(start); !dayStart.After(end); dayStart = nextLunarEclipseLocalDayStart(dayStart) {
-		_, culminationSeed, _ := lunarEclipseLocalDayBounds(dayStart)
-		culmination := lunarCulminationTime(culminationSeed, info.Longitude, info.Latitude)
-		if culmination.Before(start) || culmination.After(end) {
-			continue
-		}
-		if localLunarEclipseAltitudeVisible(culmination, info) {
-			return true
-		}
-	}
-
-	return false
+	return localLunarEclipseExtremumAltitude(info, start, end, true) >
+		localLunarEclipseVisibilityThreshold(info.Height, info.Latitude)
 }
 
 func localLunarEclipseAltitudeVisible(date time.Time, info LocalLunarEclipseInfo) bool {

@@ -15,8 +15,8 @@ func EclipticObliquity(jde float64, nutation bool) float64 {
 	return eps
 }
 
-func TrueObliquity(JD float64) float64 {
-	return EclipticObliquity(JD, true)
+func TrueObliquity(JDE float64) float64 {
+	return EclipticObliquity(JDE, true)
 }
 
 // 黄经章动 1980

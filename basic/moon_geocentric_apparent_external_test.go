@@ -34,7 +34,7 @@ func TestMoonGeocentricApparentCoordinatesMatchHorizonsBaseline(t *testing.T) {
 		if err != nil {
 			t.Fatalf("parse sample time %q: %v", sample.InputUTC, err)
 		}
-		jd := TD2UT(Date2JDE(date.UTC()), true)
+		jd := UTC2TT(Date2JD(date.UTC()))
 		prefix := "moon." + sample.InputUTC
 
 		assertPlanetApparentAngleClose(t, prefix+".RightAscension", HMoonGeocentricApparentRa(jd), sample.RightAscension, 0.001)
@@ -54,7 +54,7 @@ func TestMoonGeocentricTrueCoordinatesFollowDefinition(t *testing.T) {
 	}
 
 	for _, sample := range samples {
-		jd := TD2UT(Date2JDE(sample.UTC()), true)
+		jd := UTC2TT(Date2JD(sample.UTC()))
 		wantRA, wantDec := LoBoToRaDec(jd, HMoonTrueLo(jd), HMoonTrueBo(jd))
 		gotRA, gotDec := HMoonGeocentricTrueRaDec(jd)
 

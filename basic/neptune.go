@@ -7,79 +7,79 @@ import (
 	. "github.com/starainrt/astro/tools"
 )
 
-func NeptuneL(jd float64) float64 {
-	return planet.WherePlanet(7, 0, jd)
+func NeptuneL(jde float64) float64 {
+	return planet.WherePlanet(7, 0, jde)
 }
 
-func NeptuneB(jd float64) float64 {
-	return planet.WherePlanet(7, 1, jd)
+func NeptuneB(jde float64) float64 {
+	return planet.WherePlanet(7, 1, jde)
 }
-func NeptuneR(jd float64) float64 {
-	return planet.WherePlanet(7, 2, jd)
+func NeptuneR(jde float64) float64 {
+	return planet.WherePlanet(7, 2, jde)
 }
-func ANeptuneX(jd float64) float64 {
-	l := NeptuneL(jd)
-	b := NeptuneB(jd)
-	r := NeptuneR(jd)
-	el := planet.WherePlanet(-1, 0, jd)
-	eb := planet.WherePlanet(-1, 1, jd)
-	er := planet.WherePlanet(-1, 2, jd)
+func ANeptuneX(jde float64) float64 {
+	l := NeptuneL(jde)
+	b := NeptuneB(jde)
+	r := NeptuneR(jde)
+	el := planet.WherePlanet(-1, 0, jde)
+	eb := planet.WherePlanet(-1, 1, jde)
+	er := planet.WherePlanet(-1, 2, jde)
 	x := r*Cos(b)*Cos(l) - er*Cos(eb)*Cos(el)
 	return x
 }
 
-func ANeptuneY(jd float64) float64 {
+func ANeptuneY(jde float64) float64 {
 
-	l := NeptuneL(jd)
-	b := NeptuneB(jd)
-	r := NeptuneR(jd)
-	el := planet.WherePlanet(-1, 0, jd)
-	eb := planet.WherePlanet(-1, 1, jd)
-	er := planet.WherePlanet(-1, 2, jd)
+	l := NeptuneL(jde)
+	b := NeptuneB(jde)
+	r := NeptuneR(jde)
+	el := planet.WherePlanet(-1, 0, jde)
+	eb := planet.WherePlanet(-1, 1, jde)
+	er := planet.WherePlanet(-1, 2, jde)
 	y := r*Cos(b)*Sin(l) - er*Cos(eb)*Sin(el)
 	return y
 }
-func ANeptuneZ(jd float64) float64 {
-	//l := NeptuneL(jd)
-	b := NeptuneB(jd)
-	r := NeptuneR(jd)
-	//	el := planet.WherePlanet(-1, 0, jd)
-	eb := planet.WherePlanet(-1, 1, jd)
-	er := planet.WherePlanet(-1, 2, jd)
+func ANeptuneZ(jde float64) float64 {
+	//l := NeptuneL(jde)
+	b := NeptuneB(jde)
+	r := NeptuneR(jde)
+	//	el := planet.WherePlanet(-1, 0, jde)
+	eb := planet.WherePlanet(-1, 1, jde)
+	er := planet.WherePlanet(-1, 2, jde)
 	z := r*Sin(b) - er*Sin(eb)
 	return z
 }
 
-func ANeptuneXYZ(jd float64) (float64, float64, float64) {
-	l := NeptuneL(jd)
-	b := NeptuneB(jd)
-	r := NeptuneR(jd)
-	el := planet.WherePlanet(-1, 0, jd)
-	eb := planet.WherePlanet(-1, 1, jd)
-	er := planet.WherePlanet(-1, 2, jd)
+func ANeptuneXYZ(jde float64) (float64, float64, float64) {
+	l := NeptuneL(jde)
+	b := NeptuneB(jde)
+	r := NeptuneR(jde)
+	el := planet.WherePlanet(-1, 0, jde)
+	eb := planet.WherePlanet(-1, 1, jde)
+	er := planet.WherePlanet(-1, 2, jde)
 	x := r*Cos(b)*Cos(l) - er*Cos(eb)*Cos(el)
 	y := r*Cos(b)*Sin(l) - er*Cos(eb)*Sin(el)
 	z := r*Sin(b) - er*Sin(eb)
 	return x, y, z
 }
 
-func NeptuneApparentRa(jd float64) float64 {
-	lo, bo := NeptuneApparentLoBo(jd)
-	eps := TrueObliquity(jd)
+func NeptuneApparentRa(jde float64) float64 {
+	lo, bo := NeptuneApparentLoBo(jde)
+	eps := TrueObliquity(jde)
 	ra := math.Atan2((Sin(lo)*Cos(eps) - Tan(bo)*Sin(eps)), Cos(lo))
 	ra = ra * 180 / math.Pi
 	return Limit360(ra)
 }
-func NeptuneApparentDec(jd float64) float64 {
-	lo, bo := NeptuneApparentLoBo(jd)
-	eps := TrueObliquity(jd)
+func NeptuneApparentDec(jde float64) float64 {
+	lo, bo := NeptuneApparentLoBo(jde)
+	eps := TrueObliquity(jde)
 	dec := ArcSin(Sin(bo)*Cos(eps) + Cos(bo)*Sin(eps)*Sin(lo))
 	return dec
 }
 
-func NeptuneApparentRaDec(jd float64) (float64, float64) {
-	lo, bo := NeptuneApparentLoBo(jd)
-	eps := TrueObliquity(jd)
+func NeptuneApparentRaDec(jde float64) (float64, float64) {
+	lo, bo := NeptuneApparentLoBo(jde)
+	eps := TrueObliquity(jde)
 	ra := math.Atan2((Sin(lo)*Cos(eps) - Tan(bo)*Sin(eps)), Cos(lo))
 	ra = ra * 180 / math.Pi
 	dec := ArcSin(Sin(bo)*Cos(eps) + Cos(bo)*Sin(eps)*Sin(lo))
@@ -105,22 +105,22 @@ func NeptuneApparentLoBo(jd float64) (float64, float64) {
 	return geo.lo, geo.bo
 }
 
-func NeptuneMag(jd float64) float64 {
-	sunDistance := NeptuneR(jd)
-	earthDistance := EarthNeptuneAway(jd)
-	earthSunDistance := planet.WherePlanet(-1, 2, jd)
+func NeptuneMag(jde float64) float64 {
+	sunDistance := NeptuneR(jde)
+	earthDistance := EarthNeptuneAway(jde)
+	earthSunDistance := planet.WherePlanet(-1, 2, jde)
 	i := (sunDistance*sunDistance + earthDistance*earthDistance - earthSunDistance*earthSunDistance) / (2 * sunDistance * earthDistance)
 	i = ArcCos(i)
 	mag := -6.87 + 5*math.Log10(sunDistance*earthDistance)
 	return FloatRound(mag, 2)
 }
 
-func NeptuneHeight(jde, lon, lat, timezone float64) float64 {
+func NeptuneHeight(localJD, lon, lat, timezone float64) float64 {
 	// 转换为世界时
-	utcJde := jde - timezone/24.0
+	utcJD := localJD - timezone/24.0
 	// 计算视恒星时
-	ra, dec := NeptuneApparentRaDec(TD2UT(utcJde, true))
-	st := Limit360(ApparentSiderealTime(utcJde)*15 + lon)
+	ra, dec := NeptuneApparentRaDec(UTC2TT(utcJD))
+	st := Limit360(ApparentSiderealTime(UTC2UT1(utcJD))*15 + lon)
 	// 计算时角
 	hourAngle := Limit360(st - ra)
 	// 高度角、时角与天球座标三角转换公式
@@ -129,12 +129,12 @@ func NeptuneHeight(jde, lon, lat, timezone float64) float64 {
 	return ArcSin(sinHeight)
 }
 
-func NeptuneAzimuth(jde, lon, lat, timezone float64) float64 {
+func NeptuneAzimuth(localJD, lon, lat, timezone float64) float64 {
 	// 转换为世界时
-	utcJde := jde - timezone/24.0
+	utcJD := localJD - timezone/24.0
 	// 计算视恒星时
-	ra, dec := NeptuneApparentRaDec(TD2UT(utcJde, true))
-	st := Limit360(ApparentSiderealTime(utcJde)*15 + lon)
+	ra, dec := NeptuneApparentRaDec(UTC2TT(utcJD))
+	st := Limit360(ApparentSiderealTime(UTC2UT1(utcJD))*15 + lon)
 	// 计算时角
 	hourAngle := Limit360(st - ra)
 	// 三角转换公式
@@ -153,21 +153,21 @@ func NeptuneAzimuth(jde, lon, lat, timezone float64) float64 {
 }
 
 func NeptuneHourAngle(jd, lon, timezone float64) float64 {
-	siderealLongitude := Limit360(ApparentSiderealTime(jd-timezone/24)*15 + lon)
-	hourAngle := siderealLongitude - NeptuneApparentRa(TD2UT(jd-timezone/24.0, true))
+	siderealLongitude := Limit360(ApparentSiderealTime(UTC2UT1(jd-timezone/24))*15 + lon)
+	hourAngle := siderealLongitude - NeptuneApparentRa(UTC2TT(jd-timezone/24.0))
 	if hourAngle < 0 {
 		hourAngle += 360
 	}
 	return hourAngle
 }
 
-func NeptuneCulminationTime(jde, lon, timezone float64) float64 {
-	//jde 世界时，非力学时，当地时区 0时，无需转换力学时
+func NeptuneCulminationTime(localJD, lon, timezone float64) float64 {
+	// localJD 是本地民用日锚点（当地 0 时），不是力学时。
 	//ra,dec 瞬时天球座标，非J2000等时间天球坐标
-	jde = math.Floor(jde) + 0.5
-	estimateJD := jde + Limit360(360-NeptuneHourAngle(jde, lon, timezone))/15.0/24.0*0.99726851851851851851
-	normalizedHourAngle := func(jde, lon, timezone float64) float64 {
-		currentHourAngle := NeptuneHourAngle(jde, lon, timezone)
+	localJD = math.Floor(localJD) + 0.5
+	estimateJD := localJD + Limit360(360-NeptuneHourAngle(localJD, lon, timezone))/15.0/24.0*0.99726851851851851851
+	normalizedHourAngle := func(localJD, lon, timezone float64) float64 {
+		currentHourAngle := NeptuneHourAngle(localJD, lon, timezone)
 		if currentHourAngle < 180 {
 			currentHourAngle += 360
 		}

@@ -202,14 +202,14 @@ func orbitalAscendingNodeLongitude(jd float64, n int, step float64, position fun
 	return Limit360(math.Atan2(nodeVector[1], nodeVector[0]) * deg)
 }
 
-func eclipticVectorAtReferenceEpoch(vector Vector3, sampleJD, referenceJD float64) Vector3 {
-	if sampleJD == referenceJD {
+func eclipticVectorAtReferenceEpoch(vector Vector3, sampleJDE, referenceJDE float64) Vector3 {
+	if sampleJDE == referenceJDE {
 		return vector
 	}
 
-	sampleEquatorial := rotateEclipticToEquatorial(vector, EclipticObliquity(sampleJD, false))
-	precessedEquatorial := applyMatrix3(precessionMatrix(sampleJD, referenceJD), sampleEquatorial)
-	return rotateEquatorialToEcliptic(precessedEquatorial, EclipticObliquity(referenceJD, false))
+	sampleEquatorial := rotateEclipticToEquatorial(vector, EclipticObliquity(sampleJDE, false))
+	precessedEquatorial := applyMatrix3(precessionMatrix(sampleJDE, referenceJDE), sampleEquatorial)
+	return rotateEquatorialToEcliptic(precessedEquatorial, EclipticObliquity(referenceJDE, false))
 }
 
 func rotateEclipticToEquatorial(vector Vector3, obliquity float64) Vector3 {
@@ -265,17 +265,17 @@ func applyMatrix3(matrix Matrix3, vector Vector3) Vector3 {
 	}
 }
 
-func planetHeliocentricNodePositionN(planetIndex int, jd float64, n int) Vector3 {
-	longitude := planet.WherePlanetN(planetIndex, 0, jd, n)
-	latitude := planet.WherePlanetN(planetIndex, 1, jd, n)
-	radius := planet.WherePlanetN(planetIndex, 2, jd, n)
+func planetHeliocentricNodePositionN(planetIndex int, jde float64, n int) Vector3 {
+	longitude := planet.WherePlanetN(planetIndex, 0, jde, n)
+	latitude := planet.WherePlanetN(planetIndex, 1, jde, n)
+	radius := planet.WherePlanetN(planetIndex, 2, jde, n)
 	return eclipticCartesian(longitude, latitude, radius)
 }
 
-func moonGeocentricNodePositionN(jd float64, n int) Vector3 {
-	longitude := HMoonTrueLoN(jd, n)
-	latitude := HMoonTrueBoN(jd, n)
-	radius := HMoonAwayN(jd, n)
+func moonGeocentricNodePositionN(jde float64, n int) Vector3 {
+	longitude := HMoonTrueLoN(jde, n)
+	latitude := HMoonTrueBoN(jde, n)
+	radius := HMoonAwayN(jde, n)
 	return eclipticCartesian(longitude, latitude, radius)
 }
 

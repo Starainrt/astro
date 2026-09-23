@@ -12,7 +12,7 @@ func TestSolarEclipseTotalEnvelopeHorizonEndpoints(t *testing.T) {
 		{2008, 8, 1}, {2024, 4, 8}, {2026, 8, 12},
 	} {
 		t.Run(fmt.Sprintf("%04d-%02d-%02d", date[0], date[1], date[2]), func(t *testing.T) {
-			seed := JDECalc(date[0], date[1], float64(date[2]))
+			seed := JDCalc(date[0], date[1], float64(date[2]))
 			result := SolarEclipsePartialFootprints(seed, SolarEclipsePartialFootprintOptions{
 				StepDays: 2.0 / 1440, BoundaryPoints: 96, MagnitudeValues: []float64{1},
 			})
@@ -53,7 +53,7 @@ func TestSolarEclipseTotalEnvelopeHorizonEndpoints(t *testing.T) {
 }
 
 func BenchmarkSolarEclipsePolarTotalBand(b *testing.B) {
-	seed := JDECalc(2003, 11, 23)
+	seed := JDCalc(2003, 11, 23)
 	for i := 0; i < b.N; i++ {
 		SolarEclipsePartialFootprints(seed, SolarEclipsePartialFootprintOptions{
 			StepDays: 2.0 / 1440, BoundaryPoints: 96, DisableRiseSetCurves: true,

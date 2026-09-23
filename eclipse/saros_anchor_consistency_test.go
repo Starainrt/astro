@@ -42,7 +42,7 @@ func sarosTestWindows(t *testing.T, phase int) map[int]sarosTestWindow {
 	windows := make(map[int]sarosTestWindow, len(anchors)+len(overrides))
 	for index, magic := range anchors {
 		value := uint32(magic)
-		headTT := basic.JDECalc(
+		headTT := basic.JDCalc(
 			int((value>>sarosTestAnchorYearShift)&sarosTestAnchorYearMask)-sarosTestAnchorYearOffset,
 			int((value>>sarosTestAnchorMonthShift)&sarosTestAnchorMonthMask),
 			float64((value>>sarosTestAnchorDayShift)&sarosTestAnchorDayMask),
@@ -56,7 +56,7 @@ func sarosTestWindows(t *testing.T, phase int) map[int]sarosTestWindow {
 		}
 	}
 	for _, override := range overrides {
-		headTT := basic.JDECalc(int(override.HeadYear), int(override.HeadMonth), float64(override.HeadDay))
+		headTT := basic.JDCalc(int(override.HeadYear), int(override.HeadMonth), float64(override.HeadDay))
 		if math.IsNaN(headTT) {
 			t.Fatalf("invalid override head for series %d", override.Series)
 		}
@@ -214,7 +214,7 @@ func TestSarosOverrideWindowsCoverDeclaredMemberRange(t *testing.T) {
 		}
 		cycleDays := float64(sarosTestAnchorMemberInterval) * sarosTestSynodicMonthDays
 		for _, override := range overrides {
-			headTT := basic.JDECalc(int(override.HeadYear), int(override.HeadMonth), float64(override.HeadDay))
+			headTT := basic.JDCalc(int(override.HeadYear), int(override.HeadMonth), float64(override.HeadDay))
 			for _, member := range []int{1, int(override.Count)} {
 				ttJDE := headTT + float64(member-1-int(override.MemberOffset))*cycleDays
 				info, ok := sarosTestInfo(ttJDE, phase)

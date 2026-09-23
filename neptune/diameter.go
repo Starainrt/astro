@@ -14,8 +14,8 @@ func Semidiameter(date time.Time) float64 {
 
 // SemidiameterN 海王星视半径（截断版），单位角秒 / truncated apparent Neptune semidiameter in arcseconds.
 func SemidiameterN(date time.Time, n int) float64 {
-	jde := calendar.Date2JDE(date.UTC())
-	return basic.NeptuneSemidiameterN(basic.TD2UT(jde, true), n)
+	jd := calendar.Date2JD(date.UTC())
+	return basic.NeptuneSemidiameterN(basic.UTC2TT(jd), n)
 }
 
 // Diameter 海王星视直径，单位角秒 / apparent Neptune diameter in arcseconds.
@@ -25,6 +25,6 @@ func Diameter(date time.Time) float64 {
 
 // DiameterN 海王星视直径（截断版），单位角秒 / truncated apparent Neptune diameter in arcseconds.
 func DiameterN(date time.Time, n int) float64 {
-	jde := calendar.Date2JDE(date.UTC())
-	return basic.NeptuneDiameterN(basic.TD2UT(jde, true), n)
+	jd := calendar.Date2JD(date.UTC())
+	return basic.NeptuneDiameterN(basic.UTC2TT(jd), n)
 }

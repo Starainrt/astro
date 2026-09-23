@@ -464,8 +464,8 @@ func jupiterGalileanContactGeometryAt(
 	if !isFinite(jd) || satellite < 1 || satellite > 4 || !isValidJupiterGalileanPhenomenonType(phenomenonType) {
 		return jupiterGalileanContactGeometry{}, false
 	}
-	evaluationJD := TD2UT(jd, true)
-	context := newJupiterGalileanObservationContext(evaluationJD)
+	evaluationJDE := UTC2TT(jd)
+	context := newJupiterGalileanObservationContext(evaluationJDE)
 	if context.jupiterDistance == 0 {
 		return jupiterGalileanContactGeometry{}, false
 	}
@@ -527,8 +527,8 @@ func jupiterGalileanEclipseSignedDistanceAt(jd float64, satellite int, penumbra 
 	if !isFinite(jd) || satellite < 1 || satellite > 4 {
 		return math.NaN(), false
 	}
-	evaluationJD := TD2UT(jd, true)
-	context := newJupiterGalileanObservationContext(evaluationJD)
+	evaluationJDE := UTC2TT(jd)
+	context := newJupiterGalileanObservationContext(evaluationJDE)
 	if context.jupiterDistance == 0 {
 		return math.NaN(), false
 	}
@@ -590,8 +590,8 @@ func jupiterGalileanShadowLimbMetricAt(jd float64, satellite int, penumbra bool)
 	if !isFinite(jd) || satellite < 1 || satellite > 4 {
 		return math.NaN(), false
 	}
-	evaluationJD := TD2UT(jd, true)
-	context := newJupiterGalileanObservationContext(evaluationJD)
+	evaluationJDE := UTC2TT(jd)
+	context := newJupiterGalileanObservationContext(evaluationJDE)
 	if context.jupiterDistance == 0 {
 		return math.NaN(), false
 	}

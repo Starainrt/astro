@@ -15,17 +15,17 @@ type planetGeocentricPosition struct {
 	bo float64
 }
 
-func planetHeliocentricXYZN(planetIndex int, jd float64, n int) (float64, float64, float64) {
-	l := planet.WherePlanetN(planetIndex, 0, jd, n)
-	b := planet.WherePlanetN(planetIndex, 1, jd, n)
-	r := planet.WherePlanetN(planetIndex, 2, jd, n)
+func planetHeliocentricXYZN(planetIndex int, jde float64, n int) (float64, float64, float64) {
+	l := planet.WherePlanetN(planetIndex, 0, jde, n)
+	b := planet.WherePlanetN(planetIndex, 1, jde, n)
+	r := planet.WherePlanetN(planetIndex, 2, jde, n)
 	return sphericalToRectangular(l, b, r)
 }
 
-func earthHeliocentricXYZN(jd float64, n int) (float64, float64, float64) {
-	l := planet.WherePlanetN(-1, 0, jd, n)
-	b := planet.WherePlanetN(-1, 1, jd, n)
-	r := planet.WherePlanetN(-1, 2, jd, n)
+func earthHeliocentricXYZN(jde float64, n int) (float64, float64, float64) {
+	l := planet.WherePlanetN(-1, 0, jde, n)
+	b := planet.WherePlanetN(-1, 1, jde, n)
+	r := planet.WherePlanetN(-1, 2, jde, n)
 	return sphericalToRectangular(l, b, r)
 }
 
@@ -48,9 +48,9 @@ func geocentricPositionFromRectangular(x, y, z float64) planetGeocentricPosition
 	}
 }
 
-func planetGeocentricPositionN(planetIndex int, planetJD, earthJD float64, n int) planetGeocentricPosition {
+func planetGeocentricPositionN(planetIndex int, planetJD, earthJDE float64, n int) planetGeocentricPosition {
 	px, py, pz := planetHeliocentricXYZN(planetIndex, planetJD, n)
-	ex, ey, ez := earthHeliocentricXYZN(earthJD, n)
+	ex, ey, ez := earthHeliocentricXYZN(earthJDE, n)
 	return geocentricPositionFromRectangular(px-ex, py-ey, pz-ez)
 }
 
@@ -66,26 +66,26 @@ func planetApparentGeocentricPositionN(planetIndex int, jd float64, n int) (plan
 
 func planetApparentGeocentricPositionAndDistanceN(
 	planetIndex int,
-	jd float64,
+	jde float64,
 	n int,
 ) (planetGeocentricPosition, float64, float64) {
-	ex, ey, ez := earthHeliocentricXYZN(jd, n)
-	geoNow := planetGeocentricPositionWithEarthN(planetIndex, jd, ex, ey, ez, n)
+	ex, ey, ez := earthHeliocentricXYZN(jde, n)
+	geoNow := planetGeocentricPositionWithEarthN(planetIndex, jde, ex, ey, ez, n)
 	distance := math.Sqrt(geoNow.x*geoNow.x + geoNow.y*geoNow.y + geoNow.z*geoNow.z)
 	tau := 0.0057755183 * distance
-	geo := planetGeocentricPositionWithEarthN(planetIndex, jd-tau, ex, ey, ez, n)
+	geo := planetGeocentricPositionWithEarthN(planetIndex, jde-tau, ex, ey, ez, n)
 	baseLo := geo.lo
 	baseBo := geo.bo
-	geo.lo = Limit360(baseLo + GXCLo(baseLo, baseBo, jd)/3600.0 + Nutation2000Bi(jd))
-	geo.bo = baseBo + GXCBo(baseLo, baseBo, jd)/3600.0
+	geo.lo = Limit360(baseLo + GXCLo(baseLo, baseBo, jde)/3600.0 + Nutation2000Bi(jde))
+	geo.bo = baseBo + GXCBo(baseLo, baseBo, jde)/3600.0
 	return geo, tau, distance
 }
 
-func planetTrueGeocentricPositionN(planetIndex int, jd float64, n int) (planetGeocentricPosition, float64) {
-	ex, ey, ez := earthHeliocentricXYZN(jd, n)
-	geoNow := planetGeocentricPositionWithEarthN(planetIndex, jd, ex, ey, ez, n)
+func planetTrueGeocentricPositionN(planetIndex int, jde float64, n int) (planetGeocentricPosition, float64) {
+	ex, ey, ez := earthHeliocentricXYZN(jde, n)
+	geoNow := planetGeocentricPositionWithEarthN(planetIndex, jde, ex, ey, ez, n)
 	tau := 0.0057755183 * math.Sqrt(geoNow.x*geoNow.x+geoNow.y*geoNow.y+geoNow.z*geoNow.z)
-	return planetGeocentricPositionWithEarthN(planetIndex, jd-tau, ex, ey, ez, n), tau
+	return planetGeocentricPositionWithEarthN(planetIndex, jde-tau, ex, ey, ez, n), tau
 }
 
 func planetEarthAwayExplicitN(planetIndex int, jd float64, n int) float64 {

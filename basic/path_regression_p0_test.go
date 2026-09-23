@@ -7,7 +7,7 @@ import (
 )
 
 func TestSolarEclipseSarosFamilyRemainsFiniteAcrossFiveCenturies(t *testing.T) {
-	base := JDECalc(2024, 4, 8)
+	base := JDCalc(2024, 4, 8)
 	const sarosDays = 6585.321314
 	for familyIndex := -28; familyIndex <= 28; familyIndex++ {
 		seed := base + float64(familyIndex)*sarosDays
@@ -39,11 +39,11 @@ func TestSolarEclipseRepresentativePathSeriesAreOrderedAndFinite(t *testing.T) {
 		name string
 		seed float64
 	}{
-		{name: "2009-07-22", seed: JDECalc(2009, 7, 22)},
-		{name: "2010-01-15", seed: JDECalc(2010, 1, 15)},
-		{name: "2014-04-29-non-central", seed: JDECalc(2014, 4, 29)},
-		{name: "2023-04-20", seed: JDECalc(2023, 4, 20)},
-		{name: "2043-10-03", seed: JDECalc(2043, 10, 3)},
+		{name: "2009-07-22", seed: JDCalc(2009, 7, 22)},
+		{name: "2010-01-15", seed: JDCalc(2010, 1, 15)},
+		{name: "2014-04-29-non-central", seed: JDCalc(2014, 4, 29)},
+		{name: "2023-04-20", seed: JDCalc(2023, 4, 20)},
+		{name: "2043-10-03", seed: JDCalc(2043, 10, 3)},
 	}
 	for _, test := range cases {
 		t.Run(test.name, func(t *testing.T) {
@@ -187,7 +187,7 @@ func assertOccultationPointSeriesFinite(t *testing.T, points []OccultationPathPo
 }
 
 func TestSolarEclipseRepresentativePathPointsDoNotContainNaN(t *testing.T) {
-	path := SolarEclipseCentralPath(JDECalc(2010, 1, 15), SolarEclipsePathOptions{StepDays: 20.0 / 1440.0})
+	path := SolarEclipseCentralPath(JDCalc(2010, 1, 15), SolarEclipsePathOptions{StepDays: 20.0 / 1440.0})
 	for index, point := range append(append(append([]SolarEclipsePathPoint{}, path.CenterLine...), path.NorthernLimit...), path.SouthernLimit...) {
 		if math.IsNaN(point.Longitude) || math.IsNaN(point.Latitude) || math.IsNaN(point.JDE) {
 			t.Fatalf("path point %d contains NaN: %+v", index, point)

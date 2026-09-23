@@ -32,8 +32,8 @@ const (
 
 // ApsisEvent 轨道极值事件 / orbital distance extremum event.
 type ApsisEvent struct {
-	// JDE 是事件发生时刻对应的世界时儒略日 / event time as UTC-based Julian day.
-	JDE float64
+	// JD 是事件发生时刻对应的世界时儒略日 / event time as UTC-based Julian day.
+	JD float64
 	// Distance 是极值距离；地球相关事件单位 AU，月球相关事件单位 km / extremum distance.
 	Distance float64
 }
@@ -79,7 +79,7 @@ func earthApsis(year int, aphelion bool) ApsisEvent {
 	}
 	eventTT, distanceAU := refineDistanceExtremum(seedTT, cfg, EarthAway)
 	return ApsisEvent{
-		JDE:      TD2UT(eventTT, false),
+		JD:       TT2UTC(eventTT),
 		Distance: distanceAU,
 	}
 }
@@ -87,8 +87,8 @@ func earthApsis(year int, aphelion bool) ApsisEvent {
 func moonApsisInMonth(year int, month time.Month, apogee bool) []ApsisEvent {
 	startUTC := time.Date(year, month, 1, 0, 0, 0, 0, time.UTC)
 	endUTC := startUTC.AddDate(0, 1, 0)
-	startTT := TD2UT(Date2JDE(startUTC), true)
-	endTT := TD2UT(Date2JDE(endUTC), true)
+	startTT := UTC2TT(Date2JD(startUTC))
+	endTT := UTC2TT(Date2JD(endUTC))
 
 	kStart := int(math.Floor((startTT-moonApsisBaseTTJDE)/moonApsisMeanMonthDays)) - 1
 	kEnd := int(math.Ceil((endTT-moonApsisBaseTTJDE)/moonApsisMeanMonthDays)) + 1
@@ -110,19 +110,19 @@ func moonApsisInMonth(year int, month time.Month, apogee bool) []ApsisEvent {
 	for k := kStart; k <= kEnd; k++ {
 		seedTT := moonApsisSeedTT(float64(k) + phase)
 		eventTT, distanceKM := refineDistanceExtremum(seedTT, cfg, HMoonAway)
-		eventUT := TD2UT(eventTT, false)
-		eventTimeUTC := JDE2DateByZone(eventUT, time.UTC, false)
+		eventUT := TT2UTC(eventTT)
+		eventTimeUTC := JD2DateByZone(eventUT, time.UTC, false)
 		if eventTimeUTC.Before(startUTC) || !eventTimeUTC.Before(endUTC) {
 			continue
 		}
 		events = append(events, ApsisEvent{
-			JDE:      eventUT,
+			JD:       eventUT,
 			Distance: distanceKM,
 		})
 	}
 
 	sort.Slice(events, func(i, j int) bool {
-		return events[i].JDE < events[j].JDE
+		return events[i].JD < events[j].JD
 	})
 	return events
 }

@@ -7,79 +7,79 @@ import (
 	. "github.com/starainrt/astro/tools"
 )
 
-func UranusL(jd float64) float64 {
-	return planet.WherePlanet(6, 0, jd)
+func UranusL(jde float64) float64 {
+	return planet.WherePlanet(6, 0, jde)
 }
 
-func UranusB(jd float64) float64 {
-	return planet.WherePlanet(6, 1, jd)
+func UranusB(jde float64) float64 {
+	return planet.WherePlanet(6, 1, jde)
 }
-func UranusR(jd float64) float64 {
-	return planet.WherePlanet(6, 2, jd)
+func UranusR(jde float64) float64 {
+	return planet.WherePlanet(6, 2, jde)
 }
-func AUranusX(jd float64) float64 {
-	l := UranusL(jd)
-	b := UranusB(jd)
-	r := UranusR(jd)
-	el := planet.WherePlanet(-1, 0, jd)
-	eb := planet.WherePlanet(-1, 1, jd)
-	er := planet.WherePlanet(-1, 2, jd)
+func AUranusX(jde float64) float64 {
+	l := UranusL(jde)
+	b := UranusB(jde)
+	r := UranusR(jde)
+	el := planet.WherePlanet(-1, 0, jde)
+	eb := planet.WherePlanet(-1, 1, jde)
+	er := planet.WherePlanet(-1, 2, jde)
 	x := r*Cos(b)*Cos(l) - er*Cos(eb)*Cos(el)
 	return x
 }
 
-func AUranusY(jd float64) float64 {
+func AUranusY(jde float64) float64 {
 
-	l := UranusL(jd)
-	b := UranusB(jd)
-	r := UranusR(jd)
-	el := planet.WherePlanet(-1, 0, jd)
-	eb := planet.WherePlanet(-1, 1, jd)
-	er := planet.WherePlanet(-1, 2, jd)
+	l := UranusL(jde)
+	b := UranusB(jde)
+	r := UranusR(jde)
+	el := planet.WherePlanet(-1, 0, jde)
+	eb := planet.WherePlanet(-1, 1, jde)
+	er := planet.WherePlanet(-1, 2, jde)
 	y := r*Cos(b)*Sin(l) - er*Cos(eb)*Sin(el)
 	return y
 }
-func AUranusZ(jd float64) float64 {
-	//l := UranusL(jd)
-	b := UranusB(jd)
-	r := UranusR(jd)
-	//	el := planet.WherePlanet(-1, 0, jd)
-	eb := planet.WherePlanet(-1, 1, jd)
-	er := planet.WherePlanet(-1, 2, jd)
+func AUranusZ(jde float64) float64 {
+	//l := UranusL(jde)
+	b := UranusB(jde)
+	r := UranusR(jde)
+	//	el := planet.WherePlanet(-1, 0, jde)
+	eb := planet.WherePlanet(-1, 1, jde)
+	er := planet.WherePlanet(-1, 2, jde)
 	z := r*Sin(b) - er*Sin(eb)
 	return z
 }
 
-func AUranusXYZ(jd float64) (float64, float64, float64) {
-	l := UranusL(jd)
-	b := UranusB(jd)
-	r := UranusR(jd)
-	el := planet.WherePlanet(-1, 0, jd)
-	eb := planet.WherePlanet(-1, 1, jd)
-	er := planet.WherePlanet(-1, 2, jd)
+func AUranusXYZ(jde float64) (float64, float64, float64) {
+	l := UranusL(jde)
+	b := UranusB(jde)
+	r := UranusR(jde)
+	el := planet.WherePlanet(-1, 0, jde)
+	eb := planet.WherePlanet(-1, 1, jde)
+	er := planet.WherePlanet(-1, 2, jde)
 	x := r*Cos(b)*Cos(l) - er*Cos(eb)*Cos(el)
 	y := r*Cos(b)*Sin(l) - er*Cos(eb)*Sin(el)
 	z := r*Sin(b) - er*Sin(eb)
 	return x, y, z
 }
 
-func UranusApparentRa(jd float64) float64 {
-	lo, bo := UranusApparentLoBo(jd)
-	eps := TrueObliquity(jd)
+func UranusApparentRa(jde float64) float64 {
+	lo, bo := UranusApparentLoBo(jde)
+	eps := TrueObliquity(jde)
 	ra := math.Atan2((Sin(lo)*Cos(eps) - Tan(bo)*Sin(eps)), Cos(lo))
 	ra = ra * 180 / math.Pi
 	return Limit360(ra)
 }
-func UranusApparentDec(jd float64) float64 {
-	lo, bo := UranusApparentLoBo(jd)
-	eps := TrueObliquity(jd)
+func UranusApparentDec(jde float64) float64 {
+	lo, bo := UranusApparentLoBo(jde)
+	eps := TrueObliquity(jde)
 	dec := ArcSin(Sin(bo)*Cos(eps) + Cos(bo)*Sin(eps)*Sin(lo))
 	return dec
 }
 
-func UranusApparentRaDec(jd float64) (float64, float64) {
-	lo, bo := UranusApparentLoBo(jd)
-	eps := TrueObliquity(jd)
+func UranusApparentRaDec(jde float64) (float64, float64) {
+	lo, bo := UranusApparentLoBo(jde)
+	eps := TrueObliquity(jde)
 	ra := math.Atan2((Sin(lo)*Cos(eps) - Tan(bo)*Sin(eps)), Cos(lo))
 	ra = ra * 180 / math.Pi
 	dec := ArcSin(Sin(bo)*Cos(eps) + Cos(bo)*Sin(eps)*Sin(lo))
@@ -105,22 +105,22 @@ func UranusApparentLoBo(jd float64) (float64, float64) {
 	return geo.lo, geo.bo
 }
 
-func UranusMag(jd float64) float64 {
-	sunDistance := UranusR(jd)
-	earthDistance := EarthUranusAway(jd)
-	earthSunDistance := planet.WherePlanet(-1, 2, jd)
+func UranusMag(jde float64) float64 {
+	sunDistance := UranusR(jde)
+	earthDistance := EarthUranusAway(jde)
+	earthSunDistance := planet.WherePlanet(-1, 2, jde)
 	i := (sunDistance*sunDistance + earthDistance*earthDistance - earthSunDistance*earthSunDistance) / (2 * sunDistance * earthDistance)
 	i = ArcCos(i)
 	mag := -7.19 + 5*math.Log10(sunDistance*earthDistance) + 0.016*i
 	return FloatRound(mag, 2)
 }
 
-func UranusHeight(jde, lon, lat, timezone float64) float64 {
+func UranusHeight(localJD, lon, lat, timezone float64) float64 {
 	// 转换为世界时
-	utcJde := jde - timezone/24.0
+	utcJD := localJD - timezone/24.0
 	// 计算视恒星时
-	ra, dec := UranusApparentRaDec(TD2UT(utcJde, true))
-	st := Limit360(ApparentSiderealTime(utcJde)*15 + lon)
+	ra, dec := UranusApparentRaDec(UTC2TT(utcJD))
+	st := Limit360(ApparentSiderealTime(UTC2UT1(utcJD))*15 + lon)
 	// 计算时角
 	hourAngle := Limit360(st - ra)
 	// 高度角、时角与天球座标三角转换公式
@@ -129,12 +129,12 @@ func UranusHeight(jde, lon, lat, timezone float64) float64 {
 	return ArcSin(sinHeight)
 }
 
-func UranusAzimuth(jde, lon, lat, timezone float64) float64 {
+func UranusAzimuth(localJD, lon, lat, timezone float64) float64 {
 	// 转换为世界时
-	utcJde := jde - timezone/24.0
+	utcJD := localJD - timezone/24.0
 	// 计算视恒星时
-	ra, dec := UranusApparentRaDec(TD2UT(utcJde, true))
-	st := Limit360(ApparentSiderealTime(utcJde)*15 + lon)
+	ra, dec := UranusApparentRaDec(UTC2TT(utcJD))
+	st := Limit360(ApparentSiderealTime(UTC2UT1(utcJD))*15 + lon)
 	// 计算时角
 	hourAngle := Limit360(st - ra)
 	// 三角转换公式
@@ -153,21 +153,21 @@ func UranusAzimuth(jde, lon, lat, timezone float64) float64 {
 }
 
 func UranusHourAngle(jd, lon, timezone float64) float64 {
-	siderealLongitude := Limit360(ApparentSiderealTime(jd-timezone/24)*15 + lon)
-	hourAngle := siderealLongitude - UranusApparentRa(TD2UT(jd-timezone/24.0, true))
+	siderealLongitude := Limit360(ApparentSiderealTime(UTC2UT1(jd-timezone/24))*15 + lon)
+	hourAngle := siderealLongitude - UranusApparentRa(UTC2TT(jd-timezone/24.0))
 	if hourAngle < 0 {
 		hourAngle += 360
 	}
 	return hourAngle
 }
 
-func UranusCulminationTime(jde, lon, timezone float64) float64 {
-	//jde 世界时，非力学时，当地时区 0时，无需转换力学时
+func UranusCulminationTime(localJD, lon, timezone float64) float64 {
+	// localJD 是本地民用日锚点（当地 0 时），不是力学时。
 	//ra,dec 瞬时天球座标，非J2000等时间天球坐标
-	jde = math.Floor(jde) + 0.5
-	estimateJD := jde + Limit360(360-UranusHourAngle(jde, lon, timezone))/15.0/24.0*0.99726851851851851851
-	normalizedHourAngle := func(jde, lon, timezone float64) float64 {
-		currentHourAngle := UranusHourAngle(jde, lon, timezone)
+	localJD = math.Floor(localJD) + 0.5
+	estimateJD := localJD + Limit360(360-UranusHourAngle(localJD, lon, timezone))/15.0/24.0*0.99726851851851851851
+	normalizedHourAngle := func(localJD, lon, timezone float64) float64 {
+		currentHourAngle := UranusHourAngle(localJD, lon, timezone)
 		if currentHourAngle < 180 {
 			currentHourAngle += 360
 		}

@@ -205,8 +205,8 @@ func TestLunarEclipseChauvenetRemainsAvailable(t *testing.T) {
 	defaultInfo := ClosestLunarEclipse(date)
 	chauvenetInfo := ClosestLunarEclipseChauvenet(date)
 
-	assertFloatClose(t, "Chauvenet.PenumbralMagnitude", chauvenetInfo.PenumbralMagnitude, 2.285431290, 1e-6)
-	assertFloatClose(t, "Chauvenet.UmbralMagnitude", chauvenetInfo.UmbralMagnitude, 1.182811712, 1e-6)
+	assertFloatClose(t, "Chauvenet.PenumbralMagnitude", chauvenetInfo.PenumbralMagnitude, 2.285436461, 1e-6)
+	assertFloatClose(t, "Chauvenet.UmbralMagnitude", chauvenetInfo.UmbralMagnitude, 1.182806541, 1e-6)
 
 	if !(chauvenetInfo.PenumbralMagnitude > defaultInfo.PenumbralMagnitude) {
 		t.Fatalf("expected Chauvenet penumbral magnitude > Danjon: chauvenet=%.6f danjon=%.6f", chauvenetInfo.PenumbralMagnitude, defaultInfo.PenumbralMagnitude)

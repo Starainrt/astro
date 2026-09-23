@@ -184,7 +184,7 @@ func moonPlanetConjunctionEventUT(leftTT, rightTT float64, planet MoonPlanetConj
 	if math.Abs(moonPlanetConjunctionDeltaAt(eventTT, planet, -1)) > moonPlanetConjunctionEventTolerance {
 		return math.NaN()
 	}
-	return TD2UT(eventTT, false)
+	return TT2UTC(eventTT)
 }
 
 func moonPlanetConjunctionCollectLocalEvent(result *moonPlanetConjunctionLocalResult, queryTT, eventUT float64) {

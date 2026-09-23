@@ -163,11 +163,13 @@ func (frame Frame) WriteGraticule(builder *strings.Builder, clipID string) {
 	}
 	fmt.Fprintf(builder, `<g class="graticule" clip-path="url(#%s)" fill="none" stroke="#b8c4c3" stroke-width="0.65">`, clipID)
 	if !frame.IsPolar() {
-		first, last := -150.0, 150.0
+		// 居中视图循环到窗口另一端会同一条接缝经线，只画一次。
+		first, count := -150.0, 11
 		if frame.CenterLongitude != 0 {
-			first, last = frame.CenterLongitude-180, frame.CenterLongitude+180
+			first, count = frame.CenterLongitude-180, 12
 		}
-		for longitude := first; longitude <= last; longitude += 30 {
+		for index := 0; index < count; index++ {
+			longitude := first + 30*float64(index)
 			x, _, _ := frame.Project(longitude, 0)
 			if frame.CenterLongitude != 0 && (x < frame.X-0.5 || x > frame.X+frame.Width+0.5) {
 				continue
@@ -269,16 +271,17 @@ func (frame Frame) hemisphere() float64 {
 	return 1
 }
 
-// equirectangularLongitudeOffset 返回经度相对居中经线的偏移，换算成 0…360 的剂量。
-// 居中经线落在画面正中，其对面的经线落在左右任一边界上。
+// equirectangularLongitudeOffset 返回经度相对画面左边缘的偏移，换算成 0…360 的剂量。
+// 居中经线落在画面正中，其对面的经线同时是左右边缘：已经在窗口内的经度按原值返回，
+// 让接缝两侧的点各自贴住自己那一侧的边缘，窗口外的经度再按 360 折回。
 func equirectangularLongitudeOffset(longitude, center float64) float64 {
-	offset := math.Mod(longitude-center, 360)
+	offset := longitude - (center - 180)
+	if offset >= 0 && offset <= 360 {
+		return offset
+	}
+	offset = math.Mod(offset, 360)
 	if offset < 0 {
 		offset += 360
-	}
-	offset += 180
-	if offset >= 360 {
-		offset -= 360
 	}
 	return offset
 }

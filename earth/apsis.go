@@ -26,7 +26,7 @@ func Aphelion(year int) ApsisInfo {
 
 func convertEarthApsisInfo(event basic.ApsisEvent) ApsisInfo {
 	return ApsisInfo{
-		Time:     basic.JDE2DateByZone(event.JDE, time.UTC, false),
+		Time:     basic.JD2DateByZone(event.JD, time.UTC, false),
 		Distance: event.Distance,
 	}
 }

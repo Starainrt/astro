@@ -835,11 +835,11 @@ func (solver solarEclipseSolver) centralBandSampledFootprintUnion(
 	lastKept := 0.0
 	var lastCenter geodata.GeoPoint
 	speedKMperSecond := 0.0
-	for index, jd := range times {
+	for index, jde := range times {
 		anchored := index < solarEclipseCentralBandUnionAnchorSamples ||
 			index >= len(times)-solarEclipseCentralBandUnionAnchorSamples
 		if !anchored && lastKept > 0 {
-			elapsed := (jd - lastKept) * 86400
+			elapsed := (jde - lastKept) * 86400
 			if elapsed < solarEclipseCentralBandUnionMinStepSeconds {
 				continue
 			}
@@ -852,21 +852,21 @@ func (solver solarEclipseSolver) centralBandSampledFootprintUnion(
 			if elapsed > solarEclipseCentralBandUnionMaxStepSeconds {
 				// Never let the stride stretch past the cap, so a stalled centre
 				// cannot leave a gap in the sweep.
-				if lastKept+solarEclipseCentralBandUnionMaxStepSeconds/86400 < jd {
-					jd = lastKept + solarEclipseCentralBandUnionMaxStepSeconds/86400
+				if lastKept+solarEclipseCentralBandUnionMaxStepSeconds/86400 < jde {
+					jde = lastKept + solarEclipseCentralBandUnionMaxStepSeconds/86400
 				}
 			}
 		}
 		for existingIndex < len(solved) &&
-			solved[existingIndex].JDE < jd-solarEclipseCentralBandUnionReuseDays {
+			solved[existingIndex].JDE < jde-solarEclipseCentralBandUnionReuseDays {
 			existingIndex++
 		}
 		var ring []SolarEclipsePathPoint
 		if existingIndex < len(solved) &&
-			math.Abs(solved[existingIndex].JDE-jd) <= solarEclipseCentralBandUnionReuseDays {
+			math.Abs(solved[existingIndex].JDE-jde) <= solarEclipseCentralBandUnionReuseDays {
 			ring = solarEclipseFootprintBoundaryRing(solved[existingIndex])
 		} else {
-			ring = solver.centralBandSampledFootprintRingAt(jd)
+			ring = solver.centralBandSampledFootprintRingAt(jde)
 		}
 		if len(ring) < 4 {
 			continue
@@ -885,19 +885,19 @@ func (solver solarEclipseSolver) centralBandSampledFootprintUnion(
 			}
 		}
 		rings = append(rings, polygon)
-		if lastKept > 0 && jd > lastKept {
+		if lastKept > 0 && jde > lastKept {
 			center := solarEclipseRingCenter(polygon)
 			if speedKMperSecond <= 0 {
 				speedKMperSecond = solarEclipsePathDistanceKM(
 					SolarEclipsePathPoint{Longitude: lastCenter.Longitude, Latitude: lastCenter.Latitude},
 					SolarEclipsePathPoint{Longitude: center.Longitude, Latitude: center.Latitude},
-				) / ((jd - lastKept) * 86400)
+				) / ((jde - lastKept) * 86400)
 			}
 			lastCenter = center
 		} else {
 			lastCenter = solarEclipseRingCenter(polygon)
 		}
-		lastKept = jd
+		lastKept = jde
 	}
 	if len(rings) == 0 {
 		return nil
@@ -969,10 +969,10 @@ func unionSolarEclipseCentralBandRings(rings [][]geodata.GeoPoint) [][]geodata.G
 // chord between its two rim ends, and the neighbouring samples cover the
 // horizon side.
 func (solver solarEclipseSolver) centralBandSampledFootprintRingAt(
-	jd float64,
+	jde float64,
 ) []SolarEclipsePathPoint {
 	return solarEclipseFootprintBoundaryRing(solver.shadowFootprintAtWithSpacing(
-		jd, solarEclipseCentralBandUnionBoundaryPoints, solarEclipseCentralShadow,
+		jde, solarEclipseCentralBandUnionBoundaryPoints, solarEclipseCentralShadow,
 		solarEclipseCentralBandUnionSpacingKM,
 	))
 }
@@ -1319,8 +1319,8 @@ func (solver solarEclipseSolver) nonCentralBandContactExtension(
 	}
 	const stepDays = 5.0 / 86400.0
 	times := make([]float64, 0, int((endJDE-startJDE)/stepDays)+20)
-	for jd := startJDE + stepDays; jd < endJDE-solarEclipsePathDuplicateTimeDays; jd += stepDays {
-		times = append(times, jd)
+	for jde := startJDE + stepDays; jde < endJDE-solarEclipsePathDuplicateTimeDays; jde += stepDays {
+		times = append(times, jde)
 	}
 	for second := 1.0; second <= 10; second++ {
 		offset := second / 86400.0
@@ -1334,8 +1334,8 @@ func (solver solarEclipseSolver) nonCentralBandContactExtension(
 	sort.Float64s(times)
 	times = uniqueSolarEclipsePathTimes(times)
 	samples := make([]solarEclipseCentralBandSweepSample, 0, len(times))
-	for _, jd := range times {
-		if sample, ok := solver.centralBandSweepSampleAt(jd); ok {
+	for _, jde := range times {
+		if sample, ok := solver.centralBandSweepSampleAt(jde); ok {
 			samples = append(samples, sample)
 		}
 	}
@@ -1381,34 +1381,34 @@ func solarEclipseCentralBandContactSampleTimes(times []float64, startJDE, endJDE
 }
 
 func (solver solarEclipseSolver) centralBandSweepSampleAt(
-	jd float64,
+	jde float64,
 ) (solarEclipseCentralBandSweepSample, bool) {
-	moon, axis, sun := solver.besselGeometryAt(jd)
+	moon, axis, sun := solver.besselGeometryAt(jde)
 	samples := make([]solarEclipsePartialBoundarySample, solarEclipseCentralBandBoundaryPoints)
 	for index := range samples {
 		angle := 2 * math.Pi * float64(index) / float64(len(samples))
 		point, ok := solver.shadowFootprintPointAt(
-			jd, moon, axis, sun, angle, solarEclipseCentralShadow,
+			jde, moon, axis, sun, angle, solarEclipseCentralShadow,
 		)
 		samples[index] = solarEclipsePartialBoundarySample{point: point, ok: ok, angle: angle}
 	}
 	samples = solver.refineShadowFootprintTransitions(
-		jd, moon, axis, sun, samples, solarEclipseCentralShadow,
+		jde, moon, axis, sun, samples, solarEclipseCentralShadow,
 	)
 	samples = solver.refineShadowFootprintSpacing(
-		jd, moon, axis, sun, samples, solarEclipseCentralShadow,
+		jde, moon, axis, sun, samples, solarEclipseCentralShadow,
 		solarEclipseCentralBandTargetSpacingKM,
 	)
 	arc := solarEclipseLongestOpenShadowArc(samples)
 	if len(arc) < 2 {
 		return solarEclipseCentralBandSweepSample{}, false
 	}
-	geometry := solarEclipseCentralBandGeometry{jde: jd, moon: moon, axis: axis, sun: sun}
+	geometry := solarEclipseCentralBandGeometry{jde: jde, moon: moon, axis: axis, sun: sun}
 	angle, ok := solver.centralBandEnvelopeAngle(geometry, arc)
 	if !ok {
 		return solarEclipseCentralBandSweepSample{}, false
 	}
-	envelope, ok := solver.centralShadowPointAt(jd, angle)
+	envelope, ok := solver.centralShadowPointAt(jde, angle)
 	if !ok {
 		return solarEclipseCentralBandSweepSample{}, false
 	}
@@ -1438,7 +1438,7 @@ func (solver solarEclipseSolver) centralBandSweepSampleAt(
 		return solarEclipseCentralBandSweepSample{}, false
 	}
 	return solarEclipseCentralBandSweepSample{
-		jde: jd, envelope: envelope,
+		jde: jde, envelope: envelope,
 		first: firstCap[len(firstCap)-1], second: secondCap[len(secondCap)-1],
 		firstCap: firstCap, secondCap: secondCap,
 	}, true
@@ -1567,10 +1567,10 @@ func (solver solarEclipseSolver) centralShadowPointAtGeometry(
 	)
 }
 
-func (solver solarEclipseSolver) centralShadowPointAt(jd, angle float64) (SolarEclipsePathPoint, bool) {
-	moon, axis, sun := solver.besselGeometryAt(jd)
+func (solver solarEclipseSolver) centralShadowPointAt(jde, angle float64) (SolarEclipsePathPoint, bool) {
+	moon, axis, sun := solver.besselGeometryAt(jde)
 	return solver.shadowFootprintPointAt(
-		jd, moon, axis, sun, math.Mod(angle+2*math.Pi, 2*math.Pi), solarEclipseCentralShadow,
+		jde, moon, axis, sun, math.Mod(angle+2*math.Pi, 2*math.Pi), solarEclipseCentralShadow,
 	)
 }
 
@@ -1722,8 +1722,8 @@ func (solver solarEclipseSolver) centralPathPoints(
 	)
 
 	points := make([]SolarEclipsePathPoint, 0, len(times))
-	for _, jd := range times {
-		point, ok := solver.centralPathPointAt(jd)
+	for _, jde := range times {
+		point, ok := solver.centralPathPointAt(jde)
 		if ok {
 			points = append(points, point)
 		}
@@ -1735,14 +1735,14 @@ func (solver solarEclipseSolver) centralPathPoints(
 	if len(points) < 2 {
 		fallbackCount := 32
 		for index := 0; index <= fallbackCount; index++ {
-			jd := startJDE + (endJDE-startJDE)*float64(index)/float64(fallbackCount)
-			point, ok := solver.centralPathPointAt(jd)
+			jde := startJDE + (endJDE-startJDE)*float64(index)/float64(fallbackCount)
+			point, ok := solver.centralPathPointAt(jde)
 			if !ok {
 				continue
 			}
 			duplicate := false
 			for _, existing := range points {
-				if math.Abs(existing.JDE-jd) <= solarEclipsePathDuplicateTimeDays {
+				if math.Abs(existing.JDE-jde) <= solarEclipsePathDuplicateTimeDays {
 					duplicate = true
 					break
 				}

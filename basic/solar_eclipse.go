@@ -12,6 +12,24 @@ const (
 	SolarEclipseModelNASABulletinSplitK SolarEclipseRadiusModel = "nasa_bulletin_split_k"
 )
 
+// SolarEclipseSunRadiusModel 日食几何的太阳半径口径 / solar radius convention for eclipse geometry.
+type SolarEclipseSunRadiusModel string
+
+const (
+	// SolarEclipseSunRadiusStandard 标准档，1 AU 处 959.639″，复现已发布星历表与目录 / standard.
+	SolarEclipseSunRadiusStandard SolarEclipseSunRadiusModel = "standard"
+	// SolarEclipseSunRadiusMeasured 边缘档，1 AU 处 959.95″：全食带每侧约窄 0.6 千米、中心食时长约短 1.5 秒 / measured.
+	SolarEclipseSunRadiusMeasured SolarEclipseSunRadiusModel = "measured"
+)
+
+// SolarEclipseOptions 日食计算的半径口径 / radius conventions for a solar eclipse computation.
+type SolarEclipseOptions struct {
+	// RadiusModel 月亮平均半径 k 的口径，零值为 NASA bulletin Split-K / lunar radius model.
+	RadiusModel SolarEclipseRadiusModel
+	// SunRadiusModel 太阳半径口径，零值为标准档 / solar radius convention.
+	SunRadiusModel SolarEclipseSunRadiusModel
+}
+
 // SolarEclipseType 整场日食的全局食型。
 type SolarEclipseType string
 
@@ -45,9 +63,12 @@ const (
 // 所有时刻字段都使用力学时儒略日（JDE, TT）。
 // 输入 seedJDE 只需要落在目标朔月附近，允许相差数天。
 type SolarEclipseResult struct {
-	Model      SolarEclipseRadiusModel
-	Type       SolarEclipseType
-	Centrality SolarEclipseCentrality
+	// 下列字段是决定上述数值的口径，随结果一起保留。
+	// The fields below are the conventions that fix the numbers above.
+	Model          SolarEclipseRadiusModel
+	SunRadiusModel SolarEclipseSunRadiusModel
+	Type           SolarEclipseType
+	Centrality     SolarEclipseCentrality
 
 	// GreatestEclipse 是全局“影轴最接近地心”的时刻。
 	GreatestEclipse float64
@@ -68,8 +89,17 @@ type SolarEclipseResult struct {
 	// CentralDurationDays is the central-phase duration at the greatest eclipse,
 	// in days, and 0 when the event has no central phase.
 	CentralDurationDays float64
-	// PathWidthKM 是食甚点处中心食带宽度。非中心食时为 0。
+	// PathWidthKM 是食甚处中心食带宽度；非中心食为 0；单侧极限（中心带仅触及地球边缘）时该解析式
+	// 失效并一并置 0，此时 PathWidthDefined 为 false，NASA 目录该栏印 '-'。
+	// PathWidthKM is the central path width at greatest eclipse, 0 for a non-central
+	// event, and 0 when the analytic formula fails at a single-sided limit where the
+	// band only grazes the Earth's limb; PathWidthDefined is false there and
+	// catalogues print '-' for this column.
 	PathWidthKM float64
+	// PathWidthDefined 表示上面的带宽是否有定义：只有南北两限都存在（central_two_limits）时才为 true。
+	// PathWidthDefined reports whether the width above is defined: it is true only
+	// when both band limits exist, that is for central_two_limits.
+	PathWidthDefined bool
 
 	// GreatestLongitude / GreatestLatitude 是日食食甚点地理坐标，东经为正，西经为负。
 	GreatestLongitude float64
@@ -83,8 +113,9 @@ type SolarEclipseResult struct {
 }
 
 type solarEclipseModelParameters struct {
-	penumbralK float64
-	umbralK    float64
+	penumbralK     float64
+	umbralK        float64
+	sunRadiusRatio float64
 }
 
 type solarEclipseShadowRadii struct {
@@ -101,9 +132,10 @@ type solarEclipseAxis struct {
 }
 
 type solarEclipseSolver struct {
-	newMoonJDE float64
-	model      SolarEclipseRadiusModel
-	params     solarEclipseModelParameters
+	newMoonJDE     float64
+	model          SolarEclipseRadiusModel
+	sunRadiusModel SolarEclipseSunRadiusModel
+	params         solarEclipseModelParameters
 
 	localStateContextCache map[uint64]localSolarEclipseStateContext
 	localEphemeris         *solarEclipseLocalEphemeris
@@ -170,17 +202,23 @@ const (
 	solarEclipseEarthPolarRatioSquared             = solarEclipseEarthPolarRatio * solarEclipseEarthPolarRatio
 	solarEclipseAstronomicalUnitKM                 = 1.49597870691e8
 
-	// IAU Single-K 对所有接触统一使用 0.2725076；
-	// NASA bulletin Split-K 对半影仍使用 0.2725076，对本影/反本影使用 0.2722810。
-	solarEclipseSolarRadiusRatio = 109.1222
-	solarEclipsePenumbralK       = 0.2725076
+	// 标准档与边缘档在 1 AU 处的太阳视半径（角秒），日食与月食几何共用这一组常量。
+	eclipseSunRadiusStandardArcsec = 959.639
+	eclipseSunRadiusMeasuredArcsec = 959.95
+	// 标准档太阳半径是地球赤道半径的 109.1222 倍，与上面的标准档视半径等价；边缘档按视半径比例放大。
+	solarEclipseSunRadiusRatioStandard = 109.1222
+	solarEclipseSunRadiusRatioMeasured = solarEclipseSunRadiusRatioStandard * eclipseSunRadiusMeasuredArcsec / eclipseSunRadiusStandardArcsec
+	// Split-K：半影（偏食）0.2724880、本影与反本影 0.2722810；IAU Single-K 全部使用 0.2725076。
+	solarEclipsePenumbralK       = 0.2724880
 	solarEclipseUmbralK          = 0.2722810
-	// SolarEclipsePenumbralK 与 SolarEclipseUmbralK 是月面半径与地球赤道半径之比，
-	// 即 NASA 星历表里的 k1（半影）与 k2（本影/反本影）；IAU Single-K 两者都用 k1。
-	// SolarEclipsePenumbralK and SolarEclipseUmbralK are the lunar-to-terrestrial radius ratios
-	// published as k1 (penumbra) and k2 (umbra/antumbra); IAU Single-K uses k1 for both.
-	SolarEclipsePenumbralK = solarEclipsePenumbralK
-	SolarEclipseUmbralK    = solarEclipseUmbralK
+	solarEclipseIAUSingleRadiusK = 0.2725076
+	// SolarEclipsePenumbralK / SolarEclipseUmbralK 是 Split-K 的半影与本影月地半径比 k1/k2，
+	// SolarEclipseIAUSingleRadiusK 是 IAU Single-K 的单一值。
+	// SolarEclipsePenumbralK / SolarEclipseUmbralK are the split-k lunar-to-terrestrial radius ratios,
+	// SolarEclipseIAUSingleRadiusK the IAU single value.
+	SolarEclipsePenumbralK       = solarEclipsePenumbralK
+	SolarEclipseUmbralK          = solarEclipseUmbralK
+	SolarEclipseIAUSingleRadiusK = solarEclipseIAUSingleRadiusK
 
 	solarEclipseNodeCount                  = 7
 	solarEclipseNodeStepDays               = 0.04
@@ -196,9 +234,40 @@ const (
 
 var solarEclipseArcsecPerRadian = 180.0 * 3600.0 / math.Pi
 
-// SolarEclipse 计算给定近朔时刻附近的一次全局日食，默认使用 NASABulletin Split-K 模型。
+func normalizeSolarEclipseRadiusModel(model SolarEclipseRadiusModel) SolarEclipseRadiusModel {
+	if model == SolarEclipseModelIAUSingleK {
+		return SolarEclipseModelIAUSingleK
+	}
+	return SolarEclipseModelNASABulletinSplitK
+}
+
+func normalizeSolarEclipseSunRadiusModel(model SolarEclipseSunRadiusModel) SolarEclipseSunRadiusModel {
+	if model == SolarEclipseSunRadiusMeasured {
+		return SolarEclipseSunRadiusMeasured
+	}
+	return SolarEclipseSunRadiusStandard
+}
+
+func solarEclipseSunRadiusRatio(model SolarEclipseSunRadiusModel) float64 {
+	if normalizeSolarEclipseSunRadiusModel(model) == SolarEclipseSunRadiusMeasured {
+		return solarEclipseSunRadiusRatioMeasured
+	}
+	return solarEclipseSunRadiusRatioStandard
+}
+
+// SolarEclipseSunSemidiameter 指定太阳半径口径下的视半径，单位角秒 / apparent solar semidiameter in arcseconds under a given eclipse sun radius convention.
+func SolarEclipseSunSemidiameter(jde float64, model SolarEclipseSunRadiusModel) float64 {
+	return angularSemidiameterFromAU(solarEclipseSunRadiusRatio(model)*solarEclipseEarthEquatorialRadiusKM, EarthAwayN(jde, -1))
+}
+
+// SolarEclipse 计算给定近朔时刻附近的一次全局日食，默认使用 NASABulletin Split-K 模型与标准太阳半径。
 func SolarEclipse(seedJDE float64) SolarEclipseResult {
 	return SolarEclipseNASABulletinSplitK(seedJDE)
+}
+
+// SolarEclipseWithOptions 计算给定近朔时刻附近的一次全局日食，半径口径由 options 指定 / computes one global solar eclipse with the given radius conventions.
+func SolarEclipseWithOptions(seedJDE float64, options SolarEclipseOptions) SolarEclipseResult {
+	return solarEclipseWithDeltaT(seedJDE, options, 0)
 }
 
 // SolarEclipseIAUSingleK 计算给定近朔时刻附近的一次全局日食，使用 IAU Single-K 模型。
@@ -212,16 +281,16 @@ func SolarEclipseNASABulletinSplitK(seedJDE float64) SolarEclipseResult {
 }
 
 func solarEclipse(seedJDE float64, model SolarEclipseRadiusModel) SolarEclipseResult {
-	return solarEclipseWithDeltaT(seedJDE, model, 0)
+	return solarEclipseWithDeltaT(seedJDE, SolarEclipseOptions{RadiusModel: model}, 0)
 }
 
 func solarEclipseWithDeltaT(
 	seedJDE float64,
-	model SolarEclipseRadiusModel,
+	options SolarEclipseOptions,
 	deltaTSeconds float64,
 ) SolarEclipseResult {
 	newMoonJDE := CalcMoonSHByJDE(seedJDE, 0)
-	solver := newSolarEclipseSolver(newMoonJDE, model).withDeltaTSeconds(deltaTSeconds)
+	solver := newSolarEclipseSolverWithOptions(newMoonJDE, options).withDeltaTSeconds(deltaTSeconds)
 	return solver.eclipseResult()
 }
 
@@ -231,6 +300,7 @@ func (solver solarEclipseSolver) eclipseResult() SolarEclipseResult {
 
 	result := SolarEclipseResult{
 		Model:             model,
+		SunRadiusModel:    solver.sunRadiusModel,
 		Type:              SolarEclipseNone,
 		Centrality:        SolarEclipseNonCentral,
 		GreatestEclipse:   feature.greatestEclipseJDE,
@@ -252,12 +322,12 @@ func (solver solarEclipseSolver) eclipseResult() SolarEclipseResult {
 		result.Type = SolarEclipseHybrid
 	}
 
-	switch feature.typeCode {
-	case "A1", "T1":
-		result.Centrality = SolarEclipseCentralOneLimit
-	case "A", "T", "H", "H2", "H3":
+	if solarEclipseTwoLimitsTypeCode(feature.typeCode) {
 		result.Centrality = SolarEclipseCentralTwoLimits
+	} else if feature.typeCode == "A1" || feature.typeCode == "T1" {
+		result.Centrality = SolarEclipseCentralOneLimit
 	}
+	result.PathWidthDefined = result.Centrality == SolarEclipseCentralTwoLimits
 
 	if result.Type != SolarEclipseNone {
 		result.HasPartial = true
@@ -299,13 +369,13 @@ func (solver solarEclipseSolver) greatestCentralDuration(result SolarEclipseResu
 }
 
 func newSolarEclipseSolver(newMoonJDE float64, model SolarEclipseRadiusModel) solarEclipseSolver {
-	params := solarEclipseModelParameters{
-		penumbralK: solarEclipsePenumbralK,
-		umbralK:    solarEclipsePenumbralK,
-	}
-	if model == SolarEclipseModelNASABulletinSplitK {
-		params.umbralK = solarEclipseUmbralK
-	}
+	return newSolarEclipseSolverWithOptions(newMoonJDE, SolarEclipseOptions{RadiusModel: model})
+}
+
+func newSolarEclipseSolverWithOptions(newMoonJDE float64, options SolarEclipseOptions) solarEclipseSolver {
+	options.RadiusModel = normalizeSolarEclipseRadiusModel(options.RadiusModel)
+	options.SunRadiusModel = normalizeSolarEclipseSunRadiusModel(options.SunRadiusModel)
+	params := solarEclipseModelParams(options.RadiusModel, options.SunRadiusModel)
 
 	firstNodeJDE := newMoonJDE + (0-float64(solarEclipseNodeCount)/2+0.5)*solarEclipseNodeStepDays
 	lastNodeJDE := newMoonJDE + (float64(solarEclipseNodeCount-1)-float64(solarEclipseNodeCount)/2+0.5)*solarEclipseNodeStepDays
@@ -316,15 +386,16 @@ func newSolarEclipseSolver(newMoonJDE float64, model SolarEclipseRadiusModel) so
 
 	return solarEclipseSolver{
 		newMoonJDE:             newMoonJDE,
-		model:                  model,
+		model:                  options.RadiusModel,
+		sunRadiusModel:         options.SunRadiusModel,
 		params:                 params,
 		deltaTSeconds:          math.NaN(),
 		localStateContextCache: make(map[uint64]localSolarEclipseStateContext),
 		besselGeometryCache:    make(map[uint64]solarEclipseBesselGeometryCacheEntry),
 		besselCandidateCache:   make(map[uint64]solarEclipseBesselGeometryCacheEntry),
 		meanSunMoonDistance:    meanSunMoonDistance,
-		penumbraConeTangent:    (solarEclipseSolarRadiusRatio + params.penumbralK) / meanSunMoonDistance,
-		umbraConeTangent:       (solarEclipseSolarRadiusRatio - params.umbralK) / meanSunMoonDistance,
+		penumbraConeTangent:    (params.sunRadiusRatio + params.penumbralK) / meanSunMoonDistance,
+		umbraConeTangent:       (params.sunRadiusRatio - params.umbralK) / meanSunMoonDistance,
 	}
 }
 
@@ -342,20 +413,22 @@ func (solver solarEclipseSolver) withDeltaTSeconds(deltaTSeconds float64) solarE
 }
 
 // effectiveDeltaTSeconds 返回本求解器在某 TT 时刻实际使用的 ΔT（秒）。
-func (solver solarEclipseSolver) effectiveDeltaTSeconds(jd float64) float64 {
+// 未覆盖时用真 TT−UT1（观测表/外推），不能回退到混入 UTC 的进程级 DeltaT，
+// 否则恒星时相位会少掉 DUT1，站心与影轴两条路径就不一致。
+func (solver solarEclipseSolver) effectiveDeltaTSeconds(jde float64) float64 {
 	if math.IsNaN(solver.deltaTSeconds) {
-		return DeltaT(jd, true)
+		return ut1ToTTOffsetSeconds(ttToUT1JDE(jde))
 	}
 	return solver.deltaTSeconds
 }
 
 // siderealTimeAt 返回某 TT 时刻的视恒星时（弧度），ΔT 覆盖时同样生效。
-func (solver solarEclipseSolver) siderealTimeAt(jd float64) float64 {
-	utJDE := TD2UT(jd, false)
+func (solver solarEclipseSolver) siderealTimeAt(jde float64) float64 {
+	ut1JDE := TT2UT1(jde)
 	if !math.IsNaN(solver.deltaTSeconds) {
-		utJDE = jd - solver.deltaTSeconds/86400
+		ut1JDE = jde - solver.deltaTSeconds/86400
 	}
-	return ApparentSiderealTime(utJDE) * 15 * rad
+	return ApparentSiderealTime(ut1JDE) * 15 * rad
 }
 
 // withLocalEphemeris prepares the immutable event-local interpolator used by
@@ -368,14 +441,23 @@ func (solver solarEclipseSolver) withLocalEphemeris() solarEclipseSolver {
 	return solver
 }
 
+// solarEclipseTwoLimitsTypeCode 报告该类型码的南北两限是否都存在，带宽解析式只在这一类中心食上有定义。
+func solarEclipseTwoLimitsTypeCode(typeCode string) bool {
+	switch typeCode {
+	case "A", "T", "H", "H2", "H3":
+		return true
+	}
+	return false
+}
+
 func (solver solarEclipseSolver) feature() solarEclipseFeature {
 	const finiteDifferenceStep = 0.04
 	candidateSolver := solver.withLocalEphemeris()
 
-	jd := solver.newMoonJDE
-	before := candidateSolver.besselMoonCandidateAt(jd - finiteDifferenceStep)
-	center := candidateSolver.besselMoonCandidateAt(jd)
-	after := candidateSolver.besselMoonCandidateAt(jd + finiteDifferenceStep)
+	jde := solver.newMoonJDE
+	before := candidateSolver.besselMoonCandidateAt(jde - finiteDifferenceStep)
+	center := candidateSolver.besselMoonCandidateAt(jde)
+	after := candidateSolver.besselMoonCandidateAt(jde + finiteDifferenceStep)
 
 	vx := (after[0] - before[0]) / (2 * finiteDifferenceStep)
 	vy := (after[1] - before[1]) / (2 * finiteDifferenceStep)
@@ -384,7 +466,7 @@ func (solver solarEclipseSolver) feature() solarEclipseFeature {
 	speedSquared := speed * speed
 
 	t0 := -(center[0]*vx + center[1]*vy) / speedSquared
-	greatestEclipseJDE := jd + t0
+	greatestEclipseJDE := jde + t0
 	// The three-node velocity fit locates greatest eclipse accurately, but its
 	// linearly extrapolated coordinates can miss the true Bessel position by
 	// tens of kilometres in a grazing non-central event. Re-evaluate the
@@ -476,7 +558,9 @@ func (solver solarEclipseSolver) feature() solarEclipseFeature {
 			}
 		}
 
-		if typeCode != "N" && typeCode != "P" {
+		// 单侧极限（A1/T1）只有一侧限界，非中心中心食（A0/T0）连限界都没有：解析式 2r/|sin h|
+		// 在 h→0 时发散，两类事件该栏都无定义，与中心线逐点宽度一起置 0。
+		if solarEclipseTwoLimitsTypeCode(typeCode) {
 			sunAltitude := solarEclipseSunAltitudeAtGreatest(greatestEclipseJDE, greatestLongitude, greatestLatitude, axis.gst)
 			if math.Abs(math.Sin(sunAltitude)) > 1e-12 {
 				pathWidthKM = math.Abs(2*greatestRadii.umbraRadius*solarEclipseEarthEquatorialRadiusKM) / math.Abs(math.Sin(sunAltitude))
@@ -495,13 +579,13 @@ func (solver solarEclipseSolver) feature() solarEclipseFeature {
 	}
 
 	if typeCode != "N" {
-		_, _, feature.partialBeginJDE, _ = solver.quickContactAt(partialStartParam+jd, vx, vy, true)
-		_, _, feature.partialEndJDE, _ = solver.quickContactAt(partialEndParam+jd, vx, vy, true)
+		_, _, feature.partialBeginJDE, _ = solver.quickContactAt(partialStartParam+jde, vx, vy, true)
+		_, _, feature.partialEndJDE, _ = solver.quickContactAt(partialEndParam+jde, vx, vy, true)
 	}
 
 	if axisIntersection.valid && typeCode != "N" && typeCode != "P" {
-		_, _, feature.centralBeginJDE, _ = solver.quickContactAt(centralStartParam+jd, vx, vy, false)
-		_, _, feature.centralEndJDE, _ = solver.quickContactAt(centralEndParam+jd, vx, vy, false)
+		_, _, feature.centralBeginJDE, _ = solver.quickContactAt(centralStartParam+jde, vx, vy, false)
+		_, _, feature.centralEndJDE, _ = solver.quickContactAt(centralEndParam+jde, vx, vy, false)
 		if refined, ok := solver.centralAxisContactJDE(feature.centralBeginJDE, greatestEclipseJDE, -1); ok {
 			feature.centralBeginJDE = refined
 		}
@@ -569,8 +653,8 @@ func (solver solarEclipseSolver) centralAxisContactJDE(
 	return (insideJDE + outsideJDE) / 2, true
 }
 
-func (solver solarEclipseSolver) centralAxisEarthDiscriminant(jd float64) float64 {
-	moon, axis, _ := solver.besselGeometryAt(jd)
+func (solver solarEclipseSolver) centralAxisEarthDiscriminant(jde float64) float64 {
+	moon, axis, _ := solver.besselGeometryAt(jde)
 	return solarEclipseLineEllipsoidDiscriminant(
 		moon[0], moon[1], 2,
 		moon[0], moon[1], 0,
@@ -578,8 +662,8 @@ func (solver solarEclipseSolver) centralAxisEarthDiscriminant(jd float64) float6
 	)
 }
 
-func (solver solarEclipseSolver) centralAxisContactPointAt(jd float64) (SolarEclipsePathPoint, bool) {
-	moon, axis, _ := solver.besselGeometryAt(jd)
+func (solver solarEclipseSolver) centralAxisContactPointAt(jde float64) (SolarEclipsePathPoint, bool) {
+	moon, axis, _ := solver.besselGeometryAt(jde)
 	cosTilt, sinTilt := math.Cos(axis.tilt), math.Sin(axis.tilt)
 	x1 := moon[0]
 	y1 := cosTilt*moon[1] - 2*sinTilt
@@ -606,15 +690,15 @@ func (solver solarEclipseSolver) centralAxisContactPointAt(jd float64) (SolarEcl
 		return SolarEclipsePathPoint{}, false
 	}
 	return SolarEclipsePathPoint{
-		JDE:         jd,
+		JDE:         jde,
 		Longitude:   longitude,
 		Latitude:    latitude,
-		SunAltitude: solarEclipseSunAltitudeAtGreatest(jd, longitude, latitude, axis.gst) / rad,
+		SunAltitude: solarEclipseSunAltitudeAtGreatest(jde, longitude, latitude, axis.gst) / rad,
 	}, true
 }
 
-func (solver solarEclipseSolver) quickContactAt(jd, dx, dy float64, penumbral bool) (float64, float64, float64, bool) {
-	moon := solver.besselMoonAt(jd)
+func (solver solarEclipseSolver) quickContactAt(jde, dx, dy float64, penumbral bool) (float64, float64, float64, bool) {
+	moon := solver.besselMoonAt(jde)
 	radii := solver.shadowRadiiAt(moon[2])
 	radius := 0.0
 	if penumbral {
@@ -635,15 +719,15 @@ func (solver solarEclipseSolver) quickContactAt(jd, dx, dy float64, penumbral bo
 	correction := (effectiveRadius*effectiveRadius - moon[0]*moon[0] - moon[1]*moon[1]) / (2 * velocityProjection)
 	x := moon[0] + correction*dx
 	y := moon[1] + correction*dy
-	jd += correction
+	jde += correction
 
 	curvature := (1 - solarEclipseEarthPolarRatioSquared) * radius * x * y / math.Pow(effectiveRadius, 3)
 	x += curvature * y
 	y -= curvature * x
 
-	axis := solver.besselAxisAt(jd)
+	axis := solver.besselAxisAt(jde)
 	longitude, latitude, ok := solarEclipseBesselXYToGeodetic(x/effectiveRadius, y/effectiveRadius, axis, true)
-	return longitude, latitude, jd, ok
+	return longitude, latitude, jde, ok
 }
 
 func (solver solarEclipseSolver) shadowRadiiAt(moonBesselZ float64) solarEclipseShadowRadii {
@@ -651,14 +735,14 @@ func (solver solarEclipseSolver) shadowRadiiAt(moonBesselZ float64) solarEclipse
 		penumbraRadius: solver.params.penumbralK + solver.penumbraConeTangent*moonBesselZ,
 		umbraRadius:    solver.params.umbralK - solver.umbraConeTangent*moonBesselZ,
 		absUmbraRadius: math.Abs(solver.params.umbralK - solver.umbraConeTangent*moonBesselZ),
-		magnitude:      solver.params.umbralK / moonBesselZ / solarEclipseSolarRadiusRatio * (solver.meanSunMoonDistance + moonBesselZ),
+		magnitude:      solver.params.umbralK / moonBesselZ / solver.params.sunRadiusRatio * (solver.meanSunMoonDistance + moonBesselZ),
 	}
 }
 
-func (solver solarEclipseSolver) besselAxisAt(jd float64) solarEclipseAxis {
-	sun, moon := solarEclipseSunMoonEquatorial(jd)
+func (solver solarEclipseSolver) besselAxisAt(jde float64) solarEclipseAxis {
+	sun, moon := solarEclipseSunMoonEquatorial(jde)
 	return solarEclipseBesselAxisFromEquatorialWithDeltaT(
-		jd, sun, moon, solver.effectiveDeltaTSeconds(jd),
+		jde, sun, moon, solver.effectiveDeltaTSeconds(jde),
 	)
 }
 
@@ -686,30 +770,30 @@ func solarEclipseBesselAxisFromEquatorialWithDeltaT(
 	}
 }
 
-func (solver solarEclipseSolver) besselMoonAt(jd float64) [3]float64 {
-	moon, _, _ := solver.besselGeometryAt(jd)
+func (solver solarEclipseSolver) besselMoonAt(jde float64) [3]float64 {
+	moon, _, _ := solver.besselGeometryAt(jde)
 	return moon
 }
 
-func (solver solarEclipseSolver) besselMoonCandidateAt(jd float64) [3]float64 {
-	moon, _, _, ok := solver.besselGeometryCandidateAt(jd)
+func (solver solarEclipseSolver) besselMoonCandidateAt(jde float64) [3]float64 {
+	moon, _, _, ok := solver.besselGeometryCandidateAt(jde)
 	if !ok {
-		return solver.besselMoonAt(jd)
+		return solver.besselMoonAt(jde)
 	}
 	return moon
 }
 
-func (solver solarEclipseSolver) besselGeometryAt(jd float64) ([3]float64, solarEclipseAxis, [3]float64) {
-	key := math.Float64bits(jd)
+func (solver solarEclipseSolver) besselGeometryAt(jde float64) ([3]float64, solarEclipseAxis, [3]float64) {
+	key := math.Float64bits(jde)
 	// 命中要求 ΔT 世代一致：轴里的 gst 依赖 ΔT，SetDeltaTFn 之后旧条目必须视为未命中。
 	// A hit requires the same ΔT generation: the cached axis carries a ΔT-dependent gst,
 	// so entries written before a SetDeltaTFn override must count as misses.
 	if entry, ok := solver.besselGeometryCache[key]; ok && entry.generation == deltaTGenerationValue() {
 		return entry.moon, entry.axis, entry.sun
 	}
-	sun, moon := solarEclipseSunMoonEquatorial(jd)
+	sun, moon := solarEclipseSunMoonEquatorial(jde)
 	axis := solarEclipseBesselAxisFromEquatorialWithDeltaT(
-		jd, sun, moon, solver.effectiveDeltaTSeconds(jd),
+		jde, sun, moon, solver.effectiveDeltaTSeconds(jde),
 	)
 	geometry := solarEclipseBesselGeometryCacheEntry{
 		moon:  solarEclipseBesselMoonFromEquatorial(moon, axis),
@@ -721,20 +805,20 @@ func (solver solarEclipseSolver) besselGeometryAt(jd float64) ([3]float64, solar
 	return geometry.moon, geometry.axis, geometry.sun
 }
 
-func (solver solarEclipseSolver) besselGeometryCandidateAt(jd float64) ([3]float64, solarEclipseAxis, [3]float64, bool) {
-	key := math.Float64bits(jd)
+func (solver solarEclipseSolver) besselGeometryCandidateAt(jde float64) ([3]float64, solarEclipseAxis, [3]float64, bool) {
+	key := math.Float64bits(jde)
 	if entry, ok := solver.besselCandidateCache[key]; ok && entry.generation == deltaTGenerationValue() {
 		return entry.moon, entry.axis, entry.sun, entry.valid
 	}
 	if solver.localEphemeris == nil {
 		return [3]float64{}, solarEclipseAxis{}, [3]float64{}, false
 	}
-	sun, moon, ok := solver.localEphemeris.equatorialAt(jd)
+	sun, moon, ok := solver.localEphemeris.equatorialAt(jde)
 	if !ok {
 		return [3]float64{}, solarEclipseAxis{}, [3]float64{}, false
 	}
 	axis := solarEclipseBesselAxisFromEquatorialWithDeltaT(
-		jd, sun, moon, solver.effectiveDeltaTSeconds(jd),
+		jde, sun, moon, solver.effectiveDeltaTSeconds(jde),
 	)
 	geometry := solarEclipseBesselGeometryCacheEntry{
 		moon:  solarEclipseBesselMoonFromEquatorial(moon, axis),
@@ -779,20 +863,20 @@ func solarEclipseBesselMoonFromEquatorial(moon [3]float64, axis solarEclipseAxis
 	}
 }
 
-func solarEclipseSunMoonEquatorial(jd float64) ([3]float64, [3]float64) {
-	julianCentury := (jd - 2451545.0) / 36525.0
-	nutationLongitude, nutationObliquity := Nutation2000B(jd)
-	obliquity := (Obliquity1980(jd) + nutationObliquity) * rad
+func solarEclipseSunMoonEquatorial(jde float64) ([3]float64, [3]float64) {
+	julianCentury := (jde - 2451545.0) / 36525.0
+	nutationLongitude, nutationObliquity := Nutation2000B(jde)
+	obliquity := (Obliquity1980(jde) + nutationObliquity) * rad
 
 	// Share the full-series distance and nutation for this single TT.
-	sunDistanceAU := EarthAway(jd)
-	sunLongitude := (HSunTrueLoN(jd, -1) + nutationLongitude - 20.49552/sunDistanceAU/3600) * rad
-	sunLatitude := HSunTrueBo(jd) * rad
+	sunDistanceAU := EarthAway(jde)
+	sunLongitude := (HSunTrueLoN(jde, -1) + nutationLongitude - 20.49552/sunDistanceAU/3600) * rad
+	sunLatitude := HSunTrueBo(jde) * rad
 	sunDistance := sunDistanceAU * solarEclipseAstronomicalUnitKM
 
-	moonLongitude := solarEclipseNormalizeRadians((HMoonTrueLoN(jd, -1)+nutationLongitude)*rad + solarEclipseMoonLonAberrRad)
-	moonLatitude := HMoonTrueBo(jd)*rad + moonLatitudeAberrationRad(julianCentury)
-	moonDistance := HMoonAway(jd)
+	moonLongitude := solarEclipseNormalizeRadians((HMoonTrueLoN(jde, -1)+nutationLongitude)*rad + solarEclipseMoonLonAberrRad)
+	moonLatitude := HMoonTrueBo(jde)*rad + moonLatitudeAberrationRad(julianCentury)
+	moonDistance := HMoonAway(jde)
 
 	sunEquatorial := solarEclipseRotateLLR(sunLongitude, sunLatitude, sunDistance, obliquity)
 	moonEquatorial := solarEclipseRotateLLR(moonLongitude, moonLatitude, moonDistance, obliquity)
@@ -801,8 +885,8 @@ func solarEclipseSunMoonEquatorial(jd float64) ([3]float64, [3]float64) {
 		[3]float64{moonEquatorial[0], moonEquatorial[1], moonEquatorial[2]}
 }
 
-func solarEclipseSunAltitudeAtGreatest(jd, lonDeg, latDeg, gst float64) float64 {
-	sun, _ := solarEclipseSunMoonEquatorial(jd)
+func solarEclipseSunAltitudeAtGreatest(jde, lonDeg, latDeg, gst float64) float64 {
+	sun, _ := solarEclipseSunMoonEquatorial(jde)
 	return solarEclipseSunAltitudeFromEquatorial(sun, lonDeg, latDeg, gst)
 }
 

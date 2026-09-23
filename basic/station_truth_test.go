@@ -29,7 +29,7 @@ func mustJST(value string) time.Time {
 }
 
 func toUTJD(t time.Time) float64 {
-	return TD2UT(Date2JDE(t.UTC()), true)
+	return UTC2TT(Date2JD(t.UTC()))
 }
 
 func TestStationTruthAgainstNAOJ(t *testing.T) {
@@ -140,8 +140,8 @@ func TestStationTruthAgainstNAOJ(t *testing.T) {
 				case "P2R":
 					before := event.when.Add(-24 * time.Hour)
 					after := event.when.Add(24 * time.Hour)
-					nextP2R := JDE2DateByZone(tc.nextP2R(toUTJD(before)), event.when.Location(), false)
-					lastP2R := JDE2DateByZone(tc.lastP2R(toUTJD(after)), event.when.Location(), false)
+					nextP2R := JD2DateByZone(tc.nextP2R(toUTJD(before)), event.when.Location(), false)
+					lastP2R := JD2DateByZone(tc.lastP2R(toUTJD(after)), event.when.Location(), false)
 					if !sameMinute(nextP2R, event.when) {
 						t.Fatalf("%s next P2R mismatch: got %s want %s", tc.name, nextP2R, event.when)
 					}
@@ -151,8 +151,8 @@ func TestStationTruthAgainstNAOJ(t *testing.T) {
 				case "R2P":
 					before := event.when.Add(-24 * time.Hour)
 					after := event.when.Add(24 * time.Hour)
-					nextR2P := JDE2DateByZone(tc.nextR2P(toUTJD(before)), event.when.Location(), false)
-					lastR2P := JDE2DateByZone(tc.lastR2P(toUTJD(after)), event.when.Location(), false)
+					nextR2P := JD2DateByZone(tc.nextR2P(toUTJD(before)), event.when.Location(), false)
+					lastR2P := JD2DateByZone(tc.lastR2P(toUTJD(after)), event.when.Location(), false)
 					if !sameMinute(nextR2P, event.when) {
 						t.Fatalf("%s next R2P mismatch: got %s want %s", tc.name, nextR2P, event.when)
 					}
@@ -166,8 +166,8 @@ func TestStationTruthAgainstNAOJ(t *testing.T) {
 						continue
 					}
 					query := event.when
-					lastP2R := JDE2DateByZone(tc.lastP2R(toUTJD(query)), query.Location(), false)
-					nextR2P := JDE2DateByZone(tc.nextR2P(toUTJD(query)), query.Location(), false)
+					lastP2R := JD2DateByZone(tc.lastP2R(toUTJD(query)), query.Location(), false)
+					nextR2P := JD2DateByZone(tc.nextR2P(toUTJD(query)), query.Location(), false)
 					if !sameMinute(lastP2R, prev) {
 						t.Fatalf("%s opposition last P2R mismatch: got %s want %s", tc.name, lastP2R, prev)
 					}

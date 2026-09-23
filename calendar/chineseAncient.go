@@ -709,13 +709,13 @@ func ancientCalendarName(system AncientCalendarSystem) string {
 }
 
 func ancientDateJDN(year, month, day int) int {
-	return int(math.Floor(basic.JDECalc(year, month, float64(day)) + 0.5))
+	return int(math.Floor(basic.JDCalc(year, month, float64(day)) + 0.5))
 }
 
 func ancientJDAtLocalMidnight(year, month, day int) float64 {
-	return basic.JDECalc(year, month, float64(day))
+	return basic.JDCalc(year, month, float64(day))
 }
 
 func ancientJDNToDate(jdn int) time.Time {
-	return basic.JDE2DateByZone(float64(jdn)-0.5, getCst(), true)
+	return basic.JD2DateByZone(float64(jdn)-0.5, getCst(), true)
 }

@@ -1,12 +1,14 @@
 package svg
 
 import (
+	"github.com/starainrt/astro/internal/timenote"
 	"fmt"
 	"html"
 	"math"
 	"strings"
 	"time"
 
+	"github.com/starainrt/astro"
 	"github.com/starainrt/astro/basic"
 	eclipsecore "github.com/starainrt/astro/eclipse"
 	"github.com/starainrt/astro/internal/geodata"
@@ -50,6 +52,11 @@ type SolarEclipseMapSVGOptions struct {
 	// Location 控制显示的事件时刻；nil 使用 date.Location()。
 	// Location controls displayed event times. Nil uses date.Location().
 	Location *time.Location
+	// TimeScale 选择图中时刻的时标：零值 UTC；TimeScaleUT1 改用 UT1 时刻，此时 Location 必须是
+	// nil 或 UTC（否则返回 false），并在图注里声明尺度。
+	// TimeScale selects the label scale: the zero value is UTC; TimeScaleUT1 uses UT1 labels, requires
+	// Location to be nil or UTC (otherwise the renderer returns false) and declares the scale in the footer.
+	TimeScale astro.TimeScale
 	// Projection 选择地图投影；零值从事件几何中自动选择，不支持的值使渲染器返回 false。
 	// Projection selects the map projection. The zero value selects one from the event geometry; unsupported values make the renderer return false.
 	Projection EclipseMapProjection
@@ -159,6 +166,12 @@ func solarEclipseMapSVG(
 	if !validEclipseMapProjection(options.Projection) {
 		return "", false
 	}
+	if options.TimeScale == astro.TimeScaleUT1 {
+		if options.Location != nil && options.Location != time.UTC {
+			return "", false
+		}
+		options.Location = time.UTC
+	}
 	options = normalizeSolarEclipseMapSVGOptions(date, options)
 	// 日期门与核心一致：当天没有日食就不出图。偏食足迹是“取最近一次”语义，
 	// 缺这道门会把邻近日期的图当成当天的图交出去。
@@ -198,14 +211,25 @@ func solarEclipseMapSVG(
 	if calculators.panel != nil {
 		geocentric, hasGeocentric = calculators.panel(date)
 	}
+	// 几何（直射点、闭合弧、等时线取值）必须用民用时刻算；只有写出的文字换时标。
+	// 时刻标记按输出时标的整点取点（那里本就是另一个物理时刻），位置随整点标注移动。
+	civilPartial := partial
+	if options.TimeScale == astro.TimeScaleUT1 {
+		global = eclipsecore.SolarEclipseInfoInUT1(global)
+		greatestTimes = eclipsecore.TimeLabelsInUT1(greatestTimes)
+		partial = eclipsecore.SolarEclipsePartialFootprintsInUT1(partial)
+		central = eclipsecore.SolarEclipsePathInUT1(central)
+		local = eclipsecore.LocalSolarEclipseInfoInUT1(local)
+		geocentric = eclipsecore.SolarEclipseGeocentricPanelInUT1(geocentric)
+	}
 	plan := solarEclipseMapPlanFor(partial, local, hasLocal, geocentric, hasGeocentric,
 		options, projection, center, hasCentral, solarEclipseMapHasCentralBand(partial))
 	// 数据块行距或图例带放不下时拒绝该画布，而不是把压叠的文字画出来。
 	if !plan.fits() {
 		return "", false
 	}
-	return plan.render(partial, central, hasCentral, local, hasLocal, geocentric, hasGeocentric,
-		options, projection), true
+	return plan.render(civilPartial, partial, central, hasCentral,
+		local, hasLocal, geocentric, hasGeocentric, options, projection), true
 }
 
 // solarEclipseMapHasCentralBand 报告该事件是否有中心食带（包络、限界或瞬时足迹任一存在）。
@@ -414,10 +438,11 @@ func renderSolarEclipseMapSVG(
 ) string {
 	plan := solarEclipseMapPlanFor(partial, local, hasLocal, geocentric, hasGeocentric,
 		options, projection, center, hasCentral, solarEclipseMapHasCentralBand(partial))
-	return plan.render(partial, central, hasCentral, local, hasLocal, geocentric, hasGeocentric, options, projection)
+	return plan.render(partial, partial, central, hasCentral, local, hasLocal, geocentric, hasGeocentric, options, projection)
 }
 
 func (plan solarEclipseMapPlan) render(
+	civilPartial eclipsecore.SolarEclipsePartialFootprintsInfo,
 	partial eclipsecore.SolarEclipsePartialFootprintsInfo,
 	central eclipsecore.SolarEclipsePath,
 	hasCentral bool,
@@ -436,7 +461,7 @@ func (plan solarEclipseMapPlan) render(
 	if options.Title != "" {
 		titleText = svgchart.EllipsizeText(title, float64(options.Width)-52, 24)
 	}
-	partialPath, partialSource := solarEclipsePartialSweepPath(partial, frame)
+	partialPath, partialSource := solarEclipsePartialSweepPath(civilPartial, frame)
 
 	// 一张已放置矩形表：固定元素先占位，地图标注再按候选偏移避让。
 	labels := &svgchart.LabelTable{}
@@ -465,7 +490,7 @@ func (plan solarEclipseMapPlan) render(
 	writeSolarEclipseRiseSetCurves(&builder, partial.RiseSetCurves, frame)
 	writeSolarEclipsePenumbralOutlines(&builder, partial, frame, options, labels)
 	// 点标注比等值线标注重要：先把食甚、接触、直射点与中心线时刻占到位置，等值线标注再让开。
-	pointLabels := solarEclipseMapPlacePointLabels(partial, central, hasCentral, frame, options, labels)
+	pointLabels := solarEclipseMapPlacePointLabels(civilPartial, partial, central, hasCentral, frame, options, labels)
 	writeSolarEclipseGreatestTimeContours(&builder, partial.GreatestTimeContours, frame, options, labels)
 	magnitudeAxis, magnitudeNormal, hasMagnitudeAxis := solarEclipseMagnitudeLabelAxis(central)
 	if !hasMagnitudeAxis {
@@ -769,8 +794,8 @@ func solarEclipseMapCross(a, b solarEclipseMapVector) solarEclipseMapVector {
 func solarEclipseSubsolarPoint(value time.Time) svgmap.GeoPoint {
 	ttJDE := solarEclipseTimeToTTJDE(value)
 	ra, dec := basic.HSunApparentRaDec(ttJDE)
-	utJDE := basic.TD2UT(ttJDE, false)
-	longitude := normalizeDegree180(ra - basic.ApparentSiderealTime(utJDE)*15)
+	ut1JDE := basic.TT2UT1(ttJDE)
+	longitude := normalizeDegree180(ra - basic.ApparentSiderealTime(ut1JDE)*15)
 	return svgmap.GeoPoint{Longitude: longitude, Latitude: dec}
 }
 
@@ -896,7 +921,7 @@ func solarEclipseCentralEnvelopeCoversPath(
 		return false
 	}
 	limitToleranceKM := solarEclipseCentralEnvelopeAxisMissToleranceKM
-	if width := path.Eclipse.PathWidthKM; width > 0 && !math.IsInf(width, 1) {
+	if width := path.Eclipse.PathWidthKM; path.Eclipse.PathWidthDefined && width > 0 && !math.IsInf(width, 1) {
 		limitToleranceKM = math.Max(limitToleranceKM, solarEclipseCentralEnvelopeLimitMissFraction*width)
 	}
 	for _, series := range [][]eclipsecore.SolarEclipsePathPoint{path.NorthernLimit, path.SouthernLimit} {
@@ -1107,7 +1132,7 @@ func writeSolarEclipseMapSummary(
 		summaryX, html.EscapeString(text))
 
 	details := make([]string, 0, 4)
-	if info.HasCentral {
+	if info.PathWidthDefined {
 		if options.Language == "en" {
 			details = append(details, fmt.Sprintf("central path width %.1f km", info.PathWidthKM))
 		} else {
@@ -1167,31 +1192,10 @@ func writeSolarEclipseMapSummary(
 			summaryX, conjunctionY, html.EscapeString(conjunctionText))
 	}
 	// 图上所有时刻都按展示时区，这里明确写出它与 UT 的偏差，避免被当成 UT 读。
-	zoneNote := solarEclipseTimeZoneNote(maximum, options.Language)
+	zoneNote := timenote.Scale(options.TimeScale, maximum, options.Location, options.Language)
 	labels.ReserveText(summaryX, conjunctionY+20, 11, zoneNote, "middle")
 	fmt.Fprintf(builder, `<text x="%.3f" y="%.3f" fill="#7b8794" font-family="Arial, sans-serif" font-size="11" text-anchor="middle">%s</text>`,
 		summaryX, conjunctionY+20, html.EscapeString(zoneNote))
-}
-
-func solarEclipseTimeZoneNote(maximum time.Time, language string) string {
-	name, offsetSeconds := maximum.Zone()
-	if offsetSeconds == 0 {
-		if language == "en" {
-			return "All times are UT"
-		}
-		return "图中时刻为 UT"
-	}
-	sign := "+"
-	if offsetSeconds < 0 {
-		sign = "-"
-		offsetSeconds = -offsetSeconds
-	}
-	hours := offsetSeconds / 3600
-	minutes := (offsetSeconds % 3600) / 60
-	if language == "en" {
-		return fmt.Sprintf("All times are %s (UT%s%02d:%02d)", name, sign, hours, minutes)
-	}
-	return fmt.Sprintf("图中时刻为 %s（UT%s%02d:%02d）", name, sign, hours, minutes)
 }
 
 func formatSolarEclipseMapDuration(value time.Duration) string {
@@ -1274,6 +1278,10 @@ const (
 )
 
 func solarEclipseMapFooterText(options SolarEclipseMapSVGOptions, projection svgmap.Projection) string {
+	return solarEclipseMapFooterTextBase(options, projection)
+}
+
+func solarEclipseMapFooterTextBase(options SolarEclipseMapSVGOptions, projection svgmap.Projection) string {
 	if options.FooterNote != "" {
 		return options.FooterNote
 	}
@@ -1301,11 +1309,13 @@ func writeSolarEclipseMapFooter(
 		maxWidth := float64(options.Width) - footerX - layout.margin
 		lines = svgchart.TruncateTextLines(svgchart.WrapText(options.FooterNote, maxWidth, solarEclipseMapFooterFontSize),
 			maxWidth, solarEclipseMapFooterFontSize,
-			svgchart.BaselineLineLimit(solarEclipseMapFooterFontSize, 15, baseline, float64(options.Height)-4))
+			svgchart.BaselineLineLimit(solarEclipseMapFooterFontSize, svgchart.FooterLineHeight(solarEclipseMapFooterFontSize),
+				baseline, float64(options.Height)-svgchart.FooterBottomPadding(solarEclipseMapFooterFontSize)))
 	}
 	for index, line := range lines {
 		fmt.Fprintf(builder, `<text x="%.3f" y="%.3f" fill="#596164" font-family="Georgia, 'Times New Roman', serif" font-size="%.0f">%s</text>`,
-			footerX, baseline+float64(index)*15, solarEclipseMapFooterFontSize, html.EscapeString(line))
+			footerX, baseline+float64(index)*svgchart.FooterLineHeight(solarEclipseMapFooterFontSize),
+			solarEclipseMapFooterFontSize, html.EscapeString(line))
 	}
 }
 

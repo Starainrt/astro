@@ -2,7 +2,6 @@ package star
 
 import (
 	"errors"
-	"math"
 	"time"
 
 	"github.com/starainrt/astro/basic"
@@ -15,7 +14,7 @@ var (
 	ERR_STAR_NEVER_DOWN = ERR_STAR_NEVER_SET
 )
 
-func riseSetResult(date time.Time, jde float64, err error) (time.Time, error) {
+func riseSetResult(date time.Time, jd float64, err error) (time.Time, error) {
 	if err != nil {
 		switch {
 		case errors.Is(err, basic.ErrNeverRise):
@@ -26,7 +25,8 @@ func riseSetResult(date time.Time, jde float64, err error) (time.Time, error) {
 			return time.Time{}, err
 		}
 	}
-	return basic.JDE2DateByZone(jde, date.Location(), true), nil
+	_, offset := date.Zone()
+	return basic.JD2DateByZone(jd-float64(offset)/86400, date.Location(), false), nil
 }
 
 // Constellation 星座中文名 / Chinese constellation name.
@@ -34,8 +34,9 @@ func riseSetResult(date time.Time, jde float64, err error) (time.Time, error) {
 // ra/dec 为给定时刻的赤经赤纬，单位度；date 作为所属历元使用。
 // ra/dec are equatorial coordinates in degrees and date provides the epoch used by the constellation boundaries.
 func Constellation(ra, dec float64, date time.Time) string {
-	jde := basic.Date2JDE(date.UTC())
-	return basic.ConstellationNameZH(ra, dec, jde)
+	// 星座边界按 TT 历元做岁差定位，这里传 UTC 民用 JD：69 s 的历元差在 1e-4″ 量级。
+	jdUTC := basic.Date2JD(date.UTC())
+	return basic.ConstellationNameZH(ra, dec, jdUTC)
 }
 
 // ConstellationCode IAU 星座代码 / IAU constellation code.
@@ -43,8 +44,8 @@ func Constellation(ra, dec float64, date time.Time) string {
 // ra/dec 为给定时刻的赤经赤纬，单位度；date 作为所属历元使用。
 // ra/dec are equatorial coordinates in degrees and date provides the epoch used by the constellation boundaries.
 func ConstellationCode(ra, dec float64, date time.Time) string {
-	jde := basic.Date2JDE(date.UTC())
-	return basic.ConstellationCode(ra, dec, jde)
+	jdUTC := basic.Date2JD(date.UTC())
+	return basic.ConstellationCode(ra, dec, jdUTC)
 }
 
 // ConstellationEN 星座英文名 / English constellation name.
@@ -52,8 +53,8 @@ func ConstellationCode(ra, dec float64, date time.Time) string {
 // ra/dec 为给定时刻的赤经赤纬，单位度；date 作为所属历元使用。
 // ra/dec are equatorial coordinates in degrees and date provides the epoch used by the constellation boundaries.
 func ConstellationEN(ra, dec float64, date time.Time) string {
-	jde := basic.Date2JDE(date.UTC())
-	return basic.ConstellationNameEN(ra, dec, jde)
+	jdUTC := basic.Date2JD(date.UTC())
+	return basic.ConstellationNameEN(ra, dec, jdUTC)
 }
 
 // MeanSiderealTime 平恒星时 / mean sidereal time.
@@ -61,7 +62,7 @@ func ConstellationEN(ra, dec float64, date time.Time) string {
 // 返回 date 对应绝对时刻的格林尼治平恒星时，单位小时。
 // Returns Greenwich mean sidereal time at the instant represented by date, in hours.
 func MeanSiderealTime(date time.Time) float64 {
-	return basic.MeanSiderealTime(basic.Date2JDE(date.UTC()))
+	return basic.MeanSiderealTime(basic.UTC2UT1(basic.Date2JD(date.UTC())))
 }
 
 // ApparentSiderealTime 真恒星时 / apparent sidereal time.
@@ -69,24 +70,22 @@ func MeanSiderealTime(date time.Time) float64 {
 // 返回 date 对应绝对时刻的格林尼治真恒星时，单位小时。
 // Returns Greenwich apparent sidereal time at the instant represented by date, in hours.
 func ApparentSiderealTime(date time.Time) float64 {
-	return basic.ApparentSiderealTime(basic.Date2JDE(date.UTC()))
+	return basic.ApparentSiderealTime(basic.UTC2UT1(basic.Date2JD(date.UTC())))
 }
 
 // RiseTime 恒星升起时刻 / stellar rise time.
 //
 // date 取其所在时区的当地日期，返回值保持相同时区；ra/dec 为该日期附近使用的瞬时赤经赤纬，单位度；
-// lon/lat 为观测者经纬度，东正西负、北正南负；height 为海拔高度，单位米；aero 为 true 时加入标准大气折射。
+// lon/lat 为观测者经纬度，东正西负、北正南负；height 为椭球高（大地高），单位米；aero 为 true 时加入标准大气折射。
 // date is interpreted on its local civil day and the result keeps the same time zone. ra/dec are apparent coordinates in degrees;
 // lon/lat are east-positive and north-positive, height is observer elevation in meters, and aero enables standard atmospheric refraction.
 func RiseTime(date time.Time, ra, dec, lon, lat, height float64, aero bool) (time.Time, error) {
-	if date.Hour() > 12 {
-		date = date.Add(time.Hour * -12)
-	}
-	jde := basic.Date2JDE(date)
+	date = time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, date.Location())
+	localJD := basic.Date2JD(date)
 	_, loc := date.Zone()
 	timezone := float64(loc) / 3600.0
-	riseJde, err := basic.StarRiseTime(jde, ra, dec, lon, lat, height, timezone, aero)
-	return riseSetResult(date, riseJde, err)
+	riseJD, err := basic.StarRiseTime(localJD, ra, dec, lon, lat, height, timezone, aero)
+	return riseSetResult(date, riseJD, err)
 }
 
 // DownTime 恒星落下时刻别名 / deprecated stellar set-time alias.
@@ -104,14 +103,12 @@ func DownTime(date time.Time, ra, dec, lon, lat, height float64, aero bool) (tim
 // 参数与 RiseTime 相同，返回给定当地日期内的落下时刻。
 // Uses the same inputs as RiseTime and returns the set time on the corresponding local civil day.
 func SetTime(date time.Time, ra, dec, lon, lat, height float64, aero bool) (time.Time, error) {
-	if date.Hour() > 12 {
-		date = date.Add(time.Hour * -12)
-	}
-	jde := basic.Date2JDE(date)
+	date = time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, date.Location())
+	localJD := basic.Date2JD(date)
 	_, loc := date.Zone()
 	timezone := float64(loc) / 3600.0
-	riseJde, err := basic.StarSetTime(jde, ra, dec, lon, lat, height, timezone, aero)
-	return riseSetResult(date, riseJde, err)
+	downJD, err := basic.StarSetTime(localJD, ra, dec, lon, lat, height, timezone, aero)
+	return riseSetResult(date, downJD, err)
 }
 
 // HourAngle 恒星时角 / hour angle.
@@ -119,10 +116,10 @@ func SetTime(date time.Time, ra, dec, lon, lat, height float64, aero bool) (time
 // ra 为瞬时赤经，单位度；lon 为观测者经度，东正西负；date 为观测时刻，会读取其时区参与地方时计算。
 // ra is the apparent right ascension in degrees; lon is east-positive longitude; date is the observing instant and its zone offset participates in local-time calculations.
 func HourAngle(date time.Time, ra, lon float64) float64 {
-	jde := basic.Date2JDE(date)
+	localJD := basic.Date2JD(date)
 	_, loc := date.Zone()
 	timezone := float64(loc) / 3600.0
-	return basic.StarHourAngle(jde, ra, lon, timezone)
+	return basic.StarHourAngle(localJD, ra, lon, timezone)
 }
 
 // Azimuth 恒星方位角 / azimuth.
@@ -130,10 +127,10 @@ func HourAngle(date time.Time, ra, lon float64) float64 {
 // ra/dec 为瞬时赤经赤纬，单位度；lon/lat 为观测者经纬度，东正西负、北正南负；返回值按正北为 0°、向东增加。
 // ra/dec are apparent equatorial coordinates in degrees; lon/lat are east-positive and north-positive; azimuth is measured from north toward east.
 func Azimuth(date time.Time, ra, dec, lon, lat float64) float64 {
-	jde := basic.Date2JDE(date)
+	localJD := basic.Date2JD(date)
 	_, loc := date.Zone()
 	timezone := float64(loc) / 3600.0
-	return basic.StarAzimuth(jde, ra, dec, lon, lat, timezone)
+	return basic.StarAzimuth(localJD, ra, dec, lon, lat, timezone)
 }
 
 // Altitude 恒星高度角 / stellar altitude.
@@ -141,10 +138,10 @@ func Azimuth(date time.Time, ra, dec, lon, lat float64) float64 {
 // ra/dec 为瞬时赤经赤纬，单位度；lon/lat 为观测者经纬度，东正西负、北正南负；返回值单位度。
 // ra/dec are apparent equatorial coordinates in degrees; lon/lat are east-positive and north-positive; the result is in degrees.
 func Altitude(date time.Time, ra, dec, lon, lat float64) float64 {
-	jde := basic.Date2JDE(date)
+	localJD := basic.Date2JD(date)
 	_, loc := date.Zone()
 	timezone := float64(loc) / 3600.0
-	return basic.StarHeight(jde, ra, dec, lon, lat, timezone)
+	return basic.StarHeight(localJD, ra, dec, lon, lat, timezone)
 }
 
 // Zenith 恒星天顶距 / stellar zenith distance.
@@ -160,14 +157,12 @@ func Zenith(date time.Time, ra, dec, lon, lat float64) float64 {
 // date 取其所在时区的当地日期，返回值保持相同时区；ra 为瞬时赤经，单位度；lon 为观测者经度，东正西负。
 // date is interpreted on its local civil day and the result keeps the same time zone. ra is the apparent right ascension in degrees and lon is east-positive longitude.
 func CulminationTime(date time.Time, ra, lon float64) time.Time {
-	jde := basic.Date2JDE(date)
-	if jde-math.Floor(jde) < 0.5 {
-		jde--
-	}
+	date = time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, date.Location())
+	localJD := basic.Date2JD(date)
 	_, loc := date.Zone()
 	timezone := float64(loc) / 3600.0
-	calcJde := basic.StarCulminationTime(jde, ra, lon, timezone) - timezone/24.00
-	return basic.JDE2DateByZone(calcJde, date.Location(), false)
+	calcJD := basic.StarCulminationTime(localJD, ra, lon, timezone) - timezone/24.00
+	return basic.JD2DateByZone(calcJD, date.Location(), false)
 }
 
 // InitStarDatabase 初始化恒星数据库 / initializes the embedded star catalog.

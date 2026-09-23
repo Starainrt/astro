@@ -74,15 +74,15 @@ func saturnConjunctionFull(jde, degree float64, next uint8) float64 {
 	} else {
 		jde += daysPerDegree * currentDelta
 	}
-	estimateJD := jde
+	estimateJDE := jde
 	converged := false
 	for i := 0; i < eventNewtonMaxIterations; i++ {
-		prevJD := estimateJD
-		longitudeDelta := saturnSunLongitudeDelta(prevJD, degree, true)
-		longitudeSlope := (saturnSunLongitudeDelta(prevJD+0.000005, degree, true) - saturnSunLongitudeDelta(prevJD-0.000005, degree, true)) / 0.00001
-		nextJD := prevJD - longitudeDelta/longitudeSlope
-		estimateJD = nextJD
-		if math.Abs(nextJD-prevJD) <= 0.00001 {
+		prevJDE := estimateJDE
+		longitudeDelta := saturnSunLongitudeDelta(prevJDE, degree, true)
+		longitudeSlope := (saturnSunLongitudeDelta(prevJDE+0.000005, degree, true) - saturnSunLongitudeDelta(prevJDE-0.000005, degree, true)) / 0.00001
+		nextJD := prevJDE - longitudeDelta/longitudeSlope
+		estimateJDE = nextJD
+		if math.Abs(nextJD-prevJDE) <= 0.00001 {
 			converged = true
 			break
 		}
@@ -90,7 +90,7 @@ func saturnConjunctionFull(jde, degree float64, next uint8) float64 {
 	if !converged {
 		return math.NaN()
 	}
-	return TD2UT(estimateJD, false)
+	return TT2UTC(estimateJDE)
 }
 
 func saturnConjunction(jde, degree float64, next uint8) float64 {
@@ -105,15 +105,15 @@ func saturnConjunction(jde, degree float64, next uint8) float64 {
 	} else {
 		jde += daysPerDegree * currentDelta
 	}
-	estimateJD := jde
+	estimateJDE := jde
 	converged := false
 	for i := 0; i < eventNewtonMaxIterations; i++ {
-		prevJD := estimateJD
-		longitudeDelta := saturnSunLongitudeDeltaN(prevJD, degree, true, saturnEventSearchN)
-		longitudeSlope := (saturnSunLongitudeDeltaN(prevJD+0.000005, degree, true, saturnEventSearchN) - saturnSunLongitudeDeltaN(prevJD-0.000005, degree, true, saturnEventSearchN)) / 0.00001
-		nextJD := prevJD - longitudeDelta/longitudeSlope
-		estimateJD = nextJD
-		if math.Abs(nextJD-prevJD) <= saturnPhaseCoarseTolerance {
+		prevJDE := estimateJDE
+		longitudeDelta := saturnSunLongitudeDeltaN(prevJDE, degree, true, saturnEventSearchN)
+		longitudeSlope := (saturnSunLongitudeDeltaN(prevJDE+0.000005, degree, true, saturnEventSearchN) - saturnSunLongitudeDeltaN(prevJDE-0.000005, degree, true, saturnEventSearchN)) / 0.00001
+		nextJD := prevJDE - longitudeDelta/longitudeSlope
+		estimateJDE = nextJD
+		if math.Abs(nextJD-prevJDE) <= saturnPhaseCoarseTolerance {
 			converged = true
 			break
 		}
@@ -123,12 +123,12 @@ func saturnConjunction(jde, degree float64, next uint8) float64 {
 	}
 	converged = false
 	for i := 0; i < eventNewtonMaxIterations; i++ {
-		prevJD := estimateJD
-		longitudeDelta := saturnSunLongitudeDelta(prevJD, degree, true)
-		longitudeSlope := (saturnSunLongitudeDelta(prevJD+0.000005, degree, true) - saturnSunLongitudeDelta(prevJD-0.000005, degree, true)) / 0.00001
-		nextJD := prevJD - longitudeDelta/longitudeSlope
-		estimateJD = nextJD
-		if math.Abs(nextJD-prevJD) <= 0.00001 {
+		prevJDE := estimateJDE
+		longitudeDelta := saturnSunLongitudeDelta(prevJDE, degree, true)
+		longitudeSlope := (saturnSunLongitudeDelta(prevJDE+0.000005, degree, true) - saturnSunLongitudeDelta(prevJDE-0.000005, degree, true)) / 0.00001
+		nextJD := prevJDE - longitudeDelta/longitudeSlope
+		estimateJDE = nextJD
+		if math.Abs(nextJD-prevJDE) <= 0.00001 {
 			converged = true
 			break
 		}
@@ -136,7 +136,7 @@ func saturnConjunction(jde, degree float64, next uint8) float64 {
 	if !converged {
 		return math.NaN()
 	}
-	return TD2UT(estimateJD, false)
+	return TT2UTC(estimateJDE)
 }
 
 func LastSaturnConjunction(jde float64) float64 {
@@ -175,22 +175,22 @@ func saturnRetrogradeAroundOpposition(oppositionJD float64, searchBeforeOppositi
 	if !isFiniteFloat(oppositionJD) {
 		return math.NaN()
 	}
-	oppositionTT := TD2UT(oppositionJD, true)
+	oppositionTT := UTC2TT(oppositionJD)
 	startTT := oppositionTT
 	endTT := oppositionTT
 	if searchBeforeOpposition {
 		easternQuadratureUT := saturnConjunction(oppositionTT, 90, 0)
-		startTT = TD2UT(easternQuadratureUT, true)
+		startTT = UTC2TT(easternQuadratureUT)
 	} else {
 		westernQuadratureUT := saturnConjunction(oppositionTT, 270, 1)
-		endTT = TD2UT(westernQuadratureUT, true)
+		endTT = UTC2TT(westernQuadratureUT)
 	}
-	bestJD := zeroEventInWindow(startTT, endTT, 2.0, 2.0, 30.0/86400.0, func(jd float64) float64 {
+	bestJDE := zeroEventInWindow(startTT, endTT, 2.0, 2.0, 30.0/86400.0, func(jd float64) float64 {
 		return saturnRADerivativeN(jd, stationDerivativeStepDay, saturnEventSearchN)
 	}, func(jd float64) float64 {
 		return saturnRADerivative(jd, stationDerivativeStepDay)
 	})
-	return TD2UT(bestJD, false)
+	return TT2UTC(bestJDE)
 }
 
 func NextSaturnRetrogradeToPrograde(jde float64) float64 {

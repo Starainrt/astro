@@ -25,14 +25,14 @@ type JupiterCentralMeridianInfo struct {
 }
 
 // JupiterCentralMeridians 木星 System I/II/III 中央经线 / Jupiter System I/II/III central meridians.
-func JupiterCentralMeridians(jd float64) JupiterCentralMeridianInfo {
-	return JupiterCentralMeridiansN(jd, -1)
+func JupiterCentralMeridians(jde float64) JupiterCentralMeridianInfo {
+	return JupiterCentralMeridiansN(jde, -1)
 }
 
 // JupiterCentralMeridiansN 木星 System I/II/III 中央经线（截断版） / truncated Jupiter System I/II/III central meridians.
-func JupiterCentralMeridiansN(jd float64, n int) JupiterCentralMeridianInfo {
-	observations := jupiterPhysicalObservationsN(jd, n)
-	physical := JupiterPhysicalN(jd, n)
+func JupiterCentralMeridiansN(jde float64, n int) JupiterCentralMeridianInfo {
+	observations := jupiterPhysicalObservationsN(jde, n)
+	physical := JupiterPhysicalN(jde, n)
 	return JupiterCentralMeridianInfo{
 		SystemI:   observations.SystemI,
 		SystemII:  observations.SystemII,
@@ -41,18 +41,18 @@ func JupiterCentralMeridiansN(jd float64, n int) JupiterCentralMeridianInfo {
 }
 
 // JupiterDSDE 木星 DS/DE 行星中心赤纬 / Jupiter planetocentric declinations of Sun and Earth.
-func JupiterDSDE(jd float64) (ds, de float64) {
-	return JupiterDSDEN(jd, -1)
+func JupiterDSDE(jde float64) (ds, de float64) {
+	return JupiterDSDEN(jde, -1)
 }
 
 // JupiterDSDEN 木星 DS/DE 行星中心赤纬（截断版） / truncated Jupiter planetocentric declinations of Sun and Earth.
-func JupiterDSDEN(jd float64, n int) (ds, de float64) {
-	observations := jupiterPhysicalObservationsN(jd, n)
+func JupiterDSDEN(jde float64, n int) (ds, de float64) {
+	observations := jupiterPhysicalObservationsN(jde, n)
 	return observations.DS, observations.DE
 }
 
-func jupiterPhysicalObservationsN(jd float64, n int) jupiterPhysicalObservationInfo {
-	days := jd - 2433282.5
+func jupiterPhysicalObservationsN(jde float64, n int) jupiterPhysicalObservationInfo {
+	days := jde - 2433282.5
 	julianCentury := days / 36525.0
 
 	poleRA := (268.0 + 0.1061*julianCentury) * rad
@@ -60,9 +60,9 @@ func jupiterPhysicalObservationsN(jd float64, n int) jupiterPhysicalObservationI
 	w1 := (17.71 + 877.90003539*days) * rad
 	w2 := (16.838 + 870.27003539*days) * rad
 
-	earthLon := planet.WherePlanetN(-1, 0, jd, n)
-	earthLat := planet.WherePlanetN(-1, 1, jd, n)
-	earthRadius := planet.WherePlanetN(-1, 2, jd, n)
+	earthLon := planet.WherePlanetN(-1, 0, jde, n)
+	earthLat := planet.WherePlanetN(-1, 1, jde, n)
+	earthRadius := planet.WherePlanetN(-1, 2, jde, n)
 
 	delta := 4.0
 	var jupiterLon float64
@@ -73,16 +73,16 @@ func jupiterPhysicalObservationsN(jd float64, n int) jupiterPhysicalObservationI
 	var z float64
 	for i := 0; i < 2; i++ {
 		lightTimeDays := astronomicalUnitLightTimeDays * delta
-		jupiterLon = planet.WherePlanetN(4, 0, jd-lightTimeDays, n)
-		jupiterLat = planet.WherePlanetN(4, 1, jd-lightTimeDays, n)
-		jupiterRadius = planet.WherePlanetN(4, 2, jd-lightTimeDays, n)
+		jupiterLon = planet.WherePlanetN(4, 0, jde-lightTimeDays, n)
+		jupiterLat = planet.WherePlanetN(4, 1, jde-lightTimeDays, n)
+		jupiterRadius = planet.WherePlanetN(4, 2, jde-lightTimeDays, n)
 		x = jupiterRadius*Cos(jupiterLat)*Cos(jupiterLon) - earthRadius*Cos(earthLat)*Cos(earthLon)
 		y = jupiterRadius*Cos(jupiterLat)*Sin(jupiterLon) - earthRadius*Cos(earthLat)*Sin(earthLon)
 		z = jupiterRadius*Sin(jupiterLat) - earthRadius*Sin(earthLat)
 		delta = math.Sqrt(x*x + y*y + z*z)
 	}
 
-	meanObliquity := EclipticObliquity(jd, false)
+	meanObliquity := EclipticObliquity(jde, false)
 	sinMeanObliquity, cosMeanObliquity := math.Sincos(meanObliquity)
 	sinJupiterLat, cosJupiterLat := math.Sincos(jupiterLat * rad)
 	sinJupiterLon, cosJupiterLon := math.Sincos(jupiterLon * rad)

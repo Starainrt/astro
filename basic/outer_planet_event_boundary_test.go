@@ -37,7 +37,7 @@ func TestOuterPlanetExactEventBoundaryIncludesCurrent(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			queryTT := TD2UT(tc.seed, true)
+			queryTT := UTC2TT(tc.seed)
 			last := tc.lastFn(queryTT)
 			next := tc.nextFn(queryTT)
 			if !sameEventJD(last, tc.seed) {
@@ -67,7 +67,7 @@ func TestOuterPlanetNextEventAdvancesPastReturnedEvent(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			first := tc.next(tc.seed)
-			query := TD2UT(Date2JDE(JDE2DateByZone(first, time.UTC, false).Add(time.Second)), true)
+			query := UTC2TT(Date2JD(JD2DateByZone(first, time.UTC, false).Add(time.Second)))
 			next := tc.next(query)
 			if !eventUTQueryAfterOrEqual(next, query) {
 				t.Fatalf("next should be after query: first=%.12f query=%.12f next=%.12f", first, query, next)
@@ -80,5 +80,5 @@ func TestOuterPlanetNextEventAdvancesPastReturnedEvent(t *testing.T) {
 }
 
 func ttjdUTC(year, month, day, hour, min, sec int) float64 {
-	return TD2UT(Date2JDE(time.Date(year, time.Month(month), day, hour, min, sec, 0, time.UTC)), true)
+	return UTC2TT(Date2JD(time.Date(year, time.Month(month), day, hour, min, sec, 0, time.UTC)))
 }

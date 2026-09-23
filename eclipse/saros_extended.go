@@ -85,7 +85,7 @@ func sarosNumber(k, phase int) int {
 		anchors, base = lunarSarosAnchors[:], 1
 	}
 	anchor := decodeSarosMagic(anchors[len(anchors)/2], base+len(anchors)/2)
-	refTT := basic.JDECalc(int(anchor.Year), int(anchor.Month), float64(anchor.Day))
+	refTT := basic.JDCalc(int(anchor.Year), int(anchor.Month), float64(anchor.Day))
 	refK, _ := sarosLunation(refTT, phase)
 	delta := k - refK
 	column := (38 * delta) % sarosCycleLunations

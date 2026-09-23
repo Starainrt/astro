@@ -19,9 +19,9 @@ func TestSolarEclipseGeocentricPanelModelsContract(t *testing.T) {
 	if !singleK.SingleK || singleK.Ephemeris != "IAU Single-K" {
 		t.Fatalf("IAU panel SingleK=%v ephemeris=%q", singleK.SingleK, singleK.Ephemeris)
 	}
-	if singleK.PenumbralK != singleK.UmbralK || singleK.PenumbralK != basic.SolarEclipsePenumbralK {
+	if singleK.PenumbralK != singleK.UmbralK || singleK.PenumbralK != basic.SolarEclipseIAUSingleRadiusK {
 		t.Fatalf("IAU panel k1=%.7f k2=%.7f, want the single k %.7f",
-			singleK.PenumbralK, singleK.UmbralK, basic.SolarEclipsePenumbralK)
+			singleK.PenumbralK, singleK.UmbralK, basic.SolarEclipseIAUSingleRadiusK)
 	}
 	splitK, ok := SolarEclipseGeocentricPanelAt(date)
 	if !ok {

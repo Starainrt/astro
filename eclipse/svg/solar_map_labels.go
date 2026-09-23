@@ -350,6 +350,7 @@ func solarEclipseContactMarkerSpecs(info eclipsecore.SolarEclipsePartialFootprin
 
 // solarEclipseMapPlacePointLabels 按重要性放置点标注：食甚最先占位，其余标注再让开。
 func solarEclipseMapPlacePointLabels(
+	civilPartial eclipsecore.SolarEclipsePartialFootprintsInfo,
 	partial eclipsecore.SolarEclipsePartialFootprintsInfo,
 	central eclipsecore.SolarEclipsePath,
 	hasCentral bool,
@@ -376,7 +377,7 @@ func solarEclipseMapPlacePointLabels(
 			}, frame)
 	}
 	result.contacts = solarEclipseMapPlaceContactLabels(partial, frame, labels)
-	result.subsolar = solarEclipseMapPlaceSubsolarLabel(partial.Eclipse, frame, options.Language, labels)
+	result.subsolar = solarEclipseMapPlaceSubsolarLabel(civilPartial.Eclipse, frame, options.Language, labels)
 	if hasCentral {
 		result.times = solarEclipseMapPlaceTimeLabels(central, frame, options, labels)
 	}

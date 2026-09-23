@@ -13,7 +13,7 @@ func TestLunarEclipseShadowGeometryAxisMatchesGamma(t *testing.T) {
 		time.Date(2026, time.March, 3, 0, 0, 0, 0, time.UTC),
 		time.Date(2028, time.July, 6, 0, 0, 0, 0, time.UTC),
 	} {
-		result := LunarEclipse(TD2UT(Date2JDE(date), true))
+		result := LunarEclipse(UTC2TT(Date2JD(date)))
 		geometry := LunarEclipseShadowGeometryAt(result.Maximum)
 		// 影几何内部用的是小角近似的地球视差（R⊕/月距），这里必须用同一形式，否则二级差会露出来。
 		earthParallaxDegrees := (1 / geometry.MoonDistanceEarthRadii) * 180 / math.Pi
@@ -32,7 +32,7 @@ func TestLunarEclipseMagnitudeInvertsToAxis(t *testing.T) {
 		time.Date(2028, time.July, 6, 0, 0, 0, 0, time.UTC),
 		time.Date(2020, time.November, 30, 0, 0, 0, 0, time.UTC),
 	} {
-		result := LunarEclipse(TD2UT(Date2JDE(date), true))
+		result := LunarEclipse(UTC2TT(Date2JD(date)))
 		geometry := LunarEclipseShadowGeometryAt(result.Maximum)
 		moonSemidiameter := MoonSemidiameter(result.Maximum) / 3600
 		fromUmbral := geometry.UmbralRadiusDegrees + moonSemidiameter -

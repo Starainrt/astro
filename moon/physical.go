@@ -31,8 +31,8 @@ func Physical(date time.Time) PhysicalInfo {
 
 // PhysicalN 月球物理观测参数（截断版） / truncated physical observing parameters of the Moon.
 func PhysicalN(date time.Time, n int) PhysicalInfo {
-	jde := basic.Date2JDE(date.UTC())
-	info := basic.MoonPhysicalN(basic.TD2UT(jde, true), n)
+	jd := basic.Date2JD(date.UTC())
+	info := basic.MoonPhysicalN(basic.UTC2TT(jd), n)
 	return PhysicalInfo{
 		OpticalLongitude:   info.OpticalLongitude,
 		OpticalLatitude:    info.OpticalLatitude,

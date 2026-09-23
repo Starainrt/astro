@@ -58,7 +58,7 @@ type jupiterGalileanShadowPoint struct {
 
 // LastJupiterGalileanPhenomenonEvent 上一次伽利略卫星现象 / previous Galilean-satellite event.
 //
-// jd 与返回时刻都是 UTC/UT 儒略日；需要瞬时状态时先用 TD2UT(jd, true) 换成 TT。
+// jd 与返回时刻都是民用儒略日；需要瞬时状态时先用 UTC2TT(jd) 换成 TT。
 func LastJupiterGalileanPhenomenonEvent(jd float64, satellite int, phenomenonType JupiterGalileanPhenomenonType) JupiterGalileanPhenomenonEvent {
 	event, _ := searchJupiterGalileanPhenomenonEvent(jd, satellite, phenomenonType, -1, true)
 	return event
@@ -66,7 +66,7 @@ func LastJupiterGalileanPhenomenonEvent(jd float64, satellite int, phenomenonTyp
 
 // NextJupiterGalileanPhenomenonEvent 下一次伽利略卫星现象 / next Galilean-satellite event.
 //
-// jd 与返回时刻都是 UTC/UT 儒略日；需要瞬时状态时先用 TD2UT(jd, true) 换成 TT。
+// jd 与返回时刻都是民用儒略日；需要瞬时状态时先用 UTC2TT(jd) 换成 TT。
 func NextJupiterGalileanPhenomenonEvent(jd float64, satellite int, phenomenonType JupiterGalileanPhenomenonType) JupiterGalileanPhenomenonEvent {
 	event, _ := searchJupiterGalileanPhenomenonEvent(jd, satellite, phenomenonType, 1, false)
 	return event
@@ -74,7 +74,7 @@ func NextJupiterGalileanPhenomenonEvent(jd float64, satellite int, phenomenonTyp
 
 // ClosestJupiterGalileanPhenomenonEvent 最近一次伽利略卫星现象 / closest Galilean-satellite event.
 //
-// jd 与返回时刻都是 UTC/UT 儒略日；需要瞬时状态时先用 TD2UT(jd, true) 换成 TT。
+// jd 与返回时刻都是民用儒略日；需要瞬时状态时先用 UTC2TT(jd) 换成 TT。
 func ClosestJupiterGalileanPhenomenonEvent(jd float64, satellite int, phenomenonType JupiterGalileanPhenomenonType) JupiterGalileanPhenomenonEvent {
 	last, hasLast := searchJupiterGalileanPhenomenonEvent(jd, satellite, phenomenonType, -1, true)
 	next, hasNext := searchJupiterGalileanPhenomenonEvent(jd, satellite, phenomenonType, 1, false)
@@ -428,8 +428,8 @@ func jupiterGalileanPhenomenonMetricAt(
 		}
 	}
 
-	evaluationJD := TD2UT(jd, true)
-	context := newJupiterGalileanObservationContext(evaluationJD)
+	evaluationJDE := UTC2TT(jd)
+	context := newJupiterGalileanObservationContext(evaluationJDE)
 	if context.jupiterDistance == 0 {
 		return jupiterGalileanMetricSample{
 			metric:     math.Inf(1),

@@ -8,7 +8,7 @@ import (
 )
 
 func TestSolarEclipseCentralPathMatchesGlobalGreatest(t *testing.T) {
-	seedJDE := JDECalc(2024, 4, 8)
+	seedJDE := JDCalc(2024, 4, 8)
 	global := SolarEclipse(seedJDE)
 	path := SolarEclipseCentralPath(seedJDE, SolarEclipsePathOptions{StepDays: 5.0 / 1440.0})
 
@@ -43,7 +43,7 @@ func TestSolarEclipseCentralPathMatchesGlobalGreatest(t *testing.T) {
 }
 
 func TestSolarEclipseCentralPathTargetSpacingRefinesSamples(t *testing.T) {
-	seedJDE := JDECalc(2024, 4, 8)
+	seedJDE := JDCalc(2024, 4, 8)
 	coarse := SolarEclipseCentralPath(seedJDE, SolarEclipsePathOptions{StepDays: 20.0 / 1440.0})
 	refined := SolarEclipseCentralPath(seedJDE, SolarEclipsePathOptions{
 		StepDays:        20.0 / 1440.0,
@@ -65,7 +65,7 @@ func TestSolarEclipseCentralPathTargetSpacingRefinesSamples(t *testing.T) {
 }
 
 func TestSolarEclipseCentralPathAdaptiveCurvature2543(t *testing.T) {
-	seed := JDECalc(2543, 10, 29)
+	seed := JDCalc(2543, 10, 29)
 	path := SolarEclipseCentralPath(seed, SolarEclipsePathOptions{
 		StepDays:        20.0 / 1440.0,
 		TargetSpacingKM: 700,
@@ -96,7 +96,7 @@ func TestSolarEclipseCentralPathAdaptiveCurvature2543(t *testing.T) {
 }
 
 func TestSolarEclipseCentralPathLimitsKeepValidBoundarySamples(t *testing.T) {
-	path := SolarEclipseCentralPath(JDECalc(2008, 8, 1), SolarEclipsePathOptions{
+	path := SolarEclipseCentralPath(JDCalc(2008, 8, 1), SolarEclipsePathOptions{
 		StepDays: 2.0 / 1440.0,
 	})
 	if len(path.CenterLine) < 3 || len(path.NorthernLimit) < 3 || len(path.NorthernLimit) != len(path.SouthernLimit) {
@@ -121,7 +121,7 @@ func TestSolarEclipseCentralPathLimitsKeepValidBoundarySamples(t *testing.T) {
 }
 
 func TestSolarEclipseCentralPathLimitsRemainStrictlyOrdered19851101(t *testing.T) {
-	path := SolarEclipseCentralPath(JDECalc(1985, 11, 1), SolarEclipsePathOptions{
+	path := SolarEclipseCentralPath(JDCalc(1985, 11, 1), SolarEclipsePathOptions{
 		StepDays: 10.0 / 1440.0,
 	})
 	if len(path.CenterLine) < 2 || len(path.NorthernLimit) < 2 ||
@@ -148,7 +148,7 @@ func TestSolarEclipseCentralPathLimitsRemainStrictlyOrdered19851101(t *testing.T
 }
 
 func TestSolarEclipseRiseSetRawTopologyAvoidsPolarTraceExplosion(t *testing.T) {
-	seed := JDECalc(2309, 6, 9)
+	seed := JDCalc(2309, 6, 9)
 	result := SolarEclipse(seed)
 	solver := newSolarEclipseSolver(CalcMoonSHByJDE(seed, 0), SolarEclipseModelNASABulletinSplitK)
 	curves, junctions, actualStep := solver.sampleRiseSetCurves(
@@ -172,7 +172,7 @@ func TestSolarEclipseNonCentralGreatestHorizonFoldsRemainTimedSegments(t *testin
 	} {
 		date := date
 		t.Run(fmt.Sprintf("%04d-%02d-%02d", date[0], date[1], date[2]), func(t *testing.T) {
-			result := SolarEclipsePartialFootprints(JDECalc(date[0], date[1], float64(date[2])), SolarEclipsePartialFootprintOptions{
+			result := SolarEclipsePartialFootprints(JDCalc(date[0], date[1], float64(date[2])), SolarEclipsePartialFootprintOptions{
 				StepDays: 2.0 / 1440.0, BoundaryPoints: 24, RiseSetStepDays: 2.0 / 1440.0,
 			})
 			if result.Eclipse.Type != SolarEclipseTotal || result.Eclipse.Centrality != SolarEclipseNonCentral {
@@ -212,7 +212,7 @@ func TestSolarEclipseNonCentralGreatestHorizonFoldsRemainTimedSegments(t *testin
 }
 
 func TestSolarEclipseCentralPathPartialHasNoCenterLine(t *testing.T) {
-	path := SolarEclipseCentralPath(JDECalc(2025, 3, 29), SolarEclipsePathOptions{})
+	path := SolarEclipseCentralPath(JDCalc(2025, 3, 29), SolarEclipsePathOptions{})
 
 	if path.Eclipse.Type != SolarEclipsePartial {
 		t.Fatalf("unexpected eclipse type: got %s want %s", path.Eclipse.Type, SolarEclipsePartial)
@@ -231,7 +231,7 @@ func TestSolarEclipseCentralPathPartialHasNoCenterLine(t *testing.T) {
 }
 
 func TestSolarEclipsePartialFootprintsIncludeGreatest(t *testing.T) {
-	seedJDE := JDECalc(2024, 4, 8)
+	seedJDE := JDCalc(2024, 4, 8)
 	global := SolarEclipse(seedJDE)
 	footprints := SolarEclipsePartialFootprints(seedJDE, SolarEclipsePartialFootprintOptions{
 		StepDays:       30.0 / 1440.0,
@@ -283,7 +283,7 @@ func TestSolarEclipsePartialFootprintsIncludeGreatest(t *testing.T) {
 }
 
 func TestSolarEclipsePartialFootprintBoundarySpacing20431003(t *testing.T) {
-	seedJDE := JDECalc(2043, 10, 3)
+	seedJDE := JDCalc(2043, 10, 3)
 	global := SolarEclipse(seedJDE)
 	solver := newSolarEclipseSolver(
 		CalcMoonSHByJDE(seedJDE, 0),
@@ -350,7 +350,7 @@ func TestSolarEclipseMagnitudeContourInputHasBoundedCardinality(t *testing.T) {
 }
 
 func TestSolarEclipsePartialBandContoursMeetHorizonFootprintTracks(t *testing.T) {
-	seed := JDECalc(2009, 7, 22)
+	seed := JDCalc(2009, 7, 22)
 	result := SolarEclipsePartialFootprints(seed, SolarEclipsePartialFootprintOptions{
 		StepDays: 2.0 / 1440.0, BoundaryPoints: 96,
 	})
@@ -389,7 +389,7 @@ func TestSolarEclipsePartialBandContoursMeetHorizonFootprintTracks(t *testing.T)
 }
 
 func TestSolarEclipseDisableRiseSetAlsoSkipsPartialBandTopology(t *testing.T) {
-	result := SolarEclipsePartialFootprints(JDECalc(2009, 7, 22), SolarEclipsePartialFootprintOptions{
+	result := SolarEclipsePartialFootprints(JDCalc(2009, 7, 22), SolarEclipsePartialFootprintOptions{
 		StepDays: 10.0 / 1440.0, BoundaryPoints: 24, DisableRiseSetCurves: true,
 	})
 	if len(result.RiseSetCurves) != 0 || len(result.PartialBandContours) != 0 {
@@ -399,7 +399,7 @@ func TestSolarEclipseDisableRiseSetAlsoSkipsPartialBandTopology(t *testing.T) {
 }
 
 func TestSolarEclipseMagnitudeContoursIncludeNonCentralAnnularBand(t *testing.T) {
-	result := SolarEclipsePartialFootprints(JDECalc(2014, 4, 29), SolarEclipsePartialFootprintOptions{
+	result := SolarEclipsePartialFootprints(JDCalc(2014, 4, 29), SolarEclipsePartialFootprintOptions{
 		StepDays:              10.0 / 1440.0,
 		BoundaryPoints:        24,
 		CentralShadowStepDays: 2.0 / 1440.0,
@@ -433,7 +433,7 @@ func TestSolarEclipseMagnitudeContoursIncludeNonCentralAnnularBand(t *testing.T)
 }
 
 func TestSolarEclipseMagnitudeContoursAllowTotalityValuesAboveOne(t *testing.T) {
-	result := SolarEclipsePartialFootprints(JDECalc(2024, 4, 8), SolarEclipsePartialFootprintOptions{
+	result := SolarEclipsePartialFootprints(JDCalc(2024, 4, 8), SolarEclipsePartialFootprintOptions{
 		StepDays: 10.0 / 1440.0, MagnitudeValues: []float64{1.01},
 	})
 	if len(result.MagnitudeContours) != 1 || result.MagnitudeContours[0].Magnitude != 1.01 {
@@ -448,8 +448,8 @@ func TestSolarEclipseMagnitudeContoursCoverHybridAndDeepTotalValues(t *testing.T
 		values            []float64
 		minimumSegmentLen int
 	}{
-		{name: "2023 hybrid", seed: JDECalc(2023, 4, 20), values: []float64{1.005, 1.01, 1.012}, minimumSegmentLen: 2},
-		{name: "2035 total", seed: JDECalc(2035, 9, 2), values: []float64{1.001, 1.01, 1.02}, minimumSegmentLen: 2},
+		{name: "2023 hybrid", seed: JDCalc(2023, 4, 20), values: []float64{1.005, 1.01, 1.012}, minimumSegmentLen: 2},
+		{name: "2035 total", seed: JDCalc(2035, 9, 2), values: []float64{1.001, 1.01, 1.02}, minimumSegmentLen: 2},
 	} {
 		result := SolarEclipsePartialFootprints(test.seed, SolarEclipsePartialFootprintOptions{
 			StepDays: 10.0 / 1440.0, MagnitudeValues: test.values, DisableRiseSetCurves: true,
@@ -494,7 +494,7 @@ func TestSolarEclipseHybridMagnitudeOneContoursMeetCenterLineTransitions(t *test
 	} {
 		name := fmt.Sprintf("%04d-%02d-%02d", test.year, test.month, test.day)
 		t.Run(name, func(t *testing.T) {
-			seed := JDECalc(test.year, test.month, float64(test.day))
+			seed := JDCalc(test.year, test.month, float64(test.day))
 			partial := SolarEclipsePartialFootprints(seed, SolarEclipsePartialFootprintOptions{
 				StepDays: 10.0 / 1440.0, MagnitudeValues: []float64{1}, DisableRiseSetCurves: true,
 			})
@@ -539,7 +539,7 @@ func TestSolarEclipseHybridMagnitudeOneContoursMeetCenterLineTransitions(t *test
 }
 
 func TestSolarEclipseHybridMagnitudeOneContoursKeepTheirCentralPathSide11440703(t *testing.T) {
-	seed := JDECalc(1144, 7, 3)
+	seed := JDCalc(1144, 7, 3)
 	partial := SolarEclipsePartialFootprints(seed, SolarEclipsePartialFootprintOptions{
 		StepDays: 2.0 / 1440.0, MagnitudeValues: []float64{1}, DisableRiseSetCurves: true,
 	})
@@ -575,7 +575,7 @@ func TestSolarEclipseMagnitudeContoursMatchLocalMaximumMagnitude(t *testing.T) {
 		{2024, 4, 8, 0.2},
 	}
 	for _, test := range tests {
-		seed := JDECalc(test.year, test.month, float64(test.day))
+		seed := JDCalc(test.year, test.month, float64(test.day))
 		result := SolarEclipsePartialFootprints(seed, SolarEclipsePartialFootprintOptions{
 			StepDays: 10.0 / 1440.0, MagnitudeValues: []float64{test.magnitude},
 		})
@@ -600,7 +600,7 @@ func TestSolarEclipseMagnitudeContoursMatchLocalMaximumMagnitude(t *testing.T) {
 }
 
 func TestSolarEclipseMagnitudeContoursReachGreatestRiseSetBoundary(t *testing.T) {
-	seed := JDECalc(2031, 5, 21)
+	seed := JDCalc(2031, 5, 21)
 	result := SolarEclipsePartialFootprints(seed, SolarEclipsePartialFootprintOptions{
 		StepDays: 10.0 / 1440.0, MagnitudeValues: []float64{0.8},
 	})
@@ -654,7 +654,7 @@ func TestSolarEclipseMagnitudeContourEndpointsAcrossEclipseTypes(t *testing.T) {
 		{2025, 3, 29, 0.2},
 	}
 	for _, test := range tests {
-		seed := JDECalc(test.year, test.month, float64(test.day))
+		seed := JDCalc(test.year, test.month, float64(test.day))
 		result := SolarEclipsePartialFootprints(seed, SolarEclipsePartialFootprintOptions{
 			StepDays: 10.0 / 1440.0, MagnitudeValues: []float64{test.magnitude},
 		})
@@ -673,7 +673,7 @@ func TestSolarEclipseMagnitudeContourEndpointsAcrossEclipseTypes(t *testing.T) {
 }
 
 func TestSolarEclipseTotalMagnitudeOneContoursMeetHorizonClosures20260812(t *testing.T) {
-	result := SolarEclipsePartialFootprints(JDECalc(2026, 8, 12), SolarEclipsePartialFootprintOptions{
+	result := SolarEclipsePartialFootprints(JDCalc(2026, 8, 12), SolarEclipsePartialFootprintOptions{
 		StepDays: 2.0 / 1440.0, BoundaryPoints: 96, CentralShadowStepDays: 2.0 / 1440.0,
 		MagnitudeValues: []float64{1},
 	})
@@ -709,7 +709,7 @@ func TestSolarEclipseTotalMagnitudeOneContoursMeetHorizonClosures20260812(t *tes
 }
 
 func TestSolarEclipseRiseSetJunctionsRemainConnected20100115(t *testing.T) {
-	result := SolarEclipsePartialFootprints(JDECalc(2010, 1, 15), SolarEclipsePartialFootprintOptions{
+	result := SolarEclipsePartialFootprints(JDCalc(2010, 1, 15), SolarEclipsePartialFootprintOptions{
 		StepDays: 10.0 / 1440.0, BoundaryPoints: 180,
 	})
 	if len(result.RiseSetCurves) != 6 {
@@ -738,7 +738,7 @@ func TestSolarEclipseRiseSetJunctionsRemainConnected20100115(t *testing.T) {
 
 func TestSolarEclipseCentralPathLimitsIncludeExternalContacts20100115(t *testing.T) {
 	path := SolarEclipseCentralPath(
-		JDECalc(2010, 1, 15),
+		JDCalc(2010, 1, 15),
 		SolarEclipsePathOptions{StepDays: 10.0 / 1440.0, TargetSpacingKM: 100},
 	)
 	if len(path.NorthernLimit) < 2 || len(path.NorthernLimit) != len(path.SouthernLimit) {
@@ -759,7 +759,7 @@ func TestSolarEclipseCentralPathLimitsIncludeExternalContacts20100115(t *testing
 }
 
 func TestSolarEclipseCentralPathMeetsGreatestSetCurveAtExactLimit20100115(t *testing.T) {
-	seed := JDECalc(2010, 1, 15)
+	seed := JDCalc(2010, 1, 15)
 	path := SolarEclipseCentralPath(seed, SolarEclipsePathOptions{
 		StepDays: 2.0 / 1440.0, TargetSpacingKM: 100,
 	})
@@ -809,7 +809,7 @@ func TestSolarEclipseCentralPathContactsShareGreatestRiseSetVerticesAcrossTypes(
 	} {
 		date := date
 		t.Run(fmt.Sprintf("%04d-%02d-%02d", date[0], date[1], date[2]), func(t *testing.T) {
-			seed := JDECalc(date[0], date[1], float64(date[2]))
+			seed := JDCalc(date[0], date[1], float64(date[2]))
 			path := SolarEclipseCentralPath(seed, SolarEclipsePathOptions{
 				StepDays: 2.0 / 1440.0, TargetSpacingKM: 200,
 			})
@@ -867,7 +867,7 @@ func solarEclipseRiseSetCurvesContainPoint(
 }
 
 func TestSolarEclipseExactNonCentralContactsRecoverAtPolarLimb21410108(t *testing.T) {
-	seed := JDECalc(2141, 1, 8)
+	seed := JDCalc(2141, 1, 8)
 	result := solarEclipse(seed, SolarEclipseModelNASABulletinSplitK)
 	if result.Type != SolarEclipseAnnular || result.Centrality != SolarEclipseNonCentral {
 		t.Fatalf("unexpected eclipse classification: type=%s centrality=%s", result.Type, result.Centrality)
@@ -887,7 +887,7 @@ func TestSolarEclipseExactNonCentralContactsRecoverAtPolarLimb21410108(t *testin
 }
 
 func BenchmarkSolarEclipseMagnitudeContours(b *testing.B) {
-	seed := JDECalc(2031, 5, 21)
+	seed := JDCalc(2031, 5, 21)
 	global := solarEclipse(seed, SolarEclipseModelNASABulletinSplitK)
 	options := SolarEclipsePartialFootprintOptions{
 		StepDays: 2.0 / 1440.0, MagnitudeValues: []float64{0.2, 0.4, 0.6, 0.8, 1.0},
@@ -913,7 +913,7 @@ func BenchmarkSolarEclipseMagnitudeContours(b *testing.B) {
 }
 
 func BenchmarkSolarEclipsePartialFootprintsFull(b *testing.B) {
-	seed := JDECalc(2031, 5, 21)
+	seed := JDCalc(2031, 5, 21)
 	options := SolarEclipsePartialFootprintOptions{
 		StepDays:              2.0 / 1440.0,
 		BoundaryPoints:        180,
@@ -931,7 +931,7 @@ func BenchmarkSolarEclipsePartialFootprintsFull(b *testing.B) {
 }
 
 func BenchmarkSolarEclipseNonCentralPartialFootprints20431003(b *testing.B) {
-	seed := JDECalc(2043, 10, 3)
+	seed := JDCalc(2043, 10, 3)
 	options := SolarEclipsePartialFootprintOptions{
 		StepDays:              2.0 / 1440.0,
 		BoundaryPoints:        96,
@@ -951,7 +951,7 @@ func BenchmarkSolarEclipseNonCentralPartialFootprints20431003(b *testing.B) {
 }
 
 func TestSolarEclipsePartialFootprintsWorkForPartialOnlyEclipse(t *testing.T) {
-	footprints := SolarEclipsePartialFootprints(JDECalc(2025, 3, 29), SolarEclipsePartialFootprintOptions{
+	footprints := SolarEclipsePartialFootprints(JDCalc(2025, 3, 29), SolarEclipsePartialFootprintOptions{
 		StepDays:       30.0 / 1440.0,
 		BoundaryPoints: 72,
 	})
@@ -1074,7 +1074,7 @@ func TestSolarEclipseCentralBandFootprintsCoverNonCentralAndOneLimitEvents(t *te
 		{2043, 10, 3, SolarEclipseNonCentral},
 	} {
 		result := SolarEclipsePartialFootprints(
-			JDECalc(fixture.year, fixture.month, float64(fixture.day)),
+			JDCalc(fixture.year, fixture.month, float64(fixture.day)),
 			SolarEclipsePartialFootprintOptions{StepDays: 20.0 / 1440.0, BoundaryPoints: 24},
 		)
 		if result.Eclipse.Centrality != fixture.centrality {
@@ -1091,7 +1091,7 @@ func TestSolarEclipseCentralBandFootprintsCoverNonCentralAndOneLimitEvents(t *te
 					fixture.year, fixture.month, fixture.day, len(result.CentralBandSegments))
 			}
 			solver := newSolarEclipseSolver(
-				CalcMoonSHByJDE(JDECalc(fixture.year, fixture.month, float64(fixture.day)), 0),
+				CalcMoonSHByJDE(JDCalc(fixture.year, fixture.month, float64(fixture.day)), 0),
 				SolarEclipseModelNASABulletinSplitK,
 			)
 			horizonPoints := 0
@@ -1149,7 +1149,7 @@ func TestSolarEclipseCentralBandFootprintsCoverNonCentralAndOneLimitEvents(t *te
 
 func TestSolarEclipseNonCentralBandFallsBackWhenCriticalEnvelopeLeaks(t *testing.T) {
 	result := SolarEclipsePartialFootprints(
-		JDECalc(1950, 3, 18),
+		JDCalc(1950, 3, 18),
 		SolarEclipsePartialFootprintOptions{
 			StepDays: 60.0 / 1440.0, BoundaryPoints: 24, DisableRiseSetCurves: true,
 		},
@@ -1192,7 +1192,7 @@ func TestSolarEclipsePartialBoundarySegmentsRemainClosedAcrossAntimeridian(t *te
 }
 
 func TestSolarEclipsePartialFootprintsNoEvent(t *testing.T) {
-	footprints := SolarEclipsePartialFootprints(JDECalc(2023, 5, 15), SolarEclipsePartialFootprintOptions{})
+	footprints := SolarEclipsePartialFootprints(JDCalc(2023, 5, 15), SolarEclipsePartialFootprintOptions{})
 
 	if footprints.Eclipse.Type != SolarEclipseNone {
 		t.Fatalf("unexpected eclipse type: got %s want %s", footprints.Eclipse.Type, SolarEclipseNone)
@@ -1203,7 +1203,7 @@ func TestSolarEclipsePartialFootprintsNoEvent(t *testing.T) {
 }
 
 func TestSolarEclipsePartialAreaCompatibilityWrapper(t *testing.T) {
-	seedJDE := JDECalc(2024, 4, 8)
+	seedJDE := JDCalc(2024, 4, 8)
 	options := SolarEclipsePartialAreaOptions{
 		StepDays:       30.0 / 1440.0,
 		BoundaryPoints: 72,

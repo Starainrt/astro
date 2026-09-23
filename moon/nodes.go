@@ -13,7 +13,7 @@ func AscendingNode(date time.Time) float64 {
 
 // AscendingNodeN 月球升交点黄经（截断版） / truncated ascending node longitude of the Moon.
 func AscendingNodeN(date time.Time, n int) float64 {
-	jde := basic.TD2UT(basic.Date2JDE(date.UTC()), true)
+	jde := basic.UTC2TT(basic.Date2JD(date.UTC()))
 	return basic.MoonAscendingNodeN(jde, n)
 }
 
@@ -24,6 +24,6 @@ func DescendingNode(date time.Time) float64 {
 
 // DescendingNodeN 月球降交点黄经（截断版） / truncated descending node longitude of the Moon.
 func DescendingNodeN(date time.Time, n int) float64 {
-	jde := basic.TD2UT(basic.Date2JDE(date.UTC()), true)
+	jde := basic.UTC2TT(basic.Date2JD(date.UTC()))
 	return basic.MoonDescendingNodeN(jde, n)
 }

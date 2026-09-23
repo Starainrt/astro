@@ -24,7 +24,7 @@ func elongationObjectiveSeeds() []float64 {
 	seeds := make([]float64, 0, 24)
 	for year := 2024; year <= 2027; year++ {
 		for month := 1; month <= 12; month += 2 {
-			seeds = append(seeds, JDECalc(year, month, 1))
+			seeds = append(seeds, JDCalc(year, month, 1))
 		}
 	}
 	return seeds
@@ -34,7 +34,7 @@ func elongationObjectiveTruth(elongate func(float64) float64, eventUT float64) f
 	left, right := eventUT-30.0/1440.0, eventUT+30.0/1440.0
 	for i := 0; i < 200; i++ {
 		third := (right - left) / 3
-		if elongate(TD2UT(left+third, true)) <= elongate(TD2UT(right-third, true)) {
+		if elongate(UTC2TT(left+third)) <= elongate(UTC2TT(right-third)) {
 			left += third
 			continue
 		}
@@ -81,7 +81,7 @@ func TestGreatestElongationLateralToleranceIsEventTolerance(t *testing.T) {
 		{"VenusEast", NextVenusGreatestElongationEast, LastVenusGreatestElongationEast},
 		{"VenusWest", NextVenusGreatestElongationWest, LastVenusGreatestElongationWest},
 	}
-	seeds := []float64{JDECalc(2024, 3, 1), JDECalc(2025, 7, 1), JDECalc(2026, 11, 1)}
+	seeds := []float64{JDCalc(2024, 3, 1), JDCalc(2025, 7, 1), JDCalc(2026, 11, 1)}
 	tolerance := exactQueryTTToleranceUT
 	for _, tc := range cases {
 		for _, seed := range seeds {
@@ -89,7 +89,7 @@ func TestGreatestElongationLateralToleranceIsEventTolerance(t *testing.T) {
 			if math.IsNaN(event) {
 				t.Fatalf("%s at %.1f returned NaN", tc.name, seed)
 			}
-			eventTT := TD2UT(event, true)
+			eventTT := UTC2TT(event)
 			afterUT := event + offsetSeconds/86400.0
 			if got := tc.next(eventTT + offsetSeconds/86400.0); got < afterUT-tolerance {
 				t.Fatalf("%s: Next at event+%.1f s = %.9f returned an event %.3f s before the query",
@@ -121,7 +121,7 @@ func TestGreatestElongationAnySideKeepsBothSideExtremum(t *testing.T) {
 			LastVenusGreatestElongationEast, LastVenusGreatestElongationWest},
 	}
 	for _, tc := range cases {
-		for jd := JDECalc(2024, 1, 1); jd <= JDECalc(2027, 1, 1); jd += 14 {
+		for jd := JDCalc(2024, 1, 1); jd <= JDCalc(2027, 1, 1); jd += 14 {
 			east, west := tc.eastNext(jd), tc.westNext(jd)
 			want := east
 			if !sameEventJD(east, west) {

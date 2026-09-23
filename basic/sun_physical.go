@@ -26,16 +26,16 @@ type SunPhysicalInfo struct {
 }
 
 // SunPhysical 太阳物理观测参数 / physical observing parameters of the Sun.
-func SunPhysical(jd float64) SunPhysicalInfo {
-	return SunPhysicalN(jd, -1)
+func SunPhysical(jde float64) SunPhysicalInfo {
+	return SunPhysicalN(jde, -1)
 }
 
 // SunPhysicalN 太阳物理观测参数（截断版） / truncated physical observing parameters of the Sun.
-func SunPhysicalN(jd float64, n int) SunPhysicalInfo {
-	lambda := HSunApparentLoN(jd, n)
-	epsilon := TrueObliquity(jd)
-	k := sunPhysicalKBaseDeg + sunPhysicalKRateDeg*(jd-sunPhysicalKEpochJD)/36525.0
-	theta := (jd - sunCarringtonStartJD) * 360.0 / sunCarringtonRotationDays
+func SunPhysicalN(jde float64, n int) SunPhysicalInfo {
+	lambda := HSunApparentLoN(jde, n)
+	epsilon := TrueObliquity(jde)
+	k := sunPhysicalKBaseDeg + sunPhysicalKRateDeg*(jde-sunPhysicalKEpochJD)/36525.0
+	theta := (jde - sunCarringtonStartJD) * 360.0 / sunCarringtonRotationDays
 
 	x := math.Atan(-Cos(lambda)*Tan(epsilon)) * 180.0 / math.Pi
 	y := math.Atan(-Cos(lambda-k)*Tan(sunPhysicalInclinationDeg)) * 180.0 / math.Pi

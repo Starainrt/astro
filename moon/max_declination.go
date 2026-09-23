@@ -68,11 +68,11 @@ func convertMaximumDeclinationInfo(date time.Time, event basic.DeclinationEvent)
 		location = date.Location()
 	}
 	return MaximumDeclinationInfo{
-		Time:        basic.JDE2DateByZone(event.JDE, location, false),
+		Time:        basic.JD2DateByZone(event.JD, location, false),
 		Declination: event.Declination,
 	}
 }
 
 func timeToUTJDE(date time.Time) float64 {
-	return basic.Date2JDE(date.UTC())
+	return basic.Date2JD(date.UTC())
 }

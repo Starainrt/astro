@@ -8,8 +8,8 @@ import (
 type planetRaDecNFunc func(jd float64, n int) (float64, float64)
 
 // MercuryPhaseAngle 水星相位角 / phase angle of Mercury.
-func MercuryPhaseAngle(jd float64) float64 {
-	return MercuryPhaseAngleN(jd, -1)
+func MercuryPhaseAngle(jde float64) float64 {
+	return MercuryPhaseAngleN(jde, -1)
 }
 
 // MercuryPhaseAngleN 水星相位角（截断版） / truncated phase angle of Mercury.
@@ -28,18 +28,18 @@ func MercuryIlluminatedFractionN(jd float64, n int) float64 {
 }
 
 // MercuryBrightLimbPositionAngle 水星亮面中心位置角 / position angle of Mercury bright limb.
-func MercuryBrightLimbPositionAngle(jd float64) float64 {
-	return MercuryBrightLimbPositionAngleN(jd, -1)
+func MercuryBrightLimbPositionAngle(jde float64) float64 {
+	return MercuryBrightLimbPositionAngleN(jde, -1)
 }
 
 // MercuryBrightLimbPositionAngleN 水星亮面中心位置角（截断版） / truncated position angle of Mercury bright limb.
-func MercuryBrightLimbPositionAngleN(jd float64, n int) float64 {
-	return planetBrightLimbPositionAngleN(jd, n, MercuryApparentRaDecN)
+func MercuryBrightLimbPositionAngleN(jde float64, n int) float64 {
+	return planetBrightLimbPositionAngleN(jde, n, MercuryApparentRaDecN)
 }
 
 // VenusPhaseAngle 金星相位角 / phase angle of Venus.
-func VenusPhaseAngle(jd float64) float64 {
-	return VenusPhaseAngleN(jd, -1)
+func VenusPhaseAngle(jde float64) float64 {
+	return VenusPhaseAngleN(jde, -1)
 }
 
 // VenusPhaseAngleN 金星相位角（截断版） / truncated phase angle of Venus.
@@ -58,18 +58,18 @@ func VenusIlluminatedFractionN(jd float64, n int) float64 {
 }
 
 // VenusBrightLimbPositionAngle 金星亮面中心位置角 / position angle of Venus bright limb.
-func VenusBrightLimbPositionAngle(jd float64) float64 {
-	return VenusBrightLimbPositionAngleN(jd, -1)
+func VenusBrightLimbPositionAngle(jde float64) float64 {
+	return VenusBrightLimbPositionAngleN(jde, -1)
 }
 
 // VenusBrightLimbPositionAngleN 金星亮面中心位置角（截断版） / truncated position angle of Venus bright limb.
-func VenusBrightLimbPositionAngleN(jd float64, n int) float64 {
-	return planetBrightLimbPositionAngleN(jd, n, VenusApparentRaDecN)
+func VenusBrightLimbPositionAngleN(jde float64, n int) float64 {
+	return planetBrightLimbPositionAngleN(jde, n, VenusApparentRaDecN)
 }
 
 // MarsPhaseAngle 火星相位角 / phase angle of Mars.
-func MarsPhaseAngle(jd float64) float64 {
-	return MarsPhaseAngleN(jd, -1)
+func MarsPhaseAngle(jde float64) float64 {
+	return MarsPhaseAngleN(jde, -1)
 }
 
 // MarsPhaseAngleN 火星相位角（截断版） / truncated phase angle of Mars.
@@ -88,18 +88,18 @@ func MarsIlluminatedFractionN(jd float64, n int) float64 {
 }
 
 // MarsBrightLimbPositionAngle 火星亮面中心位置角 / position angle of Mars bright limb.
-func MarsBrightLimbPositionAngle(jd float64) float64 {
-	return MarsBrightLimbPositionAngleN(jd, -1)
+func MarsBrightLimbPositionAngle(jde float64) float64 {
+	return MarsBrightLimbPositionAngleN(jde, -1)
 }
 
 // MarsBrightLimbPositionAngleN 火星亮面中心位置角（截断版） / truncated position angle of Mars bright limb.
-func MarsBrightLimbPositionAngleN(jd float64, n int) float64 {
-	return planetBrightLimbPositionAngleN(jd, n, MarsApparentRaDecN)
+func MarsBrightLimbPositionAngleN(jde float64, n int) float64 {
+	return planetBrightLimbPositionAngleN(jde, n, MarsApparentRaDecN)
 }
 
 // JupiterPhaseAngle 木星相位角 / phase angle of Jupiter.
-func JupiterPhaseAngle(jd float64) float64 {
-	return JupiterPhaseAngleN(jd, -1)
+func JupiterPhaseAngle(jde float64) float64 {
+	return JupiterPhaseAngleN(jde, -1)
 }
 
 // JupiterPhaseAngleN 木星相位角（截断版） / truncated phase angle of Jupiter.
@@ -118,18 +118,18 @@ func JupiterIlluminatedFractionN(jd float64, n int) float64 {
 }
 
 // JupiterBrightLimbPositionAngle 木星亮面中心位置角 / position angle of Jupiter bright limb.
-func JupiterBrightLimbPositionAngle(jd float64) float64 {
-	return JupiterBrightLimbPositionAngleN(jd, -1)
+func JupiterBrightLimbPositionAngle(jde float64) float64 {
+	return JupiterBrightLimbPositionAngleN(jde, -1)
 }
 
 // JupiterBrightLimbPositionAngleN 木星亮面中心位置角（截断版） / truncated position angle of Jupiter bright limb.
-func JupiterBrightLimbPositionAngleN(jd float64, n int) float64 {
-	return planetBrightLimbPositionAngleN(jd, n, JupiterApparentRaDecN)
+func JupiterBrightLimbPositionAngleN(jde float64, n int) float64 {
+	return planetBrightLimbPositionAngleN(jde, n, JupiterApparentRaDecN)
 }
 
 // SaturnPhaseAngle 土星相位角 / phase angle of Saturn.
-func SaturnPhaseAngle(jd float64) float64 {
-	return SaturnPhaseAngleN(jd, -1)
+func SaturnPhaseAngle(jde float64) float64 {
+	return SaturnPhaseAngleN(jde, -1)
 }
 
 // SaturnPhaseAngleN 土星相位角（截断版） / truncated phase angle of Saturn.
@@ -148,18 +148,18 @@ func SaturnIlluminatedFractionN(jd float64, n int) float64 {
 }
 
 // SaturnBrightLimbPositionAngle 土星亮面中心位置角 / position angle of Saturn bright limb.
-func SaturnBrightLimbPositionAngle(jd float64) float64 {
-	return SaturnBrightLimbPositionAngleN(jd, -1)
+func SaturnBrightLimbPositionAngle(jde float64) float64 {
+	return SaturnBrightLimbPositionAngleN(jde, -1)
 }
 
 // SaturnBrightLimbPositionAngleN 土星亮面中心位置角（截断版） / truncated position angle of Saturn bright limb.
-func SaturnBrightLimbPositionAngleN(jd float64, n int) float64 {
-	return planetBrightLimbPositionAngleN(jd, n, SaturnApparentRaDecN)
+func SaturnBrightLimbPositionAngleN(jde float64, n int) float64 {
+	return planetBrightLimbPositionAngleN(jde, n, SaturnApparentRaDecN)
 }
 
 // UranusPhaseAngle 天王星相位角 / phase angle of Uranus.
-func UranusPhaseAngle(jd float64) float64 {
-	return UranusPhaseAngleN(jd, -1)
+func UranusPhaseAngle(jde float64) float64 {
+	return UranusPhaseAngleN(jde, -1)
 }
 
 // UranusPhaseAngleN 天王星相位角（截断版） / truncated phase angle of Uranus.
@@ -178,18 +178,18 @@ func UranusIlluminatedFractionN(jd float64, n int) float64 {
 }
 
 // UranusBrightLimbPositionAngle 天王星亮面中心位置角 / position angle of Uranus bright limb.
-func UranusBrightLimbPositionAngle(jd float64) float64 {
-	return UranusBrightLimbPositionAngleN(jd, -1)
+func UranusBrightLimbPositionAngle(jde float64) float64 {
+	return UranusBrightLimbPositionAngleN(jde, -1)
 }
 
 // UranusBrightLimbPositionAngleN 天王星亮面中心位置角（截断版） / truncated position angle of Uranus bright limb.
-func UranusBrightLimbPositionAngleN(jd float64, n int) float64 {
-	return planetBrightLimbPositionAngleN(jd, n, UranusApparentRaDecN)
+func UranusBrightLimbPositionAngleN(jde float64, n int) float64 {
+	return planetBrightLimbPositionAngleN(jde, n, UranusApparentRaDecN)
 }
 
 // NeptunePhaseAngle 海王星相位角 / phase angle of Neptune.
-func NeptunePhaseAngle(jd float64) float64 {
-	return NeptunePhaseAngleN(jd, -1)
+func NeptunePhaseAngle(jde float64) float64 {
+	return NeptunePhaseAngleN(jde, -1)
 }
 
 // NeptunePhaseAngleN 海王星相位角（截断版） / truncated phase angle of Neptune.
@@ -208,13 +208,13 @@ func NeptuneIlluminatedFractionN(jd float64, n int) float64 {
 }
 
 // NeptuneBrightLimbPositionAngle 海王星亮面中心位置角 / position angle of Neptune bright limb.
-func NeptuneBrightLimbPositionAngle(jd float64) float64 {
-	return NeptuneBrightLimbPositionAngleN(jd, -1)
+func NeptuneBrightLimbPositionAngle(jde float64) float64 {
+	return NeptuneBrightLimbPositionAngleN(jde, -1)
 }
 
 // NeptuneBrightLimbPositionAngleN 海王星亮面中心位置角（截断版） / truncated position angle of Neptune bright limb.
-func NeptuneBrightLimbPositionAngleN(jd float64, n int) float64 {
-	return planetBrightLimbPositionAngleN(jd, n, NeptuneApparentRaDecN)
+func NeptuneBrightLimbPositionAngleN(jde float64, n int) float64 {
+	return planetBrightLimbPositionAngleN(jde, n, NeptuneApparentRaDecN)
 }
 
 func planetPhaseAngleN(planetIndex int, jd float64, n int) float64 {
@@ -225,17 +225,17 @@ func planetIlluminatedFractionN(planetIndex int, jd float64, n int) float64 {
 	return (1 + planetPhaseCosineN(planetIndex, jd, n)) / 2
 }
 
-func planetPhaseCosineN(planetIndex int, jd float64, n int) float64 {
-	planetSunDistance := planet.WherePlanetN(planetIndex, 2, jd, n)
-	planetEarthDistance := planetEarthAwayN(planetIndex, jd, n)
-	earthSunDistance := EarthAwayN(jd, n)
+func planetPhaseCosineN(planetIndex int, jde float64, n int) float64 {
+	planetSunDistance := planet.WherePlanetN(planetIndex, 2, jde, n)
+	planetEarthDistance := planetEarthAwayN(planetIndex, jde, n)
+	earthSunDistance := EarthAwayN(jde, n)
 	cosine := (planetSunDistance*planetSunDistance + planetEarthDistance*planetEarthDistance - earthSunDistance*earthSunDistance) / (2 * planetSunDistance * planetEarthDistance)
 	return clampUnit(cosine)
 }
 
-func planetBrightLimbPositionAngleN(jd float64, n int, apparentRaDec planetRaDecNFunc) float64 {
-	sunRa, sunDec := HSunApparentRaDecN(jd, n)
-	planetRa, planetDec := apparentRaDec(jd, n)
+func planetBrightLimbPositionAngleN(jde float64, n int, apparentRaDec planetRaDecNFunc) float64 {
+	sunRa, sunDec := HSunApparentRaDecN(jde, n)
+	planetRa, planetDec := apparentRaDec(jde, n)
 	y := Cos(sunDec) * Sin(sunRa-planetRa)
 	x := Sin(sunDec)*Cos(planetDec) - Cos(sunDec)*Sin(planetDec)*Cos(sunRa-planetRa)
 	return ArcTan2(y, x)

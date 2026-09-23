@@ -163,21 +163,21 @@ func planetPhysicalN(jd float64, n int, model planetPhysicalModel) PlanetPhysica
 	initialX, initialY, initialZ := planetXYZN(model.planetIndex, jd, n)
 	targetVector := Vector3{initialX, initialY, initialZ}
 	lightTimeDays := astronomicalUnitLightTimeDays * vectorMagnitude(targetVector)
-	targetJD := jd - lightTimeDays
+	targetJDE := jd - lightTimeDays
 
-	geoX, geoY, geoZ := planetXYZN(model.planetIndex, targetJD, n)
+	geoX, geoY, geoZ := planetXYZN(model.planetIndex, targetJDE, n)
 	geocentricVector := Vector3{geoX, geoY, geoZ}
 	observerDirection := normalizeVector(Vector3{-geocentricVector[0], -geocentricVector[1], -geocentricVector[2]})
 
-	heliocentricLongitude := planet.WherePlanetN(model.planetIndex, 0, targetJD, n)
-	heliocentricLatitude := planet.WherePlanetN(model.planetIndex, 1, targetJD, n)
+	heliocentricLongitude := planet.WherePlanetN(model.planetIndex, 0, targetJDE, n)
+	heliocentricLatitude := planet.WherePlanetN(model.planetIndex, 1, targetJDE, n)
 	solarDirection := normalizeVector(eclipticCartesian(heliocentricLongitude+180, -heliocentricLatitude, 1))
 
-	obliquity := EclipticObliquity(targetJD, false)
+	obliquity := EclipticObliquity(targetJDE, false)
 	observerEquatorial := normalizeVector(rotateEclipticToEquatorial(observerDirection, obliquity))
 	solarEquatorial := normalizeVector(rotateEclipticToEquatorial(solarDirection, obliquity))
 
-	poleRA, poleDec, rotationEast := model.poleRotation(targetJD)
+	poleRA, poleDec, rotationEast := model.poleRotation(targetJDE)
 	poleJ2000 := raDecToVector(poleRA, poleDec)
 	nodeJ2000 := Vector3{-math.Sin(poleRA * rad), math.Cos(poleRA * rad), 0}
 	eastJ2000 := normalizeVector(pxp(poleJ2000, nodeJ2000))
@@ -187,7 +187,7 @@ func planetPhysicalN(jd float64, n int, model planetPhysicalModel) PlanetPhysica
 		nodeJ2000[2]*Cos(rotationEast) + eastJ2000[2]*Sin(rotationEast),
 	})
 
-	j2000ToDate := precessionMatrix(2451545.0, targetJD)
+	j2000ToDate := precessionMatrix(2451545.0, targetJDE)
 	poleDate := normalizeVector(applyMatrix3(j2000ToDate, poleJ2000))
 	primeMeridianDate := normalizeVector(applyMatrix3(j2000ToDate, primeMeridianJ2000))
 	eastDate := normalizeVector(pxp(poleDate, primeMeridianDate))

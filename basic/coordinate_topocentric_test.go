@@ -9,27 +9,28 @@ import (
 )
 
 func TestTopocentricRaDecUsesUTJulianDateForSiderealTime(t *testing.T) {
-	ut := Date2JDE(time.Date(2025, 6, 5, 12, 2, 7, 700000000, time.UTC))
+	ut := Date2JD(time.Date(2025, 6, 5, 12, 2, 7, 700000000, time.UTC))
 	ra := 189.527817246
 	dec := -5.973400893
 	lat := 6.79657
 	lon := 121.55381
-	distanceAU := HMoonAwayN(TD2UT(ut, true), -1) / 149597870.7
+	distanceAU := HMoonAwayN(UTC2TT(ut), -1) / 149597870.7
 
 	gotRA, gotDec := TopocentricRaDec(ra, dec, lat, lon, ut, distanceAU, 0)
 	wantRA, wantDec := independentTopocentricRaDec(ra, dec, lat, lon, ut, distanceAU, 0)
-	if delta := angularDistanceArcsec(gotRA, gotDec, wantRA, wantDec); delta > 1e-6 {
-		t.Fatalf("TopocentricRaDec differs from independent formula by %.9f arcsec", delta)
+	// 逐分量比较：零距离处 acos 度规的病态下限会把 1 ulp 放大成毫角秒。
+	if deltaRA, deltaDec := math.Abs(gotRA-wantRA), math.Abs(gotDec-wantDec); deltaRA > 1e-12 || deltaDec > 1e-12 {
+		t.Fatalf("TopocentricRaDec differs from independent formula: dRA=%.3g dDec=%.3g deg", deltaRA, deltaDec)
 	}
 }
 
 func TestTopocentricRaAndDecMatchCombinedResult(t *testing.T) {
-	ut := Date2JDE(time.Date(2025, 6, 5, 12, 2, 7, 700000000, time.UTC))
+	ut := Date2JD(time.Date(2025, 6, 5, 12, 2, 7, 700000000, time.UTC))
 	ra := 189.527817246
 	dec := -5.973400893
 	lat := 6.79657
 	lon := 121.55381
-	distanceAU := HMoonAwayN(TD2UT(ut, true), -1) / 149597870.7
+	distanceAU := HMoonAwayN(UTC2TT(ut), -1) / 149597870.7
 
 	wantRA, wantDec := TopocentricRaDec(ra, dec, lat, lon, ut, distanceAU, 0)
 	if got := TopocentricRa(ra, dec, lat, lon, ut, distanceAU, 0); got != wantRA {
@@ -41,11 +42,11 @@ func TestTopocentricRaAndDecMatchCombinedResult(t *testing.T) {
 }
 
 func TestHMoonHeightUsesUTForTopocentricCorrection(t *testing.T) {
-	ut := Date2JDE(time.Date(2026, 4, 28, 16, 1, 30, 0, time.UTC))
+	ut := Date2JD(time.Date(2026, 4, 28, 16, 1, 30, 0, time.UTC))
 	longitude := 0.0
 	latitude := 51.4779
 	ra, dec := HMoonApparentRaDecN(ut, longitude, latitude, 0, -1)
-	hourAngle := Limit360(ApparentSiderealTime(ut)*15 + longitude - ra)
+	hourAngle := Limit360(ApparentSiderealTime(UTC2UT1(ut))*15 + longitude - ra)
 	want := ArcSin(Sin(latitude)*Sin(dec) + Cos(dec)*Cos(latitude)*Cos(hourAngle))
 	got := HMoonHeightN(ut, longitude, latitude, 0, -1)
 	if difference := math.Abs(got - want); difference > 1e-10 {
@@ -62,7 +63,7 @@ func independentTopocentricRaDec(ra, dec, lat, lon, ut, distanceAU, height float
 	rhoCos := math.Cos(u) + height/6378140.0*Cos(lat)
 	rhoSin := polarRadiusKM/equatorialRadiusKM*math.Sin(u) + height/6378140.0*Sin(lat)
 	sinParallax := Sin(0.0024427777777) / distanceAU
-	hourAngle := Limit360(ApparentSiderealTime(ut)*15 + lon - ra)
+	hourAngle := Limit360(ApparentSiderealTime(UTC2UT1(ut))*15 + lon - ra)
 	deltaRA := math.Atan2(
 		-rhoCos*sinParallax*Sin(hourAngle),
 		Cos(dec)-rhoCos*sinParallax*Cos(hourAngle),

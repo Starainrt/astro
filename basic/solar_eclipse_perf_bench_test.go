@@ -5,7 +5,7 @@ import "testing"
 // 性能基线：逐项隔离 §1.4 P2 热点，改动前后跑同一份基准做对照。
 
 func solarEclipseBenchSeed(year, month, day int) float64 {
-	return JDECalc(year, month, float64(day))
+	return JDCalc(year, month, float64(day))
 }
 
 func solarEclipseBenchCenterLine(b *testing.B, seed float64) (SolarEclipsePathResult, float64, SolarEclipseRadiusModel) {

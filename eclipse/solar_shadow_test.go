@@ -140,8 +140,9 @@ func (solver *SolarEclipseShadowSolver) stationDeltaT(value time.Time) float64 {
 	return state.DeltaTSeconds
 }
 
-func TestSolarEclipseShadowTTEntryUsesScopedDeltaTForItsTime(t *testing.T) {
-	// 显式 ΔT 下：TT 入口回填的 UT 必须是 TT − 句柄 ΔT，闭合弧与 closure 取自同一时刻。
+func TestSolarEclipseShadowTTEntryReportsCivilTime(t *testing.T) {
+	// 句柄 ΔT 只改地球自转相位：TT 入口回填的必须是民用时刻（TT2UTC），
+	// 而不是 TT − ΔT —— 后者是 UT1，与民用时刻差一个 DUT1。
 	override := 3666.18
 	value := time.Date(2009, time.July, 22, 0, 53, 0, 0, time.UTC)
 	model := NewSolarEclipseShadowSolver(SolarEclipseShadowSolverOptions{})
@@ -151,12 +152,19 @@ func TestSolarEclipseShadowTTEntryUsesScopedDeltaTForItsTime(t *testing.T) {
 	if !ok {
 		t.Fatal("expected a footprint at the shifted instant")
 	}
-	want := solarEclipseTTJDEToTimeWithDeltaT(jde, override, time.UTC)
+	want := solarEclipseTTJDEToTime(jde, time.UTC)
 	if !instant.Time.Equal(want) {
-		t.Fatalf("TT entry time=%v, want %v (TT − %.2f s)", instant.Time.UTC(), want.UTC(), override)
+		t.Fatalf("TT entry time=%v, want the civil time %v", instant.Time.UTC(), want.UTC())
 	}
 	if instant.DeltaTSeconds != override {
 		t.Fatalf("reported ΔT=%.6f, want %.2f", instant.DeltaTSeconds, override)
+	}
+	if shift := instant.Time.Sub(value); shift > time.Millisecond || shift < -time.Millisecond {
+		t.Fatalf("TT entry time=%v, want the civil instant %v", instant.Time.UTC(), value)
+	}
+	state := solver.StationStateAtJDE(jde, -96.8, 32.8, 0)
+	if !state.Time.Equal(want) {
+		t.Fatalf("station TT entry time=%v, want the civil time %v", state.Time.UTC(), want.UTC())
 	}
 }
 

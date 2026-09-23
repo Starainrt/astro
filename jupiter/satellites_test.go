@@ -106,7 +106,7 @@ func TestGalileanSatellitesUseTTFrame(t *testing.T) {
 		time.Date(2026, 4, 2, 18, 0, 0, 0, time.UTC),
 	}
 	for _, date := range dates {
-		want := basic.JupiterGalileanSatelliteObservations(basic.TD2UT(basic.Date2JDE(date.UTC()), true))
+		want := basic.JupiterGalileanSatelliteObservations(basic.UTC2TT(basic.Date2JD(date.UTC())))
 		got := Satellites(date)
 		positions := []GalileanSatellitePosition{got.Io, got.Europa, got.Ganymede, got.Callisto}
 		for i, position := range positions {

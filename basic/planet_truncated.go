@@ -10,13 +10,13 @@ import (
 // Exported N variants below keep the same jd semantics as the non-N APIs; n < 0 means full series.
 type planetDeclinationFuncN func(float64, int) float64
 
-func planetXYZN(planetIndex int, jd float64, n int) (float64, float64, float64) {
-	l := planet.WherePlanetN(planetIndex, 0, jd, n)
-	b := planet.WherePlanetN(planetIndex, 1, jd, n)
-	r := planet.WherePlanetN(planetIndex, 2, jd, n)
-	el := planet.WherePlanetN(-1, 0, jd, n)
-	eb := planet.WherePlanetN(-1, 1, jd, n)
-	er := planet.WherePlanetN(-1, 2, jd, n)
+func planetXYZN(planetIndex int, jde float64, n int) (float64, float64, float64) {
+	l := planet.WherePlanetN(planetIndex, 0, jde, n)
+	b := planet.WherePlanetN(planetIndex, 1, jde, n)
+	r := planet.WherePlanetN(planetIndex, 2, jde, n)
+	el := planet.WherePlanetN(-1, 0, jde, n)
+	eb := planet.WherePlanetN(-1, 1, jde, n)
+	er := planet.WherePlanetN(-1, 2, jde, n)
 	x := r*Cos(b)*Cos(l) - er*Cos(eb)*Cos(el)
 	y := r*Cos(b)*Sin(l) - er*Cos(eb)*Sin(el)
 	z := r*Sin(b) - er*Sin(eb)
@@ -28,26 +28,26 @@ func planetApparentLoBoN(planetIndex int, jd float64, n int) (float64, float64) 
 	return geo.lo, geo.bo
 }
 
-func planetApparentRaManualN(planetIndex int, jd float64, n int) float64 {
-	lo, bo := planetApparentLoBoN(planetIndex, jd, n)
-	eps := TrueObliquity(jd)
+func planetApparentRaManualN(planetIndex int, jde float64, n int) float64 {
+	lo, bo := planetApparentLoBoN(planetIndex, jde, n)
+	eps := TrueObliquity(jde)
 	ra := math.Atan2((Sin(lo)*Cos(eps) - Tan(bo)*Sin(eps)), Cos(lo))
 	return Limit360(ra * 180 / math.Pi)
 }
 
-func planetApparentDecManualN(planetIndex int, jd float64, n int) float64 {
-	lo, bo := planetApparentLoBoN(planetIndex, jd, n)
-	eps := TrueObliquity(jd)
+func planetApparentDecManualN(planetIndex int, jde float64, n int) float64 {
+	lo, bo := planetApparentLoBoN(planetIndex, jde, n)
+	eps := TrueObliquity(jde)
 	return ArcSin(Sin(bo)*Cos(eps) + Cos(bo)*Sin(eps)*Sin(lo))
 }
 
-func planetApparentRaDecManualN(planetIndex int, jd float64, n int) (float64, float64) {
-	lo, bo := planetApparentLoBoN(planetIndex, jd, n)
-	return planetApparentRaDecFromLoBo(jd, lo, bo)
+func planetApparentRaDecManualN(planetIndex int, jde float64, n int) (float64, float64) {
+	lo, bo := planetApparentLoBoN(planetIndex, jde, n)
+	return planetApparentRaDecFromLoBo(jde, lo, bo)
 }
 
-func planetApparentRaDecFromLoBo(jd, lo, bo float64) (float64, float64) {
-	eps := TrueObliquity(jd)
+func planetApparentRaDecFromLoBo(jde, lo, bo float64) (float64, float64) {
+	eps := TrueObliquity(jde)
 	ra := math.Atan2((Sin(lo)*Cos(eps) - Tan(bo)*Sin(eps)), Cos(lo))
 	ra = ra * 180 / math.Pi
 	dec := ArcSin(Sin(bo)*Cos(eps) + Cos(bo)*Sin(eps)*Sin(lo))
@@ -58,19 +58,19 @@ func planetEarthAwayN(planetIndex int, jd float64, n int) float64 {
 	return planetEarthAwayExplicitN(planetIndex, jd, n)
 }
 
-func planetHeightN(jde, lon, lat, timezone float64, n int, apparentRaDec func(float64, int) (float64, float64)) float64 {
-	utcJde := jde - timezone/24.0
-	ra, dec := apparentRaDec(TD2UT(utcJde, true), n)
-	st := Limit360(ApparentSiderealTime(utcJde)*15 + lon)
+func planetHeightN(localJD, lon, lat, timezone float64, n int, apparentRaDec func(float64, int) (float64, float64)) float64 {
+	utcJD := localJD - timezone/24.0
+	ra, dec := apparentRaDec(UTC2TT(utcJD), n)
+	st := Limit360(ApparentSiderealTime(UTC2UT1(utcJD))*15 + lon)
 	H := Limit360(st - ra)
 	sinHeight := Sin(lat)*Sin(dec) + Cos(dec)*Cos(lat)*Cos(H)
 	return ArcSin(sinHeight)
 }
 
-func planetAzimuthN(jde, lon, lat, timezone float64, n int, apparentRaDec func(float64, int) (float64, float64)) float64 {
-	utcJde := jde - timezone/24.0
-	ra, dec := apparentRaDec(TD2UT(utcJde, true), n)
-	st := Limit360(ApparentSiderealTime(utcJde)*15 + lon)
+func planetAzimuthN(localJD, lon, lat, timezone float64, n int, apparentRaDec func(float64, int) (float64, float64)) float64 {
+	utcJD := localJD - timezone/24.0
+	ra, dec := apparentRaDec(UTC2TT(utcJD), n)
+	st := Limit360(ApparentSiderealTime(UTC2UT1(utcJD))*15 + lon)
 	H := Limit360(st - ra)
 	tanAzimuth := Sin(H) / (Cos(H)*Sin(lat) - Tan(dec)*Cos(lat))
 	azimuth := ArcTan(tanAzimuth)
@@ -87,22 +87,22 @@ func planetAzimuthN(jde, lon, lat, timezone float64, n int, apparentRaDec func(f
 }
 
 func planetHourAngleN(jd, lon, timezone float64, n int, apparentRa func(float64, int) float64) float64 {
-	siderealLongitude := Limit360(ApparentSiderealTime(jd-timezone/24)*15 + lon)
-	hourAngle := siderealLongitude - apparentRa(TD2UT(jd-timezone/24.0, true), n)
+	siderealLongitude := Limit360(ApparentSiderealTime(UTC2UT1(jd-timezone/24))*15 + lon)
+	hourAngle := siderealLongitude - apparentRa(UTC2TT(jd-timezone/24.0), n)
 	if hourAngle < 0 {
 		hourAngle += 360
 	}
 	return hourAngle
 }
 
-func planetCulminationTimeN(jde, lon, timezone float64, n int, hourAngle func(float64, float64, float64, int) float64) float64 {
-	if !isFiniteFloat(jde) || !isFiniteFloat(lon) || !isFiniteFloat(timezone) {
+func planetCulminationTimeN(localJD, lon, timezone float64, n int, hourAngle func(float64, float64, float64, int) float64) float64 {
+	if !isFiniteFloat(localJD) || !isFiniteFloat(lon) || !isFiniteFloat(timezone) {
 		return math.NaN()
 	}
-	jde = math.Floor(jde) + 0.5
-	estimateJD := jde + Limit360(360-hourAngle(jde, lon, timezone, n))/15.0/24.0*0.99726851851851851851
-	normalizedHourAngle := func(jde, lon, timezone float64) float64 {
-		currentHourAngle := hourAngle(jde, lon, timezone, n)
+	localJD = math.Floor(localJD) + 0.5
+	estimateJD := localJD + Limit360(360-hourAngle(localJD, lon, timezone, n))/15.0/24.0*0.99726851851851851851
+	normalizedHourAngle := func(localJD, lon, timezone float64) float64 {
+		currentHourAngle := hourAngle(localJD, lon, timezone, n)
 		if currentHourAngle < 180 {
 			currentHourAngle += 360
 		}
@@ -142,7 +142,7 @@ func planetRiseDownN(jd, lon, lat, timezone, aeroCorrection, observerHeight floa
 	if previousHeight > targetAltitude {
 		return 0, ErrNeverSet
 	}
-	dec := declination(TD2UT(culminationJD-localTimezone/24, true), n)
+	dec := declination(UTC2TT(culminationJD-localTimezone/24), n)
 	cosHourAngle := (Sin(targetAltitude) - Sin(dec)*Sin(lat)) / (Cos(dec) * Cos(lat))
 	if !isFiniteFloat(dec) || !isFiniteFloat(cosHourAngle) {
 		return 0, ErrInvalidObservationInput
@@ -199,22 +199,22 @@ func MercuryApparentLoBoN(jd float64, n int) (float64, float64) {
 }
 
 // MercuryApparentRaN 水星视赤经（截断版） / truncated apparent right ascension of Mercury.
-func MercuryApparentRaN(jd float64, n int) float64 {
-	lo, bo := MercuryApparentLoBoN(jd, n)
-	return LoToRa(jd, lo, bo)
+func MercuryApparentRaN(jde float64, n int) float64 {
+	lo, bo := MercuryApparentLoBoN(jde, n)
+	return LoToRa(jde, lo, bo)
 }
 
 // MercuryApparentDecN 水星视赤纬（截断版） / truncated apparent declination of Mercury.
-func MercuryApparentDecN(jd float64, n int) float64 {
-	lo, bo := MercuryApparentLoBoN(jd, n)
-	eps := TrueObliquity(jd)
+func MercuryApparentDecN(jde float64, n int) float64 {
+	lo, bo := MercuryApparentLoBoN(jde, n)
+	eps := TrueObliquity(jde)
 	return ArcSin(Sin(bo)*Cos(eps) + Cos(bo)*Sin(eps)*Sin(lo))
 }
 
 // MercuryApparentRaDecN 水星视赤经赤纬（截断版） / truncated apparent right ascension and declination of Mercury.
-func MercuryApparentRaDecN(jd float64, n int) (float64, float64) {
-	lo, bo := MercuryApparentLoBoN(jd, n)
-	return LoBoToRaDec(jd, lo, bo)
+func MercuryApparentRaDecN(jde float64, n int) (float64, float64) {
+	lo, bo := MercuryApparentLoBoN(jde, n)
+	return LoBoToRaDec(jde, lo, bo)
 }
 
 // EarthMercuryAwayN 地水距离（截断版） / truncated Earth-Mercury distance.
@@ -223,10 +223,10 @@ func EarthMercuryAwayN(jd float64, n int) float64 {
 }
 
 // MercuryMagN 水星视星等（截断版） / truncated apparent magnitude of Mercury.
-func MercuryMagN(jd float64, n int) float64 {
-	awaySun := planet.WherePlanetN(1, 2, jd, n)
-	awayEarth := EarthMercuryAwayN(jd, n)
-	away := planet.WherePlanetN(-1, 2, jd, n)
+func MercuryMagN(jde float64, n int) float64 {
+	awaySun := planet.WherePlanetN(1, 2, jde, n)
+	awayEarth := EarthMercuryAwayN(jde, n)
+	away := planet.WherePlanetN(-1, 2, jde, n)
 	i := (awaySun*awaySun + awayEarth*awayEarth - away*away) / (2 * awaySun * awayEarth)
 	i = ArcCos(i)
 	mag := -0.42 + 5*math.Log10(awaySun*awayEarth) + 0.0380*i - 0.000273*i*i + 0.000002*i*i*i
@@ -234,13 +234,13 @@ func MercuryMagN(jd float64, n int) float64 {
 }
 
 // MercuryHeightN 水星高度角（截断版） / truncated altitude of Mercury.
-func MercuryHeightN(jde, lon, lat, timezone float64, n int) float64 {
-	return planetHeightN(jde, lon, lat, timezone, n, MercuryApparentRaDecN)
+func MercuryHeightN(localJD, lon, lat, timezone float64, n int) float64 {
+	return planetHeightN(localJD, lon, lat, timezone, n, MercuryApparentRaDecN)
 }
 
 // MercuryAzimuthN 水星方位角（截断版） / truncated azimuth of Mercury.
-func MercuryAzimuthN(jde, lon, lat, timezone float64, n int) float64 {
-	return planetAzimuthN(jde, lon, lat, timezone, n, MercuryApparentRaDecN)
+func MercuryAzimuthN(localJD, lon, lat, timezone float64, n int) float64 {
+	return planetAzimuthN(localJD, lon, lat, timezone, n, MercuryApparentRaDecN)
 }
 
 // MercuryHourAngleN 水星时角（截断版） / truncated hour angle of Mercury.
@@ -249,8 +249,8 @@ func MercuryHourAngleN(jd, lon, timezone float64, n int) float64 {
 }
 
 // MercuryCulminationTimeN 水星中天时间（截断版） / truncated culmination time of Mercury.
-func MercuryCulminationTimeN(jde, lon, timezone float64, n int) float64 {
-	return planetCulminationTimeN(jde, lon, timezone, n, MercuryHourAngleN)
+func MercuryCulminationTimeN(localJD, lon, timezone float64, n int) float64 {
+	return planetCulminationTimeN(localJD, lon, timezone, n, MercuryHourAngleN)
 }
 
 // MercuryRiseTimeN 水星升起时间（截断版） / truncated rise time of Mercury.
@@ -301,10 +301,10 @@ func EarthVenusAwayN(jd float64, n int) float64 {
 }
 
 // VenusMagN 金星视星等（截断版） / truncated apparent magnitude of Venus.
-func VenusMagN(jd float64, n int) float64 {
-	awaySun := planet.WherePlanetN(2, 2, jd, n)
-	awayEarth := EarthVenusAwayN(jd, n)
-	away := planet.WherePlanetN(-1, 2, jd, n)
+func VenusMagN(jde float64, n int) float64 {
+	awaySun := planet.WherePlanetN(2, 2, jde, n)
+	awayEarth := EarthVenusAwayN(jde, n)
+	away := planet.WherePlanetN(-1, 2, jde, n)
 	i := (awaySun*awaySun + awayEarth*awayEarth - away*away) / (2 * awaySun * awayEarth)
 	i = ArcCos(i)
 	mag := -4.40 + 5*math.Log10(awaySun*awayEarth) + 0.0009*i + 0.000239*i*i - 0.00000065*i*i*i
@@ -312,13 +312,13 @@ func VenusMagN(jd float64, n int) float64 {
 }
 
 // VenusHeightN 金星高度角（截断版） / truncated altitude of Venus.
-func VenusHeightN(jde, lon, lat, timezone float64, n int) float64 {
-	return planetHeightN(jde, lon, lat, timezone, n, VenusApparentRaDecN)
+func VenusHeightN(localJD, lon, lat, timezone float64, n int) float64 {
+	return planetHeightN(localJD, lon, lat, timezone, n, VenusApparentRaDecN)
 }
 
 // VenusAzimuthN 金星方位角（截断版） / truncated azimuth of Venus.
-func VenusAzimuthN(jde, lon, lat, timezone float64, n int) float64 {
-	return planetAzimuthN(jde, lon, lat, timezone, n, VenusApparentRaDecN)
+func VenusAzimuthN(localJD, lon, lat, timezone float64, n int) float64 {
+	return planetAzimuthN(localJD, lon, lat, timezone, n, VenusApparentRaDecN)
 }
 
 // VenusHourAngleN 金星时角（截断版） / truncated hour angle of Venus.
@@ -327,8 +327,8 @@ func VenusHourAngleN(jd, lon, timezone float64, n int) float64 {
 }
 
 // VenusCulminationTimeN 金星中天时间（截断版） / truncated culmination time of Venus.
-func VenusCulminationTimeN(jde, lon, timezone float64, n int) float64 {
-	return planetCulminationTimeN(jde, lon, timezone, n, VenusHourAngleN)
+func VenusCulminationTimeN(localJD, lon, timezone float64, n int) float64 {
+	return planetCulminationTimeN(localJD, lon, timezone, n, VenusHourAngleN)
 }
 
 // VenusRiseTimeN 金星升起时间（截断版） / truncated rise time of Venus.
@@ -379,10 +379,10 @@ func EarthMarsAwayN(jd float64, n int) float64 {
 }
 
 // MarsMagN 火星视星等（截断版） / truncated apparent magnitude of Mars.
-func MarsMagN(jd float64, n int) float64 {
-	awaySun := planet.WherePlanetN(3, 2, jd, n)
-	awayEarth := EarthMarsAwayN(jd, n)
-	away := planet.WherePlanetN(-1, 2, jd, n)
+func MarsMagN(jde float64, n int) float64 {
+	awaySun := planet.WherePlanetN(3, 2, jde, n)
+	awayEarth := EarthMarsAwayN(jde, n)
+	away := planet.WherePlanetN(-1, 2, jde, n)
 	i := (awaySun*awaySun + awayEarth*awayEarth - away*away) / (2 * awaySun * awayEarth)
 	i = ArcCos(i)
 	mag := -1.52 + 5*math.Log10(awaySun*awayEarth) + 0.016*i
@@ -390,13 +390,13 @@ func MarsMagN(jd float64, n int) float64 {
 }
 
 // MarsHeightN 火星高度角（截断版） / truncated altitude of Mars.
-func MarsHeightN(jde, lon, lat, timezone float64, n int) float64 {
-	return planetHeightN(jde, lon, lat, timezone, n, MarsApparentRaDecN)
+func MarsHeightN(localJD, lon, lat, timezone float64, n int) float64 {
+	return planetHeightN(localJD, lon, lat, timezone, n, MarsApparentRaDecN)
 }
 
 // MarsAzimuthN 火星方位角（截断版） / truncated azimuth of Mars.
-func MarsAzimuthN(jde, lon, lat, timezone float64, n int) float64 {
-	return planetAzimuthN(jde, lon, lat, timezone, n, MarsApparentRaDecN)
+func MarsAzimuthN(localJD, lon, lat, timezone float64, n int) float64 {
+	return planetAzimuthN(localJD, lon, lat, timezone, n, MarsApparentRaDecN)
 }
 
 // MarsHourAngleN 火星时角（截断版） / truncated hour angle of Mars.
@@ -405,8 +405,8 @@ func MarsHourAngleN(jd, lon, timezone float64, n int) float64 {
 }
 
 // MarsCulminationTimeN 火星中天时间（截断版） / truncated culmination time of Mars.
-func MarsCulminationTimeN(jde, lon, timezone float64, n int) float64 {
-	return planetCulminationTimeN(jde, lon, timezone, n, MarsHourAngleN)
+func MarsCulminationTimeN(localJD, lon, timezone float64, n int) float64 {
+	return planetCulminationTimeN(localJD, lon, timezone, n, MarsHourAngleN)
 }
 
 // MarsRiseTimeN 火星升起时间（截断版） / truncated rise time of Mars.
@@ -457,10 +457,10 @@ func EarthJupiterAwayN(jd float64, n int) float64 {
 }
 
 // JupiterMagN 木星视星等（截断版） / truncated apparent magnitude of Jupiter.
-func JupiterMagN(jd float64, n int) float64 {
-	awaySun := planet.WherePlanetN(4, 2, jd, n)
-	awayEarth := EarthJupiterAwayN(jd, n)
-	away := planet.WherePlanetN(-1, 2, jd, n)
+func JupiterMagN(jde float64, n int) float64 {
+	awaySun := planet.WherePlanetN(4, 2, jde, n)
+	awayEarth := EarthJupiterAwayN(jde, n)
+	away := planet.WherePlanetN(-1, 2, jde, n)
 	i := (awaySun*awaySun + awayEarth*awayEarth - away*away) / (2 * awaySun * awayEarth)
 	i = ArcCos(i)
 	mag := -9.40 + 5*math.Log10(awaySun*awayEarth) + 0.0005*i
@@ -468,13 +468,13 @@ func JupiterMagN(jd float64, n int) float64 {
 }
 
 // JupiterHeightN 木星高度角（截断版） / truncated altitude of Jupiter.
-func JupiterHeightN(jde, lon, lat, timezone float64, n int) float64 {
-	return planetHeightN(jde, lon, lat, timezone, n, JupiterApparentRaDecN)
+func JupiterHeightN(localJD, lon, lat, timezone float64, n int) float64 {
+	return planetHeightN(localJD, lon, lat, timezone, n, JupiterApparentRaDecN)
 }
 
 // JupiterAzimuthN 木星方位角（截断版） / truncated azimuth of Jupiter.
-func JupiterAzimuthN(jde, lon, lat, timezone float64, n int) float64 {
-	return planetAzimuthN(jde, lon, lat, timezone, n, JupiterApparentRaDecN)
+func JupiterAzimuthN(localJD, lon, lat, timezone float64, n int) float64 {
+	return planetAzimuthN(localJD, lon, lat, timezone, n, JupiterApparentRaDecN)
 }
 
 // JupiterHourAngleN 木星时角（截断版） / truncated hour angle of Jupiter.
@@ -483,8 +483,8 @@ func JupiterHourAngleN(jd, lon, timezone float64, n int) float64 {
 }
 
 // JupiterCulminationTimeN 木星中天时间（截断版） / truncated culmination time of Jupiter.
-func JupiterCulminationTimeN(jde, lon, timezone float64, n int) float64 {
-	return planetCulminationTimeN(jde, lon, timezone, n, JupiterHourAngleN)
+func JupiterCulminationTimeN(localJD, lon, timezone float64, n int) float64 {
+	return planetCulminationTimeN(localJD, lon, timezone, n, JupiterHourAngleN)
 }
 
 // JupiterRiseTimeN 木星升起时间（截断版） / truncated rise time of Jupiter.
@@ -535,23 +535,23 @@ func EarthSaturnAwayN(jd float64, n int) float64 {
 }
 
 // SaturnMagN 土星视星等（截断版） / truncated apparent magnitude of Saturn.
-func SaturnMagN(jd float64, n int) float64 {
-	awaySun := planet.WherePlanetN(5, 2, jd, n)
-	awayEarth := EarthSaturnAwayN(jd, n)
-	ringB, _, _, deltaU, _, _ := SaturnRingParametersN(jd, n)
+func SaturnMagN(jde float64, n int) float64 {
+	awaySun := planet.WherePlanetN(5, 2, jde, n)
+	awayEarth := EarthSaturnAwayN(jde, n)
+	ringB, _, _, deltaU, _, _ := SaturnRingParametersN(jde, n)
 	ringB = math.Abs(ringB)
 	mag := -8.68 + 5*math.Log10(awaySun*awayEarth) + 0.044*deltaU - 2.6*Sin(ringB) + 1.25*Sin(ringB)*Sin(ringB)
 	return FloatRound(mag, 2)
 }
 
 // SaturnHeightN 土星高度角（截断版） / truncated altitude of Saturn.
-func SaturnHeightN(jde, lon, lat, timezone float64, n int) float64 {
-	return planetHeightN(jde, lon, lat, timezone, n, SaturnApparentRaDecN)
+func SaturnHeightN(localJD, lon, lat, timezone float64, n int) float64 {
+	return planetHeightN(localJD, lon, lat, timezone, n, SaturnApparentRaDecN)
 }
 
 // SaturnAzimuthN 土星方位角（截断版） / truncated azimuth of Saturn.
-func SaturnAzimuthN(jde, lon, lat, timezone float64, n int) float64 {
-	return planetAzimuthN(jde, lon, lat, timezone, n, SaturnApparentRaDecN)
+func SaturnAzimuthN(localJD, lon, lat, timezone float64, n int) float64 {
+	return planetAzimuthN(localJD, lon, lat, timezone, n, SaturnApparentRaDecN)
 }
 
 // SaturnHourAngleN 土星时角（截断版） / truncated hour angle of Saturn.
@@ -560,8 +560,8 @@ func SaturnHourAngleN(jd, lon, timezone float64, n int) float64 {
 }
 
 // SaturnCulminationTimeN 土星中天时间（截断版） / truncated culmination time of Saturn.
-func SaturnCulminationTimeN(jde, lon, timezone float64, n int) float64 {
-	return planetCulminationTimeN(jde, lon, timezone, n, SaturnHourAngleN)
+func SaturnCulminationTimeN(localJD, lon, timezone float64, n int) float64 {
+	return planetCulminationTimeN(localJD, lon, timezone, n, SaturnHourAngleN)
 }
 
 // SaturnRiseTimeN 土星升起时间（截断版） / truncated rise time of Saturn.
@@ -612,10 +612,10 @@ func EarthUranusAwayN(jd float64, n int) float64 {
 }
 
 // UranusMagN 天王星视星等（截断版） / truncated apparent magnitude of Uranus.
-func UranusMagN(jd float64, n int) float64 {
-	awaySun := planet.WherePlanetN(6, 2, jd, n)
-	awayEarth := EarthUranusAwayN(jd, n)
-	away := planet.WherePlanetN(-1, 2, jd, n)
+func UranusMagN(jde float64, n int) float64 {
+	awaySun := planet.WherePlanetN(6, 2, jde, n)
+	awayEarth := EarthUranusAwayN(jde, n)
+	away := planet.WherePlanetN(-1, 2, jde, n)
 	i := (awaySun*awaySun + awayEarth*awayEarth - away*away) / (2 * awaySun * awayEarth)
 	i = ArcCos(i)
 	mag := -7.19 + 5*math.Log10(awaySun*awayEarth) + 0.016*i
@@ -623,13 +623,13 @@ func UranusMagN(jd float64, n int) float64 {
 }
 
 // UranusHeightN 天王星高度角（截断版） / truncated altitude of Uranus.
-func UranusHeightN(jde, lon, lat, timezone float64, n int) float64 {
-	return planetHeightN(jde, lon, lat, timezone, n, UranusApparentRaDecN)
+func UranusHeightN(localJD, lon, lat, timezone float64, n int) float64 {
+	return planetHeightN(localJD, lon, lat, timezone, n, UranusApparentRaDecN)
 }
 
 // UranusAzimuthN 天王星方位角（截断版） / truncated azimuth of Uranus.
-func UranusAzimuthN(jde, lon, lat, timezone float64, n int) float64 {
-	return planetAzimuthN(jde, lon, lat, timezone, n, UranusApparentRaDecN)
+func UranusAzimuthN(localJD, lon, lat, timezone float64, n int) float64 {
+	return planetAzimuthN(localJD, lon, lat, timezone, n, UranusApparentRaDecN)
 }
 
 // UranusHourAngleN 天王星时角（截断版） / truncated hour angle of Uranus.
@@ -638,8 +638,8 @@ func UranusHourAngleN(jd, lon, timezone float64, n int) float64 {
 }
 
 // UranusCulminationTimeN 天王星中天时间（截断版） / truncated culmination time of Uranus.
-func UranusCulminationTimeN(jde, lon, timezone float64, n int) float64 {
-	return planetCulminationTimeN(jde, lon, timezone, n, UranusHourAngleN)
+func UranusCulminationTimeN(localJD, lon, timezone float64, n int) float64 {
+	return planetCulminationTimeN(localJD, lon, timezone, n, UranusHourAngleN)
 }
 
 // UranusRiseTimeN 天王星升起时间（截断版） / truncated rise time of Uranus.
@@ -690,21 +690,21 @@ func EarthNeptuneAwayN(jd float64, n int) float64 {
 }
 
 // NeptuneMagN 海王星视星等（截断版） / truncated apparent magnitude of Neptune.
-func NeptuneMagN(jd float64, n int) float64 {
-	awaySun := planet.WherePlanetN(7, 2, jd, n)
-	awayEarth := EarthNeptuneAwayN(jd, n)
+func NeptuneMagN(jde float64, n int) float64 {
+	awaySun := planet.WherePlanetN(7, 2, jde, n)
+	awayEarth := EarthNeptuneAwayN(jde, n)
 	mag := -6.87 + 5*math.Log10(awaySun*awayEarth)
 	return FloatRound(mag, 2)
 }
 
 // NeptuneHeightN 海王星高度角（截断版） / truncated altitude of Neptune.
-func NeptuneHeightN(jde, lon, lat, timezone float64, n int) float64 {
-	return planetHeightN(jde, lon, lat, timezone, n, NeptuneApparentRaDecN)
+func NeptuneHeightN(localJD, lon, lat, timezone float64, n int) float64 {
+	return planetHeightN(localJD, lon, lat, timezone, n, NeptuneApparentRaDecN)
 }
 
 // NeptuneAzimuthN 海王星方位角（截断版） / truncated azimuth of Neptune.
-func NeptuneAzimuthN(jde, lon, lat, timezone float64, n int) float64 {
-	return planetAzimuthN(jde, lon, lat, timezone, n, NeptuneApparentRaDecN)
+func NeptuneAzimuthN(localJD, lon, lat, timezone float64, n int) float64 {
+	return planetAzimuthN(localJD, lon, lat, timezone, n, NeptuneApparentRaDecN)
 }
 
 // NeptuneHourAngleN 海王星时角（截断版） / truncated hour angle of Neptune.
@@ -713,8 +713,8 @@ func NeptuneHourAngleN(jd, lon, timezone float64, n int) float64 {
 }
 
 // NeptuneCulminationTimeN 海王星中天时间（截断版） / truncated culmination time of Neptune.
-func NeptuneCulminationTimeN(jde, lon, timezone float64, n int) float64 {
-	return planetCulminationTimeN(jde, lon, timezone, n, NeptuneHourAngleN)
+func NeptuneCulminationTimeN(localJD, lon, timezone float64, n int) float64 {
+	return planetCulminationTimeN(localJD, lon, timezone, n, NeptuneHourAngleN)
 }
 
 // NeptuneRiseTimeN 海王星升起时间（截断版） / truncated rise time of Neptune.

@@ -4,9 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/starainrt/astro"
 	"github.com/starainrt/astro/eclipse"
 	"github.com/starainrt/astro/geojson"
 	"github.com/starainrt/astro/internal/geodata"
@@ -1186,7 +1188,9 @@ func TestMarshalLunarEclipseUsesRequestedBoundarySampling(t *testing.T) {
 		t.Fatalf("MarshalLunarEclipse: %v", err)
 	}
 	collection := decodeCollection(t, data)
-	assertRoles(t, collection, "visible-at-p1", "visible-at-p4", "p1-horizon", "p4-horizon", "greatest")
+	assertRoles(t, collection, "visible-at-p1", "visible-at-p4",
+		"p1-horizon", "p4-horizon", "visible-during-eclipse",
+		"visible-throughout-eclipse", "greatest")
 	assertCollectionCoordinates(t, collection)
 	visible := featureWithRole(t, collection, "visible-at-p1")
 	if got := visible.Properties["boundary_points"]; got != float64(24) {
@@ -1204,6 +1208,119 @@ func TestMarshalLunarEclipseUsesRequestedBoundarySampling(t *testing.T) {
 	}
 	if pointCount < 24 {
 		t.Fatalf("P1 horizon has %d points, want at least 24", pointCount)
+	}
+}
+
+func TestMarshalLunarEclipseWithOptions(t *testing.T) {
+	date := time.Date(2029, 1, 1, 12, 0, 0, 0, time.FixedZone("CST", 8*3600))
+	info, ok := eclipse.LunarEclipseOnDate(date)
+	if !ok {
+		t.Fatal("missing lunar eclipse")
+	}
+	defaultData, err := geojson.MarshalLunarEclipse(info, 360)
+	if err != nil {
+		t.Fatal(err)
+	}
+	skippedData, err := geojson.MarshalLunarEclipseWithOptions(info, 360, geojson.LunarEclipseOptions{
+		SkipRoles: []string{"visible-during-eclipse", "visible-throughout-eclipse"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	skipped := decodeCollection(t, skippedData)
+	assertRoles(t, skipped, "visible-at-p1", "visible-at-p4", "p1-horizon", "p4-horizon", "greatest")
+	for _, role := range []string{"visible-during-eclipse", "visible-throughout-eclipse"} {
+		if len(featuresWithRole(skipped, role)) != 0 {
+			t.Fatalf("skipped role %s is still present", role)
+		}
+	}
+	// 跳过包络不得改变其余要素的几何。
+	band := featureWithRole(t, skipped, "visible-at-p1")
+	expected := featureWithRole(t, decodeCollection(t, defaultData), "visible-at-p1")
+	if got, want := string(band.Geometry.Coordinates), string(expected.Geometry.Coordinates); got != want {
+		t.Fatal("skipping the envelopes changed the P1 hemisphere")
+	}
+
+	// 只跳过一块包络时另一块照常输出，而且不再为被跳过的那块成环。
+	partialData, err := geojson.MarshalLunarEclipseWithOptions(info, 360, geojson.LunarEclipseOptions{
+		SkipRoles: []string{"visible-throughout-eclipse"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	partial := decodeCollection(t, partialData)
+	assertRoles(t, partial, "visible-at-p1", "visible-during-eclipse")
+	if len(featuresWithRole(partial, "visible-throughout-eclipse")) != 0 {
+		t.Fatal("skipped envelope role is still present")
+	}
+
+	coarseData, err := geojson.MarshalLunarEclipseWithOptions(info, 360, geojson.LunarEclipseOptions{
+		EnvelopeLongitudePoints: 180,
+		EnvelopeSweepSamples:    16,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	coarse := decodeCollection(t, coarseData)
+	for _, role := range []string{"visible-during-eclipse", "visible-throughout-eclipse"} {
+		feature := featureWithRole(t, coarse, role)
+		if got := feature.Properties["longitude_points"]; got != float64(180) {
+			t.Fatalf("%s longitude_points=%v, want 180", role, got)
+		}
+		assertClosedMultiPolygon(t, feature)
+	}
+
+	if _, err := geojson.MarshalLunarEclipseWithOptions(info, 360, geojson.LunarEclipseOptions{
+		SkipRoles: []string{
+			"visible-at-p1", "visible-at-p4", "visible-during-eclipse", "visible-throughout-eclipse",
+			"penumbra-moonset", "penumbra-moonrise",
+			"p1-horizon", "p4-horizon", "greatest",
+		},
+	}); err == nil {
+		t.Fatal("dropping every Feature must fail")
+	}
+
+	// 采样档位取值：0 或负值等于默认（逐字节相同），正值收敛到上下限。
+	for _, samples := range []int{-5, 0} {
+		data, err := geojson.MarshalLunarEclipseWithOptions(info, 360, geojson.LunarEclipseOptions{EnvelopeSweepSamples: samples})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if string(data) != string(defaultData) {
+			t.Fatalf("EnvelopeSweepSamples=%d 应当与默认输出相同", samples)
+		}
+	}
+	for _, points := range []int{-5, 0} {
+		data, err := geojson.MarshalLunarEclipseWithOptions(info, 360, geojson.LunarEclipseOptions{EnvelopeLongitudePoints: points})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if string(data) != string(defaultData) {
+			t.Fatalf("EnvelopeLongitudePoints=%d 应当与默认输出相同", points)
+		}
+	}
+	for _, testCase := range []struct {
+		points int
+		want   float64
+	}{{1, 12}, {100000, 720}} {
+		data, err := geojson.MarshalLunarEclipseWithOptions(info, 360, geojson.LunarEclipseOptions{EnvelopeLongitudePoints: testCase.points})
+		if err != nil {
+			t.Fatal(err)
+		}
+		collection := decodeCollection(t, data)
+		for _, role := range []string{"visible-during-eclipse", "visible-throughout-eclipse"} {
+			if got := featureWithRole(t, collection, role).Properties["longitude_points"]; got != testCase.want {
+				t.Fatalf("EnvelopeLongitudePoints=%d 的 %s longitude_points=%v，期望 %v", testCase.points, role, got, testCase.want)
+			}
+		}
+	}
+	clampedData, err := geojson.MarshalLunarEclipseWithOptions(info, 360, geojson.LunarEclipseOptions{EnvelopeSweepSamples: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	clamped := decodeCollection(t, clampedData)
+	for _, role := range []string{"visible-during-eclipse", "visible-throughout-eclipse"} {
+		assertClosedMultiPolygon(t, featureWithRole(t, clamped, role))
 	}
 }
 
@@ -2881,5 +2998,34 @@ func sampleFootprint(at time.Time, west, south, east, north float64) moon.Planet
 			{Time: at, Longitude: east, Latitude: north, MoonAltitude: 30, WidthKM: 1000},
 			{Time: at, Longitude: west, Latitude: north, MoonAltitude: 30, WidthKM: 1000},
 		}},
+	}
+}
+
+// UT1 导出：时间字符串写 UT1 时刻、集合上带 time_scale 成员，且拒绝非 UTC 时区。
+func TestMarshalSolarEclipseUT1TimeScale(t *testing.T) {
+	date := time.Date(2024, time.April, 8, 0, 0, 0, 0, time.UTC)
+	partial, ok := eclipse.SolarEclipsePartialFootprintsNASABulletinSplitK(date, eclipse.SolarEclipsePartialFootprintOptions{
+		Step: 10 * time.Minute, BoundaryPoints: 24,
+	})
+	if !ok {
+		t.Fatal("缺少日食足迹")
+	}
+	utcData, err := geojson.MarshalSolarEclipse(partial, nil)
+	if err != nil {
+		t.Fatalf("UTC 导出失败: %v", err)
+	}
+	if strings.Contains(string(utcData), "time_scale") {
+		t.Error("UTC 导出不应带 time_scale 成员")
+	}
+	ut1Data, err := geojson.MarshalSolarEclipseWithTimeMarkers(partial, nil, geojson.TimeMarkerOptions{TimeScale: astro.TimeScaleUT1})
+	if err != nil {
+		t.Fatalf("UT1 导出失败: %v", err)
+	}
+	if !strings.Contains(string(ut1Data), `"time_scale":"UT1"`) {
+		t.Errorf("UT1 导出应带 time_scale 成员: %s", string(ut1Data)[:200])
+	}
+	cst := time.FixedZone("CST", 8*3600)
+	if _, err := geojson.MarshalSolarEclipseWithTimeMarkers(partial, nil, geojson.TimeMarkerOptions{TimeScale: astro.TimeScaleUT1, Location: cst}); err == nil {
+		t.Error("UT1 配非 UTC 时区应报错")
 	}
 }

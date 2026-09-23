@@ -9,10 +9,10 @@ import (
 var ErrInvalidCivilDate = errors.New("invalid civil date")
 var timeNow = time.Now
 
-// Date2JDE 日期转儒略日
-func Date2JDE(date time.Time) float64 {
+// Date2JD 日期转儒略日
+func Date2JD(date time.Time) float64 {
 	day := float64(date.Day()) + float64(date.Hour())/24.0 + float64(date.Minute())/24.0/60.0 + float64(date.Second())/24.0/3600.0 + float64(date.Nanosecond())/1000000000.0/3600.0/24.0
-	return JDECalc(date.Year(), int(date.Month()), day)
+	return JDCalc(date.Year(), int(date.Month()), day)
 }
 
 func ValidateCivilDate(year, month int, day float64) error {
@@ -68,12 +68,10 @@ func isCivilLeapYear(year, month int, day float64) bool {
 	return year%4 == 0
 }
 
-/*
-@name: 儒略日计算
-@dec: 计算给定时间的儒略日，1582年改力后为格里高利历，之前为儒略历
-@     请注意，传入的时间在天文计算中一般为力学时，应当注意和世界时的转化
-*/
-func JDECalc(year, month int, day float64) float64 {
+// JDCalc 由公历年月日（day 可含小数）计算儒略日 / Julian day from a civil year, month and fractional day.
+// 1582 年 10 月 15 日起按格里高利历，之前按儒略历；日期非法时返回 NaN。
+// Gregorian from 1582-10-15 onward and Julian before it; an invalid civil date yields NaN.
+func JDCalc(year, month int, day float64) float64 {
 	if err := ValidateCivilDate(year, month, day); err != nil {
 		return math.NaN()
 	}
@@ -92,17 +90,20 @@ func JDECalc(year, month int, day float64) float64 {
 	return (math.Floor(365.25*(float64(year)+4716.0)) + math.Floor(30.6001*float64(month+1)) + day + float64(gregorianCorrection) - 1524.5)
 }
 
-/*
-@name: 获得当前儒略日时间：当地世界时，非格林尼治时间
-*/
-func GetNowJDE() (nowJDE float64) {
+// GetNowJD 按当前时区的日历字段取儒略日 / Julian day from the current clock's calendar fields.
+// 读的是当前时区的年月日时分秒，不做时区归算。
+// It reads the calendar fields in the current location without any zone conversion.
+func GetNowJD() (nowJD float64) {
 	now := timeNow()
 	dayFraction := float64(now.Second())/3600.0/24.0 + float64(now.Minute())/60.0/24.0 + float64(now.Hour())/24.0
-	nowJDE = JDECalc(now.Year(), int(now.Month()), float64(now.Day())+dayFraction)
+	nowJD = JDCalc(now.Year(), int(now.Month()), float64(now.Day())+dayFraction)
 	return
 }
 
-func JDE2Date(jd float64) time.Time {
+// JD2Date 儒略日转 Local 时区的时刻 / Local-zone instant from a Julian day.
+// 儒略日的日历字段按 Local 时区解释，1582 年 10 月 15 日之前按儒略历。
+// The calendar fields are read in the Local zone, and dates before 1582-10-15 are read in the Julian calendar.
+func JD2Date(jd float64) time.Time {
 	jd = jd + 0.5
 	z := float64(int(jd))
 	f := jd - z
@@ -137,12 +138,12 @@ func JDE2Date(jd float64) time.Time {
 	return time.Unix(dates.Unix()+int64(tms), int64((tms-math.Floor(tms))*1000000000))
 }
 
-// JDE2DateByZone JDE（儒略日）转日期
+// JD2DateByZone 儒略日转日期
 // jd: 儒略日
 // tz: 目标时区
 // byZone: (true: 传入的儒略日视为目标时区当地时间的儒略日，false: 传入的儒略日视为UTC时间的儒略日)
 // 回参：转换后的日期，时区始终为目标时区
-func JDE2DateByZone(jd float64, tz *time.Location, byZone bool) time.Time {
+func JD2DateByZone(jd float64, tz *time.Location, byZone bool) time.Time {
 	jd = jd + 0.5
 	z := float64(int(jd))
 	f := jd - z
@@ -172,10 +173,13 @@ func JDE2DateByZone(jd float64, tz *time.Location, byZone bool) time.Time {
 	}
 	tms := (days - math.Floor(days)) * 24 * 3600
 	days = math.Floor(days)
-	var transTz = tz
+	date := time.Date(int(years), time.Month(int(months)), int(days), 0, 0, 0, 0, time.UTC).
+		Add(time.Duration(int64(1000000000 * tms)))
 	if !byZone {
-		transTz = time.UTC
+		return date.In(tz)
 	}
-	return time.Date(int(years), time.Month(int(months)), int(days), 0, 0, 0, 0, transTz).
-		Add(time.Duration(int64(1000000000 * tms))).In(tz)
+	// 当地 JD 的小数部分是钟表读数，不能按夏令时午夜后的实际时长累加。
+	year, month, day := date.Date()
+	hour, minute, second := date.Clock()
+	return time.Date(year, month, day, hour, minute, second, date.Nanosecond(), tz)
 }

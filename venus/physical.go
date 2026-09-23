@@ -27,8 +27,8 @@ func Physical(date time.Time) PhysicalInfo {
 
 // PhysicalN 金星物理观测参数（截断版） / truncated physical observing parameters of Venus.
 func PhysicalN(date time.Time, n int) PhysicalInfo {
-	jde := basic.Date2JDE(date.UTC())
-	info := basic.VenusPhysicalN(basic.TD2UT(jde, true), n)
+	jd := basic.Date2JD(date.UTC())
+	info := basic.VenusPhysicalN(basic.UTC2TT(jd), n)
 	return PhysicalInfo{
 		SubEarthLongitude:      info.SubEarthLongitude,
 		SubEarthLatitude:       info.SubEarthLatitude,

@@ -47,11 +47,13 @@ func TestLunarEclipseMapSVGUsesExclusiveVisibilityLayers(t *testing.T) {
 
 	for _, want := range []string{
 		`mask id="lunar-not-visible-mask"`,
+		`mask id="lunar-not-p1-p4-mask"`,
 		`mask id="lunar-not-p4-mask"`,
 		`mask id="lunar-not-p1-mask"`,
 		`class="eclipse-unavailable-region" mask="url(#lunar-not-visible-mask)"`,
 		`class="visible-at-p1 moonset-region" mask="url(#lunar-not-p4-mask)"`,
 		`class="visible-at-p4 moonrise-region" mask="url(#lunar-not-p1-mask)"`,
+		`class="eclipse-at-maximum moonset-region" href="#lunar-visible-maximum-shape"`,
 	} {
 		if !strings.Contains(diagram, want) {
 			t.Fatalf("lunar-eclipse map does not render exclusive visibility regions: missing %q", want)
@@ -60,8 +62,18 @@ func TestLunarEclipseMapSVGUsesExclusiveVisibilityLayers(t *testing.T) {
 	if strings.Contains(diagram, `class="entire-eclipse-region"`) && strings.Contains(diagram, `fill-opacity="0.70"`) {
 		t.Fatal("entire-eclipse region still uses the opaque stacked-overlay style")
 	}
-	if !strings.Contains(diagram, `clipPath id="lunar-visible-maximum"`) {
-		t.Fatal("entire-eclipse region is not constrained by greatest-eclipse visibility")
+	// 全程可见区必须同时受 P1、P4 与食甚可见区裁剪：两端可见推不出中途可见，
+	// 中间落到地平下的高纬带另画带食月落，不能再被算成全程可见。
+	if !strings.Contains(diagram, `<clipPath id="lunar-visible-maximum"><use href="#lunar-visible-maximum-shape"/></clipPath>`) ||
+		!strings.Contains(diagram, `<g clip-path="url(#lunar-visible-p4)"><g clip-path="url(#lunar-visible-maximum)"><use class="entire-eclipse-region"`) {
+		t.Fatal("entire-eclipse region is not cut by greatest-eclipse visibility")
+	}
+	if !strings.Contains(diagram, `<g mask="url(#lunar-not-maximum-mask)"><use class="visible-at-p1-below-maximum moonset-region"`) {
+		t.Fatal("partly visible moonset band is missing")
+	}
+	if !strings.Contains(diagram, `mask id="lunar-not-visible-mask" maskUnits="userSpaceOnUse"`) ||
+		!strings.Contains(diagram, `<use href="#lunar-visible-maximum-shape" fill="#000000"/>`) {
+		t.Fatal("not-visible region is not bounded by greatest-eclipse visibility")
 	}
 }
 
@@ -99,7 +111,7 @@ func TestLunarEclipseVisibilityPathMatchesTopocentricHorizon(t *testing.T) {
 			if len(rings) == 0 || len(rings) > 3 {
 				t.Fatalf("projection=%s subpaths=%d", projection, len(rings))
 			}
-			jd := basic.Date2JDE(at)
+			jd := basic.Date2JD(at)
 			for _, point := range boundary {
 				if altitude := basic.HMoonHeight(jd, point.Longitude, point.Latitude, 0); math.Abs(altitude) > 1e-9 {
 					t.Fatalf("horizon altitude=%g", altitude)

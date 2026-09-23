@@ -77,15 +77,15 @@ func marsConjunctionFull(jde, degree float64, next uint8) float64 {
 	} else {
 		jde += daysPerDegree * currentDelta
 	}
-	estimateJD := jde
+	estimateJDE := jde
 	converged := false
 	for i := 0; i < eventNewtonMaxIterations; i++ {
-		prevJD := estimateJD
-		longitudeDelta := marsSunLongitudeDelta(prevJD, degree, true)
-		longitudeSlope := (marsSunLongitudeDelta(prevJD+0.000005, degree, true) - marsSunLongitudeDelta(prevJD-0.000005, degree, true)) / 0.00001
-		nextJD := prevJD - longitudeDelta/longitudeSlope
-		estimateJD = nextJD
-		if math.Abs(nextJD-prevJD) <= 0.00001 {
+		prevJDE := estimateJDE
+		longitudeDelta := marsSunLongitudeDelta(prevJDE, degree, true)
+		longitudeSlope := (marsSunLongitudeDelta(prevJDE+0.000005, degree, true) - marsSunLongitudeDelta(prevJDE-0.000005, degree, true)) / 0.00001
+		nextJD := prevJDE - longitudeDelta/longitudeSlope
+		estimateJDE = nextJD
+		if math.Abs(nextJD-prevJDE) <= 0.00001 {
 			converged = true
 			break
 		}
@@ -93,7 +93,7 @@ func marsConjunctionFull(jde, degree float64, next uint8) float64 {
 	if !converged {
 		return math.NaN()
 	}
-	return TD2UT(estimateJD, false)
+	return TT2UTC(estimateJDE)
 }
 
 func marsConjunction(jde, degree float64, next uint8) float64 {
@@ -108,15 +108,15 @@ func marsConjunction(jde, degree float64, next uint8) float64 {
 	} else {
 		jde += daysPerDegree * currentDelta
 	}
-	estimateJD := jde
+	estimateJDE := jde
 	converged := false
 	for i := 0; i < eventNewtonMaxIterations; i++ {
-		prevJD := estimateJD
-		longitudeDelta := marsSunLongitudeDeltaN(prevJD, degree, true, marsEventSearchN)
-		longitudeSlope := (marsSunLongitudeDeltaN(prevJD+0.000005, degree, true, marsEventSearchN) - marsSunLongitudeDeltaN(prevJD-0.000005, degree, true, marsEventSearchN)) / 0.00001
-		nextJD := prevJD - longitudeDelta/longitudeSlope
-		estimateJD = nextJD
-		if math.Abs(nextJD-prevJD) <= marsPhaseCoarseTolerance {
+		prevJDE := estimateJDE
+		longitudeDelta := marsSunLongitudeDeltaN(prevJDE, degree, true, marsEventSearchN)
+		longitudeSlope := (marsSunLongitudeDeltaN(prevJDE+0.000005, degree, true, marsEventSearchN) - marsSunLongitudeDeltaN(prevJDE-0.000005, degree, true, marsEventSearchN)) / 0.00001
+		nextJD := prevJDE - longitudeDelta/longitudeSlope
+		estimateJDE = nextJD
+		if math.Abs(nextJD-prevJDE) <= marsPhaseCoarseTolerance {
 			converged = true
 			break
 		}
@@ -126,12 +126,12 @@ func marsConjunction(jde, degree float64, next uint8) float64 {
 	}
 	converged = false
 	for i := 0; i < eventNewtonMaxIterations; i++ {
-		prevJD := estimateJD
-		longitudeDelta := marsSunLongitudeDelta(prevJD, degree, true)
-		longitudeSlope := (marsSunLongitudeDelta(prevJD+0.000005, degree, true) - marsSunLongitudeDelta(prevJD-0.000005, degree, true)) / 0.00001
-		nextJD := prevJD - longitudeDelta/longitudeSlope
-		estimateJD = nextJD
-		if math.Abs(nextJD-prevJD) <= 0.00001 {
+		prevJDE := estimateJDE
+		longitudeDelta := marsSunLongitudeDelta(prevJDE, degree, true)
+		longitudeSlope := (marsSunLongitudeDelta(prevJDE+0.000005, degree, true) - marsSunLongitudeDelta(prevJDE-0.000005, degree, true)) / 0.00001
+		nextJD := prevJDE - longitudeDelta/longitudeSlope
+		estimateJDE = nextJD
+		if math.Abs(nextJD-prevJDE) <= 0.00001 {
 			converged = true
 			break
 		}
@@ -139,7 +139,7 @@ func marsConjunction(jde, degree float64, next uint8) float64 {
 	if !converged {
 		return math.NaN()
 	}
-	return TD2UT(estimateJD, false)
+	return TT2UTC(estimateJDE)
 }
 
 func LastMarsConjunction(jde float64) float64 {
@@ -178,22 +178,22 @@ func marsRetrogradeAroundOpposition(oppositionJD float64, searchBeforeOpposition
 	if !isFiniteFloat(oppositionJD) {
 		return math.NaN()
 	}
-	oppositionTT := TD2UT(oppositionJD, true)
+	oppositionTT := UTC2TT(oppositionJD)
 	startTT := oppositionTT
 	endTT := oppositionTT
 	if searchBeforeOpposition {
 		easternQuadratureUT := marsConjunction(oppositionTT, 90, 0)
-		startTT = TD2UT(easternQuadratureUT, true)
+		startTT = UTC2TT(easternQuadratureUT)
 	} else {
 		westernQuadratureUT := marsConjunction(oppositionTT, 270, 1)
-		endTT = TD2UT(westernQuadratureUT, true)
+		endTT = UTC2TT(westernQuadratureUT)
 	}
-	bestJD := zeroEventInWindow(startTT, endTT, marsStationCoarseStepDay, marsStationHalfWindowDay, 30.0/86400.0, func(jd float64) float64 {
+	bestJDE := zeroEventInWindow(startTT, endTT, marsStationCoarseStepDay, marsStationHalfWindowDay, 30.0/86400.0, func(jd float64) float64 {
 		return marsRADerivativeN(jd, marsStationDerivativeStepDay, marsEventSearchN)
 	}, func(jd float64) float64 {
 		return marsRADerivative(jd, marsStationDerivativeStepDay)
 	})
-	return TD2UT(bestJD, false)
+	return TT2UTC(bestJDE)
 }
 
 func NextMarsRetrogradeToPrograde(jde float64) float64 {

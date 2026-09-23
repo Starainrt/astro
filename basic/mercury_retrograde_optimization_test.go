@@ -13,7 +13,7 @@ func TestMercuryRetrogradeFastPathKeepsTypedCandidateOrder(t *testing.T) {
 		1644733.927538287,
 		1645082.416782375,
 	} {
-		queryTT := TD2UT(queryUT, true)
+		queryTT := UTC2TT(queryUT)
 		nextP2R := NextMercuryProgradeToRetrograde(queryTT)
 		nextR2P := NextMercuryRetrogradeToPrograde(queryTT)
 		wantNext := math.Min(nextP2R, nextR2P)

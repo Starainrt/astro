@@ -64,11 +64,11 @@ func RefineWithin(points []geodata.GeoPoint, at time.Time, toleranceDegrees floa
 	if len(points) < 3 {
 		return points
 	}
-	jd := basic.Date2JDE(at.UTC())
-	tt := basic.TD2UT(jd, true)
+	jd := basic.Date2JD(at.UTC())
+	tt := basic.UTC2TT(jd)
 	ra, dec := basic.HMoonTrueRaDec(tt)
 	distanceAU := basic.HMoonAway(tt) / 149597870.7
-	sidereal := basic.ApparentSiderealTime(jd) * 15
+	sidereal := basic.ApparentSiderealTime(basic.UTC2UT1(jd)) * 15
 	center := geodata.GeoPoint{Longitude: normalizeLongitude(ra - sidereal), Latitude: dec}
 	// Every correction is at the same instant. Reuse its full ephemeris while
 	// retaining the ellipsoid and topocentric transform used by HMoonHeight.

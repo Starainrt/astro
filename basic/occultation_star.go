@@ -273,7 +273,7 @@ func starOccultationMinimizeValue(left, right float64, value func(float64) float
 
 func starOccultationGeocentricSeparationArcsec(tt float64, star StarCoordinate) float64 {
 	moonRA, moonDec := HMoonGeocentricApparentRaDecN(tt, -1)
-	starRA, starDec := starApparentRaDecGeocentric(tt, star)
+	starRA, starDec, _ := starApparentRaDecDistanceGeocentric(tt, star)
 	return angularSeparationDegrees(moonRA, moonDec, starRA, starDec) * 3600
 }
 
@@ -389,45 +389,107 @@ func starMoonPositionAt(tt float64, star StarCoordinate, observer Observer) star
 
 func moonTopocentricApparentRaDec(tt float64, observer Observer, n int) (float64, float64) {
 	ra, dec := HMoonGeocentricApparentRaDecN(tt, n)
-	ut := TD2UT(tt, false)
+	ut := TT2UTC(tt)
 	distanceAU := HMoonAwayN(tt, n) / 149597870.7
 	ra, dec = TopocentricRaDec(ra, dec, observer.Latitude, observer.Longitude, ut, distanceAU, observer.Height)
 	return normalizeRA(ra), dec
 }
 
 func starApparentRaDec(tt float64, star StarCoordinate, observer Observer) (float64, float64) {
-	ra, dec := starApparentRaDecGeocentric(tt, star)
-	if star.ParallaxMas > 0 {
-		// 1 秒差距处 1 角秒对应 206264.806 AU。
-		// One arcsecond at 1 pc corresponds to 206264.806 AU.
-		distanceAU := 206264806.247 / star.ParallaxMas
-		ra, dec = TopocentricRaDec(ra, dec, observer.Latitude, observer.Longitude, TD2UT(tt, false), distanceAU, observer.Height)
+	ra, dec, distanceAU := starApparentRaDecDistanceGeocentric(tt, star)
+	if distanceAU > 0 {
+		ra, dec = TopocentricRaDec(ra, dec, observer.Latitude, observer.Longitude, TT2UTC(tt), distanceAU, observer.Height)
 		ra = normalizeRA(ra)
 	}
 	return ra, dec
 }
 
 func starApparentRaDecGeocentric(tt float64, star StarCoordinate) (float64, float64) {
+	ra, dec, _ := starApparentRaDecDistanceGeocentric(tt, star)
+	return ra, dec
+}
+
+// starApparentRaDecDistanceGeocentric 同时给出视位置与推进后的距离（天文单位，0 表示距离未知）。
+func starApparentRaDecDistanceGeocentric(tt float64, star StarCoordinate) (float64, float64, float64) {
 	epochJD := occultationTimeToTT(star.Epoch)
-	years := (tt - epochJD) / 365.25
+	parallaxMas := star.parallaxMas()
 	ra := star.RA
 	dec := star.Dec
 	precessionEpoch := 2451545.0
 	if star.Frame == CoordinateFrameICRS {
 		ra, dec = starICRSToMeanJ2000RaDec(ra, dec)
 	} else if star.Frame == CoordinateFrameApparentOfDate {
-		ra, dec = starApparentToMeanRaDec(epochJD, ra, dec, star.ParallaxMas)
+		ra, dec = starApparentToMeanRaDec(epochJD, ra, dec, parallaxMas)
 		precessionEpoch = epochJD
+	}
+	epochDistanceAU := starEpochDistanceAU(parallaxMas)
+	ra, dec, distanceAU := starProperMotionRaDec(tt, star, ra, dec, epochDistanceAU)
+	ra, dec = Precess(ra, dec, precessionEpoch, tt)
+	ra, dec = starMeanToApparentRaDec(tt, ra, dec, parallaxMasAtDistance(parallaxMas, distanceAU))
+	return ra, dec, distanceAU
+}
+
+// starEpochDistanceAU 由历元视差给出距离，非正表示距离未知。
+func starEpochDistanceAU(parallaxMas float64) float64 {
+	if parallaxMas <= 0 {
+		return 0
+	}
+	return 206264806.247 / parallaxMas
+}
+
+// starPropagatedPositionAU 把历元位置矢量按三维匀速直线运动推进一个历元差。
+// 切向速度取自行乘历元距离，视向分量取径向速度；返回推进后的矢量，其模长即当日距离。
+func starPropagatedPositionAU(star StarCoordinate, ra, dec, epochDistanceAU, years float64) ([3]float64, float64) {
+	if epochDistanceAU <= 0 {
+		return [3]float64{}, 0
+	}
+	raRad := ra * math.Pi / 180
+	decRad := dec * math.Pi / 180
+	cosDec, sinDec := math.Cos(decRad), math.Sin(decRad)
+	cosRA, sinRA := math.Cos(raRad), math.Sin(raRad)
+	pmRA := star.ProperMotionRACosDecMasPerYear / 1000 * math.Pi / (180 * 3600) * epochDistanceAU
+	pmDec := star.ProperMotionDecMasPerYear / 1000 * math.Pi / (180 * 3600) * epochDistanceAU
+	radial := star.RadialVelocityKmPerSecond * 365.25 * 86400 / 149597870.7
+	position := [3]float64{
+		epochDistanceAU*cosDec*cosRA + years*(pmDec*(-sinDec*cosRA)-pmRA*sinRA+radial*cosDec*cosRA),
+		epochDistanceAU*cosDec*sinRA + years*(pmDec*(-sinDec*sinRA)+pmRA*cosRA+radial*cosDec*sinRA),
+		epochDistanceAU*sinDec + years*(pmDec*cosDec+radial*sinDec),
+	}
+	norm := math.Sqrt(position[0]*position[0] + position[1]*position[1] + position[2]*position[2])
+	return position, norm
+}
+
+// parallaxMasAtDistance 把推进后的距离折回周年视差，视差修正必须跟着距离一起变。
+func parallaxMasAtDistance(parallaxMas, distanceAU float64) float64 {
+	if parallaxMas <= 0 || distanceAU <= 0 {
+		return 0
+	}
+	return 206264806.247 / distanceAU
+}
+
+// starProperMotionRaDec 把历元输入坐标推进到 tt，并给出推进后的距离。
+// 距离已知走三维、否则只推进两个角分量（此时距离返回 0）。
+func starProperMotionRaDec(tt float64, star StarCoordinate, ra, dec, epochDistanceAU float64) (float64, float64, float64) {
+	years := (tt - occultationTimeToTT(star.Epoch)) / 365.25
+	if epochDistanceAU > 0 {
+		return starProperMotionRaDec3D(ra, dec, years, epochDistanceAU, star)
 	}
 	cosDec := math.Cos(dec * math.Pi / 180)
 	if math.Abs(cosDec) > 1e-12 {
 		ra += years * star.ProperMotionRACosDecMasPerYear / (3600000.0 * cosDec)
 	}
 	dec += years * star.ProperMotionDecMasPerYear / 3600000.0
-	dec = math.Max(-90, math.Min(90, dec))
+	return ra, math.Max(-90, math.Min(90, dec)), 0
+}
 
-	ra, dec = Precess(ra, dec, precessionEpoch, tt)
-	return starMeanToApparentRaDec(tt, ra, dec, star.ParallaxMas)
+// starProperMotionRaDec3D 按三维匀速直线运动推进：赤经赤纬只是位置矢量的方向。
+func starProperMotionRaDec3D(ra, dec, years, epochDistanceAU float64, star StarCoordinate) (float64, float64, float64) {
+	position, norm := starPropagatedPositionAU(star, ra, dec, epochDistanceAU, years)
+	outRA := math.Atan2(position[1], position[0]) * 180 / math.Pi
+	if outRA < 0 {
+		outRA += 360
+	}
+	return outRA, math.Asin(position[2]/norm) * 180 / math.Pi, norm
 }
 
 func starICRSToMeanJ2000RaDec(ra, dec float64) (float64, float64) {
@@ -628,7 +690,7 @@ func occultationPositionAngle(moonRA, moonDec, starRA, starDec float64) float64 
 
 func occultationAltitude(tt float64, observer Observer, ra, dec float64) float64 {
 	return occultationAltitudeWithSidereal(
-		ApparentSiderealTime(TD2UT(tt, false))*15, observer, ra, dec,
+		ApparentSiderealTime(TT2UT1(tt))*15, observer, ra, dec,
 	)
 }
 
@@ -641,7 +703,7 @@ func occultationAltitudeWithSidereal(siderealDegrees float64, observer Observer,
 }
 
 func occultationAzimuth(tt float64, observer Observer, ra, dec float64) float64 {
-	hourAngle := signedAngleDifference(ApparentSiderealTime(TD2UT(tt, false))*15+observer.Longitude, ra) * math.Pi / 180
+	hourAngle := signedAngleDifference(ApparentSiderealTime(TT2UT1(tt))*15+observer.Longitude, ra) * math.Pi / 180
 	lat := observer.Latitude * math.Pi / 180
 	declination := dec * math.Pi / 180
 	y := math.Sin(hourAngle)
@@ -666,12 +728,12 @@ func normalizeRA(ra float64) float64 {
 }
 
 func occultationTimeToTT(value time.Time) float64 {
-	return TD2UT(Date2JDE(value.UTC()), true)
+	return UTC2TT(Date2JD(value.UTC()))
 }
 
 func occultationTTToLocation(tt float64, location *time.Location) time.Time {
 	if location == nil {
 		location = time.UTC
 	}
-	return JDE2DateByZone(TD2UT(tt, false), location, false)
+	return JD2DateByZone(TT2UTC(tt), location, false)
 }

@@ -44,6 +44,12 @@ type SolarEclipsePathPoint struct {
 type SolarEclipsePath struct {
 	// Eclipse 是对应的全局日食信息, related global solar eclipse information.
 	Eclipse SolarEclipseInfo
+	// PathWidthDefined 表示本结果的带宽是否有定义：两限存在且上下两条限界线都非空时才为 true；
+	// 为 false 时 Eclipse.PathWidthKM 与 Greatest.WidthKM 都是 0。
+	// PathWidthDefined reports whether this result has a defined band width: both
+	// limits must exist and both limit lines must be non-empty. When it is false,
+	// Eclipse.PathWidthKM and Greatest.WidthKM are 0.
+	PathWidthDefined bool
 	// Greatest 是食甚点/最佳观测点, greatest eclipse point.
 	Greatest SolarEclipsePathPoint
 	// CenterLine 是中心线, central line.
@@ -333,6 +339,7 @@ func solarEclipseCentralPath(
 
 	path := SolarEclipsePath{
 		Eclipse:                     solarEclipseInfoFromBasic(result.Eclipse, location),
+		PathWidthDefined:            result.PathWidthDefined,
 		Greatest:                    solarEclipsePathPointFromBasic(result.Greatest, location),
 		CenterLine:                  solarEclipsePathPointsFromBasic(result.CenterLine, location),
 		NorthernLimit:               solarEclipsePathPointsFromBasic(result.NorthernLimit, location),

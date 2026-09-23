@@ -59,8 +59,8 @@ func TestEclipseSearchStepDoesNotSkipPotentialCandidates(t *testing.T) {
 }
 
 func eclipseSearchTestCandidates(startYear, years, phaseType int, synodicMonthDays float64) []float64 {
-	startTT := basic.Date2JDE(time.Date(startYear, 1, 1, 0, 0, 0, 0, time.UTC))
-	endTT := basic.Date2JDE(time.Date(startYear+years, 1, 1, 0, 0, 0, 0, time.UTC))
+	startTT := basic.Date2JD(time.Date(startYear, 1, 1, 0, 0, 0, 0, time.UTC))
+	endTT := basic.Date2JD(time.Date(startYear+years, 1, 1, 0, 0, 0, 0, time.UTC))
 	candidateTT := basic.CalcMoonSHByJDE(startTT, phaseType)
 	candidates := make([]float64, 0, years*13)
 	for candidateTT < endTT {

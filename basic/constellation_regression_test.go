@@ -65,7 +65,7 @@ func TestConstellationNameLookups(t *testing.T) {
 }
 
 func TestConstellationNameEN(t *testing.T) {
-	jde := Date2JDE(time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC))
+	jde := Date2JD(time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC))
 	if en := ConstellationNameEN(88.792939, 7.407064, jde); en != "Orion" {
 		t.Fatalf("ConstellationNameEN() = %q, want %q", en, "Orion")
 	}

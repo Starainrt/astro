@@ -6,6 +6,8 @@ import (
 	"math"
 	"strings"
 	"time"
+
+	"github.com/starainrt/astro/tools"
 )
 
 // ErrInvalidOccultationInput 表示月掩输入契约无效。
@@ -22,6 +24,8 @@ const (
 	occultationPathMinimumTargetSpacingKM  = 1.0
 	occultationEventSelectionTolerance     = 10 * time.Millisecond
 	occultationEventSelectionToleranceDays = float64(occultationEventSelectionTolerance) / float64(24*time.Hour)
+	// 银河系内恒星的径向速度上限，仅用于挡掉明显填错的输入。
+	starRadialVelocityLimitKmPerSecond = 1000.0
 )
 
 // CoordinateFrame 标识恒星输入坐标使用的赤道坐标系。
@@ -155,7 +159,7 @@ func moonTopocentricSemidiameterN(tt float64, observer Observer, n int) float64 
 	if !finite(moonRA) || !finite(moonDec) || !finite(moonDistanceKM) || moonDistanceKM <= 0 {
 		return math.NaN()
 	}
-	distanceKM := topocentricDistanceKM(moonRA, moonDec, moonDistanceKM, observer, TD2UT(tt, false))
+	distanceKM := topocentricDistanceKM(moonRA, moonDec, moonDistanceKM, observer, TT2UTC(tt))
 	if !finite(distanceKM) || distanceKM <= 0 {
 		return math.NaN()
 	}
@@ -167,7 +171,7 @@ func moonTopocentricSemidiameterN(tt float64, observer Observer, n int) float64 
 // topocentricDistanceKM uses the same WGS-84-style site factors as TopocentricRaDec.
 // The target uses apparent equatorial coordinates, and the sidereal angle is based on UTC/UT.
 func topocentricDistanceKM(ra, dec, distanceKM float64, observer Observer, ut float64) float64 {
-	return topocentricDistanceKMWithSidereal(ra, dec, distanceKM, observer, ApparentSiderealTime(ut)*15)
+	return topocentricDistanceKMWithSidereal(ra, dec, distanceKM, observer, ApparentSiderealTime(UTC2UT1(ut))*15)
 }
 
 func topocentricDistanceKMWithSidereal(
@@ -231,7 +235,18 @@ type StarCoordinate struct {
 
 	ProperMotionRACosDecMasPerYear float64
 	ProperMotionDecMasPerYear      float64
-	ParallaxMas                    float64
+	// ParallaxMas 为周年视差，单位毫角秒；0 表示未提供距离，此时退回二维自行传播。
+	// ParallaxMas is the annual parallax in milliarcseconds; 0 means no distance is given and the
+	// two-dimensional proper-motion path is used.
+	ParallaxMas float64
+	// DistanceLightYear 是 ParallaxMas 的替代输入，单位光年；仅当 ParallaxMas 为 0 时生效，0 表示未提供。
+	// DistanceLightYear is an alternative to ParallaxMas in light-years; it applies only when
+	// ParallaxMas is 0, and 0 means it was not given.
+	DistanceLightYear float64
+	// RadialVelocityKmPerSecond 单位千米/秒，0 合法，只在距离已知时参与三维空间运动。
+	// RadialVelocityKmPerSecond is in kilometres per second; 0 is valid and it enters the
+	// three-dimensional motion only when a distance is known.
+	RadialVelocityKmPerSecond float64
 }
 
 // Validate 在构造目标前检查恒星坐标契约。
@@ -255,7 +270,24 @@ func (s StarCoordinate) Validate() error {
 	if !finite(s.ParallaxMas) || s.ParallaxMas < 0 {
 		return fmt.Errorf("%w: star parallax must be finite and non-negative", ErrInvalidOccultationInput)
 	}
+	if !finite(s.DistanceLightYear) || s.DistanceLightYear < 0 {
+		return fmt.Errorf("%w: star distance in light-years must be finite and non-negative", ErrInvalidOccultationInput)
+	}
+	if !finite(s.RadialVelocityKmPerSecond) || math.Abs(s.RadialVelocityKmPerSecond) > starRadialVelocityLimitKmPerSecond {
+		return fmt.Errorf("%w: star radial velocity must be finite and within +/-%.0f km/s", ErrInvalidOccultationInput, starRadialVelocityLimitKmPerSecond)
+	}
 	return nil
+}
+
+// parallaxMas 返回生效的视差：显式视差优先，否则由光年距离折算。
+func (s StarCoordinate) parallaxMas() float64 {
+	if s.ParallaxMas > 0 {
+		return s.ParallaxMas
+	}
+	if s.DistanceLightYear <= 0 {
+		return 0
+	}
+	return 1000 / tools.DistanceToParsecs(s.DistanceLightYear, tools.DistanceLightYear)
 }
 
 // StarCoordinateFromStarData 将一条内嵌星表记录转换为月掩搜索使用的 J2000 坐标契约。
@@ -284,6 +316,7 @@ func StarCoordinateFromStarData(star StarData) (StarCoordinate, error) {
 		ProperMotionRACosDecMasPerYear: star.PmRA * 1000,
 		ProperMotionDecMasPerYear:      star.PmDec * 1000,
 		ParallaxMas:                    parallaxMas,
+		RadialVelocityKmPerSecond:      star.RadVel,
 	}
 	if err := coordinate.Validate(); err != nil {
 		return StarCoordinate{}, fmt.Errorf("convert star catalog coordinate: %w", err)
@@ -491,11 +524,25 @@ type PlanetOccultationInfo struct {
 // LimitSeparationKM is non-zero only on northern/southern limit samples (total limits included) and is the same-instant ground distance to the opposite limit; it is constructed differently from WidthKM and must not be converted into it.
 // Base samples are solved directly; adaptive samples use width interpolation and five-meter error checks.
 type OccultationPathPoint struct {
-	Time              time.Time
-	Longitude         float64
-	Latitude          float64
-	MoonAltitude      float64
-	WidthKM           float64
+	// Time 是该点的时刻。
+	// Time is the instant the point describes.
+	Time time.Time
+	// Longitude 与 Latitude 是地面坐标，东经、北纬为正。
+	// Longitude and Latitude are ground coordinates, east and north positive.
+	Longitude float64
+	Latitude  float64
+	// MoonAltitude 是月球几何高度角，单位度，不做蒙气差修正。
+	// MoonAltitude is the geometric lunar altitude in degrees, without refraction.
+	MoonAltitude float64
+	// WidthKM 是可见掩带在该点的地面宽度。掩星可见带可以宽达数千公里，与日食中心带宽度不是同一口径，不要互相比较。
+	// 擦边事件的路径可以没有中心线，此时它仍表示可见带宽度，与 LimitSeparationKM 口径不同。
+	// WidthKM is the ground width of the visible occultation band at the point. An occultation band
+	// can span thousands of kilometres and is not comparable to a solar central-path width. A grazing
+	// path can have no center line while this field still describes the visible band, which is a
+	// different construction from LimitSeparationKM.
+	WidthKM float64
+	// LimitSeparationKM 是该点南北限的地面间距，无论中心线是否存在都有定义。
+	// LimitSeparationKM is the ground separation of the two limits at the point, defined whether or not a center line exists.
 	LimitSeparationKM float64
 }
 
@@ -529,6 +576,8 @@ type StarOccultationPath struct {
 	// Complete is true when Start and End are the global outer-limb contacts rather than query-window clipping points.
 	Complete bool
 
+	// CenterLine 是掩星中心线；掠掩事件可以整条没有中心线（只有南北限），此时该切片为空而 Complete 仍可为真。
+	// CenterLine is the occultation center line; a grazing event can have no center line at all (limits only), leaving this slice empty while Complete can still be true.
 	CenterLine    []OccultationPathPoint
 	NorthernLimit []OccultationPathPoint
 	SouthernLimit []OccultationPathPoint
@@ -622,7 +671,9 @@ type PlanetOccultationPath struct {
 	Complete bool
 
 	// CenterLine 是影轴与椭球交点的轨迹；非中心事件退化为最接近影轴的椭球点。
+	// 掠掩事件的路径可以整条没有中心线（只有南北限），此时该切片为空而 Complete 仍可为真。
 	// CenterLine is the track of the shadow-axis/ellipsoid intersection, degenerating to the ellipsoid point nearest the axis for non-central events.
+	// A grazing event can have no center line at all (limits only); the slice is then empty while Complete can still be true.
 	CenterLine []OccultationPathPoint
 	// NorthernLimit 和 SouthernLimit 是外接触锥的切点轨迹：掩星在该线上恰好退化为擦边，不是中心线的等距横向平移。
 	// NorthernLimit and SouthernLimit are the tangency tracks of the outer-contact cone, where the occultation degenerates to a graze, so they are not a constant-width offset of the center line.

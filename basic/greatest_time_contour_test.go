@@ -8,7 +8,7 @@ import (
 // 对齐网格是导出行为（等时线按整刻度取值）的契约，取值本身写成字面量以免与实际生成函数互相自证。
 func TestGreatestTimeContourAlignedLevelsGridContracts(t *testing.T) {
 	tt := func(hour, minute int) float64 {
-		return TD2UT(Date2JDE(time.Date(2024, 1, 1, hour, minute, 0, 0, time.UTC)), true)
+		return UTC2TT(Date2JD(time.Date(2024, 1, 1, hour, minute, 0, 0, time.UTC)))
 	}
 	cases := []struct {
 		name       string

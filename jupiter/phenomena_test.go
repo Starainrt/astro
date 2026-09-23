@@ -116,7 +116,7 @@ func TestGalileanPhenomenaUseTTFrame(t *testing.T) {
 		time.Date(2026, 4, 2, 20, 0, 0, 0, time.UTC),
 	}
 	for _, date := range dates {
-		want := basic.JupiterGalileanSatellitePhenomena(basic.TD2UT(basic.Date2JDE(date.UTC()), true))
+		want := basic.JupiterGalileanSatellitePhenomena(basic.UTC2TT(basic.Date2JD(date.UTC())))
 		got := SatellitePhenomena(date)
 		phenomena := []GalileanSatellitePhenomenon{got.Io, got.Europa, got.Ganymede, got.Callisto}
 		for i, phenomenon := range phenomena {

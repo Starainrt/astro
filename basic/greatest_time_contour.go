@@ -94,12 +94,12 @@ func greatestTimeContourAlignedLevels(startTT, endTT float64, step time.Duration
 
 // greatestTimeContourTTToUTC 把 TT 儒略日换成对应的 UTC 时刻。
 func greatestTimeContourTTToUTC(tt float64) time.Time {
-	return JDE2DateByZone(TD2UT(tt, false), time.UTC, false)
+	return JD2DateByZone(TT2UTC(tt), time.UTC, false)
 }
 
 // greatestTimeContourUTCToTT 把 UTC 时刻换成对应的 TT 儒略日。
 func greatestTimeContourUTCToTT(value time.Time) float64 {
-	return TD2UT(Date2JDE(value.UTC()), true)
+	return UTC2TT(Date2JD(value.UTC()))
 }
 
 // greatestTimeContourPointSegmentKM 返回点到折线段的距离，单位 km。

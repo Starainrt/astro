@@ -234,8 +234,8 @@ func TestLocalLunarEclipseChauvenetRemainsAvailable(t *testing.T) {
 	defaultInfo := ClosestLocalLunarEclipse(date, lon, lat, height)
 	chauvenetInfo := ClosestLocalLunarEclipseChauvenet(date, lon, lat, height)
 
-	assertFloatClose(t, "Chauvenet.PenumbralMagnitude", chauvenetInfo.PenumbralMagnitude, 2.285431290, 1e-6)
-	assertFloatClose(t, "Chauvenet.UmbralMagnitude", chauvenetInfo.UmbralMagnitude, 1.182811712, 1e-6)
+	assertFloatClose(t, "Chauvenet.PenumbralMagnitude", chauvenetInfo.PenumbralMagnitude, 2.285436461, 1e-6)
+	assertFloatClose(t, "Chauvenet.UmbralMagnitude", chauvenetInfo.UmbralMagnitude, 1.182806541, 1e-6)
 
 	if !(chauvenetInfo.PenumbralMagnitude > defaultInfo.PenumbralMagnitude) {
 		t.Fatalf("expected Chauvenet penumbral magnitude > Danjon: chauvenet=%.6f danjon=%.6f", chauvenetInfo.PenumbralMagnitude, defaultInfo.PenumbralMagnitude)
@@ -341,10 +341,119 @@ func TestLocalPenumbralLunarEclipseKeepsNegativeUmbralMagnitude(t *testing.T) {
 	}
 }
 
+// TestLocalLunarEclipseVisibilityClass 固定站点自己的食内可见性八分类；rise-and-set 与 interrupted
+// 是静态地平圈几何推不出来的，penumbra-moonrise / penumbra-moonset 是本影整段在地平线下的细分。
+func TestLocalLunarEclipseVisibilityClass(t *testing.T) {
+	date := time.Date(2029, 1, 1, 12, 0, 0, 0, time.FixedZone("CST", 8*3600))
+	previousDay := time.Date(2028, 12, 31, 12, 0, 0, 0, time.FixedZone("CST", 8*3600))
+	testCases := []struct {
+		name string
+		date time.Time
+		lon  float64
+		lat  float64
+		want LocalLunarEclipseVisibility
+	}{
+		{name: "mid latitude stays up", lon: 107.25, lat: 30.25, want: LocalLunarEclipseFull},
+		{name: "moonset inside eclipse", lon: -161.25, lat: 3.25, want: LocalLunarEclipseMoonset},
+		{name: "moonrise inside eclipse", lon: 20.25, lat: -2.75, want: LocalLunarEclipseMoonrise},
+		{name: "south polar lens", lon: 108.75, lat: -62.75, want: LocalLunarEclipseRiseAndSet},
+		{name: "reported station", lon: 108.729001, lat: -59.937452, want: LocalLunarEclipseRiseAndSet},
+		{name: "arctic midday dip", lon: -71.25, lat: 64.75, want: LocalLunarEclipseInterrupted},
+		{name: "far side never up", lon: -178.5, lat: -86.5, want: LocalLunarEclipseInvisible},
+		// 只看到半影：本影阶段整段在地平线下，月出/月落仍落在食内。
+		{name: "penumbra only moonrise", lon: -69.25, lat: 61.25, want: LocalLunarEclipsePenumbraMoonrise},
+		{name: "penumbra only moonset", date: previousDay, lon: -179.25, lat: -61.25, want: LocalLunarEclipsePenumbraMoonset},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			at := testCase.date
+			if at.IsZero() {
+				at = date
+			}
+			geometric, geometricOK := GeometricLocalLunarEclipseOnDate(at, testCase.lon, testCase.lat, 0)
+			if !geometricOK {
+				t.Fatal("expected a geometric lunar eclipse on the local date")
+			}
+			if geometric.Visibility != testCase.want {
+				t.Fatalf("visibility=%s want %s", geometric.Visibility, testCase.want)
+			}
+			_, visibleOK := LocalLunarEclipseOnDate(at, testCase.lon, testCase.lat, 0)
+			if wantVisible := testCase.want != LocalLunarEclipseInvisible; visibleOK != wantVisible {
+				t.Fatalf("visible filter ok=%v want %v", visibleOK, wantVisible)
+			}
+		})
+	}
+}
+
+func TestLocalLunarEclipsePolarWindowScansBetweenContacts(t *testing.T) {
+	date := time.Date(1800, 4, 9, 0, 0, 0, 0, time.UTC)
+	info, ok := GeometricLocalLunarEclipseOnDate(date, 121, 82, 0)
+	if !ok {
+		t.Fatal("expected a geometric lunar eclipse")
+	}
+	if info.Visibility != LocalLunarEclipseRiseAndSet {
+		t.Fatalf("visibility=%s, want %s", info.Visibility, LocalLunarEclipseRiseAndSet)
+	}
+	if _, ok := LocalLunarEclipseOnDate(date, 121, 82, 0); !ok {
+		t.Fatal("the short above-horizon interval must make the eclipse visible")
+	}
+}
+
 func assertSameLocalLunarEclipse(t *testing.T, name string, got, want LocalLunarEclipseInfo, tolerance time.Duration) {
 	t.Helper()
 	if got.Type != want.Type {
 		t.Fatalf("%s type mismatch: got %s want %s", name, got.Type, want.Type)
 	}
 	assertTimeClose(t, name+".Maximum", got.Maximum, want.Maximum, tolerance)
+}
+
+// 纯半影月食没有本影接触，不把任何站点降级成 penumbra-moonrise / penumbra-moonset。
+func TestLocalLunarEclipsePenumbralOnlyKeepsOldClasses(t *testing.T) {
+	date := time.Date(2020, 1, 11, 0, 0, 0, 0, time.FixedZone("CST", 8*3600))
+	info, ok := LunarEclipseOnDate(date)
+	if !ok || info.HasPartial {
+		t.Fatalf("expected a purely penumbral eclipse, HasPartial=%v ok=%v", info.HasPartial, ok)
+	}
+	seen := map[LocalLunarEclipseVisibility]int{}
+	for longitude := -179.5; longitude < 180; longitude += 5 {
+		for latitude := -89.5; latitude < 90; latitude += 5 {
+			local, found := GeometricLocalLunarEclipseOnDate(date, longitude, latitude, 0)
+			if !found {
+				continue
+			}
+			seen[local.Visibility]++
+		}
+	}
+	if seen[LocalLunarEclipsePenumbraMoonrise] != 0 || seen[LocalLunarEclipsePenumbraMoonset] != 0 {
+		t.Fatalf("purely penumbral eclipse produced penumbra-only classes: %v", seen)
+	}
+	if seen[LocalLunarEclipseMoonrise] == 0 || seen[LocalLunarEclipseMoonset] == 0 {
+		t.Fatalf("purely penumbral eclipse lost its moonrise/moonset sites: %v", seen)
+	}
+}
+
+// 极区掠射：U1、食甚、U4 三点都可能在地平下，但本影区间中途仍有短暂窗口高于地平；这类站点确实
+// 见到本影，必须留在 moonrise/moonset，只有本影区间极值也在地平下才算"仅见半影"。
+func TestLocalLunarEclipseKeepsUmbralGrazingWindow(t *testing.T) {
+	date := time.Date(1932, 3, 22, 0, 0, 0, 0, time.UTC)
+	for _, witness := range []struct {
+		name     string
+		lon, lat float64
+		want     LocalLunarEclipseVisibility
+	}{
+		{"本影窗口 +0.0006 度", -91.8, -88.7675, LocalLunarEclipseMoonrise},
+		{"U1 已在地平上", -91.75, -88.75, LocalLunarEclipseMoonrise},
+		{"U1 高度 +0.21 度（陡边界）", -75.5, 6.5, LocalLunarEclipseMoonset},
+		{"本影区间极值 -0.005 度", -90.0, -88.65, LocalLunarEclipsePenumbraMoonset},
+	} {
+		local, ok := GeometricLocalLunarEclipseOnDate(date, witness.lon, witness.lat, 0)
+		if !ok {
+			t.Fatalf("%s: 本影几何月食缺失", witness.name)
+		}
+		if local.Visibility != witness.want {
+			t.Fatalf("%s (%.4f,%.4f) visibility=%s want %s",
+				witness.name, witness.lon, witness.lat, local.Visibility, witness.want)
+		}
+	}
 }

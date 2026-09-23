@@ -9,7 +9,7 @@ const (
 )
 
 func eventQueryTTAsUT(queryTT float64) float64 {
-	return TD2UT(queryTT, false)
+	return TT2UTC(queryTT)
 }
 
 func eventUTQueryTTDelta(eventUT, queryTT float64) float64 {
@@ -25,11 +25,11 @@ func eventUTQueryAfterOrEqual(eventUT, queryTT float64) bool {
 }
 
 func eventUTNextQueryTT(eventUT float64) float64 {
-	return TD2UT(eventUT, true) + 1.0
+	return UTC2TT(eventUT) + 1.0
 }
 
 func eventUTLastQueryTT(eventUT float64) float64 {
-	return TD2UT(eventUT, true) - 1.0
+	return UTC2TT(eventUT) - 1.0
 }
 
 func innerNextCycleOffset(delta, period float64) float64 {

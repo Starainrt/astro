@@ -1,6 +1,7 @@
 package moon
 
 import (
+	"github.com/starainrt/astro/internal/civiltime"
 	"github.com/starainrt/astro/tools"
 	"errors"
 	"math"
@@ -17,7 +18,7 @@ var (
 	ERR_NOT_TODAY       = errors.New("ERROR:月亮已在（昨日/明日）（升起/降下）")
 )
 
-func riseSetResult(date time.Time, jde float64, err error) (time.Time, error) {
+func riseSetResult(date time.Time, jd float64, err error) (time.Time, error) {
 	if err != nil {
 		switch {
 		case errors.Is(err, basic.ErrNotOnThisDate):
@@ -30,7 +31,8 @@ func riseSetResult(date time.Time, jde float64, err error) (time.Time, error) {
 			return time.Time{}, err
 		}
 	}
-	return basic.JDE2DateByZone(jde, date.Location(), true), nil
+	_, offset := date.Zone()
+	return basic.JD2DateByZone(jd-float64(offset)/86400, date.Location(), false), nil
 }
 
 // TrueLo 月亮真黄经 / true ecliptic longitude.
@@ -38,8 +40,8 @@ func riseSetResult(date time.Time, jde float64, err error) (time.Time, error) {
 // 返回月亮在 date 对应绝对时刻的地心真黄经，单位度。
 // Returns the Moon's geocentric true ecliptic longitude at the instant represented by date, in degrees.
 func TrueLo(date time.Time) float64 {
-	jde := basic.Date2JDE(date.UTC())
-	return basic.HMoonTrueLo(basic.TD2UT(jde, true))
+	jd := basic.Date2JD(date.UTC())
+	return basic.HMoonTrueLo(basic.UTC2TT(jd))
 }
 
 // TrueLoN 截断项月亮真黄经 / truncated true ecliptic longitude.
@@ -47,8 +49,8 @@ func TrueLo(date time.Time) float64 {
 // 参数与 TrueLo 相同；n<0 使用当前仓库内嵌的全部 ELP 项，其余值用于截断月球级数。
 // Uses the same inputs as TrueLo. n<0 keeps all embedded ELP terms in this repository; other values truncate the lunar series.
 func TrueLoN(date time.Time, n int) float64 {
-	jde := basic.Date2JDE(date.UTC())
-	return basic.HMoonTrueLoN(basic.TD2UT(jde, true), n)
+	jd := basic.Date2JD(date.UTC())
+	return basic.HMoonTrueLoN(basic.UTC2TT(jd), n)
 }
 
 // TrueBo 月亮真黄纬 / true ecliptic latitude.
@@ -56,8 +58,8 @@ func TrueLoN(date time.Time, n int) float64 {
 // 返回月亮在 date 对应绝对时刻的地心真黄纬，单位度。
 // Returns the Moon's geocentric true ecliptic latitude at the instant represented by date, in degrees.
 func TrueBo(date time.Time) float64 {
-	jde := basic.Date2JDE(date.UTC())
-	return basic.HMoonTrueBo(basic.TD2UT(jde, true))
+	jd := basic.Date2JD(date.UTC())
+	return basic.HMoonTrueBo(basic.UTC2TT(jd))
 }
 
 // TrueBoN 截断项月亮真黄纬 / truncated true ecliptic latitude.
@@ -65,8 +67,8 @@ func TrueBo(date time.Time) float64 {
 // 参数与 TrueBo 相同；n<0 使用当前仓库内嵌的全部 ELP 项，其余值用于截断月球级数。
 // Uses the same inputs as TrueBo. n<0 keeps all embedded ELP terms in this repository; other values truncate the lunar series.
 func TrueBoN(date time.Time, n int) float64 {
-	jde := basic.Date2JDE(date.UTC())
-	return basic.HMoonTrueBoN(basic.TD2UT(jde, true), n)
+	jd := basic.Date2JD(date.UTC())
+	return basic.HMoonTrueBoN(basic.UTC2TT(jd), n)
 }
 
 // ApparentLo 月亮地心视黄经 / apparent geocentric ecliptic longitude.
@@ -74,8 +76,8 @@ func TrueBoN(date time.Time, n int) float64 {
 // 返回月亮在 date 对应绝对时刻的地心视黄经，单位度。
 // Returns the Moon's apparent geocentric ecliptic longitude at the instant represented by date, in degrees.
 func ApparentLo(date time.Time) float64 {
-	jde := basic.Date2JDE(date.UTC())
-	return basic.HMoonApparentLo(basic.TD2UT(jde, true))
+	jd := basic.Date2JD(date.UTC())
+	return basic.HMoonApparentLo(basic.UTC2TT(jd))
 }
 
 // TrueRa 月亮地心真赤经 / true geocentric right ascension.
@@ -83,8 +85,8 @@ func ApparentLo(date time.Time) float64 {
 // 返回月亮在 date 对应绝对时刻的地心真赤经，单位度。
 // Returns the Moon's geocentric true right ascension at the instant represented by date, in degrees.
 func TrueRa(date time.Time) float64 {
-	jde := basic.Date2JDE(date.UTC())
-	return basic.HMoonGeocentricTrueRa(basic.TD2UT(jde, true))
+	jd := basic.Date2JD(date.UTC())
+	return basic.HMoonGeocentricTrueRa(basic.UTC2TT(jd))
 }
 
 // TrueDec 月亮地心真赤纬 / true geocentric declination.
@@ -92,8 +94,8 @@ func TrueRa(date time.Time) float64 {
 // 返回月亮在 date 对应绝对时刻的地心真赤纬，单位度。
 // Returns the Moon's geocentric true declination at the instant represented by date, in degrees.
 func TrueDec(date time.Time) float64 {
-	jde := basic.Date2JDE(date.UTC())
-	return basic.HMoonGeocentricTrueDec(basic.TD2UT(jde, true))
+	jd := basic.Date2JD(date.UTC())
+	return basic.HMoonGeocentricTrueDec(basic.UTC2TT(jd))
 }
 
 // TrueRaDec 月亮地心真赤经、真赤纬 / true geocentric right ascension and declination.
@@ -101,8 +103,8 @@ func TrueDec(date time.Time) float64 {
 // 返回月亮在 date 对应绝对时刻的地心真赤经与真赤纬，单位度。
 // Returns the Moon's geocentric true right ascension and declination at the instant represented by date, in degrees.
 func TrueRaDec(date time.Time) (float64, float64) {
-	jde := basic.Date2JDE(date.UTC())
-	return basic.HMoonGeocentricTrueRaDec(basic.TD2UT(jde, true))
+	jd := basic.Date2JD(date.UTC())
+	return basic.HMoonGeocentricTrueRaDec(basic.UTC2TT(jd))
 }
 
 // GeocentricApparentRa 月亮地心视赤经 / apparent geocentric right ascension.
@@ -110,8 +112,8 @@ func TrueRaDec(date time.Time) (float64, float64) {
 // 返回月亮在 date 对应绝对时刻的地心视赤经，单位度。
 // Returns the Moon's apparent geocentric right ascension at the instant represented by date, in degrees.
 func GeocentricApparentRa(date time.Time) float64 {
-	jde := basic.Date2JDE(date.UTC())
-	return basic.HMoonGeocentricApparentRa(basic.TD2UT(jde, true))
+	jd := basic.Date2JD(date.UTC())
+	return basic.HMoonGeocentricApparentRa(basic.UTC2TT(jd))
 }
 
 // GeocentricApparentDec 月亮地心视赤纬 / apparent geocentric declination.
@@ -119,8 +121,8 @@ func GeocentricApparentRa(date time.Time) float64 {
 // 返回月亮在 date 对应绝对时刻的地心视赤纬，单位度。
 // Returns the Moon's apparent geocentric declination at the instant represented by date, in degrees.
 func GeocentricApparentDec(date time.Time) float64 {
-	jde := basic.Date2JDE(date.UTC())
-	return basic.HMoonGeocentricApparentDec(basic.TD2UT(jde, true))
+	jd := basic.Date2JD(date.UTC())
+	return basic.HMoonGeocentricApparentDec(basic.UTC2TT(jd))
 }
 
 // GeocentricApparentRaDec 月亮地心视赤经、视赤纬 / apparent geocentric right ascension and declination.
@@ -128,8 +130,8 @@ func GeocentricApparentDec(date time.Time) float64 {
 // 返回月亮在 date 对应绝对时刻的地心视赤经与视赤纬，单位度。
 // Returns the Moon's apparent geocentric right ascension and declination at the instant represented by date, in degrees.
 func GeocentricApparentRaDec(date time.Time) (float64, float64) {
-	jde := basic.Date2JDE(date.UTC())
-	return basic.HMoonGeocentricApparentRaDec(basic.TD2UT(jde, true))
+	jd := basic.Date2JD(date.UTC())
+	return basic.HMoonGeocentricApparentRaDec(basic.UTC2TT(jd))
 }
 
 // ApparentRa 月亮站心视赤经 / apparent topocentric right ascension.
@@ -137,9 +139,9 @@ func GeocentricApparentRaDec(date time.Time) (float64, float64) {
 // date 为观测时刻，会读取其时区参与地方时计算；lon/lat 为观测者经纬度，东正西负、北正南负；返回值单位度。
 // date is the observing instant and its zone offset participates in local-time calculations. lon/lat are east-positive and north-positive; the result is in degrees.
 func ApparentRa(date time.Time, lon, lat float64) float64 {
-	jde := basic.Date2JDE(date)
+	localJD := basic.Date2JD(date)
 	_, loc := date.Zone()
-	return basic.HMoonApparentRa(jde, lon, lat, float64(loc)/3600.0)
+	return basic.HMoonApparentRa(localJD, lon, lat, float64(loc)/3600.0)
 }
 
 // ApparentDec 月亮站心视赤纬 / apparent topocentric declination.
@@ -147,9 +149,9 @@ func ApparentRa(date time.Time, lon, lat float64) float64 {
 // 参数与 ApparentRa 相同，返回月亮站心视赤纬，单位度。
 // Uses the same inputs as ApparentRa and returns the Moon's apparent topocentric declination in degrees.
 func ApparentDec(date time.Time, lon, lat float64) float64 {
-	jde := basic.Date2JDE(date)
+	localJD := basic.Date2JD(date)
 	_, loc := date.Zone()
-	return basic.HMoonApparentDec(jde, lon, lat, float64(loc)/3600.0)
+	return basic.HMoonApparentDec(localJD, lon, lat, float64(loc)/3600.0)
 }
 
 // ApparentRaDec 月亮站心视赤经、视赤纬 / apparent topocentric right ascension and declination.
@@ -157,9 +159,9 @@ func ApparentDec(date time.Time, lon, lat float64) float64 {
 // 参数与 ApparentRa 相同，返回月亮站心视赤经与视赤纬，单位度。
 // Uses the same inputs as ApparentRa and returns the Moon's apparent topocentric right ascension and declination in degrees.
 func ApparentRaDec(date time.Time, lon, lat float64) (float64, float64) {
-	jde := basic.Date2JDE(date)
+	localJD := basic.Date2JD(date)
 	_, loc := date.Zone()
-	return basic.HMoonApparentRaDec(jde, lon, lat, float64(loc)/3600.0)
+	return basic.HMoonApparentRaDec(localJD, lon, lat, float64(loc)/3600.0)
 }
 
 // HourAngle 月亮时角 / hour angle.
@@ -167,9 +169,9 @@ func ApparentRaDec(date time.Time, lon, lat float64) (float64, float64) {
 // date 为观测时刻，会读取其时区参与地方时计算；lon/lat 为观测者经纬度，东正西负、北正南负；返回值单位度。
 // date is the observing instant and its zone offset participates in local-time calculations. lon/lat are east-positive and north-positive; the result is in degrees.
 func HourAngle(date time.Time, lon, lat float64) float64 {
-	jde := basic.Date2JDE(date)
+	localJD := basic.Date2JD(date)
 	_, loc := date.Zone()
-	return basic.MoonTimeAngle(jde, lon, lat, float64(loc)/3600.0)
+	return basic.MoonTimeAngle(localJD, lon, lat, float64(loc)/3600.0)
 }
 
 // Azimuth 月亮方位角 / azimuth.
@@ -177,9 +179,9 @@ func HourAngle(date time.Time, lon, lat float64) float64 {
 // date 为观测时刻，会读取其时区参与地方时计算；lon/lat 为观测者经纬度，东正西负、北正南负；返回值按正北为 0°、向东增加。
 // date is the observing instant and its zone offset participates in local-time calculations. lon/lat are east-positive and north-positive; azimuth is measured from north toward east.
 func Azimuth(date time.Time, lon, lat float64) float64 {
-	jde := basic.Date2JDE(date)
+	localJD := basic.Date2JD(date)
 	_, loc := date.Zone()
-	return basic.HMoonAzimuth(jde, lon, lat, float64(loc)/3600.0)
+	return basic.HMoonAzimuth(localJD, lon, lat, float64(loc)/3600.0)
 }
 
 // Altitude 月亮高度角 / lunar altitude.
@@ -187,9 +189,9 @@ func Azimuth(date time.Time, lon, lat float64) float64 {
 // date 为观测时刻，会读取其时区参与地方时计算；lon/lat 为观测者经纬度，东正西负、北正南负；返回值单位度。
 // date is the observing instant and its zone offset participates in local-time calculations. lon/lat are east-positive and north-positive; the result is in degrees.
 func Altitude(date time.Time, lon, lat float64) float64 {
-	jde := basic.Date2JDE(date)
+	localJD := basic.Date2JD(date)
 	_, loc := date.Zone()
-	return basic.HMoonHeight(jde, lon, lat, float64(loc)/3600.0)
+	return basic.HMoonHeight(localJD, lon, lat, float64(loc)/3600.0)
 }
 
 // Zenith 月亮天顶距 / lunar zenith distance.
@@ -205,34 +207,36 @@ func Zenith(date time.Time, lon, lat float64) float64 {
 // date 取其所在时区的当地日期，返回值保持相同时区；lon/lat 为观测者经纬度，东正西负、北正南负。
 // date is interpreted on its local civil day and the result keeps the same time zone. lon/lat are east-positive and north-positive.
 func CulminationTime(date time.Time, lon, lat float64) time.Time {
-	if date.Hour() > 12 {
-		date = date.Add(time.Hour * -12)
-	}
-	jde := basic.Date2JDE(date)
+	date = time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, date.Location())
+	localJD := basic.Date2JD(date)
 	_, loc := date.Zone()
-	return basic.JDE2DateByZone(basic.MoonCulminationTime(jde, lon, lat, float64(loc)/3600.0), date.Location(), true)
+	calcJD := basic.MoonCulminationTime(localJD, lon, lat, float64(loc)/3600.0) - float64(loc)/86400
+	return basic.JD2DateByZone(calcJD, date.Location(), false)
 }
 
 // RiseTime 月出时刻 / moonrise time.
 //
 // date 取其所在时区的当地日期，返回值保持相同时区；lon/lat 为观测者经纬度，东正西负、北正南负；
-// height 为海拔高度，单位米；aero 为 true 时按动态标准大气折射和实时月球视半径计算上缘过地平线。
+// height 为椭球高（大地高），单位米；aero 为 true 时按动态标准大气折射和实时月球视半径计算上缘过地平线。
 // date is interpreted on its local civil day and the result keeps the same time zone. lon/lat are east-positive and north-positive;
-// height 为观测者海拔，单位米；aero 使用动态标准折射和实时月球视半径计算上缘过地平线。
+// height 为观测者椭球高（大地高），单位米；aero 使用动态标准折射和实时月球视半径计算上缘过地平线。
 // height is observer elevation in meters; aero uses dynamic standard refraction and the instantaneous lunar semidiameter for an upper-limb crossing.
 func RiseTime(date time.Time, lon, lat, height float64, aero bool) (time.Time, error) {
-	if date.Hour() > 12 {
-		date = date.Add(time.Hour * -12)
+	if result, err, handled := civiltime.Event(date, ERR_NOT_TODAY, func(d time.Time) (time.Time, error) {
+		return RiseTime(d, lon, lat, height, aero)
+	}); handled {
+		return result, err
 	}
-	jde := basic.Date2JDE(date)
+	date = time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, date.Location())
+	localJD := basic.Date2JD(date)
 	_, loc := date.Zone()
 	timezone := float64(loc) / 3600.0
 	aeroFloat := 0.00
 	if aero {
 		aeroFloat = 1
 	}
-	riseJde, err := basic.GetMoonRiseTime(jde, lon, lat, timezone, aeroFloat, height)
-	return riseSetResult(date, riseJde, err)
+	riseJD, err := basic.GetMoonRiseTime(localJD, lon, lat, timezone, aeroFloat, height)
+	return riseSetResult(date, riseJD, err)
 }
 
 // DownTime 月落时刻别名 / deprecated moonset alias.
@@ -250,18 +254,21 @@ func DownTime(date time.Time, lon, lat, height float64, aero bool) (time.Time, e
 // 参数与 RiseTime 相同，返回给定当地日期内的月落时刻。
 // Uses the same inputs as RiseTime and returns the moonset time on the corresponding local civil day.
 func SetTime(date time.Time, lon, lat, height float64, aero bool) (time.Time, error) {
-	if date.Hour() > 12 {
-		date = date.Add(time.Hour * -12)
+	if result, err, handled := civiltime.Event(date, ERR_NOT_TODAY, func(d time.Time) (time.Time, error) {
+		return SetTime(d, lon, lat, height, aero)
+	}); handled {
+		return result, err
 	}
-	jde := basic.Date2JDE(date)
+	date = time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, date.Location())
+	localJD := basic.Date2JD(date)
 	_, loc := date.Zone()
 	timezone := float64(loc) / 3600.0
 	aeroFloat := 0.00
 	if aero {
 		aeroFloat = 1
 	}
-	downJde, err := basic.GetMoonSetTime(jde, lon, lat, timezone, aeroFloat, height)
-	return riseSetResult(date, downJde, err)
+	downJD, err := basic.GetMoonSetTime(localJD, lon, lat, timezone, aeroFloat, height)
+	return riseSetResult(date, downJD, err)
 }
 
 // SunMoonLoDiff 日月黄经差 / Moon-Sun longitude difference.
@@ -269,7 +276,7 @@ func SetTime(date time.Time, lon, lat, height float64, aero bool) (time.Time, er
 // 返回月亮视黄经减去太阳视黄经的结果，单位度，取值范围 [0, 360)；新月附近接近 0°，满月附近接近 180°。
 // Returns apparent lunar longitude minus apparent solar longitude in degrees, normalized to [0, 360). It is near 0° at new moon and near 180° at full moon.
 func SunMoonLoDiff(date time.Time) float64 {
-	jde := basic.TD2UT(basic.Date2JDE(date.UTC()), true)
+	jde := basic.UTC2TT(basic.Date2JD(date.UTC()))
 	sunLo := basic.HSunApparentLo(jde)
 	moonLo := basic.HMoonApparentLo(jde)
 	return tools.Limit360(moonLo - sunLo)
@@ -307,8 +314,8 @@ func PhaseDesc(date time.Time) string {
 // 返回月亮在 date 对应绝对时刻的受照比例，范围 [0, 1]。
 // Returns the Moon's illuminated fraction at the instant represented by date, in the range [0, 1].
 func Phase(date time.Time) float64 {
-	jde := basic.Date2JDE(date.UTC())
-	return basic.MoonPhase(basic.TD2UT(jde, true))
+	jd := basic.Date2JD(date.UTC())
+	return basic.MoonPhase(basic.UTC2TT(jd))
 }
 
 // ShuoYue 朔月锚点解 / new-moon solution near a decimal year anchor.
@@ -316,8 +323,8 @@ func Phase(date time.Time) float64 {
 // year 为公历小数年锚点，例如 2025.0 或 2025.5；返回以该锚点求得的一次朔月时刻，结果为 UTC。
 // year is a decimal Gregorian-year anchor such as 2025.0 or 2025.5. The returned time is one new moon solved near that anchor, in UTC.
 func ShuoYue(year float64) time.Time {
-	jde := basic.TD2UT(basic.CalcMoonSH(year, 0), false)
-	return basic.JDE2DateByZone(jde, time.UTC, false)
+	jd := basic.TT2UTC(basic.CalcMoonSH(year, 0))
+	return basic.JD2DateByZone(jd, time.UTC, false)
 }
 
 // NextShuoYue 下一次朔月 / next new moon.
@@ -366,11 +373,11 @@ func ClosestNewMoon(date time.Time) time.Time {
 
 func closestMoonPhase(date time.Time, typed int) time.Time {
 	//0=shuo 1=wang 2=shangxian 3=xiaxian
-	jde := basic.TD2UT(basic.Date2JDE(date.UTC()), true)
+	jde := basic.UTC2TT(basic.Date2JD(date.UTC()))
 	if typed < 2 {
-		return basic.JDE2DateByZone(basic.TD2UT(basic.CalcMoonSHByJDE(jde, typed), false), date.Location(), false)
+		return basic.JD2DateByZone(basic.TT2UTC(basic.CalcMoonSHByJDE(jde, typed)), date.Location(), false)
 	}
-	return basic.JDE2DateByZone(basic.TD2UT(basic.CalcMoonXHByJDE(jde, typed-2), false), date.Location(), false)
+	return basic.JD2DateByZone(basic.TT2UTC(basic.CalcMoonXHByJDE(jde, typed-2)), date.Location(), false)
 }
 
 func nextMoonPhase(date time.Time, typed int) time.Time {
@@ -384,7 +391,7 @@ func nextMoonPhase(date time.Time, typed int) time.Time {
 	case 3:
 		diffCode = 270
 	}
-	jde := basic.TD2UT(basic.Date2JDE(date.UTC()), true)
+	jde := basic.UTC2TT(basic.Date2JD(date.UTC()))
 	cost := basic.HMoonApparentLo(jde) - basic.HSunApparentLo(jde) - float64(diffCode)
 	for cost < 0 {
 		cost += 360
@@ -396,9 +403,9 @@ func nextMoonPhase(date time.Time, typed int) time.Time {
 		jde += (240 - cost) / 11.19
 	}
 	if typed < 2 {
-		return basic.JDE2DateByZone(basic.TD2UT(basic.CalcMoonSHByJDE(jde, typed), false), date.Location(), false)
+		return basic.JD2DateByZone(basic.TT2UTC(basic.CalcMoonSHByJDE(jde, typed)), date.Location(), false)
 	}
-	return basic.JDE2DateByZone(basic.TD2UT(basic.CalcMoonXHByJDE(jde, typed-2), false), date.Location(), false)
+	return basic.JD2DateByZone(basic.TT2UTC(basic.CalcMoonXHByJDE(jde, typed-2)), date.Location(), false)
 }
 
 func lastMoonPhase(date time.Time, typed int) time.Time {
@@ -412,7 +419,7 @@ func lastMoonPhase(date time.Time, typed int) time.Time {
 	case 3:
 		diffCode = 270
 	}
-	jde := basic.TD2UT(basic.Date2JDE(date.UTC()), true)
+	jde := basic.UTC2TT(basic.Date2JD(date.UTC()))
 	cost := basic.HMoonApparentLo(jde) - basic.HSunApparentLo(jde) - float64(diffCode)
 	for cost < 0 {
 		cost += 360
@@ -424,9 +431,9 @@ func lastMoonPhase(date time.Time, typed int) time.Time {
 		jde -= (cost - 120) / 11.19
 	}
 	if typed < 2 {
-		return basic.JDE2DateByZone(basic.TD2UT(basic.CalcMoonSHByJDE(jde, typed), false), date.Location(), false)
+		return basic.JD2DateByZone(basic.TT2UTC(basic.CalcMoonSHByJDE(jde, typed)), date.Location(), false)
 	}
-	return basic.JDE2DateByZone(basic.TD2UT(basic.CalcMoonXHByJDE(jde, typed-2), false), date.Location(), false)
+	return basic.JD2DateByZone(basic.TT2UTC(basic.CalcMoonXHByJDE(jde, typed-2)), date.Location(), false)
 }
 
 // WangYue 望月锚点解 / full-moon solution near a decimal year anchor.
@@ -434,8 +441,8 @@ func lastMoonPhase(date time.Time, typed int) time.Time {
 // year 为公历小数年锚点，例如 2025.0 或 2025.5；返回以该锚点求得的一次望月时刻，结果为 UTC。
 // year is a decimal Gregorian-year anchor such as 2025.0 or 2025.5. The returned time is one full moon solved near that anchor, in UTC.
 func WangYue(year float64) time.Time {
-	jde := basic.TD2UT(basic.CalcMoonSH(year, 1), false)
-	return basic.JDE2DateByZone(jde, time.UTC, false)
+	jd := basic.TT2UTC(basic.CalcMoonSH(year, 1))
+	return basic.JD2DateByZone(jd, time.UTC, false)
 }
 
 // NextWangYue 下一次望月 / next full moon.
@@ -487,8 +494,8 @@ func ClosestFullMoon(date time.Time) time.Time {
 // year 为公历小数年锚点，例如 2025.0 或 2025.5；返回以该锚点求得的一次上弦时刻，结果为 UTC。
 // year is a decimal Gregorian-year anchor such as 2025.0 or 2025.5. The returned time is one first-quarter solution near that anchor, in UTC.
 func ShangXianYue(year float64) time.Time {
-	jde := basic.TD2UT(basic.CalcMoonXH(year, 0), false)
-	return basic.JDE2DateByZone(jde, time.UTC, false)
+	jd := basic.TT2UTC(basic.CalcMoonXH(year, 0))
+	return basic.JD2DateByZone(jd, time.UTC, false)
 }
 
 // NextShangXianYue 下一次上弦 / next first quarter.
@@ -540,8 +547,8 @@ func ClosestFirstQuarter(date time.Time) time.Time {
 // year 为公历小数年锚点，例如 2025.0 或 2025.5；返回以该锚点求得的一次下弦时刻，结果为 UTC。
 // year is a decimal Gregorian-year anchor such as 2025.0 or 2025.5. The returned time is one last-quarter solution near that anchor, in UTC.
 func XiaXianYue(year float64) time.Time {
-	jde := basic.TD2UT(basic.CalcMoonXH(year, 1), false)
-	return basic.JDE2DateByZone(jde, time.UTC, false)
+	jd := basic.TT2UTC(basic.CalcMoonXH(year, 1))
+	return basic.JD2DateByZone(jd, time.UTC, false)
 }
 
 // NextXiaXianYue 下一次下弦 / next last quarter.
@@ -593,7 +600,7 @@ func ClosestLastQuarter(date time.Time) time.Time {
 // 返回月亮在 date 对应绝对时刻到地球质心的距离，单位千米。
 // Returns the distance from the Moon to Earth's center at the instant represented by date, in kilometers.
 func EarthDistance(date time.Time) float64 {
-	jde := basic.Date2JDE(date)
-	jde = basic.TD2UT(jde, true)
+	jd := basic.Date2JD(date)
+	jde := basic.UTC2TT(jd)
 	return basic.MoonAway(jde)
 }

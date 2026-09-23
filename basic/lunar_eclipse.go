@@ -91,10 +91,9 @@ const (
 
 	// 沿用月食常量：
 	// - 0.2725076 用于月亮视半径和半影几何
-	// - 959.63 / 8.794 分别为太阳视半径与太阳视差的常用角秒常量
+	// - 太阳视半径与日食共用标准档常量，太阳视差用常用角秒常量 8.794
 	lunarMoonRadiusRatio      = 0.2725076
 	lunarMoonRadiusScale      = lunarMoonRadiusRatio * lunarEarthEquatorialRadiusKM * 1.0000036
-	lunarSolarRadiusArcsec    = 959.63
 	lunarSolarParallaxArcsec  = 8.794
 	lunarLongitudeAberration  = -3.4e-6
 	lunarFiniteDifferenceStep = 60.0 / 86400.0
@@ -336,7 +335,7 @@ func computeLunarShadowState(jde float64, shadowModel lunarEclipseShadowModel) l
 
 	moonRadiusArcsec := lunarMoonRadiusScale * lunarArcsecPerRadian / moonDistanceKM
 	earthParallaxArcsec := lunarEarthEquatorialRadiusKM / moonDistanceKM * lunarArcsecPerRadian
-	solarRadiusArcsec := lunarSolarRadiusArcsec / sunDistanceAU
+	solarRadiusArcsec := eclipseSunRadiusStandardArcsec / sunDistanceAU
 	solarParallaxArcsec := lunarSolarParallaxArcsec / sunDistanceAU
 	umbraRadiusArcsec, penumbraRadiusArcsec := lunarEclipseShadowRadiiArcsec(
 		earthParallaxArcsec,

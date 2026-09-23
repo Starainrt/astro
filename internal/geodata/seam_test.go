@@ -32,8 +32,9 @@ func TestPolygonFragmentsCentredSeamKeepsGeometry(t *testing.T) {
 			t.Fatalf("fragment has %d points", len(fragment))
 		}
 		for _, point := range fragment {
-			if point.Longitude < -60-1e-6 || point.Longitude > 60+1e-6 {
-				t.Fatalf("fragment longitude %.3f escaped the ring", point.Longitude)
+			// 分段用地图窗口坐标表示（居中经线 ±180），折回 -180…180 后再比对。
+			if longitude := normalizeLongitude180(point.Longitude); longitude < -60-1e-6 || longitude > 60+1e-6 {
+				t.Fatalf("fragment longitude %.3f escaped the ring", longitude)
 			}
 			if math.Abs(point.Latitude) > 30+0.5 {
 				t.Fatalf("fragment latitude %.3f escaped the ring", point.Latitude)

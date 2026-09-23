@@ -105,7 +105,7 @@ func TestGregorianSkippedDaysHaveNoCandidates(t *testing.T) {
 		t.Errorf("lunar 1582/9/18 has %d candidates, want 1", got)
 	}
 	if _, err := time.Parse("2006-01-02", formatAncientSolar(res.Solar())); err != nil {
-		t.Errorf("solar label %q is not a valid date", formatAncientSolar(res.Solar()))
+		t.Errorf("solar canonical day %q is not a valid date", formatAncientSolar(res.Solar()))
 	}
 }
 

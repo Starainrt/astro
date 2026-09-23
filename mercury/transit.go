@@ -33,26 +33,26 @@ type TransitInfo struct {
 
 // NextTransit 下一次地心水星凌日 / next geocentric Mercury transit.
 func NextTransit(date time.Time) TransitInfo {
-	return transitInfoFromBasic(basic.NextMercuryTransit(basic.Date2JDE(date.UTC())), date.Location())
+	return transitInfoFromBasic(basic.NextMercuryTransit(basic.Date2JD(date.UTC())), date.Location())
 }
 
 // LastTransit 上一次地心水星凌日 / previous geocentric Mercury transit.
 func LastTransit(date time.Time) TransitInfo {
-	return transitInfoFromBasic(basic.LastMercuryTransit(basic.Date2JDE(date.UTC())), date.Location())
+	return transitInfoFromBasic(basic.LastMercuryTransit(basic.Date2JD(date.UTC())), date.Location())
 }
 
 // ClosestTransit 最近一次地心水星凌日 / closest geocentric Mercury transit.
 func ClosestTransit(date time.Time) TransitInfo {
-	return transitInfoFromBasic(basic.ClosestMercuryTransit(basic.Date2JDE(date.UTC())), date.Location())
+	return transitInfoFromBasic(basic.ClosestMercuryTransit(basic.Date2JD(date.UTC())), date.Location())
 }
 
 func transitInfoFromBasic(result basic.PlanetTransitResult, loc *time.Location) TransitInfo {
 	if !result.Valid {
 		return TransitInfo{}
 	}
-	start := basic.JDE2DateByZone(result.ExternalIngress, loc, false)
-	greatest := basic.JDE2DateByZone(result.Greatest, loc, false)
-	end := basic.JDE2DateByZone(result.ExternalEgress, loc, false)
+	start := basic.JD2DateByZone(result.ExternalIngress, loc, false)
+	greatest := basic.JD2DateByZone(result.Greatest, loc, false)
+	end := basic.JD2DateByZone(result.ExternalEgress, loc, false)
 	info := TransitInfo{
 		Valid:                    true,
 		Start:                    start,
@@ -65,8 +65,8 @@ func transitInfoFromBasic(result basic.PlanetTransitResult, loc *time.Location) 
 		HasInternal:              result.HasInternal,
 	}
 	if result.HasInternal {
-		info.InternalStart = basic.JDE2DateByZone(result.InternalIngress, loc, false)
-		info.InternalEnd = basic.JDE2DateByZone(result.InternalEgress, loc, false)
+		info.InternalStart = basic.JD2DateByZone(result.InternalIngress, loc, false)
+		info.InternalEnd = basic.JD2DateByZone(result.InternalEgress, loc, false)
 		info.InternalDuration = info.InternalEnd.Sub(info.InternalStart)
 	}
 	return info

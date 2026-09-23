@@ -20,11 +20,11 @@ import (
 // exercising antimeridian, polar and non-central topology in normal tests.
 func TestSolarEclipseP2SarosGeoJSONSamples(t *testing.T) {
 	const sarosDays = 6585.321314
-	seed := basic.JDECalc(2024, 4, 8)
+	seed := basic.JDCalc(2024, 4, 8)
 	for _, familyIndex := range []int{-28, -21, -14, -7, 0, 7, 14, 21, 28} {
 		familyIndex := familyIndex
 		t.Run("saros-"+formatP2SignedIndex(familyIndex), func(t *testing.T) {
-			date := basic.JDE2DateByZone(seed+float64(familyIndex)*sarosDays, time.UTC, false)
+			date := basic.JD2DateByZone(seed+float64(familyIndex)*sarosDays, time.UTC, false)
 			partial, ok := eclipse.SolarEclipsePartialFootprints(date, eclipse.SolarEclipsePartialFootprintOptions{
 				Step: 10 * time.Minute, BoundaryPoints: 96, CentralShadowStep: 5 * time.Minute,
 				DisableRiseSet: true,

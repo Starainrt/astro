@@ -424,17 +424,17 @@ func (solver solarEclipseSolver) refineRiseSetPhaseJunctionBetweenSamples(
 }
 
 func (solver solarEclipseSolver) riseSetPointsAt(
-	jd float64,
+	jde float64,
 	boundaryPoints int,
 ) map[solarEclipseRiseSetCurveKey][]SolarEclipsePathPoint {
-	return solver.riseSetPointsAtEvaluation(jd, boundaryPoints, solver.magnitudeEvaluationAt(jd))
+	return solver.riseSetPointsAtEvaluation(jde, boundaryPoints, solver.magnitudeEvaluationAt(jde))
 }
 
 func (solver solarEclipseSolver) riseSetCandidatePointsAt(
-	jd float64,
+	jde float64,
 	boundaryPoints int,
 ) map[solarEclipseRiseSetCurveKey][]SolarEclipsePathPoint {
-	return solver.riseSetPointsAtEvaluation(jd, boundaryPoints, solver.magnitudeCandidateEvaluationAt(jd))
+	return solver.riseSetPointsAtEvaluation(jde, boundaryPoints, solver.magnitudeCandidateEvaluationAt(jde))
 }
 
 func (solver solarEclipseSolver) riseSetPointsAtEvaluation(

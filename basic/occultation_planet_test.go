@@ -7,7 +7,7 @@ import (
 )
 
 func TestPlanetOccultationSupportsAllPlanetTargets(t *testing.T) {
-	tt := TD2UT(Date2JDE(time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC)), true)
+	tt := UTC2TT(Date2JD(time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC)))
 	tests := []struct {
 		planet OccultationPlanet
 		name   string
@@ -103,7 +103,7 @@ func TestPlanetOccultationUsesStationMoonDistanceForRadius(t *testing.T) {
 		t.Fatal("Saturn occultation config is unavailable")
 	}
 	moonRA, _ := HMoonGeocentricApparentRaDecN(tt, -1)
-	subMoonLongitude := normalizeLongitude180(moonRA - ApparentSiderealTime(TD2UT(tt, false))*15)
+	subMoonLongitude := normalizeLongitude180(moonRA - ApparentSiderealTime(TT2UTC(tt))*15)
 	near := Observer{Longitude: subMoonLongitude, Latitude: 0}
 	far := Observer{Longitude: normalizeLongitude180(subMoonLongitude + 180), Latitude: 0}
 	nearState := planetOccultationStateAt(tt, config, &near, -1)
@@ -128,7 +128,7 @@ func TestPlanetOccultationUsesStationPlanetDistanceForRadius(t *testing.T) {
 		t.Fatal("Mercury occultation config is unavailable")
 	}
 	planetRA, _ := config.apparentRaDecN(tt, -1)
-	subPlanetLongitude := normalizeLongitude180(planetRA - ApparentSiderealTime(TD2UT(tt, false))*15)
+	subPlanetLongitude := normalizeLongitude180(planetRA - ApparentSiderealTime(TT2UTC(tt))*15)
 	near := Observer{Longitude: subPlanetLongitude, Latitude: 0}
 	far := Observer{Longitude: normalizeLongitude180(subPlanetLongitude + 180), Latitude: 0}
 	nearState := planetOccultationStateAt(tt, config, &near, -1)

@@ -10,11 +10,15 @@ import "math"
 // NASA lunar-eclipse charts; multiply a radius by the Earth's parallax at the Moon to get Earth radii.
 type LunarEclipseShadowGeometry struct {
 	// Gamma 是月心到地影轴的最小距离，单位地球赤道半径。
+	// Gamma is the least distance from the Moon's centre to the shadow axis, in Earth equatorial radii.
 	Gamma float64
 	// PenumbralRadiusDegrees 与 UmbralRadiusDegrees 是半影、本影在地影轴垂直面上的角半径，单位度。
+	// PenumbralRadiusDegrees and UmbralRadiusDegrees are the penumbral and umbral angular radii on the
+	// plane perpendicular to the shadow axis, in degrees.
 	PenumbralRadiusDegrees float64
 	UmbralRadiusDegrees    float64
-	// MoonDistanceEarthRadii 是食甚时的地心月距。
+	// MoonDistanceEarthRadii 是食甚时的地心月距，单位地球赤道半径。
+	// MoonDistanceEarthRadii is the geocentric lunar distance at greatest eclipse, in Earth equatorial radii.
 	MoonDistanceEarthRadii float64
 	// AxisDegrees 是食甚时月心到地影轴的角距，即 NASA 月食图上那列 Axis。
 	// 它与 Gamma 是同一个量的两种刻度：Gamma 除以月球处的地球视差就是它。

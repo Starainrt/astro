@@ -18,6 +18,8 @@ type LocalSolarEclipseDiagramOptions struct {
 	// StepDays 是路径采样步长，单位为日；<=0 时使用 5 分钟。
 	// StepDays is the path sampling step in days; values <= 0 use five minutes.
 	StepDays float64
+	// SunRadiusModel 太阳半径口径，零值为标准档 / solar radius convention, standard when zero.
+	SunRadiusModel SolarEclipseSunRadiusModel
 }
 
 // LocalSolarEclipseDiagramFrame 表示一个时刻的站心日月视圆几何。
@@ -96,7 +98,10 @@ func localSolarEclipseDiagram(
 	options LocalSolarEclipseDiagramOptions,
 ) LocalSolarEclipseDiagramResult {
 	options = normalizeLocalSolarEclipseDiagramOptions(options)
-	eclipse := localSolarEclipse(seedJDE, lonDeg, latDeg, heightMeters, model)
+	eclipse := localSolarEclipse(seedJDE, lonDeg, latDeg, heightMeters, SolarEclipseOptions{
+		RadiusModel:    model,
+		SunRadiusModel: options.SunRadiusModel,
+	})
 	result := LocalSolarEclipseDiagramResult{
 		Eclipse:  eclipse,
 		StepDays: options.StepDays,
@@ -108,7 +113,7 @@ func localSolarEclipseDiagram(
 	lonRad := lonDeg * rad
 	latRad := latDeg * rad
 	heightKM := heightMeters / 1000.0
-	params := solarEclipseModelParams(model)
+	params := solarEclipseModelParams(model, options.SunRadiusModel)
 	times, stepDays := localSolarEclipseDiagramTimes(eclipse, options.StepDays)
 	result.StepDays = stepDays
 	result.Frames = make([]LocalSolarEclipseDiagramFrame, 0, len(times))
@@ -251,8 +256,8 @@ func localSolarEclipseDiagramFrameAt(
 	sunXYZ := solarEclipseLLRToXYZ(sunEquatorial[0], sunEquatorial[1], sunEquatorial[2])
 	moonXYZ := solarEclipseLLRToXYZ(moonEquatorial[0], moonEquatorial[1], moonEquatorial[2])
 
-	utJDE := TD2UT(jdTT, false)
-	gst := ApparentSiderealTime(utJDE) * 15 * rad
+	ut1JDE := TT2UT1(jdTT)
+	gst := ApparentSiderealTime(ut1JDE) * 15 * rad
 	observerXYZ := localSolarEclipseObserverXYZ(gst, lonRad, latRad, heightKM)
 
 	sunTopocentric := solarEclipseXYZToLLR(
@@ -273,12 +278,12 @@ func localSolarEclipseDiagramFrameAt(
 	)
 
 	sunRadiusRad := math.Asin(localSolarEclipseClampUnit(
-		solarEclipseEarthEquatorialRadiusKM * solarEclipseSolarRadiusRatio / sunTopocentric[2],
+		solarEclipseEarthEquatorialRadiusKM * params.sunRadiusRatio / sunTopocentric[2],
 	))
 	moonRadiusRad := math.Asin(localSolarEclipseClampUnit(
-		solarEclipseEarthEquatorialRadiusKM * solarEclipsePenumbralK * localSolarMoonRadiusScale / moonTopocentric[2],
+		solarEclipsePenumbralRadiusNumerator(params) / moonTopocentric[2],
 	))
-	if params.umbralK > solarEclipsePenumbralK {
+	if params.umbralK > params.penumbralK {
 		moonRadiusRad = math.Asin(localSolarEclipseClampUnit(
 			solarEclipseEarthEquatorialRadiusKM * params.umbralK * localSolarMoonRadiusScale / moonTopocentric[2],
 		))

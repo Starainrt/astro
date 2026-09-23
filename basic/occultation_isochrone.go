@@ -15,6 +15,11 @@ const (
 	occultationGreatestTimeContourCorrectionIterations     = 12
 	occultationGreatestTimeContourGradientStepDegrees      = 1e-4
 	occultationGreatestTimeContourLatitudeLimitDegrees     = 88.0
+	// 残差量纲随判据口径变化：点源用角距平方（梯度约 1.4e-4/度），行星用外接触度量（约 1/度），
+	// 同一个绝对阈值在两种口径下相差四个量级——按角距平方给阈值会放过 78 km 的位置偏差。
+	// 收敛改按位置偏移判定：|残差| / |梯度| 即离零集的地面距离，1e-5 度约 1.1 m，
+	// 两种口径的残差噪声折算成位置抖动都不超过 2e-7 度。
+	occultationGreatestTimeContourPositionToleranceDegrees = 1e-5
 )
 
 // occultationGreatestTimeArc 固定一个掩甚时刻后的等时线求根器。
@@ -128,6 +133,9 @@ func (arc occultationGreatestTimeArc) correct(longitude, latitude float64) (floa
 		if denominator < 1e-18 || cosine < 1e-6 {
 			return 0, 0, state, false
 		}
+		if math.Abs(value) <= occultationGreatestTimeContourPositionToleranceDegrees*math.Sqrt(denominator) {
+			return longitude, latitude, state, true
+		}
 		// 完整牛顿步可能一步跨出可见域（掩带很窄，限界附近的种子尤其容易）；逐步二分回退，
 		// 只要还有一步落在域内就继续投影。
 		scale, advanced := 1.0, false
@@ -150,7 +158,14 @@ func (arc occultationGreatestTimeArc) correct(longitude, latitude float64) (floa
 		}
 	}
 	value, current, ok := arc.sample(longitude, latitude)
-	if !ok || math.Abs(value) > 1e-6 {
+	if !ok {
+		return 0, 0, state, false
+	}
+	if math.Abs(value) <= greatestTimeContourResidualTolerance {
+		return longitude, latitude, current, true
+	}
+	east, north, gradientOK := arc.metricGradient(longitude, latitude)
+	if !gradientOK || math.Abs(value) > occultationGreatestTimeContourPositionToleranceDegrees*math.Hypot(east, north) {
 		return 0, 0, state, false
 	}
 	return longitude, latitude, current, true

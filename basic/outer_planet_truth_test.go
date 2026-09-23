@@ -135,8 +135,8 @@ func assertOuterTruthBaselineEvent(t *testing.T, event outerTruthBaselineEvent, 
 	when := parseInnerBaselineTime(t, event.VerifiedJST)
 	before := when.Add(-7 * 24 * time.Hour)
 	after := when.Add(7 * 24 * time.Hour)
-	next := JDE2DateByZone(nextFn(toUTJD(before)), when.Location(), false)
-	last := JDE2DateByZone(lastFn(toUTJD(after)), when.Location(), false)
+	next := JD2DateByZone(nextFn(toUTJD(before)), when.Location(), false)
+	last := JD2DateByZone(lastFn(toUTJD(after)), when.Location(), false)
 	tolerance := outerTruthTolerance(event)
 
 	if diff := next.Sub(when); diff < -tolerance || diff > tolerance {

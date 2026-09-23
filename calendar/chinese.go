@@ -73,9 +73,9 @@ func Lunar(year, month, day int, timezone float64) (int, int, int, bool, string)
 // The current GB/T 33661-2017 lunar-calendar convention is recommended for years 1929-3000.
 // For ancient dates, the result may differ from historical practice because computed new-moon and solar-term reconstructions are approximate for ancient dates.
 func Solar(year, month, day int, leap bool, timezone float64) time.Time {
-	jde := basic.GetSolar(year, month, day, leap, timezone/24.0)
+	jd := basic.GetSolar(year, month, day, leap, timezone/24.0)
 	zone := time.FixedZone("CST", int(timezone*3600))
-	return basic.JDE2DateByZone(jde, zone, true)
+	return basic.JD2DateByZone(jd, zone, true)
 }
 
 // SolarToLunar 公历转农历 / solar to lunar calendar.
@@ -390,7 +390,7 @@ func julianOnlyPhantomJDE(year, month, day int) (float64, bool) {
 	if !julianOnlyCivilDay(year, month, day) {
 		return 0, false
 	}
-	return basic.JDECalc(year, month, float64(day)), true
+	return basic.JDCalc(year, month, float64(day)), true
 }
 
 // julianOnlyTextResult 复核字符串入口的结果是否落在儒略历独有闰日上，是则返回该闰日的结果。
@@ -400,10 +400,10 @@ func julianOnlyTextResult(result Time, month, day int, leap bool) (Time, bool) {
 	if !julianOnlyCivilDay(year, 2, 29) {
 		return result, false
 	}
-	diff := Date2JDE(solar) - basic.JDECalc(year, 2, 29)
+	diff := Date2JD(solar) - basic.JDCalc(year, 2, 29)
 	switch diff {
 	case 1, -1:
-		// +1 表示结果是闰日的标签日，-1 表示结果是闰日的前一天。
+		// +1 表示结果是闰日的规范日，-1 表示结果是闰日的前一天。
 	default:
 		return result, false
 	}
@@ -418,7 +418,7 @@ func julianOnlyTextResult(result Time, month, day int, leap bool) (Time, bool) {
 	}
 	resultDay := result.Lunar().LunarDay()
 	if diff > 0 {
-		// 结果是闰日的标签日，农历上比闰日晚一天。
+		// 结果是闰日的规范日，农历上比闰日晚一天。
 		if resultDay != day+1 && !(resultDay == 1 && day >= 29) {
 			return result, false
 		}
@@ -431,23 +431,23 @@ func julianOnlyTextResult(result Time, month, day int, leap bool) (Time, bool) {
 	return forward, true
 }
 
-// markJulianOnly 补记儒略历独有闰日：Solar 取规范标签（后继日），精确日期放入 JDE。
-func markJulianOnly(result Time, phantomJDE float64) Time {
-	label := basic.JDE2DateByZone(phantomJDE, getCst(), true)
-	result.solarTime = label
+// markJulianOnly 补记儒略历独有闰日：Solar 取后继日作为规范日，精确日期放入 JDE。
+func markJulianOnly(result Time, phantomJD float64) Time {
+	canonicalDate := basic.JD2DateByZone(phantomJD, getCst(), true)
+	result.solarTime = canonicalDate
 	for i := range result.lunars {
-		result.lunars[i].solarDate = label
+		result.lunars[i].solarDate = canonicalDate
 		result.lunars[i].julianOnly = true
-		result.lunars[i].jde = phantomJDE
+		result.lunars[i].jd = phantomJD
 	}
 	return result
 }
 
-// markJulianOnlyLunar 反向路径用：用正向记录改写停在标签日的农历身份，并补记闰日标志。
-func markJulianOnlyLunar(result Time, year, month, day int, leap bool, phantomJDE float64) Time {
-	label := basic.JDE2DateByZone(phantomJDE, getCst(), true)
-	result = markJulianOnly(result, phantomJDE)
-	forward, err := innerSolarToLunarByYMD(label.Year(), 2, 29)
+// markJulianOnlyLunar 反向路径用：用正向记录改写停在规范日的农历身份，并补记闰日标志。
+func markJulianOnlyLunar(result Time, year, month, day int, leap bool, phantomJD float64) Time {
+	canonicalDate := basic.JD2DateByZone(phantomJD, getCst(), true)
+	result = markJulianOnly(result, phantomJD)
+	forward, err := innerSolarToLunarByYMD(canonicalDate.Year(), 2, 29)
 	if err != nil || !lunarDateMatches(forward, year, month, day, leap) {
 		return result
 	}
@@ -455,7 +455,7 @@ func markJulianOnlyLunar(result Time, year, month, day int, leap bool, phantomJD
 	copy(lunars, forward.lunars)
 	for i := range lunars {
 		lunars[i].julianOnly = true
-		lunars[i].jde = phantomJDE
+		lunars[i].jd = phantomJD
 	}
 	result.lunars = lunars
 	return result
@@ -463,8 +463,8 @@ func markJulianOnlyLunar(result Time, year, month, day int, leap bool, phantomJD
 
 // markJulianOnlyJDN 在 JDN 层面判定儒略历独有闰日（古历与秦汉反向直接由 JDN 造记录）。
 func markJulianOnlyJDN(result Time, jdn int) Time {
-	label := basic.JDE2DateByZone(float64(jdn)-0.5, getCst(), true)
-	phantom, ok := julianOnlyPhantomJDE(label.Year(), 2, 29)
+	canonicalDate := basic.JD2DateByZone(float64(jdn)-0.5, getCst(), true)
+	phantom, ok := julianOnlyPhantomJDE(canonicalDate.Year(), 2, 29)
 	if !ok || int(math.Floor(phantom+0.5)) != jdn {
 		return result
 	}
@@ -578,9 +578,9 @@ func lunarToSolarHanQingDefault(year, month, day int, leap bool) (Time, bool) {
 // 返回传入年份、节气对应的北京时间节气时间。
 // Returns the Beijing-time instant of the requested solar term in the supplied year.
 func JieQi(year, term int) time.Time {
-	calcJde := basic.GetJQTime(year, term)
+	calcJD := basic.GetJQTime(year, term)
 	zone := time.FixedZone("CST", 8*3600)
-	return basic.JDE2DateByZone(calcJde, zone, false)
+	return basic.JD2DateByZone(calcJD, zone, false)
 }
 
 // CalendricalJieQi 历法相符节气日期（北京时间当天 0 点） / calendrical solar-term date at Beijing midnight.
@@ -610,9 +610,9 @@ func CalendricalJieQiWithCalendar(year, term int, system AncientCalendarSystem) 
 // 返回传入年份、物候对应的北京时间物候时间。
 // Returns the Beijing-time instant of the requested pentad in the supplied year.
 func WuHou(year, term int) time.Time {
-	calcJde := basic.GetWuHouTime(year, term)
+	calcJD := basic.GetWuHouTime(year, term)
 	zone := time.FixedZone("CST", 8*3600)
-	return basic.JDE2DateByZone(calcJde, zone, false)
+	return basic.JD2DateByZone(calcJD, zone, false)
 }
 
 func rapidLunarModern(year, month, day int) (int, int, int, bool, string) {
@@ -980,12 +980,12 @@ func GanZhiOfYear(year int) string {
 
 // GanZhiOfDay 日干支 / sexagenary day name.
 func GanZhiOfDay(t time.Time) string {
-	return ganZhiOfJDE(Date2JDE(time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, getCst())))
+	return ganZhiOfJD(Date2JD(time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, getCst())))
 }
 
-// ganZhiOfJDE 由儒略日直接求日干支（儒略历独有闰日无法表示为 time.Time）。
-func ganZhiOfJDE(jde float64) string {
-	diff := int(jde - 2451550.5)
+// ganZhiOfJD 由儒略日直接求日干支（儒略历独有闰日无法表示为 time.Time）。
+func ganZhiOfJD(jd float64) string {
+	diff := int(jd - 2451550.5)
 	if diff >= 0 {
 		return tiangan[diff%10] + dizhi[diff%12]
 	}
@@ -1009,8 +1009,8 @@ func commonGanZhiOfMonth(year, month int) string {
 }
 
 func ganZhiOfDayIndex(t time.Time) (int, int) {
-	jde := Date2JDE(time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, getCst()))
-	diff := int(jde - 2451550.5)
+	localJD := Date2JD(time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, getCst()))
+	diff := int(localJD - 2451550.5)
 	if diff >= 0 {
 		return diff % 10, diff % 12
 	}

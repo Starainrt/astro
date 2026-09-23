@@ -47,11 +47,11 @@ func Physical(date time.Time) PhysicalInfo {
 
 // PhysicalN 木星物理观测参数（截断版） / truncated physical observing parameters of Jupiter.
 func PhysicalN(date time.Time, n int) PhysicalInfo {
-	jde := basic.Date2JDE(date.UTC())
-	jd := basic.TD2UT(jde, true)
-	info := basic.JupiterPhysicalN(jd, n)
-	meridians := basic.JupiterCentralMeridiansN(jd, n)
-	ds, de := basic.JupiterDSDEN(jd, n)
+	jd := basic.Date2JD(date.UTC())
+	jde := basic.UTC2TT(jd)
+	info := basic.JupiterPhysicalN(jde, n)
+	meridians := basic.JupiterCentralMeridiansN(jde, n)
+	ds, de := basic.JupiterDSDEN(jde, n)
 	return PhysicalInfo{
 		SubEarthLongitude:        info.SubEarthLongitude,
 		SubEarthLatitude:         info.SubEarthLatitude,
@@ -73,8 +73,8 @@ func CentralMeridians(date time.Time) CentralMeridianInfo {
 
 // CentralMeridiansN 木星 System I/II/III 中央经线（截断版） / truncated Jupiter System I/II/III central meridians.
 func CentralMeridiansN(date time.Time, n int) CentralMeridianInfo {
-	jde := basic.Date2JDE(date.UTC())
-	info := basic.JupiterCentralMeridiansN(basic.TD2UT(jde, true), n)
+	jd := basic.Date2JD(date.UTC())
+	info := basic.JupiterCentralMeridiansN(basic.UTC2TT(jd), n)
 	return CentralMeridianInfo{
 		SystemI:   info.SystemI,
 		SystemII:  info.SystemII,

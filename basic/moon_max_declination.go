@@ -16,8 +16,8 @@ const (
 
 // DeclinationEvent 赤纬极值事件 / declination extremum event.
 type DeclinationEvent struct {
-	// JDE 是事件发生时刻对应的世界时儒略日 / event time as UTC-based Julian day.
-	JDE float64
+	// JD 是事件发生时刻对应的世界时儒略日 / event time as UTC-based Julian day.
+	JD float64
 	// Declination 是该时刻月心地心赤纬，单位度 / geocentric lunar declination at the event, in degrees.
 	Declination float64
 }
@@ -124,8 +124,8 @@ func ClosestMoonMaximumSouthDeclination(jd float64) DeclinationEvent {
 func moonMaximumDeclinationsInMonth(year int, month time.Month, coeffs moonMaxDeclinationCoefficients) []DeclinationEvent {
 	startUTC := time.Date(year, month, 1, 0, 0, 0, 0, time.UTC)
 	endUTC := startUTC.AddDate(0, 1, 0)
-	startTT := TD2UT(Date2JDE(startUTC), true)
-	endTT := TD2UT(Date2JDE(endUTC), true)
+	startTT := UTC2TT(Date2JD(startUTC))
+	endTT := UTC2TT(Date2JD(endUTC))
 
 	kStart := int(math.Floor((startTT-coeffs.JDE0)/moonMaxDeclinationMeanMonthDays)) - 1
 	kEnd := int(math.Ceil((endTT-coeffs.JDE0)/moonMaxDeclinationMeanMonthDays)) + 1
@@ -142,7 +142,7 @@ func moonMaximumDeclinationsInMonth(year int, month time.Month, coeffs moonMaxDe
 	events := make([]DeclinationEvent, 0, 2)
 	for k := kStart; k <= kEnd; k++ {
 		event := moonMaximumDeclinationEvent(k, coeffs, cfg)
-		eventTimeUTC := JDE2DateByZone(event.JDE, time.UTC, false)
+		eventTimeUTC := JD2DateByZone(event.JD, time.UTC, false)
 		if eventTimeUTC.Before(startUTC) || !eventTimeUTC.Before(endUTC) {
 			continue
 		}
@@ -150,7 +150,7 @@ func moonMaximumDeclinationsInMonth(year int, month time.Month, coeffs moonMaxDe
 	}
 
 	sort.Slice(events, func(i, j int) bool {
-		return events[i].JDE < events[j].JDE
+		return events[i].JD < events[j].JD
 	})
 	return events
 }
@@ -161,7 +161,7 @@ func moonMaximumDeclinationEvent(k int, coeffs moonMaxDeclinationCoefficients, c
 		return HMoonTrueDecN(sampleTT, -1)
 	})
 	return DeclinationEvent{
-		JDE:         TD2UT(eventTT, false),
+		JD:          TT2UTC(eventTT),
 		Declination: declination,
 	}
 }
@@ -180,10 +180,10 @@ func moonMaximumDeclinationSearch(jd float64, coeffs moonMaxDeclinationCoefficie
 	event := moonMaximumDeclinationEvent(centerK, coeffs, cfg)
 	// 事件时刻随周期序号单调递增：该方向上最近的候选就是 centerK 沿该方向第一个满足方向不变量
 	// 的周期；命中后只需再回退检查更早的周期是否同样满足，可达范围仍旧是 ±3 个周期。
-	if !moonMaximumDeclinationMatchesDirection(event.JDE-jd, direction, includeCurrent) {
+	if !moonMaximumDeclinationMatchesDirection(event.JD-jd, direction, includeCurrent) {
 		for offset := 1; offset <= moonMaxDeclinationSearchSpan; offset++ {
 			event = moonMaximumDeclinationEvent(centerK+step*offset, coeffs, cfg)
-			if moonMaximumDeclinationMatchesDirection(event.JDE-jd, direction, includeCurrent) {
+			if moonMaximumDeclinationMatchesDirection(event.JD-jd, direction, includeCurrent) {
 				return event
 			}
 		}
@@ -191,7 +191,7 @@ func moonMaximumDeclinationSearch(jd float64, coeffs moonMaxDeclinationCoefficie
 	}
 	for offset := 1; offset <= moonMaxDeclinationSearchSpan; offset++ {
 		previous := moonMaximumDeclinationEvent(centerK-step*offset, coeffs, cfg)
-		if !moonMaximumDeclinationMatchesDirection(previous.JDE-jd, direction, includeCurrent) {
+		if !moonMaximumDeclinationMatchesDirection(previous.JD-jd, direction, includeCurrent) {
 			break
 		}
 		event = previous
@@ -207,15 +207,15 @@ func moonClosestMaximumDeclination(jd float64, coeffs moonMaxDeclinationCoeffici
 	centerK := moonMaximumDeclinationOffset(jd, coeffs)
 	center := moonMaximumDeclinationEvent(centerK, coeffs, cfg)
 	var last, next DeclinationEvent
-	if center.JDE <= jd {
+	if center.JD <= jd {
 		last = center
 		next = moonMaximumDeclinationAround(jd, coeffs, cfg, centerK, 1, false)
 	} else {
 		next = center
 		last = moonMaximumDeclinationAround(jd, coeffs, cfg, centerK, -1, true)
 	}
-	lastDistance := math.Abs(jd - last.JDE)
-	nextDistance := math.Abs(next.JDE - jd)
+	lastDistance := math.Abs(jd - last.JD)
+	nextDistance := math.Abs(next.JD - jd)
 	if lastDistance <= nextDistance {
 		return last
 	}
@@ -231,7 +231,7 @@ func moonMaximumDeclinationAround(jd float64, coeffs moonMaxDeclinationCoefficie
 	}
 	for offset := 1; offset <= moonMaxDeclinationSearchSpan; offset++ {
 		event := moonMaximumDeclinationEvent(centerK+step*offset, coeffs, cfg)
-		if moonMaximumDeclinationMatchesDirection(event.JDE-jd, direction, includeCurrent) {
+		if moonMaximumDeclinationMatchesDirection(event.JD-jd, direction, includeCurrent) {
 			return event
 		}
 	}
@@ -251,7 +251,7 @@ func moonMaximumDeclinationSearchConfig(coeffs moonMaxDeclinationCoefficients) a
 
 // moonMaximumDeclinationOffset 查询时刻落在哪个平均周期（种子多项式的中心序号）。
 func moonMaximumDeclinationOffset(jd float64, coeffs moonMaxDeclinationCoefficients) int {
-	return int(math.Round((TD2UT(jd, true) - coeffs.JDE0) / moonMaxDeclinationMeanMonthDays))
+	return int(math.Round((UTC2TT(jd) - coeffs.JDE0) / moonMaxDeclinationMeanMonthDays))
 }
 
 func moonMaximumDeclinationMatchesDirection(delta float64, direction int, includeCurrent bool) bool {
@@ -272,7 +272,7 @@ func moonMaximumDeclinationMatchesDirection(delta float64, direction int, includ
 }
 
 func moonMaximumDeclinationEarlier(a, b DeclinationEvent) bool {
-	return a.JDE < b.JDE
+	return a.JD < b.JD
 }
 
 func moonMaximumDeclinationSeedTT(k int, coeffs moonMaxDeclinationCoefficients) float64 {

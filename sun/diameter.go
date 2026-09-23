@@ -13,8 +13,8 @@ func Semidiameter(date time.Time) float64 {
 
 // SemidiameterN 太阳视半径（截断版），单位角秒 / truncated apparent solar semidiameter in arcseconds.
 func SemidiameterN(date time.Time, n int) float64 {
-	jde := basic.Date2JDE(date.UTC())
-	return basic.SunSemidiameterN(basic.TD2UT(jde, true), n)
+	jd := basic.Date2JD(date.UTC())
+	return basic.SunSemidiameterN(basic.UTC2TT(jd), n)
 }
 
 // Diameter 太阳视直径，单位角秒 / apparent solar diameter in arcseconds.
@@ -24,6 +24,6 @@ func Diameter(date time.Time) float64 {
 
 // DiameterN 太阳视直径（截断版），单位角秒 / truncated apparent solar diameter in arcseconds.
 func DiameterN(date time.Time, n int) float64 {
-	jde := basic.Date2JDE(date.UTC())
-	return basic.SunDiameterN(basic.TD2UT(jde, true), n)
+	jd := basic.Date2JD(date.UTC())
+	return basic.SunDiameterN(basic.UTC2TT(jd), n)
 }

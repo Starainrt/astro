@@ -27,7 +27,7 @@ func BenchmarkTrueObliquity(b *testing.B) {
 var benchMoonRise, benchMoonSet float64
 
 func BenchmarkMoonRiseSetChain(b *testing.B) {
-	jd := JDECalc(2023, 6, 21)
+	jd := JDCalc(2023, 6, 21)
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
 		benchMoonRise, _ = GetMoonRiseTime(jd, 116.4074, 39.9042, 8, 1, 0)

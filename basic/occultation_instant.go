@@ -9,7 +9,11 @@ import (
 // StarOccultationInstant 包含指定时刻的点源恒星月掩可见足迹；若接触锥在该时刻未到达可见地球，Footprint 为 nil。
 // StarOccultationInstant contains the visible point-source footprint at one requested instant; Footprint is nil when no part of the contact cone reaches the visible Earth.
 type StarOccultationInstant struct {
-	Time     time.Time
+	// Time 是本次查询的时刻。
+	// Time is the instant this result describes.
+	Time time.Time
+	// TargetID 是查询恒星的标识，与 StarCoordinate.ID 同值。
+	// TargetID identifies the queried star and equals StarCoordinate.ID.
 	TargetID string
 	// DeltaTSeconds 本次实际使用的 ΔT / ΔT actually used.
 	DeltaTSeconds float64
@@ -22,8 +26,14 @@ type StarOccultationInstant struct {
 // PlanetOccultationInstant 包含指定时刻的行星外接触和内接触可见足迹；相应接触锥未到达可见地球时，Partial 或 Total 为 nil。
 // PlanetOccultationInstant contains the visible outer- and inner-contact footprints at one requested instant; Partial or Total is nil when that contact cone does not reach the visible Earth.
 type PlanetOccultationInstant struct {
-	Time     time.Time
-	Planet   OccultationPlanet
+	// Time 是本次查询的时刻。
+	// Time is the instant this result describes.
+	Time time.Time
+	// Planet 是本次查询的行星。
+	// Planet is the queried planet.
+	Planet OccultationPlanet
+	// TargetID 是行星标识，与 Planet.String() 同值。
+	// TargetID identifies the planet and equals Planet.String().
 	TargetID string
 	// DeltaTSeconds 本次实际使用的 ΔT / ΔT actually used.
 	DeltaTSeconds float64
@@ -91,7 +101,7 @@ func occultationSublunarPoint(tt float64, frameAt occultationPathFrameFunc) (flo
 	}
 	rightAscension := math.Atan2(frame.moon.y, frame.moon.x) * 180 / math.Pi
 	declination := math.Asin(math.Max(-1, math.Min(1, frame.moon.z/distance))) * 180 / math.Pi
-	longitude := rightAscension - ApparentSiderealTime(TD2UT(tt, false))*15
+	longitude := rightAscension - ApparentSiderealTime(TT2UT1(tt))*15
 	for longitude > 180 {
 		longitude -= 360
 	}

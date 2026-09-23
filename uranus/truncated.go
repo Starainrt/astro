@@ -12,58 +12,58 @@ import (
 
 // ApparentLoN 视黄经（截断版） / truncated apparent ecliptic longitude.
 func ApparentLoN(date time.Time, n int) float64 {
-	jde := calendar.Date2JDE(date.UTC())
-	return basic.UranusApparentLoN(basic.TD2UT(jde, true), n)
+	jd := calendar.Date2JD(date.UTC())
+	return basic.UranusApparentLoN(basic.UTC2TT(jd), n)
 }
 
 // ApparentBoN 视黄纬（截断版） / truncated apparent ecliptic latitude.
 func ApparentBoN(date time.Time, n int) float64 {
-	jde := calendar.Date2JDE(date.UTC())
-	return basic.UranusApparentBoN(basic.TD2UT(jde, true), n)
+	jd := calendar.Date2JD(date.UTC())
+	return basic.UranusApparentBoN(basic.UTC2TT(jd), n)
 }
 
 // ApparentRaN 视赤经（截断版） / truncated apparent right ascension.
 func ApparentRaN(date time.Time, n int) float64 {
-	jde := calendar.Date2JDE(date.UTC())
-	return basic.UranusApparentRaN(basic.TD2UT(jde, true), n)
+	jd := calendar.Date2JD(date.UTC())
+	return basic.UranusApparentRaN(basic.UTC2TT(jd), n)
 }
 
 // ApparentDecN 视赤纬（截断版） / truncated apparent declination.
 func ApparentDecN(date time.Time, n int) float64 {
-	jde := calendar.Date2JDE(date.UTC())
-	return basic.UranusApparentDecN(basic.TD2UT(jde, true), n)
+	jd := calendar.Date2JD(date.UTC())
+	return basic.UranusApparentDecN(basic.UTC2TT(jd), n)
 }
 
 // ApparentRaDecN 视赤经赤纬（截断版） / truncated apparent right ascension and declination.
 func ApparentRaDecN(date time.Time, n int) (float64, float64) {
-	jde := calendar.Date2JDE(date.UTC())
-	return basic.UranusApparentRaDecN(basic.TD2UT(jde, true), n)
+	jd := calendar.Date2JD(date.UTC())
+	return basic.UranusApparentRaDecN(basic.UTC2TT(jd), n)
 }
 
 // ApparentMagnitudeN 视星等（截断版） / truncated apparent magnitude.
 func ApparentMagnitudeN(date time.Time, n int) float64 {
-	jde := calendar.Date2JDE(date.UTC())
-	return basic.UranusMagN(basic.TD2UT(jde, true), n)
+	jd := calendar.Date2JD(date.UTC())
+	return basic.UranusMagN(basic.UTC2TT(jd), n)
 }
 
 // EarthDistanceN 地球距离（截断版） / truncated Earth distance.
 func EarthDistanceN(date time.Time, n int) float64 {
-	jde := calendar.Date2JDE(date.UTC())
-	return basic.EarthUranusAwayN(basic.TD2UT(jde, true), n)
+	jd := calendar.Date2JD(date.UTC())
+	return basic.EarthUranusAwayN(basic.UTC2TT(jd), n)
 }
 
 // SunDistanceN 太阳距离（截断版） / truncated Sun distance.
 func SunDistanceN(date time.Time, n int) float64 {
-	jde := calendar.Date2JDE(date.UTC())
-	return planet.WherePlanetN(6, 2, basic.TD2UT(jde, true), n)
+	jd := calendar.Date2JD(date.UTC())
+	return planet.WherePlanetN(6, 2, basic.UTC2TT(jd), n)
 }
 
 // AltitudeN 高度角（截断版） / truncated altitude angle.
 func AltitudeN(date time.Time, lon, lat float64, n int) float64 {
-	jde := basic.Date2JDE(date)
+	localJD := basic.Date2JD(date)
 	_, loc := date.Zone()
 	timezone := float64(loc) / 3600.0
-	return basic.UranusHeightN(jde, lon, lat, timezone, n)
+	return basic.UranusHeightN(localJD, lon, lat, timezone, n)
 }
 
 // ZenithN 天顶距（截断版） / truncated zenith distance.
@@ -73,30 +73,28 @@ func ZenithN(date time.Time, lon, lat float64, n int) float64 {
 
 // AzimuthN 方位角（截断版） / truncated azimuth angle.
 func AzimuthN(date time.Time, lon, lat float64, n int) float64 {
-	jde := basic.Date2JDE(date)
+	localJD := basic.Date2JD(date)
 	_, loc := date.Zone()
 	timezone := float64(loc) / 3600.0
-	return basic.UranusAzimuthN(jde, lon, lat, timezone, n)
+	return basic.UranusAzimuthN(localJD, lon, lat, timezone, n)
 }
 
 // HourAngleN 时角（截断版） / truncated hour angle.
 func HourAngleN(date time.Time, lon float64, n int) float64 {
-	jde := basic.Date2JDE(date)
+	localJD := basic.Date2JD(date)
 	_, loc := date.Zone()
 	timezone := float64(loc) / 3600.0
-	return basic.UranusHourAngleN(jde, lon, timezone, n)
+	return basic.UranusHourAngleN(localJD, lon, timezone, n)
 }
 
 // CulminationTimeN 中天时间（截断版） / truncated culmination time.
 func CulminationTimeN(date time.Time, lon float64, n int) time.Time {
-	if date.Hour() > 12 {
-		date = date.Add(time.Hour * -12)
-	}
-	jde := basic.Date2JDE(date)
+	date = time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, date.Location())
+	localJD := basic.Date2JD(date)
 	_, loc := date.Zone()
 	timezone := float64(loc) / 3600.0
-	calcJde := basic.UranusCulminationTimeN(jde, lon, timezone, n) - timezone/24.0
-	return basic.JDE2DateByZone(calcJde, date.Location(), false)
+	calcJD := basic.UranusCulminationTimeN(localJD, lon, timezone, n) - timezone/24.0
+	return basic.JD2DateByZone(calcJD, date.Location(), false)
 }
 
 // RiseTimeN 升起时间（截断版） / truncated rise time.
@@ -105,14 +103,12 @@ func RiseTimeN(date time.Time, lon, lat, height float64, aero bool, n int) (time
 	if aero {
 		aeroFloat = 1
 	}
-	if date.Hour() > 12 {
-		date = date.Add(time.Hour * -12)
-	}
-	jde := basic.Date2JDE(date)
+	date = time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, date.Location())
+	localJD := basic.Date2JD(date)
 	_, loc := date.Zone()
 	timezone := float64(loc) / 3600.0
-	riseJde, err := basic.UranusRiseTimeN(jde, lon, lat, timezone, aeroFloat, height, n)
-	return riseSetResult(date, riseJde, err)
+	riseJD, err := basic.UranusRiseTimeN(localJD, lon, lat, timezone, aeroFloat, height, n)
+	return riseSetResult(date, riseJD, err)
 }
 
 // DownTimeN 落下时间别名（截断版） / truncated down-time alias.
@@ -126,12 +122,10 @@ func SetTimeN(date time.Time, lon, lat, height float64, aero bool, n int) (time.
 	if aero {
 		aeroFloat = 1
 	}
-	if date.Hour() > 12 {
-		date = date.Add(time.Hour * -12)
-	}
-	jde := basic.Date2JDE(date)
+	date = time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, date.Location())
+	localJD := basic.Date2JD(date)
 	_, loc := date.Zone()
 	timezone := float64(loc) / 3600.0
-	riseJde, err := basic.UranusSetTimeN(jde, lon, lat, timezone, aeroFloat, height, n)
-	return riseSetResult(date, riseJde, err)
+	riseJD, err := basic.UranusSetTimeN(localJD, lon, lat, timezone, aeroFloat, height, n)
+	return riseSetResult(date, riseJD, err)
 }

@@ -7,7 +7,7 @@ import (
 )
 
 func Benchmark_MoonRiseBench(b *testing.B) {
-	jde := GetNowJDE()
+	jde := GetNowJD()
 	for i := 0; i < b.N; i++ {
 		GetMoonRiseTime(jde, 105, 40, 8, 0, 10)
 	}
@@ -632,7 +632,7 @@ func TestMoonRiseSetRegression(t *testing.T) {
 	)
 
 	for i, testCase := range moonRiseSetTestData {
-		julianDay := JDECalc(testCase.Year, testCase.Month, testCase.Day)
+		julianDay := JDCalc(testCase.Year, testCase.Month, testCase.Day)
 
 		// 测试月出时间
 
@@ -646,7 +646,7 @@ func TestMoonRiseSetRegression(t *testing.T) {
 		}
 		if !riseMatches {
 			t.Errorf("测试用例 %d 月出时间不匹配:\n"+
-				"  日期: %d-%d-%.1f, 经纬度: (%.4f, %.4f), 时区: %.1f, 天顶修正: %.0f, 海拔: %.0f\n"+
+				"  日期: %d-%d-%.1f, 经纬度: (%.4f, %.4f), 时区: %.1f, 天顶修正: %.0f, 椭球高: %.0f\n"+
 				"  期望月出: %s, 实际月出: %.6f, 实际错误: %v, 差值: %.9f",
 				i, testCase.Year, testCase.Month, testCase.Day,
 				testCase.Longitude, testCase.Latitude, testCase.TimeZone,
@@ -665,7 +665,7 @@ func TestMoonRiseSetRegression(t *testing.T) {
 		}
 		if !setMatches {
 			t.Errorf("测试用例 %d 月落时间不匹配:\n"+
-				"  日期: %d-%d-%.1f, 经纬度: (%.4f, %.4f), 时区: %.1f, 天顶修正: %.0f, 海拔: %.0f\n"+
+				"  日期: %d-%d-%.1f, 经纬度: (%.4f, %.4f), 时区: %.1f, 天顶修正: %.0f, 椭球高: %.0f\n"+
 				"  期望月落: %s, 实际月落: %.6f, 实际错误: %v, 差值: %.9f",
 				i, testCase.Year, testCase.Month, testCase.Day,
 				testCase.Longitude, testCase.Latitude, testCase.TimeZone,
@@ -715,7 +715,7 @@ func TestMoonRiseSetSpecialCases(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			julianDay := JDECalc(tc.year, tc.month, tc.day)
+			julianDay := JDCalc(tc.year, tc.month, tc.day)
 
 			actualRise, riseErr := GetMoonRiseTime(julianDay, tc.longitude, tc.latitude,
 				tc.timeZone, tc.zenithShift, tc.height)
@@ -751,7 +751,7 @@ func moonRiseSetExpectation(code float64) string {
 	if err := moonRiseSetExpectedError(code); err != nil {
 		return err.Error()
 	}
-	return JDE2Date(code).String()
+	return JD2Date(code).String()
 }
 
 func moonRiseSetMatches(actual float64, err error, expected float64, tolerance float64) bool {
@@ -791,7 +791,7 @@ func moonRiseSetDynamicResidualMatches(actual float64, testCase MoonRiseSetTestC
 }
 
 func moonRiseSetNearCivilBoundary(jd float64, testCase MoonRiseSetTestCase, tolerance float64) bool {
-	dayStart := math.Floor(JDECalc(testCase.Year, testCase.Month, testCase.Day)) + 0.5
+	dayStart := math.Floor(JDCalc(testCase.Year, testCase.Month, testCase.Day)) + 0.5
 	return math.Abs(jd-dayStart) <= tolerance || math.Abs(jd-(dayStart+1)) <= tolerance
 }
 
@@ -802,7 +802,7 @@ func floatEquals(a, b, tolerance float64) bool {
 
 // BenchmarkMoonRiseTime 月出时间计算性能测试
 func BenchmarkMoonRiseTime(b *testing.B) {
-	julianDay := JDECalc(2023, 6, 21)
+	julianDay := JDCalc(2023, 6, 21)
 	longitude, latitude := 116.4074, 39.9042
 	timeZone, zenithShift, height := 8.0, 1.0, 0.0
 
@@ -814,7 +814,7 @@ func BenchmarkMoonRiseTime(b *testing.B) {
 
 // BenchmarkMoonSetTime 月落时间计算性能测试
 func BenchmarkMoonSetTime(b *testing.B) {
-	julianDay := JDECalc(2023, 6, 21)
+	julianDay := JDCalc(2023, 6, 21)
 	longitude, latitude := 116.4074, 39.9042
 	timeZone, zenithShift, height := 8.0, 1.0, 0.0
 

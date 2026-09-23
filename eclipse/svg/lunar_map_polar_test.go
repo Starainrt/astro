@@ -35,7 +35,7 @@ func TestLunarEclipseMapSVGPolarWitnessStaysOutsideEquirectangularVisibility(t *
 	if len(rings) == 0 {
 		t.Fatal("visibility path has no rings")
 	}
-	jd := basic.Date2JDE(info.PenumbralStart)
+	jd := basic.Date2JD(info.PenumbralStart)
 	// 只取足够深入地平线以下的见证点：−89.9° 处月心高度约 −0.054°，而更靠近极点的
 	// −89.99° 只有约 −0.004°，落在可见性判定本身的数值容差里，不能作为回归依据。
 	// Only a witness clearly below the horizon is used: at -89.9 degrees the Moon centre sits

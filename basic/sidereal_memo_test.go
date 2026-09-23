@@ -21,7 +21,7 @@ func directApparentSiderealTime1982(jd float64) float64 {
 func siderealMemoTestTimes() []float64 {
 	var times []float64
 	for _, year := range []int{-720, -100, 0, 1000, 1582, 1900, 2025, 2026, 3000, 5000} {
-		times = append(times, JDECalc(year, 3, 7.25), JDECalc(year, 9, 20.5), JDECalc(year, 12, 31.75))
+		times = append(times, JDCalc(year, 3, 7.25), JDCalc(year, 9, 20.5), JDCalc(year, 12, 31.75))
 	}
 	return times
 }
@@ -51,14 +51,14 @@ func TestApparentSiderealTimeMemoMatchesDirectSeries(t *testing.T) {
 func TestApparentSiderealTimeMemoInvalidatedByDeltaTOverride(t *testing.T) {
 	original := GetDeltaTFn()
 	t.Cleanup(func() { SetDeltaTFn(original) })
-	jd := JDECalc(2025, 1, 5.5)
+	jd := JDCalc(2025, 1, 5.5)
 
 	baseline := ApparentSiderealTime2006(jd)
 	if repeat := ApparentSiderealTime2006(jd); repeat != baseline {
 		t.Fatalf("memoized sidereal=%v, want stable %v", repeat, baseline)
 	}
 
-	SetDeltaTFn(func(date float64, isJDE bool) float64 { return 6000 })
+	SetDeltaTFn(func(date float64, isJulianDay bool) float64 { return 6000 })
 	shifted := ApparentSiderealTime2006(jd)
 	if shifted == baseline {
 		t.Fatalf("ΔT override replayed the memoized value %v", shifted)
@@ -67,14 +67,14 @@ func TestApparentSiderealTimeMemoInvalidatedByDeltaTOverride(t *testing.T) {
 		t.Errorf("sidereal after ΔT override=%v, want %v", shifted, want)
 	}
 
-	SetDeltaTFn(DefaultDeltaTv2)
+	SetDeltaTFn(nil)
 	if restored := ApparentSiderealTime2006(jd); restored != baseline {
 		t.Errorf("sidereal after restoring ΔT=%v, want %v", restored, baseline)
 	}
 }
 
 func TestApparentSiderealTimeMemoIsRaceFree(t *testing.T) {
-	base := JDECalc(2025, 1, 5.5)
+	base := JDCalc(2025, 1, 5.5)
 	var wait sync.WaitGroup
 	for worker := 0; worker < 4; worker++ {
 		wait.Add(1)

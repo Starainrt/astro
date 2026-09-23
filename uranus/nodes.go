@@ -14,8 +14,8 @@ func AscendingNode(date time.Time) float64 {
 
 // AscendingNodeN 天王星升交点黄经（截断版） / truncated ascending node longitude of Uranus.
 func AscendingNodeN(date time.Time, n int) float64 {
-	jde := calendar.Date2JDE(date.UTC())
-	return basic.UranusAscendingNodeN(basic.TD2UT(jde, true), n)
+	jd := calendar.Date2JD(date.UTC())
+	return basic.UranusAscendingNodeN(basic.UTC2TT(jd), n)
 }
 
 // DescendingNode 天王星降交点黄经 / descending node longitude of Uranus.
@@ -25,6 +25,6 @@ func DescendingNode(date time.Time) float64 {
 
 // DescendingNodeN 天王星降交点黄经（截断版） / truncated descending node longitude of Uranus.
 func DescendingNodeN(date time.Time, n int) float64 {
-	jde := calendar.Date2JDE(date.UTC())
-	return basic.UranusDescendingNodeN(basic.TD2UT(jde, true), n)
+	jd := calendar.Date2JD(date.UTC())
+	return basic.UranusDescendingNodeN(basic.UTC2TT(jd), n)
 }

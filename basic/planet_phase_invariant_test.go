@@ -88,7 +88,7 @@ func phaseStationCases() []phaseStationCase {
 }
 
 func phaseEpochTT(year int, month time.Month, day int) float64 {
-	return TD2UT(Date2JDE(time.Date(year, month, day, 0, 0, 0, 0, time.UTC)), true)
+	return UTC2TT(Date2JD(time.Date(year, month, day, 0, 0, 0, 0, time.UTC)))
 }
 
 // TestPlanetStationOrderInvariant 在固定的历史失败时点附近逐点检查顺序不变量。
@@ -141,19 +141,19 @@ func TestPlanetStationOrderInvariant(t *testing.T) {
 					gotUT := f.fn(q)
 					if math.IsNaN(gotUT) {
 						t.Fatalf("%s %s at %s returned NaN", tc.name, f.label,
-							JDE2DateByZone(TD2UT(q, false), time.UTC, false).Format("2006-01-02 15:04:05"))
+							JD2DateByZone(TT2UTC(q), time.UTC, false).Format("2006-01-02 15:04:05"))
 					}
-					got := TD2UT(gotUT, true)
+					got := UTC2TT(gotUT)
 					// 1) 顺序不变量
 					if f.next && got < q-phaseInvariantToleranceDay {
 						t.Fatalf("%s %s at %s returned past event %s", tc.name, f.label,
-							JDE2DateByZone(TD2UT(q, false), time.UTC, false).Format("2006-01-02 15:04:05"),
-							JDE2DateByZone(gotUT, time.UTC, false).Format("2006-01-02 15:04:05"))
+							JD2DateByZone(TT2UTC(q), time.UTC, false).Format("2006-01-02 15:04:05"),
+							JD2DateByZone(gotUT, time.UTC, false).Format("2006-01-02 15:04:05"))
 					}
 					if !f.next && got > q+phaseInvariantToleranceDay {
 						t.Fatalf("%s %s at %s returned future event %s", tc.name, f.label,
-							JDE2DateByZone(TD2UT(q, false), time.UTC, false).Format("2006-01-02 15:04:05"),
-							JDE2DateByZone(gotUT, time.UTC, false).Format("2006-01-02 15:04:05"))
+							JD2DateByZone(TT2UTC(q), time.UTC, false).Format("2006-01-02 15:04:05"),
+							JD2DateByZone(gotUT, time.UTC, false).Format("2006-01-02 15:04:05"))
 					}
 					// 2) 必须是真值事件
 					nearest, nearestDev := math.NaN(), math.Inf(1)
@@ -167,7 +167,7 @@ func TestPlanetStationOrderInvariant(t *testing.T) {
 					}
 					if nearestDev > 60.0/86400.0 {
 						t.Fatalf("%s %s at %s returned non-event %.6f (nearest truth %.3f d away)", tc.name, f.label,
-							JDE2DateByZone(TD2UT(q, false), time.UTC, false).Format("2006-01-02 15:04:05"), got, nearestDev)
+							JD2DateByZone(TT2UTC(q), time.UTC, false).Format("2006-01-02 15:04:05"), got, nearestDev)
 					}
 					_ = nearest
 					// 3) 不得跳过更近的同类型事件
@@ -177,13 +177,13 @@ func TestPlanetStationOrderInvariant(t *testing.T) {
 						}
 						if f.next && st.jd > q+phaseInvariantToleranceDay && st.jd < got-60.0/86400.0 {
 							t.Fatalf("%s %s at %s skipped %s", tc.name, f.label,
-								JDE2DateByZone(TD2UT(q, false), time.UTC, false).Format("2006-01-02 15:04:05"),
-								JDE2DateByZone(TD2UT(st.jd, false), time.UTC, false).Format("2006-01-02 15:04:05"))
+								JD2DateByZone(TT2UTC(q), time.UTC, false).Format("2006-01-02 15:04:05"),
+								JD2DateByZone(TT2UTC(st.jd), time.UTC, false).Format("2006-01-02 15:04:05"))
 						}
 						if !f.next && st.jd < q-phaseInvariantToleranceDay && st.jd > got+60.0/86400.0 {
 							t.Fatalf("%s %s at %s skipped %s", tc.name, f.label,
-								JDE2DateByZone(TD2UT(q, false), time.UTC, false).Format("2006-01-02 15:04:05"),
-								JDE2DateByZone(TD2UT(st.jd, false), time.UTC, false).Format("2006-01-02 15:04:05"))
+								JD2DateByZone(TT2UTC(q), time.UTC, false).Format("2006-01-02 15:04:05"),
+								JD2DateByZone(TT2UTC(st.jd), time.UTC, false).Format("2006-01-02 15:04:05"))
 						}
 					}
 				}
@@ -243,7 +243,7 @@ func TestMercuryConjunctionNeverSkips(t *testing.T) {
 		}
 		for _, q := range []float64{center, center + 0.5, center + 12, center - 12, center + 60, center - 60} {
 			for _, next := range []uint8{0, 1} {
-				got := TD2UT(mercuryConjunction(q, next), true)
+				got := UTC2TT(mercuryConjunction(q, next))
 				if math.IsNaN(got) {
 					t.Fatalf("mercuryConjunction(%.6f, %d) = NaN", q, next)
 				}
@@ -320,7 +320,7 @@ func TestGreatestElongationNoSkip(t *testing.T) {
 		const matchTolerance = 30.0 / 1440.0
 		for i, maximum := range maxima {
 			// 查询落在极大前一天：Next 必须命中该极大（不得跳过）
-			next := TD2UT(tc.next(maximum-1), true)
+			next := UTC2TT(tc.next(maximum - 1))
 			if math.IsNaN(next) {
 				t.Fatalf("%s: Next at %s returned NaN", tc.name, tmpPhaseDate(maximum-1))
 			}
@@ -332,7 +332,7 @@ func TestGreatestElongationNoSkip(t *testing.T) {
 				t.Fatalf("%s: Next returned an event before the query", tc.name)
 			}
 			// 查询落在极大后一天：Last 必须命中该极大，Next 必须命中下一个极大
-			last := TD2UT(tc.last(maximum+1), true)
+			last := UTC2TT(tc.last(maximum + 1))
 			if dev := math.Abs(last - maximum); dev > matchTolerance {
 				t.Fatalf("%s: Last at %s = %s, expected the previous maximum %s (%.2f min off)",
 					tc.name, tmpPhaseDate(maximum+1), tmpPhaseDate(last), tmpPhaseDate(maximum), dev*1440)
@@ -341,7 +341,7 @@ func TestGreatestElongationNoSkip(t *testing.T) {
 				t.Fatalf("%s: Last returned an event after the query", tc.name)
 			}
 			if i+1 < len(maxima) {
-				following := TD2UT(tc.next(maximum+1), true)
+				following := UTC2TT(tc.next(maximum + 1))
 				if dev := math.Abs(following - maxima[i+1]); dev > matchTolerance {
 					t.Fatalf("%s: Next at %s = %s, expected the following maximum %s (%.2f min off)",
 						tc.name, tmpPhaseDate(maximum+1), tmpPhaseDate(following), tmpPhaseDate(maxima[i+1]), dev*1440)
@@ -352,5 +352,5 @@ func TestGreatestElongationNoSkip(t *testing.T) {
 }
 
 func tmpPhaseDate(jd float64) string {
-	return JDE2DateByZone(TD2UT(jd, false), time.UTC, false).Format("2006-01-02 15:04")
+	return JD2DateByZone(TT2UTC(jd), time.UTC, false).Format("2006-01-02 15:04")
 }

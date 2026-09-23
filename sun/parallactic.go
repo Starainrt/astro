@@ -15,10 +15,10 @@ func ParallacticAngle(date time.Time, lon, lat float64) float64 {
 
 // ParallacticAngleN 截断项太阳视差角（天顶方向角） / truncated solar parallactic angle.
 func ParallacticAngleN(date time.Time, lon, lat float64, n int) float64 {
-	jde := basic.Date2JDE(date.UTC())
+	jd := basic.Date2JD(date.UTC())
 	return basic.ParallacticAngleByHourAngle(
 		HourAngleN(date, lon, lat, n),
-		basic.HSunApparentDecN(basic.TD2UT(jde, true), n),
+		basic.HSunApparentDecN(basic.UTC2TT(jd), n),
 		lat,
 	)
 }

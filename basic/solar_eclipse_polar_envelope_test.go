@@ -15,7 +15,7 @@ func TestSolarEclipsePolarCentralEnvelope(t *testing.T) {
 		{2026, 2, 17, RiseSetDirectionSet},
 	} {
 		t.Run(fmt.Sprintf("%04d-%02d-%02d", sample.year, sample.month, sample.day), func(t *testing.T) {
-			seed := JDECalc(sample.year, sample.month, float64(sample.day))
+			seed := JDCalc(sample.year, sample.month, float64(sample.day))
 			result := SolarEclipsePartialFootprints(seed, SolarEclipsePartialFootprintOptions{
 				StepDays: 2.0 / 1440, BoundaryPoints: 96,
 			})

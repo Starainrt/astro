@@ -33,7 +33,7 @@ func (cache *starOccultationEventCache) preparePathEphemeris(center float64, alg
 			return [3]float64{moon.x, moon.y, moon.z}, [3]float64{target.x, target.y, target.z}
 		})
 		if len(nodes) > 0 {
-			cache.local = &starOccultationLocalEphemeris{star: cache.star, nodes: nodes, dense: true}
+			cache.local = newStarOccultationLocalEphemerisFromNodes(center, cache.star, nodes, true)
 		}
 	}
 	cache.prepareLocalEphemeris(center)

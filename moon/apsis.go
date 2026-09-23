@@ -28,7 +28,7 @@ func convertMoonApsisInfos(events []basic.ApsisEvent) []ApsisInfo {
 	result := make([]ApsisInfo, 0, len(events))
 	for _, event := range events {
 		result = append(result, ApsisInfo{
-			Time:     basic.JDE2DateByZone(event.JDE, time.UTC, false),
+			Time:     basic.JD2DateByZone(event.JD, time.UTC, false),
 			Distance: event.Distance,
 		})
 	}

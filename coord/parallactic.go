@@ -19,5 +19,5 @@ func ParallacticAngleByHourAngle(hourAngle, dec, observerLat float64) float64 {
 // Returns the signed parallactic angle for the apparent equatorial coordinates
 // at the observing instant.
 func ParallacticAngle(date time.Time, ra, dec, observerLon, observerLat float64) float64 {
-	return basic.StarParallacticAngle(jdeUTC(date), ra, dec, observerLon, observerLat, 0)
+	return basic.StarParallacticAngle(jdUTC(date), ra, dec, observerLon, observerLat, 0)
 }

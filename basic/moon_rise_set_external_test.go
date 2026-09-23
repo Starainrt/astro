@@ -113,7 +113,7 @@ func TestMoonRiseSetMatchesExternalBaselines(t *testing.T) {
 		if err != nil {
 			t.Fatalf("parse %s date %q: %v", sample.Site, sample.DateUTC, err)
 		}
-		jd := Date2JDE(day)
+		jd := Date2JD(day)
 		currentRiseJD, err := GetMoonRiseTime(jd, sample.Longitude, sample.Latitude, 0, 1, sample.ObserverHeight)
 		if err != nil {
 			t.Fatalf("%s current moonrise: %v", sample.Site, err)
@@ -160,7 +160,7 @@ func TestMoonRiseSetLegacyComparatorMatchesPreFixSnapshot(t *testing.T) {
 	SetDeltaTFn(DefaultDeltaTv2)
 	defer SetDeltaTFn(previousDeltaT)
 
-	jd := JDECalc(2023, 1, 15)
+	jd := JDCalc(2023, 1, 15)
 	currentRise, err := GetMoonRiseTime(jd, 116.4074, 39.9042, 8, 1, 0)
 	if err != nil {
 		t.Fatalf("current moonrise: %v", err)
@@ -206,8 +206,8 @@ func compareMoonRiseSetEvent(t *testing.T, name string, currentJD, legacyJD floa
 	horizonsUTC, metUTC, imcceUTC string, tolerances moonRiseSetExternalTolerances,
 	stats *moonRiseSetComparisonStats) {
 	t.Helper()
-	current := JDE2DateByZone(currentJD, time.UTC, false)
-	legacy := JDE2DateByZone(legacyJD, time.UTC, false)
+	current := JD2DateByZone(currentJD, time.UTC, false)
+	legacy := JD2DateByZone(legacyJD, time.UTC, false)
 	horizons := parseMoonRiseSetExternalTime(t, name+".jpl", horizonsUTC)
 	met := parseMoonRiseSetExternalTime(t, name+".met", metUTC)
 	imcce := parseMoonRiseSetExternalTime(t, name+".imcce", imcceUTC)
@@ -301,7 +301,7 @@ func legacyMoonRiseSetFromCurrent(currentJD, longitude, latitude, timeZone, zeni
 }
 
 func legacyHMoonHeight(jd, longitude, latitude, timeZone float64) float64 {
-	calculationJD := TD2UT(jd-timeZone/24, true)
+	calculationJD := UTC2TT(jd - timeZone/24)
 	ra, dec := HMoonTrueRaDecN(calculationJD, -1)
 	distanceAU := HMoonAwayN(calculationJD, -1) / 149597870.7
 	topocentricRA, topocentricDec := legacyTopocentricRaDec(ra, dec, latitude, longitude, calculationJD, distanceAU, 0)
@@ -316,7 +316,7 @@ func legacyTopocentricRaDec(ra, dec, latitude, longitude, jd, distanceAU, height
 	horizontalParallaxSine := tools.Sin(0.0024427777777) / distanceAU
 	observerCosine := pcosi(latitude, height)
 	observerSine := psini(latitude, height)
-	hourAngle := tools.Limit360(TD2UT(ApparentSiderealTime(jd), false)*15 + longitude - ra)
+	hourAngle := tools.Limit360(TT2UTC(ApparentSiderealTime(jd))*15 + longitude - ra)
 	raCorrection := math.Atan2(-observerCosine*horizontalParallaxSine*tools.Sin(hourAngle),
 		tools.Cos(dec)-observerCosine*horizontalParallaxSine*tools.Cos(hourAngle)) * 180 / math.Pi
 	correctedDec := math.Atan2((tools.Sin(dec)-observerSine*horizontalParallaxSine)*tools.Cos(raCorrection),

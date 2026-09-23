@@ -8,7 +8,7 @@ import (
 // 本切片（行星/月球事件层）的性能守护基准；改动热路径时必须给出改前→改后。
 
 func BenchmarkPlanetEventGreatestElongationAnySide(b *testing.B) {
-	jd := JDECalc(2025, 3, 1)
+	jd := JDCalc(2025, 3, 1)
 	b.Run("Mercury", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			_ = NextMercuryGreatestElongation(jd)
@@ -41,7 +41,7 @@ func BenchmarkPlanetEventOuterStationNonFiniteQuery(b *testing.B) {
 }
 
 func BenchmarkPlanetEventMoonMaximumDeclination(b *testing.B) {
-	jd := JDECalc(2025, 3, 1)
+	jd := JDCalc(2025, 3, 1)
 	b.Run("Next", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			_ = NextMoonMaximumNorthDeclination(jd)
@@ -77,7 +77,7 @@ func BenchmarkPlanetEventJupiterGalileanCallisto(b *testing.B) {
 }
 
 func BenchmarkPlanetEventJupiterSixEventsSameInstant(b *testing.B) {
-	jd := JDECalc(2025, 3, 1)
+	jd := JDCalc(2025, 3, 1)
 	for i := 0; i < b.N; i++ {
 		_ = NextJupiterConjunction(jd)
 		_ = NextJupiterOpposition(jd)
@@ -98,7 +98,7 @@ func BenchmarkPlanetEventLunarEclipseDiagram(b *testing.B) {
 
 // 差分对照基准：改动前“两侧都算再取极值”的聚合方式。
 func BenchmarkPlanetEventGreatestElongationBothSidesReference(b *testing.B) {
-	mercuryJD, venusJD := JDECalc(2025, 3, 1), JDECalc(2025, 3, 1)
+	mercuryJD, venusJD := JDCalc(2025, 3, 1), JDCalc(2025, 3, 1)
 	b.Run("Mercury", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			_ = earliestFiniteEventUT(NextMercuryGreatestElongationEast(mercuryJD), NextMercuryGreatestElongationWest(mercuryJD))

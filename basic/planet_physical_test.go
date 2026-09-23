@@ -49,7 +49,7 @@ func TestPlanetPhysicalMatchesHorizonsBaseline(t *testing.T) {
 		if err != nil {
 			t.Fatalf("parse sample time %q: %v", sample.InputUTC, err)
 		}
-		jd := TD2UT(Date2JDE(date.UTC()), true)
+		jd := UTC2TT(Date2JD(date.UTC()))
 		got := physical(jd)
 
 		assertPlanetPhaseClose(t, sample.Body+"."+sample.InputUTC+".SubEarthLongitude", got.SubEarthLongitude, sample.SubEarthLongitude, 0.02)
@@ -61,7 +61,7 @@ func TestPlanetPhysicalMatchesHorizonsBaseline(t *testing.T) {
 }
 
 func TestPlanetPhysicalNFullMatchesDefault(t *testing.T) {
-	jd := TD2UT(Date2JDE(time.Date(2026, 4, 28, 9, 30, 45, 0, time.UTC)), true)
+	jd := UTC2TT(Date2JD(time.Date(2026, 4, 28, 9, 30, 45, 0, time.UTC)))
 
 	cases := []struct {
 		name      string
@@ -111,7 +111,7 @@ func TestPlanetPhysicalSampleSweepFiniteAndInRange(t *testing.T) {
 	}
 
 	for _, date := range dates {
-		jd := TD2UT(Date2JDE(date.UTC()), true)
+		jd := UTC2TT(Date2JD(date.UTC()))
 		for _, tc := range cases {
 			info := tc.physical(jd)
 			prefix := tc.name + "." + date.Format(time.RFC3339)

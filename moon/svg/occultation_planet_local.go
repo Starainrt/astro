@@ -1,6 +1,7 @@
 package svg
 
 import (
+	"github.com/starainrt/astro/internal/timenote"
 	"errors"
 	"fmt"
 	"html"
@@ -8,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/starainrt/astro"
 	"github.com/starainrt/astro/internal/svgasset"
 	"github.com/starainrt/astro/internal/svgchart"
 	"github.com/starainrt/astro/moon"
@@ -55,6 +57,11 @@ type LocalPlanetOccultationSVGOptions struct {
 	// Location 控制显示的事件时刻；nil 使用 UTC+8。
 	// Location controls displayed event times. Nil uses UTC+8.
 	Location *time.Location
+	// TimeScale 选择图中时刻的时标：零值 UTC；TimeScaleUT1 改用 UT1 时刻，此时 Location 必须是
+	// nil 或 UTC（否则渲染器返回错误），并在图注里声明尺度。
+	// TimeScale selects the label scale: the zero value is UTC; TimeScaleUT1 uses UT1 labels, requires
+	// Location to be nil or UTC (otherwise the renderer returns an error) and declares the scale.
+	TimeScale astro.TimeScale
 }
 
 type localPlanetOccultationEventFrame struct {
@@ -101,18 +108,28 @@ func LocalPlanetOccultationSVG(
 	info moon.PlanetOccultationInfo,
 	options LocalPlanetOccultationSVGOptions,
 ) (string, error) {
+	if options.TimeScale == astro.TimeScaleUT1 && options.Location != nil && options.Location != time.UTC {
+		return "", fmt.Errorf("occultation SVG: UT1 labels do not take a non-UTC location")
+	}
 	if err := validateLocalPlanetOccultationInfo(info); err != nil {
 		return "", err
 	}
 	if err := validateLocalPlanetOccultationSVGOptions(options); err != nil {
 		return "", err
 	}
+	if options.TimeScale == astro.TimeScaleUT1 {
+		options.Location = time.UTC
+	}
+
 	options = normalizeLocalPlanetOccultationSVGOptions(options)
 	diagram := moon.PlanetOccultationDiagram(info, moon.PlanetOccultationDiagramOptions{
 		StepDays: options.Step.Hours() / 24,
 	})
 	if len(diagram.Frames) == 0 {
 		return "", fmt.Errorf("%w: diagram geometry is unavailable", ErrInvalidLocalPlanetOccultationInfo)
+	}
+	if options.TimeScale == astro.TimeScaleUT1 {
+		info = moon.PlanetOccultationInfoInUT1(info)
 	}
 	return renderLocalPlanetOccultationSVG(info, diagram, options), nil
 }
@@ -293,7 +310,15 @@ func writeLocalPlanetOccultationOverview(
 	mapY := func(value float64) float64 { return cy - value*scale }
 	moonRadius := localPlanetOccultationSVGMaximumMoonRadius(diagram.Frames) * scale
 
-	writeLocalStarOccultationAxes(b, cx, cy, moonRadius, options.Language)
+	table := &svgchart.LabelTable{}
+	table.ReserveText(layout.overviewLeft, layout.overviewTop-10, 14, overviewTitle, "start")
+	table.Reserve(layout.panelX-12, layout.overviewTop-16, layout.width-(layout.panelX-12), layout.height-layout.overviewTop)
+	table.Reserve(cx-moonRadius, cy-moonRadius, 2*moonRadius, 2*moonRadius)
+	for _, event := range events {
+		radius := math.Max(6, event.frame.PlanetRadiusArcsec*scale)
+		table.Reserve(mapX(event.frame.PlanetXArcsec)-radius, mapY(event.frame.PlanetYArcsec)-radius, 2*radius, 2*radius)
+	}
+	writeLocalStarOccultationAxes(b, cx, cy, moonRadius, options.Language, table)
 	writeLocalPlanetOccultationLunarPath(b, diagram.Frames, mapX, mapY, extent, options.Language)
 	writeLocalPlanetOccultationTrack(b, diagram.Frames, mapX, mapY)
 	for _, event := range events {
@@ -305,6 +330,7 @@ func writeLocalPlanetOccultationOverview(
 	writeLocalOccultationMoon(b, cx, cy, moonRadius, "overview-moon",
 		localOccultationMoonAppearanceAt(diagram.Occultation.Greatest, diagram.Occultation.Observer),
 		"local-planet-occultation-moon-overview")
+	overviewLabels := make([]localOccultationOverviewLabel, 0, len(events))
 	for _, event := range events {
 		x := mapX(event.frame.PlanetXArcsec)
 		y := mapY(event.frame.PlanetYArcsec)
@@ -312,9 +338,10 @@ func writeLocalPlanetOccultationOverview(
 			writeLocalPlanetOccultationDisk(b, x, y, event.frame.PlanetRadiusArcsec*scale, true, "overview-planet-outline", event.label)
 		}
 		if event.label != "C2" && event.label != "C3" {
-			writeLocalPlanetOccultationOverviewLabel(b, event, x, y, cx, cy)
+			overviewLabels = append(overviewLabels, localOccultationOverviewLabel{text: event.name, x: x, y: y})
 		}
 	}
+	writeLocalOccultationOverviewLabels(b, overviewLabels, table, cx, cy, moonRadius, "#792d28")
 }
 
 func localPlanetOccultationSVGExtent(frames []moon.PlanetOccultationDiagramFrame) float64 {
@@ -425,23 +452,6 @@ func writeLocalPlanetOccultationDisk(
 	fmt.Fprintf(b, `<circle class="%s" data-label="%s" cx="%.3f" cy="%.3f" r="%.3f" fill="%s" stroke="%s" stroke-width="1.2"%s/>`,
 		html.EscapeString(class), html.EscapeString(label), x, y, math.Max(radius, 0.15), fill, stroke, dash)
 }
-
-func writeLocalPlanetOccultationOverviewLabel(
-	b *strings.Builder,
-	event localPlanetOccultationEventFrame,
-	x, y, cx, cy float64,
-) {
-	dx, dy, anchor := 8.0, -9.0, "start"
-	if x > cx {
-		dx, anchor = -8, "end"
-	}
-	if y < cy-20 {
-		dy = 15
-	}
-	fmt.Fprintf(b, `<text x="%.3f" y="%.3f" fill="#792d28" stroke="#ffffff" stroke-width="3" paint-order="stroke" font-family="Arial, sans-serif" font-size="11" font-weight="700" text-anchor="%s">%s</text>`,
-		x+dx, y+dy, anchor, html.EscapeString(event.name))
-}
-
 func writeLocalPlanetOccultationContacts(
 	b *strings.Builder,
 	events []localPlanetOccultationEventFrame,
@@ -548,8 +558,9 @@ func writeLocalPlanetOccultationFooter(
 	options LocalPlanetOccultationSVGOptions,
 ) {
 	directionLines, footerLines := localOccultationFooterLines(
-		localPlanetOccultationSVGDirectionText(options), options.DirectionText != "",
-		localPlanetOccultationSVGFooterNote(info, options), options.FooterNote != "",
+		localPlanetOccultationSVGDirectionText(options),
+		localPlanetOccultationSVGFooterNote(info, options),
+		timenote.Scale(options.TimeScale, info.Greatest, options.Location, options.Language),
 		layout.footerY, layout.width, layout.height)
 	for index, line := range directionLines {
 		fmt.Fprintf(b, `<text x="%.3f" y="%.3f" fill="#4f595b" font-family="Georgia, 'Times New Roman', serif" font-size="10">%s</text>`,
@@ -672,7 +683,7 @@ func localPlanetOccultationSVGSummaryText(
 		return fmt.Sprintf("Site %s | elevation %.0f m | %s | C1-C4 duration %s", coordinates, info.Observer.Height,
 			localPlanetOccultationSVGTypeName(info.Type, options.Language), duration)
 	}
-	return fmt.Sprintf("观测点 %s | 海拔 %.0f 米 | %s | C1-C4 历时 %s", coordinates, info.Observer.Height,
+	return fmt.Sprintf("观测点 %s | 椭球高 %.0f 米 | %s | C1-C4 历时 %s", coordinates, info.Observer.Height,
 		localPlanetOccultationSVGTypeName(info.Type, options.Language), duration)
 }
 

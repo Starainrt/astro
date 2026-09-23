@@ -8,81 +8,81 @@ import (
 )
 
 // SaturnRingParameters 土星环参数 / Saturn ring parameters.
-func SaturnRingParameters(jd float64) (earthLatitude, sunLatitude, positionAngle, deltaU, majorAxis, minorAxis float64) {
-	return SaturnRingParametersN(jd, -1)
+func SaturnRingParameters(jde float64) (earthLatitude, sunLatitude, positionAngle, deltaU, majorAxis, minorAxis float64) {
+	return SaturnRingParametersN(jde, -1)
 }
 
 // SaturnRingParametersN 土星环参数（截断版） / truncated Saturn ring parameters.
-func SaturnRingParametersN(jd float64, n int) (earthLatitude, sunLatitude, positionAngle, deltaU, majorAxis, minorAxis float64) {
-	inclination, node := saturnRingPlane(jd)
-	earthLon, earthLat := SaturnApparentLoBoN(jd, n)
-	sunLon, sunLat := saturnRingSunLoBo(jd, n, node)
+func SaturnRingParametersN(jde float64, n int) (earthLatitude, sunLatitude, positionAngle, deltaU, majorAxis, minorAxis float64) {
+	inclination, node := saturnRingPlane(jde)
+	earthLon, earthLat := SaturnApparentLoBoN(jde, n)
+	sunLon, sunLat := saturnRingSunLoBo(jde, n, node)
 
 	earthLatitude = saturnRingLatitude(inclination, node, earthLon, earthLat)
 	sunLatitude = saturnRingLatitude(inclination, node, sunLon, sunLat)
-	positionAngle = saturnRingPositionAngle(jd, inclination, node, earthLon, earthLat)
+	positionAngle = saturnRingPositionAngle(jde, inclination, node, earthLon, earthLat)
 	earthU := saturnRingLongitude(inclination, node, earthLon, earthLat)
 	sunU := saturnRingLongitude(inclination, node, sunLon, sunLat)
 	deltaU = saturnRingLongitudeDelta(earthU, sunU)
 
-	earthDistance := EarthSaturnAwayN(jd, n)
+	earthDistance := EarthSaturnAwayN(jde, n)
 	majorAxis = 375.35 / earthDistance
 	minorAxis = majorAxis * math.Abs(Sin(earthLatitude))
 	return
 }
 
 // SaturnRingB 土星环张角 B / Saturn ring opening angle B.
-func SaturnRingB(jd float64) float64 {
-	return SaturnRingBN(jd, -1)
+func SaturnRingB(jde float64) float64 {
+	return SaturnRingBN(jde, -1)
 }
 
 // SaturnRingBN 土星环张角 B（截断版） / truncated Saturn ring opening angle B.
-func SaturnRingBN(jd float64, n int) float64 {
-	earthLatitude, _, _, _, _, _ := SaturnRingParametersN(jd, n)
+func SaturnRingBN(jde float64, n int) float64 {
+	earthLatitude, _, _, _, _, _ := SaturnRingParametersN(jde, n)
 	return earthLatitude
 }
 
 // SaturnRingSunB 土星环太阳侧张角 B' / Sun-side Saturn ring opening angle B'.
-func SaturnRingSunB(jd float64) float64 {
-	return SaturnRingSunBN(jd, -1)
+func SaturnRingSunB(jde float64) float64 {
+	return SaturnRingSunBN(jde, -1)
 }
 
 // SaturnRingSunBN 土星环太阳侧张角 B'（截断版） / truncated Sun-side Saturn ring opening angle B'.
-func SaturnRingSunBN(jd float64, n int) float64 {
-	_, sunLatitude, _, _, _, _ := SaturnRingParametersN(jd, n)
+func SaturnRingSunBN(jde float64, n int) float64 {
+	_, sunLatitude, _, _, _, _ := SaturnRingParametersN(jde, n)
 	return sunLatitude
 }
 
 // SaturnRingPositionAngle 土星环北半短轴位置角 / position angle of Saturn ring northern semiminor axis.
-func SaturnRingPositionAngle(jd float64) float64 {
-	return SaturnRingPositionAngleN(jd, -1)
+func SaturnRingPositionAngle(jde float64) float64 {
+	return SaturnRingPositionAngleN(jde, -1)
 }
 
 // SaturnRingPositionAngleN 土星环北半短轴位置角（截断版） / truncated position angle of Saturn ring northern semiminor axis.
-func SaturnRingPositionAngleN(jd float64, n int) float64 {
-	_, _, positionAngle, _, _, _ := SaturnRingParametersN(jd, n)
+func SaturnRingPositionAngleN(jde float64, n int) float64 {
+	_, _, positionAngle, _, _, _ := SaturnRingParametersN(jde, n)
 	return positionAngle
 }
 
 // SaturnRingDeltaU 太阳和地球在环面内的土星心黄经差 / difference of Saturnicentric ring longitudes.
-func SaturnRingDeltaU(jd float64) float64 {
-	return SaturnRingDeltaUN(jd, -1)
+func SaturnRingDeltaU(jde float64) float64 {
+	return SaturnRingDeltaUN(jde, -1)
 }
 
 // SaturnRingDeltaUN 太阳和地球在环面内的土星心黄经差（截断版） / truncated Saturnicentric ring longitude difference.
-func SaturnRingDeltaUN(jd float64, n int) float64 {
-	_, _, _, deltaU, _, _ := SaturnRingParametersN(jd, n)
+func SaturnRingDeltaUN(jde float64, n int) float64 {
+	_, _, _, deltaU, _, _ := SaturnRingParametersN(jde, n)
 	return deltaU
 }
 
 // SaturnRingAxis 土星环外缘长短轴，单位角秒 / outer ring axes in arcseconds.
-func SaturnRingAxis(jd float64) (majorAxis, minorAxis float64) {
-	return SaturnRingAxisN(jd, -1)
+func SaturnRingAxis(jde float64) (majorAxis, minorAxis float64) {
+	return SaturnRingAxisN(jde, -1)
 }
 
 // SaturnRingAxisN 土星环外缘长短轴（截断版），单位角秒 / truncated outer ring axes in arcseconds.
-func SaturnRingAxisN(jd float64, n int) (majorAxis, minorAxis float64) {
-	_, _, _, _, majorAxis, minorAxis = SaturnRingParametersN(jd, n)
+func SaturnRingAxisN(jde float64, n int) (majorAxis, minorAxis float64) {
+	_, _, _, _, majorAxis, minorAxis = SaturnRingParametersN(jde, n)
 	return
 }
 
@@ -93,10 +93,10 @@ func saturnRingPlane(jd float64) (inclination, node float64) {
 	return
 }
 
-func saturnRingSunLoBo(jd float64, n int, node float64) (lon, lat float64) {
-	lon = planet.WherePlanetN(5, 0, jd, n)
-	lat = planet.WherePlanetN(5, 1, jd, n)
-	distance := planet.WherePlanetN(5, 2, jd, n)
+func saturnRingSunLoBo(jde float64, n int, node float64) (lon, lat float64) {
+	lon = planet.WherePlanetN(5, 0, jde, n)
+	lat = planet.WherePlanetN(5, 1, jde, n)
+	distance := planet.WherePlanetN(5, 2, jde, n)
 	lat -= 0.000764 * Cos(lon-node) / distance
 	lon -= 0.01759 / distance
 	return lon, lat
@@ -120,10 +120,10 @@ func saturnRingLongitudeDelta(a, b float64) float64 {
 	return delta
 }
 
-func saturnRingPositionAngle(jd, inclination, node, lon, lat float64) float64 {
-	poleLon := node - 90 + Nutation2000Bi(jd)
+func saturnRingPositionAngle(jde, inclination, node, lon, lat float64) float64 {
+	poleLon := node - 90 + Nutation2000Bi(jde)
 	poleLat := 90 - inclination
-	eps := TrueObliquity(jd)
+	eps := TrueObliquity(jde)
 	poleRa, poleDec := saturnRingEclipticToEquatorial(poleLon, poleLat, eps)
 	saturnRa, saturnDec := saturnRingEclipticToEquatorial(lon, lat, eps)
 

@@ -5,6 +5,8 @@ import (
 	"math"
 
 	. "github.com/starainrt/astro/tools"
+
+	"github.com/starainrt/astro/basic"
 )
 
 const (
@@ -17,8 +19,8 @@ var (
 	ErrNotOnThisDate = errors.New("rise/set event occurs on adjacent date")
 )
 
-func MeanObliquity(jd float64) float64 {
-	t := (jd - 2451545.0) / 36525.0
+func MeanObliquity(jde float64) float64 {
+	t := (jde - 2451545.0) / 36525.0
 	return 23.4392911111 - (46.8150*t+0.00059*t*t-0.001813*t*t*t)/3600.0
 }
 
@@ -27,8 +29,8 @@ func MeanSiderealTime(jd float64) float64 {
 	return Limit360(280.46061837 + 360.98564736629*(jd-2451545.0) + 0.000387933*t*t - t*t*t/38710000.0)
 }
 
-func EclipticToEquatorial(jd, lo, bo float64) (float64, float64) {
-	eps := MeanObliquity(jd)
+func EclipticToEquatorial(jde, lo, bo float64) (float64, float64) {
+	eps := MeanObliquity(jde)
 	ra := math.Atan2(Sin(lo)*Cos(eps)-Tan(bo)*Sin(eps), Cos(lo)) * 180.0 / math.Pi
 	if ra < 0 {
 		ra += 360
@@ -38,7 +40,7 @@ func EclipticToEquatorial(jd, lo, bo float64) (float64, float64) {
 }
 
 func HorizontalCoordinates(ra, dec, jd, lon, lat float64) (float64, float64, float64) {
-	lst := Limit360(MeanSiderealTime(jd) + lon)
+	lst := Limit360(MeanSiderealTime(basic.UTC2UT1(jd)) + lon)
 	hourAngle := Limit360(lst - ra)
 	altitude := ArcSin(clampUnit(Sin(lat)*Sin(dec) + Cos(lat)*Cos(dec)*Cos(hourAngle)))
 
@@ -63,7 +65,7 @@ func TopocentricRaDec(ra, dec, observerLat, observerLon, jd, distanceEarthRadii,
 	rhoCos := math.Cos(u) + heightMeters/6378140.0*Cos(observerLat)
 	parallax := math.Asin(1.0 / distanceEarthRadii)
 
-	hourAngle := (Limit360(MeanSiderealTime(jd) + observerLon - ra)) * math.Pi / 180.0
+	hourAngle := (Limit360(MeanSiderealTime(basic.UTC2UT1(jd)) + observerLon - ra)) * math.Pi / 180.0
 	decRad := dec * math.Pi / 180.0
 
 	numerator := -rhoCos * math.Sin(parallax) * math.Sin(hourAngle)

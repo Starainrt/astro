@@ -3,6 +3,7 @@
 package svg
 
 import (
+	"github.com/starainrt/astro/internal/timenote"
 	"errors"
 	"fmt"
 	"html"
@@ -10,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/starainrt/astro"
 	"github.com/starainrt/astro/internal/occultationgeo"
 	"github.com/starainrt/astro/internal/svgchart"
 	"github.com/starainrt/astro/internal/svgmap"
@@ -53,6 +55,11 @@ type StarOccultationSVGOptions struct {
 	// Location 控制显示的事件时刻；nil 使用 UTC+8。
 	// Location controls displayed event times. Nil uses UTC+8.
 	Location *time.Location
+	// TimeScale 选择图中时刻的时标：零值 UTC；TimeScaleUT1 改用 UT1 时刻，此时 Location 必须是
+	// nil 或 UTC（否则渲染器返回错误），并在图注里声明尺度。
+	// TimeScale selects the label scale: the zero value is UTC; TimeScaleUT1 uses UT1 labels, requires
+	// Location to be nil or UTC (otherwise the renderer returns an error) and declares the scale.
+	TimeScale astro.TimeScale
 	// Projection 选择全球地图投影；零值会为限于单半球的高纬事件自动使用极区地图。
 	// Projection selects the global map projection. The zero value automatically uses a polar map for a high-latitude event confined to one hemisphere.
 	Projection MapProjection
@@ -92,12 +99,20 @@ func StarOccultationPathSVG(
 	path moon.StarOccultationPath,
 	options StarOccultationSVGOptions,
 ) (string, error) {
+	if options.TimeScale == astro.TimeScaleUT1 && options.Location != nil && options.Location != time.UTC {
+		return "", fmt.Errorf("occultation SVG: UT1 labels do not take a non-UTC location")
+	}
 	if err := validateStarOccultationPath(path); err != nil {
 		return "", err
 	}
 	if err := validateStarOccultationSVGOptions(options); err != nil {
 		return "", err
 	}
+	if options.TimeScale == astro.TimeScaleUT1 {
+		options.Location = time.UTC
+		path = moon.StarOccultationPathInUT1(path)
+	}
+
 	options = normalizeStarOccultationSVGOptions(options)
 	diagram, err := renderStarOccultationPathSVG(path, options)
 	if err != nil {
@@ -238,7 +253,7 @@ func renderOccultationPathSVG(
 		}
 		writePlanetOccultationEventsPanel(&b, *planetPath, layout, options)
 	}
-	writeStarOccultationFooter(&b, layout, options, flags)
+	writeStarOccultationFooter(&b, layout, options, flags, occultationScaleInstant(path, planetPath))
 	b.WriteString(`</svg>`)
 	return b.String(), nil
 }
@@ -734,18 +749,37 @@ func writeOccultationEventsPanel(
 	}
 }
 
+// occultationScaleInstant 取时标声明用的掩甚时刻：行星带优先用行星路径。
+func occultationScaleInstant(path moon.StarOccultationPath, planetPath *moon.PlanetOccultationPath) time.Time {
+	if planetPath != nil {
+		return planetPath.Greatest.Time
+	}
+	return path.Greatest.Time
+}
+
 func writeStarOccultationFooter(
 	b *strings.Builder,
 	layout starOccultationSVGLayout,
 	options StarOccultationSVGOptions,
 	flags occultationSVGTextFlags,
+	instant time.Time,
 ) {
-	lines := occultationWrappedTextLines(starOccultationSVGFooter(options), flags.footerNote, layout.width-80, 11)
-	lines = svgchart.TruncateTextLines(lines, layout.width-80, 11,
-		svgchart.BaselineLineLimit(11, 15, layout.footerY, layout.height))
+	maxWidth := layout.width - 80
+	lineHeight := svgchart.FooterLineHeight(11)
+	scaleNote := timenote.Scale(options.TimeScale, instant, options.Location, options.Language)
+	// 页脚默认排在画布底边之内（与既有版面一致），说明行放得下时声明单独占最后一行；
+	// 自定义说明太长时改用按字号留白的行数上限：截断说明也要保住时标声明和底边留白。
+	lines := occultationWrappedTextLines(starOccultationSVGFooter(options), flags.footerNote, maxWidth, 11)
+	if roomy := svgchart.BaselineLineLimit(11, lineHeight, layout.footerY, layout.height); len(lines) < roomy {
+		lines = append(lines, scaleNote)
+	} else {
+		tight := svgchart.BaselineLineLimit(11, lineHeight, layout.footerY,
+			layout.height-svgchart.FooterBottomPadding(11))
+		lines = svgchart.FooterLinesWithScale(lines, scaleNote, maxWidth, 11, tight)
+	}
 	for index, line := range lines {
 		fmt.Fprintf(b, `<text x="40" y="%.3f" fill="#596164" font-family="Georgia, 'Times New Roman', serif" font-size="11">%s</text>`,
-			layout.footerY+float64(index)*15, html.EscapeString(line))
+			layout.footerY+float64(index)*svgchart.FooterLineHeight(11), html.EscapeString(line))
 	}
 }
 

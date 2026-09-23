@@ -3,14 +3,14 @@ package basic
 import "math"
 
 func (solver solarEclipseSolver) refineRiseSetPhaseJunction(
-	jd, longitude, latitude float64,
+	jde, longitude, latitude float64,
 ) (SolarEclipsePathPoint, bool) {
 	const (
 		geographicStep = 1e-4
 		timeStep       = 1.0 / 86400.0
 	)
 	for iteration := 0; iteration < 24; iteration++ {
-		evaluation := solver.magnitudeEvaluationAt(jd)
+		evaluation := solver.magnitudeEvaluationAt(jde)
 		residual, ok := solarEclipseRiseSetPhaseJunctionResidualAt(evaluation, longitude, latitude)
 		if !ok {
 			return SolarEclipsePathPoint{}, false
@@ -24,7 +24,7 @@ func (solver solarEclipseSolver) refineRiseSetPhaseJunction(
 		latitudeResidual, latitudeOK := solarEclipseRiseSetPhaseJunctionResidualAt(
 			evaluation, longitude, latitude+geographicStep,
 		)
-		timeResidual, timeOK := solver.riseSetPhaseJunctionResidual(jd+timeStep, longitude, latitude)
+		timeResidual, timeOK := solver.riseSetPhaseJunctionResidual(jde+timeStep, longitude, latitude)
 		if !longitudeOK || !latitudeOK || !timeOK {
 			return SolarEclipsePathPoint{}, false
 		}
@@ -48,21 +48,21 @@ func (solver solarEclipseSolver) refineRiseSetPhaseJunction(
 		}
 		longitude = normalizeLongitude(longitude + delta[0])
 		latitude += delta[1]
-		jd += delta[2]
+		jde += delta[2]
 		if latitude <= -89.999999 || latitude >= 89.999999 {
 			return SolarEclipsePathPoint{}, false
 		}
 	}
-	residual, ok := solver.riseSetPhaseJunctionResidual(jd, longitude, latitude)
+	residual, ok := solver.riseSetPhaseJunctionResidual(jde, longitude, latitude)
 	if !ok || math.Abs(residual[0]) > 1e-7 || math.Abs(residual[1]) > 1e-7 || math.Abs(residual[2]) > 1e-8 {
 		return SolarEclipsePathPoint{}, false
 	}
-	evaluation := solver.magnitudeEvaluationAt(jd)
+	evaluation := solver.magnitudeEvaluationAt(jde)
 	if evaluation.partialContactSecondDerivative(longitude, latitude) <= 0 {
 		return SolarEclipsePathPoint{}, false
 	}
 	return SolarEclipsePathPoint{
-		JDE: jd, Longitude: longitude, Latitude: latitude, SunAltitude: residual[2] / rad,
+		JDE: jde, Longitude: longitude, Latitude: latitude, SunAltitude: residual[2] / rad,
 	}, true
 }
 
@@ -74,15 +74,15 @@ func (solver solarEclipseSolver) refineRiseSetPhaseJunctionOnHorizon(
 		0,
 	}
 	residualAt := func(value [2]float64) ([2]float64, float64, float64, float64, bool) {
-		jd := seed.JDE + value[1]/1440
-		longitude, latitude := solver.riseSetHorizonPointAt(jd, value[0])
-		evaluation := solver.magnitudeEvaluationAt(jd)
+		jde := seed.JDE + value[1]/1440
+		longitude, latitude := solver.riseSetHorizonPointAt(jde, value[0])
+		evaluation := solver.magnitudeEvaluationAt(jde)
 		state := evaluation.center.stateAt(longitude*rad, latitude*rad, 0)
 		residual := [2]float64{
 			solarEclipsePartialContactGap(state),
 			evaluation.partialContactDerivative(longitude, latitude),
 		}
-		return residual, jd, longitude, latitude, finite(residual[0]) && finite(residual[1])
+		return residual, jde, longitude, latitude, finite(residual[0]) && finite(residual[1])
 	}
 	const (
 		angleStep      = 1e-4
@@ -124,11 +124,11 @@ func (solver solarEclipseSolver) refineRiseSetPhaseJunctionOnHorizon(
 		coordinates[0] = riseSetNormalizeRadians(coordinates[0] + delta[0])
 		coordinates[1] += delta[1]
 	}
-	residual, jd, longitude, latitude, ok := residualAt(coordinates)
+	residual, jde, longitude, latitude, ok := residualAt(coordinates)
 	if !ok || math.Abs(residual[0]) > 1e-7 || math.Abs(residual[1]) > 1e-7 {
 		return SolarEclipsePathPoint{}, false
 	}
-	return solver.refineRiseSetPhaseJunction(jd, longitude, latitude)
+	return solver.refineRiseSetPhaseJunction(jde, longitude, latitude)
 }
 
 func (solver solarEclipseSolver) riseSetPhaseSegmentIsContinuous(
@@ -143,9 +143,9 @@ func (solver solarEclipseSolver) riseSetPhaseSegmentIsContinuous(
 	continuityToleranceKM := math.Max(50, 0.05*totalDistance)
 	candidate := end
 	for divisor := 2.0; divisor <= 1024; divisor *= 2 {
-		jd := start.JDE + (end.JDE-start.JDE)/divisor
-		seedAngle := solver.riseSetHorizonAngle(jd, candidate.Longitude, candidate.Latitude)
-		next, ok := solver.riseSetPhasePointOnHorizon(jd, seedAngle, phase, direction)
+		jde := start.JDE + (end.JDE-start.JDE)/divisor
+		seedAngle := solver.riseSetHorizonAngle(jde, candidate.Longitude, candidate.Latitude)
+		next, ok := solver.riseSetPhasePointOnHorizon(jde, seedAngle, phase, direction)
 		if !ok {
 			return solarEclipsePathDistanceKM(start, candidate) <= continuityToleranceKM
 		}
@@ -155,14 +155,14 @@ func (solver solarEclipseSolver) riseSetPhaseSegmentIsContinuous(
 }
 
 func (solver solarEclipseSolver) riseSetPhasePointOnHorizon(
-	jd, angle float64,
+	jde, angle float64,
 	phase RiseSetPhase,
 	direction RiseSetDirection,
 ) (SolarEclipsePathPoint, bool) {
-	evaluation := solver.magnitudeEvaluationAt(jd)
+	evaluation := solver.magnitudeEvaluationAt(jde)
 	greatest := phase == RiseSetPhaseGreatest
 	valueAt := func(candidateAngle float64) (float64, float64, float64, bool) {
-		longitude, latitude := solver.riseSetHorizonPointAt(jd, candidateAngle)
+		longitude, latitude := solver.riseSetHorizonPointAt(jde, candidateAngle)
 		value, ok := solarEclipseRiseSetPhaseResidual(evaluation, longitude, latitude, greatest)
 		return value, longitude, latitude, ok && finite(value)
 	}
@@ -252,8 +252,8 @@ func (solver solarEclipseSolver) refineRiseSetFoldNearPhaseJunction(
 	for _, sign := range []float64{-1, 1} {
 		for divisor := 1024.0; divisor >= 1; divisor /= 2 {
 			fraction := 1 / divisor
-			jd := junction.JDE + sign*fraction*stepDays
-			roots := solver.riseSetPointsAt(jd, solarEclipseRiseSetBoundaryPoints)[key]
+			jde := junction.JDE + sign*fraction*stepDays
+			roots := solver.riseSetPointsAt(jde, solarEclipseRiseSetBoundaryPoints)[key]
 			if len(roots) < 2 {
 				continue
 			}
@@ -273,9 +273,9 @@ func (solver solarEclipseSolver) refineRiseSetFoldNearPhaseJunction(
 }
 
 func (solver solarEclipseSolver) riseSetPhaseJunctionResidual(
-	jd, longitude, latitude float64,
+	jde, longitude, latitude float64,
 ) ([3]float64, bool) {
-	evaluation := solver.magnitudeEvaluationAt(jd)
+	evaluation := solver.magnitudeEvaluationAt(jde)
 	return solarEclipseRiseSetPhaseJunctionResidualAt(evaluation, longitude, latitude)
 }
 
@@ -350,9 +350,9 @@ func (solver solarEclipseSolver) refineRiseSetFold(
 		coordinates[0] = riseSetNormalizeRadians(coordinates[0] + delta[0])
 		coordinates[1] += delta[1]
 	}
-	jd := seedJDE + coordinates[1]/1440.0
-	longitude, latitude := solver.riseSetHorizonPointAt(jd, coordinates[0])
-	return solver.refineRiseSetFoldPoint(jd, longitude, latitude, greatest)
+	jde := seedJDE + coordinates[1]/1440.0
+	longitude, latitude := solver.riseSetHorizonPointAt(jde, coordinates[0])
+	return solver.refineRiseSetFoldPoint(jde, longitude, latitude, greatest)
 }
 
 func (solver solarEclipseSolver) riseSetFoldHorizonResidual(
@@ -361,8 +361,8 @@ func (solver solarEclipseSolver) riseSetFoldHorizonResidual(
 	greatest bool,
 ) ([2]float64, bool) {
 	const derivativeStep = 1e-4
-	jd := seedJDE + coordinates[1]/1440.0
-	evaluation := solver.magnitudeEvaluationAt(jd)
+	jde := seedJDE + coordinates[1]/1440.0
+	evaluation := solver.magnitudeEvaluationAt(jde)
 	centerLongitude, centerLatitude := solarEclipseRiseSetHorizonCenter(evaluation)
 	valueAt := func(angle float64) (float64, bool) {
 		longitude, latitude := riseSetHorizonPoint(centerLongitude, centerLatitude, angle)
@@ -375,16 +375,16 @@ func (solver solarEclipseSolver) riseSetFoldHorizonResidual(
 	return residual, centerOK && beforeOK && afterOK && finite(residual[1])
 }
 
-func (solver solarEclipseSolver) riseSetHorizonPointAt(jd, angle float64) (float64, float64) {
-	evaluation := solver.magnitudeEvaluationAt(jd)
+func (solver solarEclipseSolver) riseSetHorizonPointAt(jde, angle float64) (float64, float64) {
+	evaluation := solver.magnitudeEvaluationAt(jde)
 	centerLongitude, centerLatitude := solarEclipseRiseSetHorizonCenter(evaluation)
 	return riseSetHorizonPoint(centerLongitude, centerLatitude, angle)
 }
 
 func (solver solarEclipseSolver) riseSetHorizonAngle(
-	jd, longitude, latitude float64,
+	jde, longitude, latitude float64,
 ) float64 {
-	evaluation := solver.magnitudeEvaluationAt(jd)
+	evaluation := solver.magnitudeEvaluationAt(jde)
 	centerLongitude, centerLatitude := solarEclipseRiseSetHorizonCenter(evaluation)
 	centerLon, centerLat := centerLongitude*rad, centerLatitude*rad
 	center := [3]float64{
@@ -482,10 +482,10 @@ func (solver solarEclipseSolver) refineRiseSetFoldPoint(
 }
 
 func (solver solarEclipseSolver) riseSetFoldResidual(
-	jd, longitude, latitude float64,
+	jde, longitude, latitude float64,
 	greatest bool,
 ) ([3]float64, bool) {
-	evaluation := solver.magnitudeEvaluationAt(jd)
+	evaluation := solver.magnitudeEvaluationAt(jde)
 	return solarEclipseRiseSetFoldResidualAt(evaluation, longitude, latitude, greatest)
 }
 
@@ -564,7 +564,7 @@ func (solver solarEclipseSolver) appendRefinedRiseSetSegment(
 	if depth >= 12 || end.JDE-start.JDE <= solarEclipsePathMinStepDays {
 		return append(points, end)
 	}
-	jd := (start.JDE + end.JDE) / 2
+	jde := (start.JDE + end.JDE) / 2
 	longitude := normalizeLongitude(start.Longitude + math.Remainder(end.Longitude-start.Longitude, 360)/2)
 	latitude := (start.Latitude + end.Latitude) / 2
 	// A comfortably straight candidate needs no new output vertex. Reserve
@@ -572,13 +572,13 @@ func (solver solarEclipseSolver) appendRefinedRiseSetSegment(
 	// uses the exact ephemeris and the original phase residual checks.
 	short := solarEclipsePathDistanceKM(start, end) <= solarEclipseRiseSetTargetSpacingKM
 	if short && solver.localEphemeris != nil {
-		candidate, key, valid := solarEclipseRefineRiseSetMiddle(solver.magnitudeCandidateEvaluationAt(jd), longitude, latitude, phase)
+		candidate, key, valid := solarEclipseRefineRiseSetMiddle(solver.magnitudeCandidateEvaluationAt(jde), longitude, latitude, phase)
 		if valid && key.phase == phase && key.direction == direction &&
 			solarEclipseRiseSetChordDeviationKM(candidate, start, end) <= solarEclipseRiseSetChordToleranceKM/2 {
 			return append(points, end)
 		}
 	}
-	middle, key, valid := solarEclipseRefineRiseSetMiddle(solver.magnitudeEvaluationAt(jd), longitude, latitude, phase)
+	middle, key, valid := solarEclipseRefineRiseSetMiddle(solver.magnitudeEvaluationAt(jde), longitude, latitude, phase)
 	if !valid || key.phase != phase || key.direction != direction {
 		return append(points, end)
 	}

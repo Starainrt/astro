@@ -86,7 +86,7 @@ func psini(lat, h float64) float64 {
 }
 
 func TopocentricRaDec(ra, dec, lat, lon, jd, au, h float64) (float64, float64) {
-	return topocentricRaDecWithSidereal(ra, dec, lat, lon, ApparentSiderealTime(jd)*15, au, h)
+	return topocentricRaDecWithSidereal(ra, dec, lat, lon, ApparentSiderealTime(UTC2UT1(jd))*15, au, h)
 }
 
 func topocentricRaDecWithSidereal(ra, dec, lat, lon, siderealDegrees, au, h float64) (float64, float64) {
@@ -109,43 +109,41 @@ func TopocentricDec(ra, dec, lat, lon, jd, au, h float64) float64 { //jd为格�
 	return topocentricDec
 }
 
-func TopocentricLo(lo, bo, lat, lon, jd, au, h float64) float64 { //jd为格林尼治标准时
-	c := pcosi(lat, h)
-	s := psini(lat, h)
-	sinpi := Sin(0.0024427777777) / au
-	ra := LoToRa(jd, lo, bo)
-	tH := Limit360(ApparentSiderealTime(jd)*15 + lon - ra)
-	n := Cos(lo)*Cos(bo) - c*sinpi*Cos(tH)
-	nlo := math.Atan2(Sin(lo)*Cos(bo)-sinpi*(s*Sin(TrueObliquity(jd))+c*Cos(TrueObliquity(jd))*Sin(tH)), n) * 180 / math.Pi
+// TopocentricLoBo 一次求值给出站心黄经与黄纬 / topocentric ecliptic longitude and latitude in one solve.
+//
+// 先解站心赤道坐标再转黄道：黄道版公式的分母在黄经 90°–270° 时变号，直接 atan2 会切到对顶象限。
+func TopocentricLoBo(lo, bo, lat, lon, jde, au, h float64) (float64, float64) {
+	ra, dec := LoBoToRaDec(jde, lo, bo)
+	topRA, topDec := TopocentricRaDec(ra, dec, lat, lon, jde, au, h)
+	return RaDecToLoBo(jde, topRA, topDec)
+}
+
+// TopocentricLo 站心黄经 / topocentric ecliptic longitude.
+func TopocentricLo(lo, bo, lat, lon, jde, au, h float64) float64 {
+	nlo, _ := TopocentricLoBo(lo, bo, lat, lon, jde, au, h)
 	return nlo
 }
 
-func TopocentricBo(lo, bo, lat, lon, jd, au, h float64) float64 { //jd为格林尼治标准时
-	c := pcosi(lat, h)
-	s := psini(lat, h)
-	sinpi := Sin(0.0024427777777) / au
-	ra := LoToRa(jd, lo, bo)
-	tH := Limit360(ApparentSiderealTime(jd)*15 + lon - ra)
-	n := Cos(lo)*Cos(bo) - c*sinpi*Cos(tH)
-	nlo := math.Atan2(Sin(lo)*Cos(bo)-sinpi*(s*Sin(TrueObliquity(jd))+c*Cos(TrueObliquity(jd))*Sin(tH)), n) * 180 / math.Pi
-	nbo := math.Atan2(Cos(nlo)*(Sin(bo)-sinpi*(s*Cos(TrueObliquity(jd))-c*Sin(TrueObliquity(jd))*Sin(tH))), n) * 180 / math.Pi
+// TopocentricBo 站心黄纬 / topocentric ecliptic latitude.
+func TopocentricBo(lo, bo, lat, lon, jde, au, h float64) float64 {
+	_, nbo := TopocentricLoBo(lo, bo, lat, lon, jde, au, h)
 	return nbo
 }
 
-func GXCLo(lo, bo, jd float64) float64 { //光行差修正
+func GXCLo(lo, bo, jde float64) float64 { //光行差修正
 	k := 20.49552
-	sunlo := SunTrueLo(jd)
-	e := Earthe(jd)
-	epi := EarthPI(jd)
+	sunlo := SunTrueLo(jde)
+	e := Earthe(jde)
+	epi := EarthPI(jde)
 	tmp := (-k*Cos(sunlo-lo) + e*k*Cos(epi-lo)) / Cos(bo)
 	return tmp
 }
 
-func GXCBo(lo, bo, jd float64) float64 {
+func GXCBo(lo, bo, jde float64) float64 {
 	k := 20.49552
-	sunlo := SunTrueLo(jd)
-	e := Earthe(jd)
-	epi := EarthPI(jd)
+	sunlo := SunTrueLo(jde)
+	e := Earthe(jde)
+	epi := EarthPI(jde)
 	tmp := -k * Sin(bo) * (Sin(sunlo-lo) - e*Sin(epi-lo))
 	return tmp
 }

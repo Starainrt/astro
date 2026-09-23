@@ -29,7 +29,7 @@ func TestParallacticAngleByHourAngleKnownCases(t *testing.T) {
 
 func TestStarParallacticAngleMatchesHourAngleForm(t *testing.T) {
 	date := time.Date(2026, 4, 29, 21, 15, 0, 0, time.FixedZone("CST", 8*3600))
-	jde := Date2JDE(date)
+	jde := Date2JD(date)
 	_, offsetSeconds := date.Zone()
 	timezone := float64(offsetSeconds) / 3600.0
 	ra := 101.28715533

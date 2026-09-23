@@ -743,9 +743,9 @@ func (solver solarEclipseSolver) validRiseSetArcState(
 	referenceJDE float64,
 	iterations int,
 ) (solarEclipseRiseSetArcState, int, bool) {
-	jd := referenceJDE + coordinates[2]/solarEclipseRiseSetArcTimeScale
+	jde := referenceJDE + coordinates[2]/solarEclipseRiseSetArcTimeScale
 	longitude, latitude := normalizeLongitude(coordinates[0]), coordinates[1]
-	evaluation := solver.magnitudeEvaluationAt(jd)
+	evaluation := solver.magnitudeEvaluationAt(jde)
 	state := evaluation.center.stateAt(longitude*rad, latitude*rad, 0)
 	tangent, ok := solarEclipseMagnitudeArcTangent(jacobian)
 	if !ok {
@@ -755,7 +755,7 @@ func (solver solarEclipseSolver) validRiseSetArcState(
 		coordinates: coordinates,
 		tangent:     tangent,
 		point: SolarEclipsePathPoint{
-			JDE: jd, Longitude: longitude, Latitude: latitude, SunAltitude: state.sunAltitudeRad / rad,
+			JDE: jde, Longitude: longitude, Latitude: latitude, SunAltitude: state.sunAltitudeRad / rad,
 		},
 	}, iterations, true
 }
@@ -765,9 +765,9 @@ func (solver solarEclipseSolver) riseSetArcJacobian(
 	greatest bool,
 	referenceJDE float64,
 ) ([2]float64, [2][3]float64, bool) {
-	jd := referenceJDE + coordinates[2]/solarEclipseRiseSetArcTimeScale
+	jde := referenceJDE + coordinates[2]/solarEclipseRiseSetArcTimeScale
 	longitude, latitude := normalizeLongitude(coordinates[0]), coordinates[1]
-	evaluation := solver.magnitudeEvaluationAt(jd)
+	evaluation := solver.magnitudeEvaluationAt(jde)
 	residual, ok := solarEclipseRiseSetArcResidualAt(evaluation, longitude, latitude, greatest)
 	if !ok {
 		return [2]float64{}, [2][3]float64{}, false
@@ -783,7 +783,7 @@ func (solver solarEclipseSolver) riseSetArcJacobian(
 			jacobian[row][column] = (shiftedResidual[row] - residual[row]) / steps[column]
 		}
 	}
-	timeEvaluation := solver.magnitudeEvaluationAt(jd + steps[2]/solarEclipseRiseSetArcTimeScale)
+	timeEvaluation := solver.magnitudeEvaluationAt(jde + steps[2]/solarEclipseRiseSetArcTimeScale)
 	timeResidual, timeOK := solarEclipseRiseSetArcResidualAt(timeEvaluation, longitude, latitude, greatest)
 	if !timeOK {
 		return [2]float64{}, [2][3]float64{}, false

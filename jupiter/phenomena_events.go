@@ -63,7 +63,7 @@ type GalileanPhenomenonEvent struct {
 func LastGalileanPhenomenonEvent(date time.Time, satellite int, phenomenonType GalileanPhenomenonType) GalileanPhenomenonEvent {
 	return galileanPhenomenonEventFromBasic(
 		basic.LastJupiterGalileanPhenomenonEvent(
-			basic.Date2JDE(date.UTC()),
+			basic.Date2JD(date.UTC()),
 			satellite,
 			basic.JupiterGalileanPhenomenonType(phenomenonType),
 		),
@@ -75,7 +75,7 @@ func LastGalileanPhenomenonEvent(date time.Time, satellite int, phenomenonType G
 func NextGalileanPhenomenonEvent(date time.Time, satellite int, phenomenonType GalileanPhenomenonType) GalileanPhenomenonEvent {
 	return galileanPhenomenonEventFromBasic(
 		basic.NextJupiterGalileanPhenomenonEvent(
-			basic.Date2JDE(date.UTC()),
+			basic.Date2JD(date.UTC()),
 			satellite,
 			basic.JupiterGalileanPhenomenonType(phenomenonType),
 		),
@@ -87,7 +87,7 @@ func NextGalileanPhenomenonEvent(date time.Time, satellite int, phenomenonType G
 func ClosestGalileanPhenomenonEvent(date time.Time, satellite int, phenomenonType GalileanPhenomenonType) GalileanPhenomenonEvent {
 	return galileanPhenomenonEventFromBasic(
 		basic.ClosestJupiterGalileanPhenomenonEvent(
-			basic.Date2JDE(date.UTC()),
+			basic.Date2JD(date.UTC()),
 			satellite,
 			basic.JupiterGalileanPhenomenonType(phenomenonType),
 		),
@@ -99,9 +99,9 @@ func galileanPhenomenonEventFromBasic(event basic.JupiterGalileanPhenomenonEvent
 	if !event.Valid {
 		return GalileanPhenomenonEvent{}
 	}
-	start := basic.JDE2DateByZone(event.Start, loc, false)
-	greatest := basic.JDE2DateByZone(event.Greatest, loc, false)
-	end := basic.JDE2DateByZone(event.End, loc, false)
+	start := basic.JD2DateByZone(event.Start, loc, false)
+	greatest := basic.JD2DateByZone(event.Greatest, loc, false)
+	end := basic.JD2DateByZone(event.End, loc, false)
 	return GalileanPhenomenonEvent{
 		Valid:         true,
 		Satellite:     event.Satellite,

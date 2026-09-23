@@ -109,10 +109,10 @@ func TestAncientYearStartCrossingRoundTrips(t *testing.T) {
 	}
 }
 
-// 王莽改历的 23/24 年交界：同一套月序偏移会把"腊月三十"反解到腊月初一（标签碰撞），
+// 王莽改历的 23/24 年交界：同一套月序偏移会把"腊月三十"反解到腊月初一（规范日碰撞），
 // 此时应改用另一套偏移下能正向回到该农历日的那一天，并把主答案换成它。
 // At the Wang Mang 23/24 boundary the primary month offset resolves "12th month, day 30" onto the
-// 1st of that month (a label collision); the reverse must switch to the offset whose civil day
+// 1st of that month (a canonical-day collision); the reverse must switch to the offset whose civil day
 // converts forward to the requested lunar date and make that day the primary answer.
 func TestWangMangBoundaryReverseIsSelfConsistent(t *testing.T) {
 	cases := []struct {
@@ -147,8 +147,8 @@ func TestWangMangBoundaryReverseIsSelfConsistent(t *testing.T) {
 			t.Errorf("lunar %d/%d/%d -> %s converts forward to %d/%d/%d",
 				c.ly, c.lm, c.ld, c.wantSolar, l.LunarYear(), l.LunarMonth(), l.LunarDay())
 		}
-		if res.JDE() != fwd.JDE() {
-			t.Errorf("lunar %d/%d/%d: JDE=%.1f, forward gives %.1f", c.ly, c.lm, c.ld, res.JDE(), fwd.JDE())
+		if res.JD() != fwd.JD() {
+			t.Errorf("lunar %d/%d/%d: JDE=%.1f, forward gives %.1f", c.ly, c.lm, c.ld, res.JD(), fwd.JD())
 		}
 		for _, cand := range res.SolarCandidates() {
 			candFwd, err := SolarToLunarByYMD(cand.Year(), int(cand.Month()), cand.Day())

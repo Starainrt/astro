@@ -21,8 +21,8 @@ func TestSolarEclipse20120521HasCentralBandHorizonClosure(t *testing.T) {
 		t.Fatalf("central-limit horizon closures=%d, want start and end", len(partial.CentralBandHorizonClosures))
 	}
 	expectedRoots := [2][2][]float64{
-		{{109.6236411, 19.9359003}, {107.7419895, 22.3910846}},
-		{{-100.0879481, 34.1224726}, {-102.2069471, 31.7284052}},
+		{{109.6259942, 19.9359024}, {107.7443439, 22.3910851}},
+		{{-100.0855931, 34.1224725}, {-102.2045906, 31.7284072}},
 	}
 	for closureIndex, closure := range partial.CentralBandHorizonClosures {
 		if len(closure) < 2 {
@@ -153,8 +153,8 @@ func assertSolarPathMaximumEdgeKM(
 func TestSolarEclipse20120521HorizonClosuresAreStableAcrossSampling(t *testing.T) {
 	date := time.Date(2012, time.May, 21, 0, 0, 0, 0, time.UTC)
 	expectedRoots := [2][2][]float64{
-		{{109.6236411, 19.9359003}, {107.7419895, 22.3910846}},
-		{{-100.0879481, 34.1224726}, {-102.2069471, 31.7284052}},
+		{{109.6259942, 19.9359024}, {107.7443439, 22.3910851}},
+		{{-100.0855931, 34.1224725}, {-102.2045906, 31.7284072}},
 	}
 	for _, step := range []time.Duration{time.Minute, 5 * time.Minute, 10 * time.Minute} {
 		partial, ok := eclipse.SolarEclipsePartialFootprints(date, eclipse.SolarEclipsePartialFootprintOptions{

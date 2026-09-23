@@ -30,8 +30,8 @@ func Ring(date time.Time) RingInfo {
 
 // RingN 土星环观测参数（截断版） / truncated Saturn ring observing parameters.
 func RingN(date time.Time, n int) RingInfo {
-	jde := calendar.Date2JDE(date.UTC())
-	earthLatitude, sunLatitude, positionAngle, deltaU, majorAxis, minorAxis := basic.SaturnRingParametersN(basic.TD2UT(jde, true), n)
+	jd := calendar.Date2JD(date.UTC())
+	earthLatitude, sunLatitude, positionAngle, deltaU, majorAxis, minorAxis := basic.SaturnRingParametersN(basic.UTC2TT(jd), n)
 	return RingInfo{
 		EarthLatitude: earthLatitude,
 		SunLatitude:   sunLatitude,

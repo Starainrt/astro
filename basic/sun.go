@@ -6,50 +6,50 @@ import (
 )
 
 // SunLo 太阳几何黄经
-func SunLo(jd float64) float64 {
-	return planet.SunLo(jd)
+func SunLo(jde float64) float64 {
+	return planet.SunLo(jde)
 }
 
-func SunM(jd float64) float64 {
-	return planet.SunM(jd)
+func SunM(jde float64) float64 {
+	return planet.SunM(jde)
 }
 
 /*
 @name 地球偏心率
 */
-func Earthe(jd float64) float64 { //'地球偏心率
-	return planet.Earthe(jd)
+func Earthe(jde float64) float64 { //'地球偏心率
+	return planet.Earthe(jde)
 }
 
-func EarthPI(jd float64) float64 { //近日點經度
-	return planet.EarthPI(jd)
+func EarthPI(jde float64) float64 { //近日點經度
+	return planet.EarthPI(jde)
 }
 
-func SunMidFun(jd float64) float64 { //'太阳中间方程
-	return planet.SunMidFun(jd)
+func SunMidFun(jde float64) float64 { //'太阳中间方程
+	return planet.SunMidFun(jde)
 }
 
-func SunTrueLo(jd float64) float64 { // '太阳真黄经
-	return planet.SunTrueLo(jd)
+func SunTrueLo(jde float64) float64 { // '太阳真黄经
+	return planet.SunTrueLo(jde)
 }
 
-func SunApparentLo(jd float64) float64 { //'太阳视黄经
-	return planet.SunApparentLo(jd)
+func SunApparentLo(jde float64) float64 { //'太阳视黄经
+	return planet.SunApparentLo(jde)
 }
 
-func SunApparentRa(jd float64) float64 { // '太阳视赤经
-	return LoToRa(jd, SunApparentLo(jd), 0)
+func SunApparentRa(jde float64) float64 { // '太阳视赤经
+	return LoToRa(jde, SunApparentLo(jde), 0)
 }
 
-func SunApparentRaDec(jd float64) (float64, float64) {
-	return LoBoToRaDec(jd, SunApparentLo(jd), 0)
+func SunApparentRaDec(jde float64) (float64, float64) {
+	return LoBoToRaDec(jde, SunApparentLo(jde), 0)
 }
 
-func SunTrueRa(jd float64) float64 { //'太阳真赤经
-	eps := TrueObliquity(jd)
-	sunTrueRa := ArcTan(Cos(eps) * Sin(SunTrueLo(jd)) / Cos(SunTrueLo(jd)))
+func SunTrueRa(jde float64) float64 { //'太阳真赤经
+	eps := TrueObliquity(jde)
+	sunTrueRa := ArcTan(Cos(eps) * Sin(SunTrueLo(jde)) / Cos(SunTrueLo(jde)))
 	//Select Case SunTrueLo(JD)
-	sunTrueLo := SunTrueLo(jd)
+	sunTrueLo := SunTrueLo(jde)
 	if sunTrueLo >= 90 && sunTrueLo < 180 {
 		sunTrueRa = 180 + sunTrueRa
 	} else if sunTrueLo >= 180 && sunTrueLo < 270 {
@@ -60,30 +60,34 @@ func SunTrueRa(jd float64) float64 { //'太阳真赤经
 	return sunTrueRa
 }
 
-func SunApparentDec(jd float64) float64 { // '太阳视赤纬
+func SunApparentDec(jde float64) float64 { // '太阳视赤纬
 	// TrueObliquity 已是“平交角 + 交角章动”，不能再加 0.00256*cos(Ω)：
 	// 那一项就是交角章动的近似值（见《天文算法》24 章译者注），加了会把章动计两次。
-	eps := TrueObliquity(jd)
-	sunApparentDec := ArcSin(Sin(eps) * Sin(SunApparentLo(jd)))
+	eps := TrueObliquity(jde)
+	sunApparentDec := ArcSin(Sin(eps) * Sin(SunApparentLo(jde)))
 	return sunApparentDec
 }
 
-func SunTrueDec(jd float64) float64 { // '太阳真赤纬
-	eps := TrueObliquity(jd)
-	sunTrueDec := ArcSin(Sin(eps) * Sin(SunTrueLo(jd)))
+func SunTrueDec(jde float64) float64 { // '太阳真赤纬
+	eps := TrueObliquity(jde)
+	sunTrueDec := ArcSin(Sin(eps) * Sin(SunTrueLo(jde)))
 	return sunTrueDec
 }
 
-func SunTime(jd float64) float64 { //均时差
-	tm := (SunLo(jd) - 0.0057183 - (HSunApparentRa(jd)) + (Nutation2000Bi(jd))*Cos(TrueObliquity(jd))) / 15
+// SunTime 均时差，单位小时 / equation of time in hours.
+//
+// jde 按力学时取用；CulminationTime 传的是本地民用日锚点，历元差最大半天，
+// 对均时差的影响在 10 s 量级，是该近似入口的既有取舍。
+func SunTime(jde float64) float64 { //均时差
+	tm := (SunLo(jde) - 0.0057183 - (HSunApparentRa(jde)) + (Nutation2000Bi(jde))*Cos(TrueObliquity(jde))) / 15
 	if tm > 23 {
 		tm = -24 + tm
 	}
 	return tm
 }
 
-func SunTimeN(jd float64, n int) float64 { //均时差
-	tm := (SunLo(jd) - 0.0057183 - (HSunApparentRaN(jd, n)) + (Nutation2000Bi(jd))*Cos(TrueObliquity(jd))) / 15
+func SunTimeN(jde float64, n int) float64 { //均时差
+	tm := (SunLo(jde) - 0.0057183 - (HSunApparentRaN(jde, n)) + (Nutation2000Bi(jde))*Cos(TrueObliquity(jde))) / 15
 	if tm > 23 {
 		tm = -24 + tm
 	}
@@ -99,84 +103,84 @@ func SunSC(lo, jd float64) float64 { //黄道上的岁差，仅黄纬=0时
 }
 
 // 高精度，使用VSOP87
-func HSunTrueLo(jd float64) float64 {
-	return HSunTrueLoN(jd, -1)
+func HSunTrueLo(jde float64) float64 {
+	return HSunTrueLoN(jde, -1)
 }
 
 // HSunTrueLoN 高精度太阳真黄经，n<0 时取全量 VSOP 项。
-func HSunTrueLoN(jd float64, n int) float64 {
-	return planet.WherePlanetN(0, 0, jd, n)
+func HSunTrueLoN(jde float64, n int) float64 {
+	return planet.WherePlanetN(0, 0, jde, n)
 }
 
-func HSunTrueBo(jd float64) float64 {
-	return HSunTrueBoN(jd, -1)
+func HSunTrueBo(jde float64) float64 {
+	return HSunTrueBoN(jde, -1)
 }
 
 // HSunTrueBoN 高精度太阳真黄纬，n<0 时取全量 VSOP 项。
-func HSunTrueBoN(jd float64, n int) float64 {
-	return planet.WherePlanetN(0, 1, jd, n)
+func HSunTrueBoN(jde float64, n int) float64 {
+	return planet.WherePlanetN(0, 1, jde, n)
 }
 
-func HSunApparentLo(jd float64) float64 {
-	return HSunApparentLoN(jd, -1)
+func HSunApparentLo(jde float64) float64 {
+	return HSunApparentLoN(jde, -1)
 }
 
-func HSunApparentLoN(jd float64, n int) float64 {
-	lo := HSunTrueLoN(jd, n)
-	lo = lo + Nutation2000Bi(jd) + SunLoGXCN(jd, n)
+func HSunApparentLoN(jde float64, n int) float64 {
+	lo := HSunTrueLoN(jde, n)
+	lo = lo + Nutation2000Bi(jde) + SunLoGXCN(jde, n)
 	return lo
 }
 
-func SunLoGXC(jd float64) float64 {
-	return SunLoGXCN(jd, -1)
+func SunLoGXC(jde float64) float64 {
+	return SunLoGXCN(jde, -1)
 }
 
-func SunLoGXCN(jd float64, n int) float64 {
-	radius := EarthAwayN(jd, n)
+func SunLoGXCN(jde float64, n int) float64 {
+	radius := EarthAwayN(jde, n)
 	return -20.49552 / radius / 3600
 }
 
-func EarthAway(jd float64) float64 {
-	return EarthAwayN(jd, -1)
+func EarthAway(jde float64) float64 {
+	return EarthAwayN(jde, -1)
 }
 
-func EarthAwayN(jd float64, n int) float64 {
-	return planet.WherePlanetN(0, 2, jd, n)
+func EarthAwayN(jde float64, n int) float64 {
+	return planet.WherePlanetN(0, 2, jde, n)
 }
 
-func HSunApparentRaDec(jd float64) (float64, float64) {
-	return HSunApparentRaDecN(jd, -1)
+func HSunApparentRaDec(jde float64) (float64, float64) {
+	return HSunApparentRaDecN(jde, -1)
 }
 
-func HSunApparentRaDecN(jd float64, n int) (float64, float64) {
-	ra, dec, _ := hSunApparentRaDecDistanceN(jd, n)
+func HSunApparentRaDecN(jde float64, n int) (float64, float64) {
+	ra, dec, _ := hSunApparentRaDecDistanceN(jde, n)
 	return ra, dec
 }
 
-func hSunApparentRaDecDistanceN(jd float64, n int) (ra, dec, distanceAU float64) {
-	trueLongitude := HSunTrueLoN(jd, n)
-	trueLatitude := HSunTrueBoN(jd, n)
-	distanceAU = EarthAwayN(jd, n)
-	apparentLongitude := trueLongitude + Nutation2000Bi(jd) - 20.49552/distanceAU/3600
-	ra, dec = LoBoToRaDec(jd, apparentLongitude, trueLatitude)
+func hSunApparentRaDecDistanceN(jde float64, n int) (ra, dec, distanceAU float64) {
+	trueLongitude := HSunTrueLoN(jde, n)
+	trueLatitude := HSunTrueBoN(jde, n)
+	distanceAU = EarthAwayN(jde, n)
+	apparentLongitude := trueLongitude + Nutation2000Bi(jde) - 20.49552/distanceAU/3600
+	ra, dec = LoBoToRaDec(jde, apparentLongitude, trueLatitude)
 	return ra, dec, distanceAU
 }
 
-func HSunApparentRa(jd float64) float64 { // '太阳视赤经
-	return HSunApparentRaN(jd, -1)
+func HSunApparentRa(jde float64) float64 { // '太阳视赤经
+	return HSunApparentRaN(jde, -1)
 }
 
-func HSunApparentRaN(jd float64, n int) float64 { // '太阳视赤经
-	return LoToRa(jd, HSunApparentLoN(jd, n), HSunTrueBoN(jd, n))
+func HSunApparentRaN(jde float64, n int) float64 { // '太阳视赤经
+	return LoToRa(jde, HSunApparentLoN(jde, n), HSunTrueBoN(jde, n))
 }
 
-func HSunTrueRa(jd float64) float64 {
-	return HSunTrueRaN(jd, -1)
+func HSunTrueRa(jde float64) float64 {
+	return HSunTrueRaN(jde, -1)
 }
 
-func HSunTrueRaN(jd float64, n int) float64 {
-	sunTrueLo := HSunTrueLoN(jd, n)
-	eps := TrueObliquity(jd)
+func HSunTrueRaN(jde float64, n int) float64 {
+	sunTrueLo := HSunTrueLoN(jde, n)
+	eps := TrueObliquity(jde)
 
 	numerator := Cos(eps) * Sin(sunTrueLo)
 	denominator := Cos(sunTrueLo)
@@ -184,22 +188,22 @@ func HSunTrueRaN(jd float64, n int) float64 {
 	return ArcTan2(numerator, denominator)
 }
 
-func HSunApparentDec(jd float64) float64 { // '太阳视赤纬
-	return HSunApparentDecN(jd, -1)
+func HSunApparentDec(jde float64) float64 { // '太阳视赤纬
+	return HSunApparentDecN(jde, -1)
 }
 
-func HSunApparentDecN(jd float64, n int) float64 { // '太阳视赤纬
-	return ArcSin(Sin(EclipticObliquity(jd, true)) * Sin(HSunApparentLoN(jd, n)))
+func HSunApparentDecN(jde float64, n int) float64 { // '太阳视赤纬
+	return ArcSin(Sin(EclipticObliquity(jde, true)) * Sin(HSunApparentLoN(jde, n)))
 }
 
-func HSunTrueDec(jd float64) float64 { // '太阳真赤纬
-	return HSunTrueDecN(jd, -1)
+func HSunTrueDec(jde float64) float64 { // '太阳真赤纬
+	return HSunTrueDecN(jde, -1)
 }
 
-func HSunTrueDecN(jd float64, n int) float64 { // '太阳真赤纬
-	return ArcSin(Sin(EclipticObliquity(jd, false)) * Sin(HSunTrueLoN(jd, n)))
+func HSunTrueDecN(jde float64, n int) float64 { // '太阳真赤纬
+	return ArcSin(Sin(EclipticObliquity(jde, false)) * Sin(HSunTrueLoN(jde, n)))
 }
 
-func Distance(jd float64) float64 { //ri di ju li
-	return planet.Distance(jd)
+func Distance(jde float64) float64 { //ri di ju li
+	return planet.Distance(jde)
 }

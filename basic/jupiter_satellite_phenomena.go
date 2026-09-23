@@ -22,18 +22,18 @@ type JupiterGalileanPhenomenon struct {
 }
 
 // JupiterGalileanSatellitePhenomenon 单颗伽利略卫星瞬时现象 / instantaneous phenomena of one Galilean satellite.
-func JupiterGalileanSatellitePhenomenon(jd float64, satellite int) JupiterGalileanPhenomenon {
-	if satellite < 1 || satellite > 4 || !isFinite(jd) {
+func JupiterGalileanSatellitePhenomenon(jde float64, satellite int) JupiterGalileanPhenomenon {
+	if satellite < 1 || satellite > 4 || !isFinite(jde) {
 		return invalidJupiterGalileanPhenomenon()
 	}
-	context := newJupiterGalileanObservationContext(jd)
+	context := newJupiterGalileanObservationContext(jde)
 	return context.phenomenonForSatellite(satellite - 1)
 }
 
 // JupiterGalileanSatellitePhenomena 四颗伽利略卫星瞬时现象 / instantaneous phenomena of the four Galilean satellites.
-func JupiterGalileanSatellitePhenomena(jd float64) [4]JupiterGalileanPhenomenon {
+func JupiterGalileanSatellitePhenomena(jde float64) [4]JupiterGalileanPhenomenon {
 	var phenomena [4]JupiterGalileanPhenomenon
-	context := newJupiterGalileanObservationContext(jd)
+	context := newJupiterGalileanObservationContext(jde)
 	for i := range phenomena {
 		phenomena[i] = context.phenomenonForSatellite(i)
 	}

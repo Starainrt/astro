@@ -20,7 +20,10 @@ import (
 // 1.8e-12 deg^2, just past the shared splitter's 1e-12 zero-area floor). The lunar export must
 // drop it without dropping polygons that do have area.
 func TestLunarGeoJSONDropsAntimeridianSlivers(t *testing.T) {
-	for _, day := range []string{"2022-11-08", "2026-03-03", "4026-03-16", "1904-09-24", "2025-03-14"} {
+	for _, day := range []string{
+		"2022-11-08", "2026-03-03", "4026-03-16", "1904-09-24", "2025-03-14",
+		"2028-12-31", "0275-09-22", "0386-09-24", "1076-09-15", "2396-03-25",
+	} {
 		t.Run(day, func(t *testing.T) {
 			date, err := time.Parse("2006-01-02", day)
 			if err != nil {
@@ -35,7 +38,14 @@ func TestLunarGeoJSONDropsAntimeridianSlivers(t *testing.T) {
 				t.Fatal(err)
 			}
 			collection := decodeCollection(t, data)
-			for _, role := range []string{"visible-at-p1", "visible-at-p4"} {
+			roles := []string{
+				"visible-at-p1", "visible-at-p4", "visible-during-eclipse", "visible-throughout-eclipse",
+			}
+			// 纯半影月食没有本影接触，不导出两条仅见半影带。
+			if info.HasPartial {
+				roles = append(roles, "penumbra-moonset", "penumbra-moonrise")
+			}
+			for _, role := range roles {
 				feature := featureWithRole(t, collection, role)
 				var polygons [][][][]float64
 				if err := json.Unmarshal(feature.Geometry.Coordinates, &polygons); err != nil {

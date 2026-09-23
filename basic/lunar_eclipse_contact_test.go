@@ -38,7 +38,7 @@ func TestLunarEclipseAbsentPhasesAreNaN(t *testing.T) {
 
 func TestLunarEclipseWithoutEclipseHasNoContacts(t *testing.T) {
 	// 2025-01-13 的望月没有月食（半影食分 < 0）。
-	eclipse := LunarEclipse(JDECalc(2025, 1, 13))
+	eclipse := LunarEclipse(JDCalc(2025, 1, 13))
 	if eclipse.Type != LunarEclipseNone {
 		t.Fatalf("type = %s, want %s", eclipse.Type, LunarEclipseNone)
 	}
@@ -63,7 +63,7 @@ func TestLunarEclipseWithoutEclipseHasNoContacts(t *testing.T) {
 }
 
 func TestLunarEclipseTotalKeepsAllContactsFinite(t *testing.T) {
-	eclipse := LunarEclipse(JDECalc(2025, 3, 14))
+	eclipse := LunarEclipse(JDCalc(2025, 3, 14))
 	if eclipse.Type != LunarEclipseTotal || !eclipse.HasPenumbral || !eclipse.HasPartial || !eclipse.HasTotal {
 		t.Fatalf("unexpected result: %+v", eclipse)
 	}
@@ -92,7 +92,7 @@ func TestLunarEclipseDiagramSkipsAbsentPhases(t *testing.T) {
 			t.Fatalf("non-finite diagram point: %+v", point)
 		}
 	}
-	if empty := LunarEclipseDiagram(JDECalc(2025, 1, 13), LunarEclipseDiagramOptions{}); len(empty.Points) != 0 {
+	if empty := LunarEclipseDiagram(JDCalc(2025, 1, 13), LunarEclipseDiagramOptions{}); len(empty.Points) != 0 {
 		t.Fatalf("eclipse-free diagram should have no points, got %d", len(empty.Points))
 	}
 }

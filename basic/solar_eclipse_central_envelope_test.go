@@ -6,7 +6,7 @@ import (
 )
 
 func TestSolarEclipse20120521CentralBandIsContinuousCriticalEnvelope(t *testing.T) {
-	seed := JDECalc(2012, 5, 21)
+	seed := JDCalc(2012, 5, 21)
 	result := SolarEclipsePartialFootprints(seed, SolarEclipsePartialFootprintOptions{
 		StepDays: 2.0 / 1440.0, BoundaryPoints: 96,
 	})
@@ -72,7 +72,7 @@ func TestSolarEclipse20120521CentralBandIsContinuousCriticalEnvelope(t *testing.
 }
 
 func TestSolarEclipseCentralEnvelopeIndependentOfRiseSetOutput(t *testing.T) {
-	seed := JDECalc(2012, 5, 21)
+	seed := JDCalc(2012, 5, 21)
 	withCurves := SolarEclipsePartialFootprints(seed, SolarEclipsePartialFootprintOptions{StepDays: 2.0 / 1440, BoundaryPoints: 96})
 	withoutCurves := SolarEclipsePartialFootprints(seed, SolarEclipsePartialFootprintOptions{StepDays: 2.0 / 1440, BoundaryPoints: 96, DisableRiseSetCurves: true})
 	if len(withoutCurves.CentralBandSegments) == 0 {

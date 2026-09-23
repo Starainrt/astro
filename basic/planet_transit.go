@@ -79,7 +79,7 @@ func mercuryTransitConfig() planetTransitConfig {
 	return planetTransitConfig{
 		planetIndex:        1,
 		synodicPeriodDays:  MERCURY_S_PERIOD,
-		anchorInferiorTT:   TD2UT(JDECalc(2019, 11, 11+(15+21.0/60+40.0/3600)/24), true),
+		anchorInferiorTT:   UTC2TT(JDCalc(2019, 11, 11+(15+21.0/60+40.0/3600)/24)),
 		seasonWindowDays:   12,
 		latitudePrefilter:  1.0,
 		conjunctionStepDay: 0.00001,
@@ -96,7 +96,7 @@ func venusTransitConfig() planetTransitConfig {
 	return planetTransitConfig{
 		planetIndex:        2,
 		synodicPeriodDays:  VENUS_S_PERIOD,
-		anchorInferiorTT:   TD2UT(JDECalc(2012, 6, 6+(1+29.0/60)/24), true),
+		anchorInferiorTT:   UTC2TT(JDCalc(2012, 6, 6+(1+29.0/60)/24)),
 		seasonWindowDays:   8,
 		latitudePrefilter:  0.8,
 		conjunctionStepDay: 0.00001,
@@ -160,12 +160,12 @@ func closestPlanetTransit(jde float64, cfg planetTransitConfig) PlanetTransitRes
 	return next
 }
 
-func searchPlanetTransit(jde float64, cfg planetTransitConfig, direction int, includeCurrent bool) (PlanetTransitResult, bool) {
-	if !isFiniteFloat(jde) || direction == 0 {
+func searchPlanetTransit(jd float64, cfg planetTransitConfig, direction int, includeCurrent bool) (PlanetTransitResult, bool) {
+	if !isFiniteFloat(jd) || direction == 0 {
 		return PlanetTransitResult{}, false
 	}
 
-	targetTT := TD2UT(jde, true)
+	targetTT := UTC2TT(jd)
 	probeTT := targetTT
 	for i := 0; i < planetTransitSearchLimit; i++ {
 		seasonTT, ok := nextPlanetTransitSeasonTT(probeTT, cfg, direction)
@@ -495,14 +495,14 @@ func bisectPlanetTransitContactTT(leftJD, leftValue, rightJD, rightValue float64
 }
 
 func planetTransitResultTTToUT(result PlanetTransitResult) PlanetTransitResult {
-	result.Greatest = TD2UT(result.Greatest, false)
-	result.ExternalIngress = TD2UT(result.ExternalIngress, false)
-	result.ExternalEgress = TD2UT(result.ExternalEgress, false)
+	result.Greatest = TT2UTC(result.Greatest)
+	result.ExternalIngress = TT2UTC(result.ExternalIngress)
+	result.ExternalEgress = TT2UTC(result.ExternalEgress)
 	if result.InternalIngress != 0 {
-		result.InternalIngress = TD2UT(result.InternalIngress, false)
+		result.InternalIngress = TT2UTC(result.InternalIngress)
 	}
 	if result.InternalEgress != 0 {
-		result.InternalEgress = TD2UT(result.InternalEgress, false)
+		result.InternalEgress = TT2UTC(result.InternalEgress)
 	}
 	return result
 }

@@ -16,6 +16,8 @@ const (
 type SolarEclipseShadowSolverOptions struct {
 	// Model 月亮半径模型，零值为 NASA bulletin Split-K / lunar radius model.
 	Model SolarEclipseRadiusModel
+	// SunRadiusModel 太阳半径口径，零值为标准档 / solar radius convention, standard when zero.
+	SunRadiusModel SolarEclipseSunRadiusModel
 	// DeltaTSeconds 显式 ΔT（秒），<=0 用进程级模型，只改变地球自转相位 / explicit ΔT in seconds.
 	DeltaTSeconds float64
 	// BoundaryPoints 边界角向采样点数，<=0 用 96 / boundary sample count.
@@ -100,6 +102,8 @@ type SolarEclipseShadowInstant struct {
 	JDE float64
 	// Model 本次使用的月亮半径模型 / lunar radius model used.
 	Model SolarEclipseRadiusModel
+	// SunRadiusModel 本次使用的太阳半径口径 / solar radius convention used.
+	SunRadiusModel SolarEclipseSunRadiusModel
 	// DeltaTSeconds 实际使用的 ΔT / ΔT actually used.
 	DeltaTSeconds float64
 	// Kind 本次计算的阴影类型 / shadow kind of this computation.
@@ -130,9 +134,8 @@ type SolarEclipseShadowSolver struct {
 
 // NewSolarEclipseShadowSolver 构造单时刻求解器 / builds a single-instant solver.
 func NewSolarEclipseShadowSolver(options SolarEclipseShadowSolverOptions) *SolarEclipseShadowSolver {
-	if options.Model != SolarEclipseModelIAUSingleK {
-		options.Model = SolarEclipseModelNASABulletinSplitK
-	}
+	options.Model = normalizeSolarEclipseRadiusModel(options.Model)
+	options.SunRadiusModel = normalizeSolarEclipseSunRadiusModel(options.SunRadiusModel)
 	if options.BoundaryPoints <= 0 {
 		options.BoundaryPoints = solarEclipseShadowDefaultBoundaryPoints
 	}
@@ -170,19 +173,20 @@ func (solver *SolarEclipseShadowSolver) ShadowAtJDE(jdeTT float64) (SolarEclipse
 	)
 	if len(footprint.Boundaries) == 0 {
 		return SolarEclipseShadowInstant{
-			JDE: jdeTT, Model: solver.options.Model,
+			JDE: jdeTT, Model: solver.options.Model, SunRadiusModel: solver.options.SunRadiusModel,
 			Kind: solver.options.Kind, DeltaTSeconds: deltaT,
 		}, false
 	}
 	return SolarEclipseShadowInstant{
-		JDE:           jdeTT,
-		Model:         solver.options.Model,
-		Kind:          solver.options.Kind,
-		DeltaTSeconds: deltaT,
-		Closed:        footprint.Closed,
-		Boundaries:    footprint.Boundaries,
-		HorizonEnds:   footprint.HorizonEnds,
-		Topology:      solarEclipseShadowFootprintTopology(footprint, solver.options.Kind),
+		JDE:            jdeTT,
+		Model:          solver.options.Model,
+		SunRadiusModel: solver.options.SunRadiusModel,
+		Kind:           solver.options.Kind,
+		DeltaTSeconds:  deltaT,
+		Closed:         footprint.Closed,
+		Boundaries:     footprint.Boundaries,
+		HorizonEnds:    footprint.HorizonEnds,
+		Topology:       solarEclipseShadowFootprintTopology(footprint, solver.options.Kind),
 	}, true
 }
 
@@ -196,8 +200,8 @@ func (options SolarEclipseShadowSolverOptions) shadowKind() solarEclipseShadowKi
 func (solver *SolarEclipseShadowSolver) effectiveDeltaT(jdeTT float64) float64 {
 	override := solver.options.DeltaTSeconds
 	if override <= 0 {
-		// 选项 0/负值表示"未覆盖"，用模型；显式 ΔT=0 需走 DeltaTSecondsAt 的直接调用。
-		override = math.NaN()
+		// ΔT 模型的自变量是 UT1，须先从输入的 TT 反解。
+		return ut1ToTTOffsetSeconds(ttToUT1JDE(jdeTT))
 	}
 	return DeltaTSecondsAt(jdeTT, override)
 }
@@ -209,7 +213,10 @@ func (solver *SolarEclipseShadowSolver) solverFor(jdeTT float64) solarEclipseSol
 	anchor := CalcMoonSHByJDE(jdeTT, 0)
 	solver.anchorSet = true
 	solver.anchorJDE = anchor
-	solver.anchorSolver = newSolarEclipseSolver(anchor, solver.options.Model)
+	solver.anchorSolver = newSolarEclipseSolverWithOptions(anchor, SolarEclipseOptions{
+		RadiusModel:    solver.options.Model,
+		SunRadiusModel: solver.options.SunRadiusModel,
+	})
 	return solver.anchorSolver
 }
 
@@ -289,7 +296,7 @@ type SolarEclipseStationState struct {
 	// HasTotalPhase 与 HasAnnularPhase 表示该瞬时是否处于全食或环食 / total or annular now.
 	HasTotalPhase   bool
 	HasAnnularPhase bool
-	// Visible 太阳中心高于几何地平，海拔用俯仰角修正阈值 / Sun center above the horizon.
+	// Visible 太阳中心高于几何地平，高度用俯仰角修正阈值 / Sun center above the horizon.
 	Visible bool
 }
 
@@ -303,7 +310,8 @@ func (solver *SolarEclipseShadowSolver) StationStateAtJDE(
 	deltaT := solver.effectiveDeltaT(jdeTT)
 	heightKM := heightMeters / 1000
 	state := localSolarEclipseStateAtWithDeltaT(
-		jdeTT, deltaT, lonDeg*rad, latDeg*rad, heightKM, solarEclipseModelParams(solver.options.Model),
+		jdeTT, deltaT, lonDeg*rad, latDeg*rad, heightKM,
+		solarEclipseModelParams(solver.options.Model, solver.options.SunRadiusModel),
 	)
 	contact := state.movingDiskContactState()
 	central := contact.internalContactGap() <= 0

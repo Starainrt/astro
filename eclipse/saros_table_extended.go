@@ -5,8 +5,8 @@ package eclipse
 // UTC astronomical years -3000 through +6000, including both end years.
 // Series numbers follow NASA's Saros-Inex rules. Members are computed with
 // Split-K solar geometry and the union of Danjon/Chauvenet lunar detections.
-const sarosExtendedStartTT = 625308.343822260154
-const sarosExtendedEndTT = 3912881.135478473268
+const sarosExtendedStartTT = 625308.343824885320
+const sarosExtendedEndTT = 3912880.500800740905
 
 var solarSarosExtended = [...]sarosSpan{
 	{Series: -47, First: -79891, Last: -61605, Member: 1, Count: 83},

@@ -18,7 +18,7 @@ func assertClose(t *testing.T, name string, got, want, tolerance float64) {
 
 func TestEclipticEquatorialWrappers(t *testing.T) {
 	date := time.Date(2026, 4, 27, 10, 30, 45, 0, time.FixedZone("CST", 8*3600))
-	jde := basic.Date2JDE(date.UTC())
+	jde := basic.Date2JD(date.UTC())
 	lon := 139.686111
 	lat := 4.875278
 
@@ -35,10 +35,10 @@ func TestEclipticEquatorialWrappers(t *testing.T) {
 func TestTimeAndPrecessionWrappers(t *testing.T) {
 	date := time.Date(2026, 4, 27, 2, 30, 45, 0, time.UTC)
 	to := time.Date(2050, 1, 1, 0, 0, 0, 0, time.UTC)
-	jde := basic.Date2JDE(date.UTC())
+	jde := basic.Date2JD(date.UTC())
 
-	assertClose(t, "mean sidereal time", MeanSiderealTime(date), basic.MeanSiderealTime(jde), 1e-12)
-	assertClose(t, "apparent sidereal time", ApparentSiderealTime(date), basic.ApparentSiderealTime(jde), 1e-12)
+	assertClose(t, "mean sidereal time", MeanSiderealTime(date), basic.MeanSiderealTime(basic.UTC2UT1(jde)), 1e-12)
+	assertClose(t, "apparent sidereal time", ApparentSiderealTime(date), basic.ApparentSiderealTime(basic.UTC2UT1(jde)), 1e-12)
 	assertClose(t, "obliquity", EclipticObliquity(date, true), basic.EclipticObliquity(jde, true), 1e-12)
 
 	gotLon, gotObl := Nutation2000B(date)
@@ -47,14 +47,14 @@ func TestTimeAndPrecessionWrappers(t *testing.T) {
 	assertClose(t, "nutation obliquity", gotObl, wantObl, 1e-12)
 
 	got := Precess(date, to, 101.28715533, -16.71611586)
-	wantRA, wantDec := basic.Precess(101.28715533, -16.71611586, jde, basic.Date2JDE(to.UTC()))
+	wantRA, wantDec := basic.Precess(101.28715533, -16.71611586, jde, basic.Date2JD(to.UTC()))
 	assertClose(t, "precess ra", got.RA, wantRA, 1e-12)
 	assertClose(t, "precess dec", got.Dec, wantDec, 1e-12)
 }
 
 func TestHorizontalAndTopocentricWrappers(t *testing.T) {
 	date := time.Date(2026, 4, 27, 2, 30, 45, 0, time.UTC)
-	jde := basic.Date2JDE(date.UTC())
+	jde := basic.Date2JD(date.UTC())
 	ra := 101.28715533
 	dec := -16.71611586
 	observerLon := 115.0
@@ -82,6 +82,37 @@ func TestAngularSeparationWrapper(t *testing.T) {
 	got := AngularSeparation(101.28715533, -16.71611586, 95.9879578, -52.6956611)
 	want := basic.StarAngularSeparation(101.28715533, -16.71611586, 95.9879578, -52.6956611)
 	assertClose(t, "angular separation", got, want, 1e-12)
+}
+
+// 站心黄道纬度必须留在 [-90,90]，且与"站心赤道坐标再转黄道"这条独立路径一致。
+// 旧实现把黄经的分母复用到纬度的 Atan2：黄经落在 90°–270° 时纬度会被切到对顶象限
+// （物理 +4.7° 报成约 -176°），且大视差目标（月球）量值也偏。
+func TestTopocentricEclipticLatitudeStaysPhysical(t *testing.T) {
+	date := time.Date(2026, 1, 15, 4, 0, 0, 0, time.UTC)
+	const (
+		observerLon = 115.0
+		observerLat = 40.0
+		height      = 53.0
+		distanceAU  = 0.00257
+	)
+	cases := []struct{ lon, lat float64 }{
+		{254.978443, -5.093420}, // 黄经落在 90°–270°，旧实现翻象限
+		{109.000000, 4.681960},  // 黄经落在 0°–90°，作对照
+	}
+	for _, tc := range cases {
+		got := TopocentricEcliptic(date, tc.lon, tc.lat, observerLon, observerLat, distanceAU, height)
+		if got.Lat < -90 || got.Lat > 90 {
+			t.Fatalf("黄经 %.6f: 站心黄纬 %.6f 越出 [-90,90]", tc.lon, got.Lat)
+		}
+		eq := EclipticToEquatorial(date, tc.lon, tc.lat)
+		top := TopocentricEquatorial(date, eq.RA, eq.Dec, observerLon, observerLat, distanceAU, height)
+		want := EquatorialToEcliptic(date, top.RA, top.Dec)
+		assertClose(t, "topocentric lon", got.Lon, want.Lon, 1e-9)
+		assertClose(t, "topocentric lat", got.Lat, want.Lat, 1e-9)
+		if math.Abs(got.Lat-tc.lat) > 1.5 {
+			t.Fatalf("黄经 %.6f: 站心黄纬 %.6f 与地心黄纬 %.6f 的差超过月球视差量级", tc.lon, got.Lat, tc.lat)
+		}
+	}
 }
 
 // TopocentricEcliptic 对同一时刻只求一次儒略日：参考实现按旧口径重复求值，逐位对照。
@@ -154,8 +185,8 @@ func TestTopocentricEclipticMatchesDuplicatedJDE(t *testing.T) {
 
 	for _, tc := range cases {
 		got := TopocentricEcliptic(tc.date, tc.lon, tc.lat, tc.obsLon, tc.obsLat, tc.distanceAU, tc.height)
-		wantLon := basic.TopocentricLo(tc.lon, tc.lat, tc.obsLat, tc.obsLon, jdeUTC(tc.date), tc.distanceAU, tc.height)
-		wantLat := basic.TopocentricBo(tc.lon, tc.lat, tc.obsLat, tc.obsLon, jdeUTC(tc.date), tc.distanceAU, tc.height)
+		wantLon := basic.TopocentricLo(tc.lon, tc.lat, tc.obsLat, tc.obsLon, jdUTC(tc.date), tc.distanceAU, tc.height)
+		wantLat := basic.TopocentricBo(tc.lon, tc.lat, tc.obsLat, tc.obsLon, jdUTC(tc.date), tc.distanceAU, tc.height)
 		if got.Lon != wantLon || got.Lat != wantLat {
 			t.Fatalf("%s %s: got (%.17g, %.17g) want (%.17g, %.17g)", tc.label, tc.date.Format(time.RFC3339Nano), got.Lon, got.Lat, wantLon, wantLat)
 		}

@@ -35,7 +35,7 @@ func TestGeocentricApparentRaDecDiffersFromTopocentricAtSite(t *testing.T) {
 func TestTrueRaDecUsesBasicGeocentricTrue(t *testing.T) {
 	date := time.Date(2026, 1, 1, 6, 0, 0, 0, time.UTC)
 
-	wantRA, wantDec := basic.HMoonGeocentricTrueRaDec(basic.TD2UT(basic.Date2JDE(date.UTC()), true))
+	wantRA, wantDec := basic.HMoonGeocentricTrueRaDec(basic.UTC2TT(basic.Date2JD(date.UTC())))
 	gotRA, gotDec := TrueRaDec(date)
 	if math.Abs(gotRA-wantRA) > 1e-12 || math.Abs(gotDec-wantDec) > 1e-12 {
 		t.Fatalf("TrueRaDec mismatch: got (%.15f, %.15f) want (%.15f, %.15f)", gotRA, gotDec, wantRA, wantDec)

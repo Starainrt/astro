@@ -217,7 +217,7 @@ func newOccultationRiseSetContext(
 	target := newOccultationRiseSetBody(targetRA, targetDec, targetDistanceKM)
 	return occultationRiseSetContext{
 		tt:              tt,
-		siderealDegrees: ApparentSiderealTime(TD2UT(tt, false)) * 15,
+		siderealDegrees: ApparentSiderealTime(TT2UT1(tt)) * 15,
 		moonRA:          moonRA,
 		moonDec:         moonDec,
 		moon:            moon,
@@ -245,7 +245,7 @@ func newOccultationRiseSetContextFromVectors(
 	target, _, _, targetOK := occultationRiseSetBodyFromVector(targetXYZ, targetAtFiniteDistance)
 	return occultationRiseSetContext{
 		tt:              tt,
-		siderealDegrees: ApparentSiderealTime(TD2UT(tt, false)) * 15,
+		siderealDegrees: ApparentSiderealTime(TT2UT1(tt)) * 15,
 		moonRA:          moonRA,
 		moonDec:         moonDec,
 		moon:            moon,
@@ -635,7 +635,7 @@ func (evaluation occultationRiseSetEvaluation) pointsAt(
 	if !evaluation.center.valid || !evaluation.before.valid || !evaluation.after.valid {
 		return result
 	}
-	gst := ApparentSiderealTime(TD2UT(evaluation.tt, false)) * 15
+	gst := ApparentSiderealTime(TT2UT1(evaluation.tt)) * 15
 	centerLongitude := normalizeLongitude(evaluation.center.moonRA - gst)
 	centerLatitude := evaluation.center.moonDec
 	appendRoots := func(greatest bool) {
@@ -774,6 +774,130 @@ func (evaluation occultationRiseSetEvaluation) classify(
 		Time:      occultationTTToLocation(evaluation.tt, location),
 		Longitude: longitude, Latitude: latitude, MoonAltitude: state.moonAltitude,
 	}, occultationRiseSetCurveKey{phase: phase, direction: direction}, true
+}
+
+// occultationSiderealRatePerDay 是视恒星时的角速率（弧度/日），用于观测者与天顶矢量的时间导数。
+const occultationSiderealRatePerDay = 2 * math.Pi * 1.00273790935
+
+// occultationRiseSetBodyVelocity 由前后时刻的体位置给出速度（千米/日）；点源（距离为零）返回零。
+func occultationRiseSetBodyVelocity(before, after occultationRiseSetBody, stepDays float64) occultationPathVector {
+	if stepDays <= 0 || before.distanceKM <= 0 || after.distanceKM <= 0 {
+		return occultationPathVector{}
+	}
+	return occultationPathScale(occultationPathSub(after.positionKM, before.positionKM), 1/(2*stepDays))
+}
+
+// occultationRiseSetDirectionRate 给出单位方向的时间导数 du/dt = (v − u(u·v))/|p|。
+func occultationRiseSetDirectionRate(position, velocity, direction occultationPathVector) occultationPathVector {
+	norm := occultationPathNorm(position)
+	if norm <= 0 {
+		return occultationPathVector{}
+	}
+	radial := occultationPathScale(direction, occultationPathDot(direction, velocity))
+	return occultationPathScale(occultationPathSub(velocity, radial), 1/norm)
+}
+
+// occultationRiseSetRadiusRate 给出视半径 asin(R/d) 的解析时间导数（度/日），d 为站心距离。
+func occultationRiseSetRadiusRate(
+	body occultationRiseSetBody,
+	observer, direction, velocity occultationPathVector,
+	radiusKM float64,
+) (float64, float64, bool) {
+	if body.distanceKM <= 0 || radiusKM <= 0 {
+		return 0, 0, true
+	}
+	position := occultationPathSub(body.positionKM, observer)
+	distance := occultationPathNorm(position)
+	if distance <= radiusKM {
+		return 0, 0, false
+	}
+	ratio := radiusKM / distance
+	sinRadius := math.Max(-1, math.Min(1, ratio))
+	cosRadius := math.Sqrt(math.Max(0, 1-sinRadius*sinRadius))
+	if cosRadius <= 1e-12 {
+		return 0, 0, false
+	}
+	return math.Asin(sinRadius) / rad,
+		-(ratio / distance) * occultationPathDot(velocity, direction) / cosRadius / rad, true
+}
+
+// contactRateAt 用体位置的前后差分给出接触度量的解析时间导数（度/日）：与 contactDerivative 的中心差分同口径，
+// 但没有差分噪声，且不需要为前后时刻各求一次站心几何。
+func (evaluation occultationRiseSetEvaluation) contactRateAt(longitude, latitude float64) float64 {
+	center := evaluation.center
+	observer, observerDistance, _ := occultationRiseSetObserverVectors(center.siderealDegrees, longitude, latitude)
+	observerVelocity := occultationPathCross(occultationPathVector{z: occultationSiderealRatePerDay}, observer)
+	moonPosition := occultationPathSub(center.moon.positionKM, observer)
+	targetPosition := occultationPathSub(center.target.positionKM, observer)
+	moonDirection := occultationRiseSetTopocentricDirection(center.moon, observer)
+	targetDirection := occultationRiseSetTopocentricDirection(center.target, observer)
+	moonVelocity := occultationPathSub(
+		occultationRiseSetBodyVelocity(evaluation.before.moon, evaluation.after.moon, occultationRiseSetDerivativeStepDays),
+		observerVelocity,
+	)
+	targetVelocity := occultationPathSub(
+		occultationRiseSetBodyVelocity(evaluation.before.target, evaluation.after.target, occultationRiseSetDerivativeStepDays),
+		observerVelocity,
+	)
+	if center.target.distanceKM <= 0 {
+		// 点源目标没有站心视差：视线方向就是地心视方向，速率取单位矢量的前后差分。
+		// 零位置减观测者会得到日尺度的虚假速率，掩带边界因此无法加密。
+		targetPosition = targetDirection
+		targetVelocity = occultationPathScale(
+			occultationPathSub(evaluation.after.target.direction, evaluation.before.target.direction),
+			1/(2*occultationRiseSetDerivativeStepDays),
+		)
+	}
+	moonDirectionRate := occultationRiseSetDirectionRate(moonPosition, moonVelocity, moonDirection)
+	targetDirectionRate := occultationRiseSetDirectionRate(targetPosition, targetVelocity, targetDirection)
+	cosSeparation := math.Max(-1, math.Min(1, occultationPathDot(moonDirection, targetDirection)))
+	sinSeparation := math.Sqrt(math.Max(0, 1-cosSeparation*cosSeparation))
+	if sinSeparation <= 1e-12 {
+		return math.NaN()
+	}
+	separationRate := -(occultationPathDot(moonDirectionRate, targetDirection) +
+		occultationPathDot(moonDirection, targetDirectionRate)) / sinSeparation / rad
+	if occultationRiseSetTopocentricDistance(center.moon, observerDistance) <= 0 {
+		return math.NaN()
+	}
+	moonRadius, moonRadiusRate, moonOK := occultationRiseSetRadiusRate(
+		center.moon, observer, moonDirection, moonVelocity, moonEquatorialRadiusKM,
+	)
+	targetRadius, targetRadiusRate, targetOK := occultationRiseSetRadiusRate(
+		center.target, observer, targetDirection, targetVelocity, center.targetRadiusKM,
+	)
+	if !moonOK || !targetOK {
+		return math.NaN()
+	}
+	if center.internalContact {
+		if moonRadius >= targetRadius {
+			return separationRate - (moonRadiusRate - targetRadiusRate)
+		}
+		return separationRate + (moonRadiusRate - targetRadiusRate)
+	}
+	return separationRate - moonRadiusRate - targetRadiusRate
+}
+
+// moonAltitudeRateAt 给出月球几何高度角的解析时间导数（度/日）。
+func (evaluation occultationRiseSetEvaluation) moonAltitudeRateAt(longitude, latitude float64) float64 {
+	center := evaluation.center
+	observer, _, zenith := occultationRiseSetObserverVectors(center.siderealDegrees, longitude, latitude)
+	spin := occultationPathVector{z: occultationSiderealRatePerDay}
+	observerVelocity := occultationPathCross(spin, observer)
+	moonPosition := occultationPathSub(center.moon.positionKM, observer)
+	moonDirection := occultationRiseSetTopocentricDirection(center.moon, observer)
+	moonVelocity := occultationPathSub(
+		occultationRiseSetBodyVelocity(evaluation.before.moon, evaluation.after.moon, occultationRiseSetDerivativeStepDays),
+		observerVelocity,
+	)
+	moonDirectionRate := occultationRiseSetDirectionRate(moonPosition, moonVelocity, moonDirection)
+	sinAltitude := math.Max(-1, math.Min(1, occultationPathDot(moonDirection, zenith)))
+	cosAltitude := math.Sqrt(math.Max(0, 1-sinAltitude*sinAltitude))
+	if cosAltitude <= 1e-12 {
+		return math.NaN()
+	}
+	return (occultationPathDot(moonDirectionRate, zenith) +
+		occultationPathDot(moonDirection, occultationPathCross(spin, zenith))) / cosAltitude / rad
 }
 
 func (evaluation occultationRiseSetEvaluation) contactDerivative(longitude, latitude float64) float64 {

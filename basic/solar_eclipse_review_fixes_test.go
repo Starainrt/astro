@@ -9,7 +9,7 @@ import (
 // 不能整体回落到食甚时刻。
 func TestSolarEclipseSampledBandVerticesKeepOwnTime(t *testing.T) {
 	for _, date := range [][3]int{{4862, 9, 28}, {1552, 7, 21}, {1874, 10, 10}} {
-		seed := JDECalc(date[0], date[1], float64(date[2]))
+		seed := JDCalc(date[0], date[1], float64(date[2]))
 		result := SolarEclipsePartialFootprintsNASABulletinSplitK(seed, SolarEclipsePartialFootprintOptions{
 			StepDays: 2.0 / 1440.0, BoundaryPoints: 96, RiseSetStepDays: 2.0 / 1440.0,
 		})
@@ -39,7 +39,7 @@ func TestSolarEclipseSampledBandVerticesKeepOwnTime(t *testing.T) {
 // 扫掠兜底的采样标记必须跟着 centralBandSweepPolygons 的返回值走，不能丢。
 func TestSolarEclipseCentralBandSweepKeepsSampledFlag(t *testing.T) {
 	for _, date := range [][3]int{{2024, 4, 8}, {1136, 6, 1}, {4862, 9, 28}, {1552, 7, 21}} {
-		seed := JDECalc(date[0], date[1], float64(date[2]))
+		seed := JDCalc(date[0], date[1], float64(date[2]))
 		band := SolarEclipsePartialFootprintsNASABulletinSplitK(seed, SolarEclipsePartialFootprintOptions{
 			StepDays: 2.0 / 1440.0, BoundaryPoints: 96, RiseSetStepDays: 2.0 / 1440.0,
 		})
@@ -86,7 +86,7 @@ func TestSolarEclipseArcBranchAngleMapsUnwrappedArcs(t *testing.T) {
 
 // 非 greatest 残差只允许算一次 stateAt；结果必须与"先算相位残差再单独算 stateAt"逐位一致。
 func TestSolarEclipseRiseSetArcResidualMatchesPhaseResidual(t *testing.T) {
-	seed := JDECalc(2024, 4, 8)
+	seed := JDCalc(2024, 4, 8)
 	solver := newSolarEclipseSolver(CalcMoonSHByJDE(seed, 0), SolarEclipseModelNASABulletinSplitK)
 	solver = solver.withLocalEphemeris()
 	result := solarEclipse(seed, SolarEclipseModelNASABulletinSplitK)
@@ -111,7 +111,7 @@ func TestSolarEclipseRiseSetArcResidualMatchesPhaseResidual(t *testing.T) {
 // 事件局部插值星历与精确星历的差别必须远小于任何求解容差，这是所有
 // "用插值星历迭代 + 精确星历复核"优化的前提。
 func TestSolarEclipseCandidateEvaluationMatchesExact(t *testing.T) {
-	seed := JDECalc(1136, 6, 1)
+	seed := JDCalc(1136, 6, 1)
 	solver := newSolarEclipseSolver(CalcMoonSHByJDE(seed, 0), SolarEclipseModelNASABulletinSplitK)
 	solver = solver.withLocalEphemeris()
 	center := solver.newMoonJDE
@@ -138,7 +138,7 @@ func TestSolarEclipseCandidateEvaluationMatchesExact(t *testing.T) {
 // 中心相时长的插值求解必须与完整站心解一致到远小于目录精度的量级。
 func TestSolarEclipseCentralDurationMatchesExactLocalSolve(t *testing.T) {
 	for _, date := range [][3]int{{2024, 4, 8}, {2009, 7, 22}, {2017, 8, 21}, {2020, 6, 21}, {1136, 6, 1}} {
-		seed := JDECalc(date[0], date[1], float64(date[2]))
+		seed := JDCalc(date[0], date[1], float64(date[2]))
 		result := SolarEclipseNASABulletinSplitK(seed)
 		solver := newSolarEclipseSolver(CalcMoonSHByJDE(seed, 0), SolarEclipseModelNASABulletinSplitK)
 		solver = solver.withLocalEphemeris()
@@ -168,7 +168,7 @@ func TestSolarEclipseCentralDurationMatchesExactLocalSolve(t *testing.T) {
 // 0.4651·|ΔΔT|·cosφ 千米。
 func TestSolarEclipsePathHonoursDeltaTOverride(t *testing.T) {
 	const override = 200.0
-	seed := JDECalc(2024, 4, 8)
+	seed := JDCalc(2024, 4, 8)
 	options := SolarEclipsePathOptions{StepDays: 2.0 / 1440.0, DeltaTSeconds: override}
 	path := SolarEclipseCentralPathNASABulletinSplitK(seed, options)
 	defaultPath := SolarEclipseCentralPathNASABulletinSplitK(seed, SolarEclipsePathOptions{StepDays: 2.0 / 1440.0})
@@ -225,7 +225,7 @@ func solarEclipseRingCenterDistanceKM(
 
 // 限界线必须来自与宽度同一份配对横截面；这里用独立的两次求解复算一遍作为对照。
 func TestSolarEclipseLimitPairsMatchIndependentSolve(t *testing.T) {
-	seed := JDECalc(2024, 4, 8)
+	seed := JDCalc(2024, 4, 8)
 	path := SolarEclipseCentralPathNASABulletinSplitK(seed, SolarEclipsePathOptions{StepDays: 2.0 / 1440.0})
 	solver := newSolarEclipseSolver(CalcMoonSHByJDE(seed, 0), SolarEclipseModelNASABulletinSplitK)
 	referenceNorth, _ := solver.centralPathLimits(path.CenterLine)
@@ -259,7 +259,7 @@ func TestSolarEclipseLimitPairsMatchIndependentSolve(t *testing.T) {
 
 // 事件级状态缓存必须有界，且 ΔT 世代变化后旧条目必须视为未命中。
 func TestSolarEclipseLocalStateContextCacheIsBounded(t *testing.T) {
-	seed := JDECalc(2024, 4, 8)
+	seed := JDCalc(2024, 4, 8)
 	solver := newSolarEclipseSolver(CalcMoonSHByJDE(seed, 0), SolarEclipseModelNASABulletinSplitK)
 	base := solver.newMoonJDE
 	for index := 0; index < 3*solarEclipseBesselGeometryCacheMaximumEntries; index++ {
@@ -297,7 +297,7 @@ func TestSolarEclipseRiseSetTopologyDegradedContract(t *testing.T) {
 	if solarEclipseRiseSetCurveTopologyComplete(overSegmented) {
 		t.Fatal("a 17-segment curve must not pass the topology audit")
 	}
-	seed := JDECalc(2024, 4, 8)
+	seed := JDCalc(2024, 4, 8)
 	result := SolarEclipsePartialFootprintsNASABulletinSplitK(seed, SolarEclipsePartialFootprintOptions{
 		StepDays: 2.0 / 1440.0, BoundaryPoints: 96, RiseSetStepDays: 2.0 / 1440.0,
 	})

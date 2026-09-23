@@ -111,17 +111,17 @@ func TestPlanetAbsoluteQuantitiesIgnoreInputTimezone(t *testing.T) {
 	}
 }
 
-func TestJDECalcRejectsGregorianGap(t *testing.T) {
+func TestJDCalcRejectsGregorianGap(t *testing.T) {
 	cases := []float64{5, 6.5, 10, 14.25}
 	for _, day := range cases {
-		got := basic.JDECalc(1582, 10, day)
+		got := basic.JDCalc(1582, 10, day)
 		if !math.IsNaN(got) {
 			t.Fatalf("1582-10-%v should be rejected, got %.15f", day, got)
 		}
 	}
 
-	before := basic.JDECalc(1582, 10, 4)
-	after := basic.JDECalc(1582, 10, 15)
+	before := basic.JDCalc(1582, 10, 4)
+	after := basic.JDCalc(1582, 10, 15)
 	if math.IsNaN(before) || math.IsNaN(after) {
 		t.Fatal("boundary dates around Gregorian reform should remain valid")
 	}
@@ -186,10 +186,10 @@ func TestObservationZenithMatchesIndependentFormula(t *testing.T) {
 
 	for _, date := range dates {
 		for _, place := range places {
-			jde := basic.Date2JDE(date)
+			jde := basic.Date2JD(date)
 			_, loc := date.Zone()
 			timezone := float64(loc) / 3600.0
-			tt := basic.TD2UT(jde-timezone/24, true)
+			tt := basic.UTC2TT(jde - timezone/24)
 
 			checks := []struct {
 				name    string

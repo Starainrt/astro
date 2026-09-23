@@ -60,7 +60,7 @@ func BenchmarkMoonZenith(b *testing.B) {
 
 func BenchmarkMoonHorizontalLegacy(b *testing.B) {
 	date, lon, lat := benchmarkHorizontalInputs()
-	jd := basic.Date2JDE(date.UTC())
+	jd := basic.Date2JD(date.UTC())
 	entries := []struct {
 		name string
 		pick func(altitude, azimuth, hourAngle float64) float64

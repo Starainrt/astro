@@ -858,11 +858,9 @@ func starOccultationPathFrameAt(tt float64, star StarCoordinate) (occultationPat
 func starOccultationEphemerisStateAt(tt float64, star StarCoordinate) starOccultationEphemerisState {
 	moonRA, moonDec := HMoonGeocentricApparentRaDecN(tt, -1)
 	moonDistanceKM := HMoonAwayN(tt, -1)
-	starRA, starDec := starApparentRaDecGeocentric(tt, star)
-	starDistanceKM := 0.0
-	if star.ParallaxMas > 0 {
-		starDistanceKM = 206264806.247 / star.ParallaxMas * occultationPathAstronomicalUnitKM
-	}
+	// 方向与距离必须来自同一次三维推进，否则视差修正会退回历元距离。
+	starRA, starDec, starDistanceAU := starApparentRaDecDistanceGeocentric(tt, star)
+	starDistanceKM := starDistanceAU * occultationPathAstronomicalUnitKM
 	return starOccultationEphemerisState{
 		moonRA: moonRA, moonDec: moonDec, moonDistanceKM: moonDistanceKM,
 		starRA: starRA, starDec: starDec, starDistanceKM: starDistanceKM,
@@ -993,6 +991,11 @@ func occultationPathScannedLimitsAtFrame(tt float64, frame occultationPathFrame)
 				if vector, _, ok := occultationPathBoundaryVector(frame, theta); ok {
 					consider(vector)
 				}
+			}
+			// 同 occultationPathFiniteCrossTrackExtrema：等差末样本与 rightTheta 差 1 ULP，
+			// 掠射时端点会被判"无地面交点"而丢掉极值，端点原值必须补采一次。
+			if vector, _, ok := occultationPathBoundaryVector(frame, rightTheta); ok {
+				consider(vector)
 			}
 		}
 	}
@@ -1258,7 +1261,7 @@ func occultationPathPointFromVectorWithMoon(
 	location *time.Location,
 ) OccultationPathPoint {
 	return occultationPathPointFromVectorWithMoonSidereal(
-		tt, vector, width, moon, ApparentSiderealTime(TD2UT(tt, false))*15, location,
+		tt, vector, width, moon, ApparentSiderealTime(TT2UT1(tt))*15, location,
 	)
 }
 
@@ -1531,8 +1534,8 @@ func occultationEarthLineIntersectionWithTolerance(origin, direction occultation
 }
 
 func occultationPathGeodetic(tt float64, vector occultationPathVector) (float64, float64) {
-	ut := TD2UT(tt, false)
-	return occultationPathGeodeticWithSidereal(vector, ApparentSiderealTime(ut)*15)
+	ut1 := TT2UT1(tt)
+	return occultationPathGeodeticWithSidereal(vector, ApparentSiderealTime(ut1)*15)
 }
 
 func occultationPathGeodeticWithSidereal(
@@ -1560,7 +1563,7 @@ type occultationPathEarthRotation struct {
 }
 
 func occultationPathEarthRotationAt(tt float64) occultationPathEarthRotation {
-	angle := ApparentSiderealTime(TD2UT(tt, false)) * 15 * math.Pi / 180
+	angle := ApparentSiderealTime(TT2UT1(tt)) * 15 * math.Pi / 180
 	return occultationPathEarthRotation{cosine: math.Cos(angle), sine: math.Sin(angle)}
 }
 

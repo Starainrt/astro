@@ -12,7 +12,7 @@ import (
 // be rebuilt from those samples instead of being exported as the short ribbon.
 func TestSolarEclipse18741010GrazingAnnularBandContainsSweep(t *testing.T) {
 	result := SolarEclipsePartialFootprints(
-		JDECalc(1874, 10, 10),
+		JDCalc(1874, 10, 10),
 		SolarEclipsePartialFootprintOptions{
 			StepDays: 2.0 / 1440.0, BoundaryPoints: 96, RiseSetStepDays: 2.0 / 1440.0,
 		},

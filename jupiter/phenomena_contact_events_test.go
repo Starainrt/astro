@@ -18,7 +18,7 @@ func TestGalileanPhenomenonContactEventWrappersMatchBasic(t *testing.T) {
 
 		got := ClosestGalileanPhenomenonContactEvent(queryMid, record.Satellite, phenomenonType)
 		want := basic.ClosestJupiterGalileanPhenomenonContactEvent(
-			basic.Date2JDE(queryMid.UTC()),
+			basic.Date2JD(queryMid.UTC()),
 			record.Satellite,
 			basic.JupiterGalileanPhenomenonType(phenomenonType),
 		)
@@ -43,7 +43,7 @@ func assertGalileanContactWrapperMatchesBasic(
 	if got.Greatest.Location() != loc {
 		t.Fatalf("%s greatest timezone mismatch", name)
 	}
-	wantGreatest := basic.JDE2DateByZone(want.Greatest, loc, false)
+	wantGreatest := basic.JD2DateByZone(want.Greatest, loc, false)
 	if !got.Greatest.Equal(wantGreatest) {
 		t.Fatalf("%s greatest mismatch: got %s want %s", name, got.Greatest.Format(time.RFC3339Nano), wantGreatest.Format(time.RFC3339Nano))
 	}
@@ -69,9 +69,9 @@ func assertGalileanContactMatchesBasic(
 	if !got.Valid {
 		return
 	}
-	wantStart := basic.JDE2DateByZone(want.Start, loc, false)
-	wantModel := basic.JDE2DateByZone(want.ModelCrossing, loc, false)
-	wantEnd := basic.JDE2DateByZone(want.End, loc, false)
+	wantStart := basic.JD2DateByZone(want.Start, loc, false)
+	wantModel := basic.JD2DateByZone(want.ModelCrossing, loc, false)
+	wantEnd := basic.JD2DateByZone(want.End, loc, false)
 	if got.Start.Location() != loc || got.ModelCrossing.Location() != loc || got.End.Location() != loc {
 		t.Fatalf("%s timezone mismatch", name)
 	}

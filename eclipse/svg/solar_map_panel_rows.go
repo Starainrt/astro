@@ -69,11 +69,14 @@ func solarEclipseContactRows(
 		contact("U4 "+name("本影外切", "umbra ends"), partial.U4),
 	}
 	info := partial.Eclipse
-	// 非中心食没有中心线，带宽与中心食时长无从谈起，留空而不是写 0。
+	// 非中心食没有中心线，单侧极限的中心带只擦到地球边缘：两者带宽都无定义，留空而不是写 0 或发散值。
+	// 中心食时长不受影响，单侧极限事件同样有目录口径的时长。
 	pathWidth, centralDuration := "—", "—"
 	if info.HasCentral {
-		pathWidth = fmt.Sprintf("%.1f km", info.PathWidthKM)
 		centralDuration = formatSolarEclipseMapDuration(info.CentralDuration)
+		if info.PathWidthDefined {
+			pathWidth = fmt.Sprintf("%.1f km", info.PathWidthKM)
+		}
 	}
 	circumstances = []svgchart.PanelRow{
 		{Label: name("食甚", "Greatest"), Value: info.GreatestEclipse.In(options.Location).Format("15:04:05")},

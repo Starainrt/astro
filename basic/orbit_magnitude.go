@@ -3,14 +3,14 @@ package basic
 import "math"
 
 // OrbitAsteroidMagnitudeHG 返回小行星 H-G 模型的视星等。
-func OrbitAsteroidMagnitudeHG(jd float64, elements OrbitElements, absoluteMagnitude, slopeParameter float64) float64 {
-	if !isFinite(jd) || !isFinite(absoluteMagnitude) || !isFinite(slopeParameter) {
+func OrbitAsteroidMagnitudeHG(jde float64, elements OrbitElements, absoluteMagnitude, slopeParameter float64) float64 {
+	if !isFinite(jde) || !isFinite(absoluteMagnitude) || !isFinite(slopeParameter) {
 		return math.NaN()
 	}
 
-	sunDistance := OrbitSunDistance(jd, elements)
-	earthDistance := OrbitEarthDistance(jd, elements)
-	phaseAngle := OrbitPhaseAngle(jd, elements)
+	sunDistance := OrbitSunDistance(jde, elements)
+	earthDistance := OrbitEarthDistance(jde, elements)
+	phaseAngle := OrbitPhaseAngle(jde, elements)
 	if !isFinitePositive(sunDistance) || !isFinitePositive(earthDistance) || !isFinite(phaseAngle) {
 		return math.NaN()
 	}

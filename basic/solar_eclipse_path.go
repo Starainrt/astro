@@ -6,6 +6,8 @@ import (
 	"time"
 )
 
+//哦~我是一颗小地球~~
+
 const (
 	solarEclipsePathDefaultStepDays  = 1.0 / 1440.0
 	solarEclipsePathMinStepDays      = 1.0 / 86400.0
@@ -105,6 +107,9 @@ type SolarEclipsePathOptions struct {
 	// DeltaTSeconds is an explicit ΔT in seconds; values <= 0 use the process-wide
 	// model. The path and the instantaneous footprints of one figure must share it.
 	DeltaTSeconds float64
+	// SunRadiusModel 太阳半径口径，零值为标准档。
+	// SunRadiusModel is the solar radius convention; the zero value is the standard one.
+	SunRadiusModel SolarEclipseSunRadiusModel
 	// SkipCentralBand 表示调用方已经持有同一场日食的完整足迹结果（其中包含
 	// CentralBandSegments），本次只求解中心线、南北限界与地平线端点，不重复重建中心食带。
 	// 单场日食的中心带足迹是整条链路里最贵的一段，同时取足迹与路径时重复计算会翻倍。
@@ -138,6 +143,13 @@ type SolarEclipsePathPoint struct {
 type SolarEclipsePathResult struct {
 	// Eclipse 是对应的全局日食结果, related global solar eclipse result.
 	Eclipse SolarEclipseResult
+	// PathWidthDefined 表示本结果的带宽是否有定义：两限存在且上下两条限界线都非空时才为 true；
+	// 为 false 时 Eclipse.PathWidthKM 与 Greatest.WidthKM 都是 0，调用方引用带宽前必须先看这里。
+	// PathWidthDefined reports whether this result has a defined band width: both
+	// limits must exist and both limit lines must be non-empty. When it is false,
+	// Eclipse.PathWidthKM and Greatest.WidthKM are 0 and callers must check this
+	// flag before quoting a width.
+	PathWidthDefined bool
 	// Greatest 是食甚点/最佳观测点, greatest eclipse point.
 	Greatest SolarEclipsePathPoint
 	// MaxCentralDurationDays 是中心线上最长的中心食时长（单位为日），并给出其发生位置。
@@ -209,6 +221,9 @@ type SolarEclipsePartialFootprintOptions struct {
 	// DeltaTSeconds 显式 ΔT（秒），<=0 用进程级模型；与单时刻阴影层同口径。
 	// DeltaTSeconds is an explicit ΔT in seconds; values <= 0 use the process-wide model.
 	DeltaTSeconds float64
+	// SunRadiusModel 太阳半径口径，零值为标准档。
+	// SunRadiusModel is the solar radius convention; the zero value is the standard one.
+	SunRadiusModel SolarEclipseSunRadiusModel
 }
 
 // SolarEclipsePartialAreaOptions 是 SolarEclipsePartialFootprintOptions 的兼容别名。
@@ -407,7 +422,10 @@ func SolarEclipsePartialAreaNASABulletinSplitK(seedJDE float64, options SolarEcl
 func solarEclipseCentralPath(seedJDE float64, model SolarEclipseRadiusModel, options SolarEclipsePathOptions) SolarEclipsePathResult {
 	options = normalizeSolarEclipsePathOptions(options)
 	newMoonJDE := CalcMoonSHByJDE(seedJDE, 0)
-	solver := newSolarEclipseSolver(newMoonJDE, model).withDeltaTSeconds(options.DeltaTSeconds)
+	solver := newSolarEclipseSolverWithOptions(newMoonJDE, SolarEclipseOptions{
+		RadiusModel:    model,
+		SunRadiusModel: options.SunRadiusModel,
+	}).withDeltaTSeconds(options.DeltaTSeconds)
 	result := solver.eclipseResult()
 	path := SolarEclipsePathResult{
 		Eclipse:         result,
@@ -505,6 +523,16 @@ func solarEclipseCentralPath(seedJDE float64, model SolarEclipseRadiusModel, opt
 		result.CentralEndOnEarth,
 		solarEclipseCentralLimitTargetSpacingKM,
 	)
+	path.PathWidthDefined = result.Centrality == SolarEclipseCentralTwoLimits &&
+		len(path.NorthernLimit) > 0 && len(path.SouthernLimit) > 0
+	if !path.PathWidthDefined {
+		// 泛化到路径层：单侧极限只解出一侧限界，成对横截面凑不齐的事件连限界线都为空，
+		// 两者的解析带宽同样无定义，与中心线逐点宽度一并置 0，避免发散值从路径接口外泄。
+		// 后一种情形在当前扫描范围内不可达（1000–3000 年 4773 场、1800–2200 年 584 场 two_limits 均未触发），只是防御。
+		path.Eclipse.PathWidthKM = 0
+		path.Eclipse.PathWidthDefined = false
+		path.Greatest.WidthKM = 0
+	}
 	if options.SkipCentralBand {
 		return path
 	}
@@ -556,7 +584,10 @@ func solarEclipsePartialFootprints(
 	options SolarEclipsePartialFootprintOptions,
 ) SolarEclipsePartialFootprintsResult {
 	return solarEclipsePartialFootprintsWithResult(
-		seedJDE, model, options, solarEclipseWithDeltaT(seedJDE, model, options.DeltaTSeconds),
+		seedJDE, model, options, solarEclipseWithDeltaT(seedJDE, SolarEclipseOptions{
+			RadiusModel:    model,
+			SunRadiusModel: options.SunRadiusModel,
+		}, options.DeltaTSeconds),
 	)
 }
 
@@ -578,7 +609,10 @@ func solarEclipsePartialFootprintsWithResult(
 	}
 
 	newMoonJDE := CalcMoonSHByJDE(seedJDE, 0)
-	solver := newSolarEclipseSolver(newMoonJDE, model).withDeltaTSeconds(options.DeltaTSeconds)
+	solver := newSolarEclipseSolverWithOptions(newMoonJDE, SolarEclipseOptions{
+		RadiusModel:    model,
+		SunRadiusModel: options.SunRadiusModel,
+	}).withDeltaTSeconds(options.DeltaTSeconds)
 	footprintsResult, totalMagnitudeOneSegments := solver.centralBandWithResult(result, options)
 	// Partial and central-shadow sweeps used to enforce the point budget
 	// independently. A high-resolution request could therefore allocate
@@ -1059,6 +1093,7 @@ func solarEclipseCentralBandClosureSides(
 
 // centralBandHorizonClosureForSide 解出中心带一端的地平闭合弧；三种食型各有一条取根链，
 // 取不到唯一一对根就放弃该端（整条解析包络随之放弃）。
+// 扫描快路径让 4862-09-28 从采样带改判为解析带：闭包是几何真解，且解析带已通过采样足迹包含审计。
 func (solver solarEclipseSolver) centralBandHorizonClosureForSide(
 	result SolarEclipseResult,
 	footprintsResult SolarEclipsePartialFootprintsResult,
@@ -1080,6 +1115,17 @@ func (solver solarEclipseSolver) centralBandHorizonClosureForSide(
 		firstRoot, lastRoot, ok = solver.centralBandVectorHorizonRoots(
 			side.axisContactJDE, side.direction, side.shadowContactJDE, side.innerContactJDE,
 		)
+	} else if scanned := solver.centralLimitHorizonRootsByScan(
+		side.shadowContactJDE, side.innerContactJDE,
+	); len(scanned) == 2 {
+		// 扫描式枚举直接从闭包条件解出这一对根：它不依赖种子，因此采样分支恰好终止在
+		// 根上的掠地事件（1136-06-01）也不会漏根，代价是常数次星历求值。三种子牛顿链
+		// 只在扫描凑不齐一对时兜底——那种情形（1552-07-21）本来就该退回采样带。
+		firstRoot, lastRoot, ok = scanned[0], scanned[1], true
+		seededDirection = solarEclipseNearestGreatestDirection(riseSetCurves, firstRoot)
+		if seededDirection == "" {
+			seededDirection = solarEclipseNearestGreatestDirection(riseSetCurves, lastRoot)
+		}
 	} else {
 		// A grazing closure arc routinely splits its two endpoints
 		// between the seeding paths: one sits outside the sampled

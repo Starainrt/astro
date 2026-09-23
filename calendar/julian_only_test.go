@@ -7,8 +7,8 @@ import (
 	"github.com/starainrt/astro/basic"
 )
 
-// L2 契约：儒略历独有闰日（1582 年前百年非 400 闰年的 2 月 29 日）的 Solar 取后继日标签，
-// JDE 取精确儒略日，JulianOnly 为真，农历身份字段描述这一天本身。
+// L2 契约：儒略历独有闰日（1582 年前百年非 400 闰年的 2 月 29 日）的 Solar 取后继日作为规范日，
+// JD 取精确儒略日，JulianOnly 为真，农历身份字段描述这一天本身。
 var julianOnlyYears = []int{
 	100, 200, 300, 500, 600, 700, 900, 1000, 1100, 1300, 1400, 1500,
 	-700, -600, -500, -300, -200, -100,
@@ -40,21 +40,21 @@ func identityOf(t Time) lunarIdentity {
 
 func TestJulianOnlyLeapDayForwardReverseAgree(t *testing.T) {
 	for _, year := range julianOnlyYears {
-		phantom := basic.JDECalc(year, 2, 29)
+		phantom := basic.JDCalc(year, 2, 29)
 		if phantom != phantom { // NaN 保护：这些年份必须被历法层承认
-			t.Fatalf("year %d: basic.JDECalc(%d,2,29) is NaN", year, year)
+			t.Fatalf("year %d: basic.JDCalc(%d,2,29) is NaN", year, year)
 		}
-		label := basic.JDE2DateByZone(phantom, time.FixedZone("CST", 8*3600), true)
+		canonicalDate := basic.JD2DateByZone(phantom, time.FixedZone("CST", 8*3600), true)
 		fwd, err := SolarToLunarByYMD(year, 2, 29)
 		if err != nil {
 			t.Fatalf("year %d: SolarToLunarByYMD(%d,2,29) error: %v", year, year, err)
 		}
-		if !fwd.JulianOnly() || fwd.JDE() != phantom {
-			t.Errorf("year %d: forward JulianOnly=%v JDE=%.1f, want true %.1f",
-				year, fwd.JulianOnly(), fwd.JDE(), phantom)
+		if !fwd.JulianOnly() || fwd.JD() != phantom {
+			t.Errorf("year %d: forward JulianOnly=%v JD=%.1f, want true %.1f",
+				year, fwd.JulianOnly(), fwd.JD(), phantom)
 		}
-		if got := fwd.Solar().Format("2006-01-02"); got != label.Format("2006-01-02") {
-			t.Errorf("year %d: forward Solar=%s, want canonical label %s", year, got, label.Format("2006-01-02"))
+		if got := fwd.Solar().Format("2006-01-02"); got != canonicalDate.Format("2006-01-02") {
+			t.Errorf("year %d: forward Solar=%s, want canonical day %s", year, got, canonicalDate.Format("2006-01-02"))
 		}
 		want := identityOf(fwd)
 
@@ -63,26 +63,26 @@ func TestJulianOnlyLeapDayForwardReverseAgree(t *testing.T) {
 			t.Fatalf("year %d: LunarToSolarByYMD(%d,%d,%d,%v) error: %v",
 				year, want.year, want.month, want.day, want.leap, err)
 		}
-		if !rev.JulianOnly() || rev.JDE() != phantom {
-			t.Errorf("year %d: reverse JulianOnly=%v JDE=%.1f, want true %.1f",
-				year, rev.JulianOnly(), rev.JDE(), phantom)
+		if !rev.JulianOnly() || rev.JD() != phantom {
+			t.Errorf("year %d: reverse JulianOnly=%v JD=%.1f, want true %.1f",
+				year, rev.JulianOnly(), rev.JD(), phantom)
 		}
-		if got := rev.Solar().Format("2006-01-02"); got != label.Format("2006-01-02") {
-			t.Errorf("year %d: reverse Solar=%s, want canonical label %s", year, got, label.Format("2006-01-02"))
+		if got := rev.Solar().Format("2006-01-02"); got != canonicalDate.Format("2006-01-02") {
+			t.Errorf("year %d: reverse Solar=%s, want canonical day %s", year, got, canonicalDate.Format("2006-01-02"))
 		}
 		if got := identityOf(rev); got != want {
 			t.Errorf("year %d: reverse identity %+v, want %+v (requested lunar %d/%d/%d leap=%v)",
 				year, got, want, want.year, want.month, want.day, want.leap)
 		}
 		info := rev.LunarInfo()[0]
-		if !info.JulianOnly || info.JDE != phantom {
-			t.Errorf("year %d: LunarInfo JulianOnly=%v JDE=%.1f, want true %.1f", year, info.JulianOnly, info.JDE, phantom)
+		if !info.JulianOnly || info.JD != phantom {
+			t.Errorf("year %d: LunarInfo JulianOnly=%v JD=%.1f, want true %.1f", year, info.JulianOnly, info.JD, phantom)
 		}
-		// 日干支必须取自闰日自己的儒略日，而不是标签日 Solar()。
-		// The sexagenary day name must come from the leap day's own Julian day, not from the label day.
-		if got, labelGanzhi := rev.Lunar().GanZhiDay(), GanZhiOfDay(rev.Solar()); got != ganZhiOfJDE(phantom) {
-			t.Errorf("year %d: GanZhiDay=%s, want %s (label %s gives %s)",
-				year, got, ganZhiOfJDE(phantom), rev.Solar().Format("2006-01-02"), labelGanzhi)
+		// 日干支必须取自闰日自己的儒略日，而不是规范日 Solar()。
+		// The sexagenary day name must come from the leap day's own Julian day, not from the canonical day.
+		if got, canonicalGanzhi := rev.Lunar().GanZhiDay(), GanZhiOfDay(rev.Solar()); got != ganZhiOfJD(phantom) {
+			t.Errorf("year %d: GanZhiDay=%s, want %s (canonical day %s gives %s)",
+				year, got, ganZhiOfJD(phantom), rev.Solar().Format("2006-01-02"), canonicalGanzhi)
 		}
 	}
 }
@@ -90,7 +90,7 @@ func TestJulianOnlyLeapDayForwardReverseAgree(t *testing.T) {
 // 儒略历闰日两侧仍是普通日子：往返正常且农历日不与闰日重复。
 func TestJulianOnlyLeapDayNeighboursStayOrdinary(t *testing.T) {
 	for _, year := range julianOnlyYears {
-		phantom := basic.JDECalc(year, 2, 29)
+		phantom := basic.JDCalc(year, 2, 29)
 		fwd, err := SolarToLunarByYMD(year, 2, 29)
 		if err != nil {
 			t.Fatalf("year %d: SolarToLunarByYMD(%d,2,29) error: %v", year, year, err)
@@ -98,7 +98,7 @@ func TestJulianOnlyLeapDayNeighboursStayOrdinary(t *testing.T) {
 		leapLunar := identityOf(fwd)
 		for _, c := range []struct {
 			month, day int
-			wantJDE    float64
+			wantJD     float64
 		}{
 			{2, 28, phantom - 1},
 			{3, 1, phantom + 1},
@@ -120,8 +120,8 @@ func TestJulianOnlyLeapDayNeighboursStayOrdinary(t *testing.T) {
 			if rev.JulianOnly() {
 				t.Errorf("year %d: %d-%02d flagged JulianOnly", year, year, c.day)
 			}
-			if rev.JDE() != c.wantJDE {
-				t.Errorf("year %d: %d-%02d JDE=%.1f, want %.1f", year, year, c.day, rev.JDE(), c.wantJDE)
+			if rev.JD() != c.wantJD {
+				t.Errorf("year %d: %d-%02d JD=%.1f, want %.1f", year, year, c.day, rev.JD(), c.wantJD)
 			}
 			if got := identityOf(rev); got != nearID {
 				t.Errorf("year %d: %d-%02d reverse identity %+v, want %+v", year, year, c.day, got, nearID)
@@ -154,7 +154,7 @@ func TestJulianOnlyCivilDayClassification(t *testing.T) {
 	}
 }
 
-// 普通日期不受 L2 影响：JulianOnly 为假、JDE 与 Solar 一致、身份与正向一致。
+// 普通日期不受 L2 影响：JulianOnly 为假、JD 与 Solar 一致、身份与正向一致。
 func TestOrdinaryDatesCarryNoJulianOnlyFlag(t *testing.T) {
 	cases := []struct{ y, m, d int }{
 		{2025, 1, 1}, {2025, 6, 15}, {1912, 2, 12}, {1900, 5, 5}, {1582, 10, 15},
@@ -174,8 +174,8 @@ func TestOrdinaryDatesCarryNoJulianOnlyFlag(t *testing.T) {
 			if rev.JulianOnly() {
 				t.Errorf("%d-%02d-%02d flagged JulianOnly", c.y, c.m, c.d)
 			}
-			if want := Date2JDE(rev.Solar()); rev.JDE() != want {
-				t.Errorf("%d-%02d-%02d JDE=%.1f, want %.1f (Solar 推出值)", c.y, c.m, c.d, rev.JDE(), want)
+			if want := Date2JD(rev.Solar()); rev.JD() != want {
+				t.Errorf("%d-%02d-%02d JD=%.1f, want %.1f (Solar 推出值)", c.y, c.m, c.d, rev.JD(), want)
 			}
 			if got := identityOf(rev); got != id {
 				t.Errorf("%d-%02d-%02d reverse identity %+v, want %+v", c.y, c.m, c.d, got, id)
@@ -185,8 +185,8 @@ func TestOrdinaryDatesCarryNoJulianOnlyFlag(t *testing.T) {
 				if v.JulianOnly {
 					t.Errorf("%d-%02d-%02d LunarInfo flagged JulianOnly", c.y, c.m, c.d)
 				}
-				if v.JDE != rev.JDE() {
-					t.Errorf("%d-%02d-%02d LunarInfo JDE=%.1f, want %.1f", c.y, c.m, c.d, v.JDE, rev.JDE())
+				if v.JD != rev.JD() {
+					t.Errorf("%d-%02d-%02d LunarInfo JD=%.1f, want %.1f", c.y, c.m, c.d, v.JD, rev.JD())
 				}
 			}
 		})
@@ -226,8 +226,8 @@ func TestLunarToSolarTextHandlesJulianOnlyLeapDays(t *testing.T) {
 		{"永元十二年二月初二", 100, 2, 2, false},
 	}
 	for _, c := range cases {
-		phantom := basic.JDECalc(c.year, 2, 29)
-		label := basic.JDE2DateByZone(phantom, time.FixedZone("CST", 8*3600), true)
+		phantom := basic.JDCalc(c.year, 2, 29)
+		canonicalDate := basic.JD2DateByZone(phantom, time.FixedZone("CST", 8*3600), true)
 		results, err := LunarToSolar(c.desc)
 		if err != nil {
 			t.Fatalf("%s: LunarToSolar error: %v", c.desc, err)
@@ -237,11 +237,11 @@ func TestLunarToSolarTextHandlesJulianOnlyLeapDays(t *testing.T) {
 			continue
 		}
 		got := results[0]
-		if !got.JulianOnly() || got.JDE() != phantom {
-			t.Errorf("%s: JulianOnly=%v JDE=%.1f, want true %.1f", c.desc, got.JulianOnly(), got.JDE(), phantom)
+		if !got.JulianOnly() || got.JD() != phantom {
+			t.Errorf("%s: JulianOnly=%v JD=%.1f, want true %.1f", c.desc, got.JulianOnly(), got.JD(), phantom)
 		}
-		if solar := got.Solar().Format("2006-01-02"); solar != label.Format("2006-01-02") {
-			t.Errorf("%s: Solar=%s, want canonical label %s", c.desc, solar, label.Format("2006-01-02"))
+		if solar := got.Solar().Format("2006-01-02"); solar != canonicalDate.Format("2006-01-02") {
+			t.Errorf("%s: Solar=%s, want canonical day %s", c.desc, solar, canonicalDate.Format("2006-01-02"))
 		}
 		lunar := got.Lunar()
 		if lunar.LunarYear() != c.year || lunar.LunarMonth() != c.month || lunar.LunarDay() != c.day || lunar.IsLeap() != c.leap {
@@ -254,10 +254,10 @@ func TestLunarToSolarTextHandlesJulianOnlyLeapDays(t *testing.T) {
 // 闰日前后的描述必须仍是普通日期。
 func TestLunarToSolarTextKeepsLeapDayNeighboursOrdinary(t *testing.T) {
 	for _, year := range julianOnlyYears {
-		phantom := basic.JDECalc(year, 2, 29)
+		phantom := basic.JDCalc(year, 2, 29)
 		for _, offset := range []int{-1, 1} {
 			// 取闰日前后各一天，用它们自己的农历日构造描述。
-			neighbour := basic.JDE2DateByZone(phantom+float64(offset), time.FixedZone("CST", 8*3600), true)
+			neighbour := basic.JD2DateByZone(phantom+float64(offset), time.FixedZone("CST", 8*3600), true)
 			fwd, err := SolarToLunarByYMD(neighbour.Year(), int(neighbour.Month()), neighbour.Day())
 			if err != nil {
 				t.Fatalf("year %d: SolarToLunarByYMD(%s) error: %v", year, neighbour.Format("2006-01-02"), err)
@@ -282,8 +282,8 @@ func TestLunarToSolarTextKeepsLeapDayNeighboursOrdinary(t *testing.T) {
 			if got.JulianOnly() {
 				t.Errorf("%s: unexpectedly flagged JulianOnly", desc)
 			}
-			if want := phantom + float64(offset); got.JDE() != want {
-				t.Errorf("%s: JDE=%.1f, want %.1f", desc, got.JDE(), want)
+			if want := phantom + float64(offset); got.JD() != want {
+				t.Errorf("%s: JD=%.1f, want %.1f", desc, got.JD(), want)
 			}
 			if got := identityOf(results[0]); got != id {
 				t.Errorf("%s: identity %+v, want %+v", desc, got, id)

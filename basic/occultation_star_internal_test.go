@@ -102,7 +102,7 @@ func TestStarOccultationApparentPlaceCorrections(t *testing.T) {
 		t.Fatalf("apparent place = %.9f %.9f, want near 189.527817 -5.973401", gotRA, gotDec)
 	}
 
-	years := (tt - Date2JDE(star.Epoch.UTC())) / 365.25
+	years := (tt - Date2JD(star.Epoch.UTC())) / 365.25
 	meanRA := star.RA + years*star.ProperMotionRACosDecMasPerYear/(3600000*math.Cos(star.Dec*math.Pi/180))
 	meanDec := star.Dec + years*star.ProperMotionDecMasPerYear/3600000
 	meanRA, meanDec = Precess(meanRA, meanDec, 2451545, tt)
@@ -226,7 +226,7 @@ func TestRefineOccultationPathWidthsBoundsSmoothInterpolationError(t *testing.T)
 func TestOccultationPathCachedEarthRotationMatchesDirectGeometry(t *testing.T) {
 	tt := occultationTimeToTT(time.Date(2025, time.June, 5, 12, 2, 6, 0, time.UTC))
 	vector := occultationPathVector{x: 4123.5, y: -2789.25, z: 3950.75}
-	angle := ApparentSiderealTime(TD2UT(tt, false)) * 15 * math.Pi / 180
+	angle := ApparentSiderealTime(TT2UT1(tt)) * 15 * math.Pi / 180
 	want := occultationPathVector{
 		x: math.Cos(angle)*vector.x + math.Sin(angle)*vector.y,
 		y: -math.Sin(angle)*vector.x + math.Cos(angle)*vector.y,
@@ -257,7 +257,7 @@ func TestOccultationPathCachedMoonAndSiderealMatchDirectPoint(t *testing.T) {
 
 	direct := occultationPathPointFromVector(tt, vector, 1234.5, time.UTC)
 	cached := occultationPathPointFromVectorWithMoonSidereal(
-		tt, vector, 1234.5, frame.moon, ApparentSiderealTime(TD2UT(tt, false))*15, time.UTC,
+		tt, vector, 1234.5, frame.moon, ApparentSiderealTime(TT2UT1(tt))*15, time.UTC,
 	)
 	if !cached.Time.Equal(direct.Time) {
 		t.Fatalf("cached point time = %v, want %v", cached.Time, direct.Time)

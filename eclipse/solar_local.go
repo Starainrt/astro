@@ -52,6 +52,8 @@ type LocalSolarEclipseContactPoint struct {
 type LocalSolarEclipseInfo struct {
 	// Model 日食月亮半径模型, eclipse lunar radius model.
 	Model SolarEclipseRadiusModel
+	// SunRadiusModel 日食太阳半径口径, solar radius convention.
+	SunRadiusModel SolarEclipseSunRadiusModel
 	// Type 站心食型, local eclipse type.
 	Type SolarEclipseType
 	// HasSaros 存在沙罗序列信息（可能是锚点外推结果）, has Saros series metadata (possibly extrapolated).
@@ -64,7 +66,7 @@ type LocalSolarEclipseInfo struct {
 	Longitude float64
 	// Latitude 观测点纬度，北正南负, observer latitude, north positive.
 	Latitude float64
-	// Height 观测点海拔高度，单位米, observer height in meters.
+	// Height 观测点椭球高（大地高），单位米；只有正高 H 时须先加大地水准面差距 N, observer ellipsoidal height in meters.
 	Height float64
 
 	// GreatestEclipse 食甚时刻, greatest eclipse.
@@ -77,6 +79,12 @@ type LocalSolarEclipseInfo struct {
 	CentralStart time.Time
 	// CentralEnd 中心食终；对全食为生光，对环食为环食终, central eclipse ends.
 	CentralEnd time.Time
+	// GreatestJDE 是食甚的力学时儒略日；与 DeltaTSeconds 配对即可复现上列民用时刻。
+	// GreatestJDE is the TT Julian ephemeris day of greatest eclipse; with DeltaTSeconds it reproduces the civil times above.
+	GreatestJDE float64
+	// DeltaTSeconds 是本次计算实际使用的 TT−UT1，单位秒。
+	// DeltaTSeconds is the TT−UT1 used by this computation, in seconds.
+	DeltaTSeconds float64
 
 	// Magnitude 站心食分, local eclipse magnitude.
 	Magnitude float64
@@ -140,6 +148,29 @@ func GeometricLocalSolarEclipseOnDateNASABulletinSplitK(date time.Time, lon, lat
 // Determine whether a geometric local solar eclipse overlaps the local date with the IAU Single-K model.
 func GeometricLocalSolarEclipseOnDateIAUSingleK(date time.Time, lon, lat, height float64) (LocalSolarEclipseInfo, bool) {
 	return localSolarEclipseOnDate(date, lon, lat, height, localSolarEclipseIAUSingleK, localSolarEclipseQueryGeometric)
+}
+
+// LocalSolarEclipseOnDateWithOptions 当地站心日食查询（自定义半径口径） / local topocentric solar eclipse query with custom radius conventions.
+func LocalSolarEclipseOnDateWithOptions(date time.Time, lon, lat, height float64, options SolarEclipseOptions) (LocalSolarEclipseInfo, bool) {
+	return localSolarEclipseOnDate(date, lon, lat, height, localSolarEclipseCalculatorFor(options), localSolarEclipseQueryVisible)
+}
+
+func localSolarEclipseCalculatorFor(options SolarEclipseOptions) localSolarEclipseCalculator {
+	basicOptions := basic.SolarEclipseOptions{
+		RadiusModel:    basic.SolarEclipseRadiusModel(options.RadiusModel),
+		SunRadiusModel: basic.SolarEclipseSunRadiusModel(options.SunRadiusModel),
+	}
+	if basicOptions.RadiusModel != basic.SolarEclipseModelIAUSingleK {
+		basicOptions.RadiusModel = basic.SolarEclipseModelNASABulletinSplitK
+	}
+	return localSolarEclipseCalculator{
+		global: func(seed float64) basic.SolarEclipseResult {
+			return basic.SolarEclipseWithOptions(seed, basicOptions)
+		},
+		local: func(seed, lon, lat, height float64) basic.LocalSolarEclipseResult {
+			return basic.LocalSolarEclipseWithOptions(seed, lon, lat, height, basicOptions)
+		},
+	}
 }
 
 func localSolarEclipseOnDate(
@@ -470,6 +501,7 @@ func localSolarEclipseInfoFieldsFromBasic(
 	saros, hasSaros := solarSarosInfo(result.GreatestEclipse)
 	return LocalSolarEclipseInfo{
 		Model:             mapBasicSolarEclipseModel(result.Model),
+		SunRadiusModel:    result.SunRadiusModel,
 		Type:              mapBasicSolarEclipseType(result.Type),
 		HasSaros:          hasSaros,
 		Saros:             saros,
@@ -481,6 +513,8 @@ func localSolarEclipseInfoFieldsFromBasic(
 		PartialEnd:        solarEclipseTTJDEToTime(result.PartialEnd, location),
 		CentralStart:      solarEclipseTTJDEToTime(result.CentralStart, location),
 		CentralEnd:        solarEclipseTTJDEToTime(result.CentralEnd, location),
+		GreatestJDE:       result.GreatestEclipse,
+		DeltaTSeconds:     basic.DeltaT(result.GreatestEclipse, true),
 		Magnitude:         result.Magnitude,
 		Obscuration:       result.Obscuration,
 		Separation:        result.Separation,
@@ -502,7 +536,7 @@ func localSolarEclipseContactPointsFromBasic(
 	if !result.HasPartial {
 		return nil
 	}
-	options := basic.LocalSolarEclipseDiagramOptions{StepDays: 1}
+	options := basic.LocalSolarEclipseDiagramOptions{StepDays: 1, SunRadiusModel: result.SunRadiusModel}
 	var diagram basic.LocalSolarEclipseDiagramResult
 	if result.Model == basic.SolarEclipseModelIAUSingleK {
 		diagram = basic.LocalSolarEclipseDiagramIAUSingleK(result.GreatestEclipse, lon, lat, height, options)

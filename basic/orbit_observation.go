@@ -6,24 +6,24 @@ import (
 	. "github.com/starainrt/astro/tools"
 )
 
-func orbitTopocentricObservation(jde, observerLon, observerLat, observerHeight, timezone float64, elements OrbitElements) (ra, dec, distance float64) {
-	utcJde := jde - timezone/24.0
-	return OrbitApparentTopocentricEquatorial(TD2UT(utcJde, true), observerLon, observerLat, observerHeight, elements)
+func orbitTopocentricObservation(localJD, observerLon, observerLat, observerHeight, timezone float64, elements OrbitElements) (ra, dec, distance float64) {
+	utcJD := localJD - timezone/24.0
+	return OrbitApparentTopocentricEquatorial(UTC2TT(utcJD), observerLon, observerLat, observerHeight, elements)
 }
 
 // OrbitHeight 返回轨道目标在观测者所在地的视高度角，单位度。
-func OrbitHeight(jde, observerLon, observerLat, timezone, observerHeight float64, elements OrbitElements) float64 {
-	ra, dec, _ := orbitTopocentricObservation(jde, observerLon, observerLat, observerHeight, timezone, elements)
-	st := Limit360(ApparentSiderealTime(jde-timezone/24.0)*15 + observerLon)
+func OrbitHeight(localJD, observerLon, observerLat, timezone, observerHeight float64, elements OrbitElements) float64 {
+	ra, dec, _ := orbitTopocentricObservation(localJD, observerLon, observerLat, observerHeight, timezone, elements)
+	st := Limit360(ApparentSiderealTime(UTC2UT1(localJD-timezone/24.0))*15 + observerLon)
 	hourAngle := Limit360(st - ra)
 	sinHeight := Sin(observerLat)*Sin(dec) + Cos(dec)*Cos(observerLat)*Cos(hourAngle)
 	return ArcSin(sinHeight)
 }
 
 // OrbitAzimuth 返回轨道目标在观测者所在地的视方位角，按正北为 0°、向东增加。
-func OrbitAzimuth(jde, observerLon, observerLat, timezone, observerHeight float64, elements OrbitElements) float64 {
-	ra, dec, _ := orbitTopocentricObservation(jde, observerLon, observerLat, observerHeight, timezone, elements)
-	st := Limit360(ApparentSiderealTime(jde-timezone/24.0)*15 + observerLon)
+func OrbitAzimuth(localJD, observerLon, observerLat, timezone, observerHeight float64, elements OrbitElements) float64 {
+	ra, dec, _ := orbitTopocentricObservation(localJD, observerLon, observerLat, observerHeight, timezone, elements)
+	st := Limit360(ApparentSiderealTime(UTC2UT1(localJD-timezone/24.0))*15 + observerLon)
 	hourAngle := Limit360(st - ra)
 	tanAzimuth := Sin(hourAngle) / (Cos(hourAngle)*Sin(observerLat) - Tan(dec)*Cos(observerLat))
 	azimuth := ArcTan(tanAzimuth)
@@ -40,9 +40,9 @@ func OrbitAzimuth(jde, observerLon, observerLat, timezone, observerHeight float6
 }
 
 // OrbitHourAngle 返回轨道目标的站心视时角，单位度。
-func OrbitHourAngle(jde, observerLon, observerLat, timezone, observerHeight float64, elements OrbitElements) float64 {
-	ra, _, _ := orbitTopocentricObservation(jde, observerLon, observerLat, observerHeight, timezone, elements)
-	st := Limit360(ApparentSiderealTime(jde-timezone/24.0)*15 + observerLon)
+func OrbitHourAngle(localJD, observerLon, observerLat, timezone, observerHeight float64, elements OrbitElements) float64 {
+	ra, _, _ := orbitTopocentricObservation(localJD, observerLon, observerLat, observerHeight, timezone, elements)
+	st := Limit360(ApparentSiderealTime(UTC2UT1(localJD-timezone/24.0))*15 + observerLon)
 	hourAngle := st - ra
 	if hourAngle < 0 {
 		hourAngle += 360
@@ -52,11 +52,11 @@ func OrbitHourAngle(jde, observerLon, observerLat, timezone, observerHeight floa
 
 // OrbitHourAngleWithTopocentric 返回站心视时角及同一状态的站心视赤经、视赤纬 / hour angle with its topocentric state.
 //
-// jde 沿用 OrbitHourAngle 的当地时口径：函数内部先减 timezone/24 得世界时，再按 UT→TT 换算。
-// jde follows the local-time convention of OrbitHourAngle: timezone/24 is subtracted before the UT→TT conversion.
-func OrbitHourAngleWithTopocentric(jde, observerLon, observerLat, timezone, observerHeight float64, elements OrbitElements) (ra, dec, hourAngle float64) {
-	ra, dec, _ = orbitTopocentricObservation(jde, observerLon, observerLat, observerHeight, timezone, elements)
-	st := Limit360(ApparentSiderealTime(jde-timezone/24.0)*15 + observerLon)
+// localJD 沿用 OrbitHourAngle 的当地时口径：函数内部先减 timezone/24 得世界时，再按 UT→TT 换算。
+// localJD follows the local-time convention of OrbitHourAngle: timezone/24 is subtracted before the UT→TT conversion.
+func OrbitHourAngleWithTopocentric(localJD, observerLon, observerLat, timezone, observerHeight float64, elements OrbitElements) (ra, dec, hourAngle float64) {
+	ra, dec, _ = orbitTopocentricObservation(localJD, observerLon, observerLat, observerHeight, timezone, elements)
+	st := Limit360(ApparentSiderealTime(UTC2UT1(localJD-timezone/24.0))*15 + observerLon)
 	hourAngle = st - ra
 	if hourAngle < 0 {
 		hourAngle += 360
@@ -65,14 +65,14 @@ func OrbitHourAngleWithTopocentric(jde, observerLon, observerLat, timezone, obse
 }
 
 // OrbitCulminationTime 返回轨道目标的中天时刻，输入输出均沿用本仓库现有观测函数的 JD 语义。
-func OrbitCulminationTime(jde, observerLon, observerLat, timezone, observerHeight float64, elements OrbitElements) float64 {
-	if !isFiniteFloat(jde) || !isFiniteFloat(observerLon) || !isFiniteFloat(observerLat) || !isFiniteFloat(timezone) || !isFiniteFloat(observerHeight) {
+func OrbitCulminationTime(localJD, observerLon, observerLat, timezone, observerHeight float64, elements OrbitElements) float64 {
+	if !isFiniteFloat(localJD) || !isFiniteFloat(observerLon) || !isFiniteFloat(observerLat) || !isFiniteFloat(timezone) || !isFiniteFloat(observerHeight) {
 		return math.NaN()
 	}
-	jde = math.Floor(jde) + 0.5
-	estimateJD := jde + Limit360(360-OrbitHourAngle(jde, observerLon, observerLat, timezone, observerHeight, elements))/15.0/24.0*0.99726851851851851851
-	normalizedHourAngle := func(jde float64) float64 {
-		currentHourAngle := OrbitHourAngle(jde, observerLon, observerLat, timezone, observerHeight, elements)
+	localJD = math.Floor(localJD) + 0.5
+	estimateJD := localJD + Limit360(360-OrbitHourAngle(localJD, observerLon, observerLat, timezone, observerHeight, elements))/15.0/24.0*0.99726851851851851851
+	normalizedHourAngle := func(localJD float64) float64 {
+		currentHourAngle := OrbitHourAngle(localJD, observerLon, observerLat, timezone, observerHeight, elements)
 		if currentHourAngle < 180 {
 			currentHourAngle += 360
 		}

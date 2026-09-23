@@ -6,6 +6,8 @@ import (
 	"github.com/starainrt/astro/internal/geodata"
 )
 
+// 宋高宗时代的极区日食，伽马卡在全食边缘上，比较极限
+
 // TestSolarEclipseGrazingClosureRootsAreRecovered pins the events whose
 // greatest-at-horizon closure arcs the analytic seedings miss: a grazing
 // closure root can sit outside the sampled horizon branches, and the local
@@ -14,7 +16,7 @@ import (
 // annulus better than the sampled union that used to replace it.
 func TestSolarEclipseGrazingClosureRootsAreRecovered(t *testing.T) {
 	for _, date := range [][3]int{{1136, 6, 1}, {-1480, 12, 27}, {5705, 6, 17}} {
-		seed := JDECalc(date[0], date[1], float64(date[2]))
+		seed := JDCalc(date[0], date[1], float64(date[2]))
 		result := SolarEclipsePartialFootprints(seed, SolarEclipsePartialFootprintOptions{
 			StepDays: 2.0 / 1440.0, BoundaryPoints: 96, RiseSetStepDays: 2.0 / 1440.0,
 		})
@@ -37,13 +39,15 @@ func TestSolarEclipseGrazingClosureRootsAreRecovered(t *testing.T) {
 // of the criterion: a two-limit grazing event whose caps are not bounded by the
 // greatest-at-horizon condition has no closure arc at all, and its band must
 // stay a valid closed reconstruction instead of silently disappearing. The
-// reasons are measured, not assumed: 4862-09-28 ends 40 km inside the horizon
-// (+0.36 degrees at the cap, so the umbral rim bounds it) and 1552-07-21 has its
-// boundary running along the horizon (+0.004 then -0.000 degrees), which makes
-// the arc degenerate.
+// reason is measured, not assumed: 1552-07-21 has its boundary running along the
+// horizon (+0.004 then -0.000 degrees), which makes the arc degenerate. Its
+// closure system yields one root per side, so no pair can be formed.
+// 4862-09-28 used to fall in this group only because the seeding heuristics
+// missed one of its four roots; the scan-based enumeration finds it and the
+// event is covered by the closure cross-check instead.
 func TestSolarEclipseGrazingEventsWithoutClosuresStaySampled(t *testing.T) {
-	for _, date := range [][3]int{{4862, 9, 28}, {1552, 7, 21}} {
-		seed := JDECalc(date[0], date[1], float64(date[2]))
+	for _, date := range [][3]int{{1552, 7, 21}} {
+		seed := JDCalc(date[0], date[1], float64(date[2]))
 		result := SolarEclipsePartialFootprints(seed, SolarEclipsePartialFootprintOptions{
 			StepDays: 2.0 / 1440.0, BoundaryPoints: 96, RiseSetStepDays: 2.0 / 1440.0,
 		})
@@ -74,7 +78,7 @@ func TestSolarEclipseGrazingEventsWithoutClosuresStaySampled(t *testing.T) {
 // chordal ribbon hundreds of kilometres smaller than the umbra it describes.
 func TestSolarEclipse11360601GrazingAnnularBandContainsSweep(t *testing.T) {
 	result := SolarEclipsePartialFootprints(
-		JDECalc(1136, 6, 1),
+		JDCalc(1136, 6, 1),
 		SolarEclipsePartialFootprintOptions{
 			StepDays: 2.0 / 1440.0, BoundaryPoints: 96, RiseSetStepDays: 2.0 / 1440.0,
 		},

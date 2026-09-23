@@ -4,6 +4,7 @@ import (
 	"math"
 	"time"
 
+	"github.com/starainrt/astro"
 	"github.com/starainrt/astro/basic"
 	eclipsecore "github.com/starainrt/astro/eclipse"
 )
@@ -31,9 +32,13 @@ func localSolarEclipseInfoFromDiagram(
 	diagram basic.LocalSolarEclipseDiagramResult,
 	lon, lat, height float64,
 	location *time.Location,
+	scale astro.TimeScale,
 ) LocalSolarEclipseInfo {
 	info := localSolarEclipseInfoFieldsFromBasic(diagram.Eclipse, lon, lat, height, location)
 	info.ContactPoints = localSolarEclipseContactPointsFromFrames(diagram.Frames, location)
+	if scale == astro.TimeScaleUT1 {
+		info = eclipsecore.LocalSolarEclipseInfoInUT1(info)
+	}
 	return info
 }
 
@@ -131,13 +136,13 @@ func solarEclipseTTJDEToTime(ttJDE float64, location *time.Location) time.Time {
 	if ttJDE == 0 {
 		return time.Time{}
 	}
-	utcJDE := basic.TD2UT(ttJDE, false)
-	return basic.JDE2DateByZone(utcJDE, location, false)
+	utcJD := basic.TT2UTC(ttJDE)
+	return basic.JD2DateByZone(utcJD, location, false)
 }
 
 func solarEclipseTimeToTTJDE(date time.Time) float64 {
-	utcJDE := basic.Date2JDE(date.UTC())
-	return basic.TD2UT(utcJDE, true)
+	utcJD := basic.Date2JD(date.UTC())
+	return basic.UTC2TT(utcJD)
 }
 
 func localSolarEclipseVisibilityThreshold(height, latitude float64) float64 {

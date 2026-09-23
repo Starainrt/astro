@@ -548,7 +548,7 @@ func occultationPathBoundarySamplesAtTimesForFrame(
 	first := make([]OccultationPathPoint, len(samples))
 	second := make([]OccultationPathPoint, len(samples))
 	for index, sample := range samples {
-		siderealDegrees := ApparentSiderealTime(TD2UT(sample.tt, false)) * 15
+		siderealDegrees := ApparentSiderealTime(TT2UT1(sample.tt)) * 15
 		first[index] = occultationPathPointFromVectorWithMoonSidereal(
 			sample.tt, sample.first, 0, sample.moon, siderealDegrees, location,
 		)
@@ -1532,6 +1532,11 @@ func occultationPathLimitsAndWidthForFrame(
 					consider(point)
 				}
 			}
+			// 末样本的等差写法与 rightTheta 相差 1 ULP：掠射时该 ULP 会把端点的判别式推成负值，
+			// 端点处的横向极值就被当成"无地面交点"丢掉，故端点原值必须补采一次。
+			if point, _, pointOK := occultationPathBoundaryVector(frame, rightTheta); pointOK {
+				consider(point)
+			}
 		}
 	}
 	for i := 0; i < occultationPathBoundaryScanPoints; i++ {
@@ -1641,6 +1646,11 @@ func occultationPathFiniteCrossTrackExtrema(
 					consider(point)
 				}
 			}
+			// 末样本的等差写法与 rightTheta 相差 1 ULP：掠射时该 ULP 会把端点的判别式推成负值，
+			// 端点处的极值就被当成"无地面交点"丢掉，故端点原值必须补采一次。
+			if point, _, pointOK := occultationPathBoundaryVector(frame, rightTheta); pointOK {
+				consider(point)
+			}
 		}
 	}
 	for _, interval := range occultationPathBoundaryThetaIntervals(frame) {
@@ -1649,6 +1659,11 @@ func occultationPathFiniteCrossTrackExtrema(
 			if point, _, pointOK := occultationPathBoundaryVector(frame, theta); pointOK {
 				consider(point)
 			}
+		}
+		// 与 occultationPathLimitsAndWidthForFrame 同因：等差末样本与 interval.right 差 1 ULP，
+		// 掠射时会把端点判别式推成负值而丢掉该处极值，端点原值必须补采一次。
+		if point, _, pointOK := occultationPathBoundaryVector(frame, interval.right); pointOK {
+			consider(point)
 		}
 	}
 	if !finite(minimumOffset) || !finite(maximumOffset) {

@@ -358,9 +358,11 @@ func TestSolarEclipseSampledBandEdgeFollowsGreatestHorizonCurve(t *testing.T) {
 			}
 		})
 	}
-	// 采样带是少数情形：15 个夹具里只有 4 个走这条断言。若夹具筛选或"权威带"来源变化，
-	// 这些用例会退化成一堆 skip 而不是失败，所以钉住覆盖数下限。
-	if exercised < 4 {
+	// 采样带是少数情形：15 个夹具里只剩 3 个走这条断言。若夹具筛选或"权威带"来源变化，
+	// 这些用例会退化成一堆 skip 而不是失败，所以钉住覆盖数下限。4862-09-28 原来在这 4 个里，
+	// 它的第四个闭包根过去被三种子启发式漏掉；扫描式枚举解出后该事件成为解析带（带端太阳
+	// 高度 +0.004°，与 1136-06-01 的 +0.005° 同量级，即带端确实由地平线封口）。
+	if exercised < 3 {
 		t.Fatalf("sampled-band assertion exercised by %d fixtures (%d analytic skips); the fixture filter or the band source narrowed silently", exercised, skipped)
 	}
 	t.Logf("sampled-band edge assertion exercised by %d fixtures, %d analytic skips", exercised, skipped)

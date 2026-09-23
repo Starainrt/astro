@@ -4,7 +4,7 @@ import "testing"
 
 // 批量入口是导出契约的一部分，必须与逐时刻入口给出同一条数值链。
 func TestSolarEclipseShadowBatchEntriesMatchPerInstantCalls(t *testing.T) {
-	footprints := SolarEclipsePartialFootprints(JDECalc(2009, 7, 22), SolarEclipsePartialFootprintOptions{
+	footprints := SolarEclipsePartialFootprints(JDCalc(2009, 7, 22), SolarEclipsePartialFootprintOptions{
 		StepDays: 6.0 / 1440.0, BoundaryPoints: 48, DisableRiseSetCurves: true,
 		CentralShadowStepDays: 6.0 / 1440.0,
 	})

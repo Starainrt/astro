@@ -35,21 +35,21 @@ func TestGalileanPhenomenonEventWrappersMatchBasic(t *testing.T) {
 			t,
 			record.Label+" next",
 			NextGalileanPhenomenonEvent(queryBefore, record.Satellite, phenomenonType),
-			basic.NextJupiterGalileanPhenomenonEvent(basic.Date2JDE(queryBefore.UTC()), record.Satellite, basic.JupiterGalileanPhenomenonType(phenomenonType)),
+			basic.NextJupiterGalileanPhenomenonEvent(basic.Date2JD(queryBefore.UTC()), record.Satellite, basic.JupiterGalileanPhenomenonType(phenomenonType)),
 			loc,
 		)
 		assertGalileanWrapperMatchesBasic(
 			t,
 			record.Label+" last",
 			LastGalileanPhenomenonEvent(queryAfter, record.Satellite, phenomenonType),
-			basic.LastJupiterGalileanPhenomenonEvent(basic.Date2JDE(queryAfter.UTC()), record.Satellite, basic.JupiterGalileanPhenomenonType(phenomenonType)),
+			basic.LastJupiterGalileanPhenomenonEvent(basic.Date2JD(queryAfter.UTC()), record.Satellite, basic.JupiterGalileanPhenomenonType(phenomenonType)),
 			loc,
 		)
 		assertGalileanWrapperMatchesBasic(
 			t,
 			record.Label+" closest",
 			ClosestGalileanPhenomenonEvent(queryMid, record.Satellite, phenomenonType),
-			basic.ClosestJupiterGalileanPhenomenonEvent(basic.Date2JDE(queryMid.UTC()), record.Satellite, basic.JupiterGalileanPhenomenonType(phenomenonType)),
+			basic.ClosestJupiterGalileanPhenomenonEvent(basic.Date2JD(queryMid.UTC()), record.Satellite, basic.JupiterGalileanPhenomenonType(phenomenonType)),
 			loc,
 		)
 	}
@@ -72,9 +72,9 @@ func assertGalileanWrapperMatchesBasic(
 	if got.Start.Location() != loc || got.Greatest.Location() != loc || got.End.Location() != loc {
 		t.Fatalf("%s timezone mismatch", name)
 	}
-	wantStart := basic.JDE2DateByZone(want.Start, loc, false)
-	wantGreatest := basic.JDE2DateByZone(want.Greatest, loc, false)
-	wantEnd := basic.JDE2DateByZone(want.End, loc, false)
+	wantStart := basic.JD2DateByZone(want.Start, loc, false)
+	wantGreatest := basic.JD2DateByZone(want.Greatest, loc, false)
+	wantEnd := basic.JD2DateByZone(want.End, loc, false)
 	if !got.Start.Equal(wantStart) || !got.Greatest.Equal(wantGreatest) || !got.End.Equal(wantEnd) {
 		t.Fatalf(
 			"%s time mismatch: got [%s %s %s] want [%s %s %s]",

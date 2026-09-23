@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/starainrt/astro"
 	"github.com/starainrt/astro/internal/geodata"
 	"github.com/starainrt/astro/internal/occultationgeo"
 	"github.com/starainrt/astro/internal/svgmap"
@@ -59,8 +60,15 @@ func PlanetOccultationPathSVG(
 	path moon.PlanetOccultationPath,
 	options PlanetOccultationSVGOptions,
 ) (string, error) {
+	if options.TimeScale == astro.TimeScaleUT1 && options.Location != nil && options.Location != time.UTC {
+		return "", fmt.Errorf("occultation SVG: UT1 labels do not take a non-UTC location")
+	}
 	if err := validatePlanetOccultationPath(path); err != nil {
 		return "", err
+	}
+	if options.TimeScale == astro.TimeScaleUT1 {
+		options.Location = time.UTC
+		path = moon.PlanetOccultationPathInUT1(path)
 	}
 	targetID := path.TargetID
 	if targetID == "" {

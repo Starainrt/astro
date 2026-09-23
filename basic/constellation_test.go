@@ -5,7 +5,7 @@ import (
 )
 
 func TestConstellationNameZH(t *testing.T) {
-	now := GetNowJDE()
+	now := GetNowJD()
 	//finish on 30s
 	for i := 0.00; i <= 360.00; i += 0.5 {
 		for j := -90.00; j <= 90.00; j += 0.5 {
@@ -15,9 +15,9 @@ func TestConstellationNameZH(t *testing.T) {
 }
 
 func BenchmarkConstellationNameZH(b *testing.B) {
-	jde := GetNowJDE()
+	jde := GetNowJD()
 	for i := 0; i < b.N; i++ {
-		//GetNowJDE()
+		//GetNowJD()
 		ConstellationNameZH(11.11, 12.12, jde)
 	}
 

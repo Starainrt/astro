@@ -37,8 +37,8 @@ func hanQingCalendricalJieQiDateInRow(rowYear, termIndex int) (time.Time, error)
 	for i := 0; i < termIndex; i++ {
 		offset += hanQingJieQiPatternDelta(patternID, i)
 	}
-	baseJDN := int(math.Floor(basic.JDECalc(rowYear-1, 12, 31) + 0.5))
-	return basic.JDE2DateByZone(float64(baseJDN+offset)-0.5, getCst(), true), nil
+	baseJDN := int(math.Floor(basic.JDCalc(rowYear-1, 12, 31) + 0.5))
+	return basic.JD2DateByZone(float64(baseJDN+offset)-0.5, getCst(), true), nil
 }
 
 func calendricalJieQiTableTermIndex(term int) (int, error) {

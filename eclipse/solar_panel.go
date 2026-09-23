@@ -17,26 +17,20 @@ const (
 	horizontalParallaxSunRatio  = 6378.137 / 696000.0
 )
 
-// SolarEclipseGeocentricPanel 汇总 详细版式面板所需的食甚时刻地心量。
-// SolarEclipseGeocentricPanel carries the geocentric quantities that detailed panels print.
+// SolarEclipseGeocentricPanel 详细面板所需的食甚时刻地心量 / geocentric quantities at greatest eclipse for detailed panels.
 type SolarEclipseGeocentricPanel struct {
-	// Conjunction 是本次朔，即地心视黄经相等的时刻；与 NASA 全球图上的 Geocentric Conjunction 不是同一个量。
-	// Conjunction is the new moon, the instant of equal geocentric apparent ecliptic longitude. It is not
-	// the same quantity as the Geocentric Conjunction printed on NASA world maps.
+	// Conjunction 地心视黄经相等的朔时刻 / new moon at equal geocentric apparent ecliptic longitude.
 	Conjunction    time.Time
 	ConjunctionJDE float64
-	// RightAscensionConjunction 是地心视赤经相等的时刻，也就是 NASA 全球图上 Geocentric Conjunction 的口径；
-	// 2009-07-22 两者相差约 90 s（视黄经相等在 02:34:34 UT，视赤经相等在 02:33:04 UT）。
-	// RightAscensionConjunction is the instant of equal geocentric apparent right ascension, the quantity NASA
-	// world maps print as Geocentric Conjunction. For 2009-07-22 the two differ by about 90 s.
+	// RightAscensionConjunction 地心视赤经相等的时刻，与朔的时差不固定 / equal geocentric apparent right ascension, with a variable gap from new moon.
 	RightAscensionConjunction    time.Time
 	RightAscensionConjunctionJDE float64
-	// RightAscensionConjunctionJD 是同一时刻的世界时儒略日，NASA 全球图上印的就是它。
-	// RightAscensionConjunctionJD is the universal-time Julian day of that instant, the value NASA maps print.
+	// RightAscensionConjunctionJD 同一合时刻的 UT1 儒略日 / UT1 Julian day of the same conjunction.
 	RightAscensionConjunctionJD float64
-	// DeltaTSeconds 是食甚时刻实际使用的 ΔT。
-	// DeltaTSeconds is the ΔT used at greatest eclipse.
+	// DeltaTSeconds 食甚时刻实际使用的 ΔT / ΔT used at greatest eclipse.
 	DeltaTSeconds float64
+	// SunRadiusModel SunSemidiameterArcsec 所用的太阳半径口径 / solar radius convention behind SunSemidiameterArcsec.
+	SunRadiusModel SolarEclipseSunRadiusModel
 
 	SunRightAscensionDeg  float64
 	SunDeclinationDeg     float64
@@ -54,14 +48,19 @@ type SolarEclipseGeocentricPanel struct {
 
 	BrownLunationNumber int
 	// PenumbralK 与 UmbralK 是月地半径比 k1/k2。
+	// PenumbralK and UmbralK are the Moon-to-Earth radius ratios k1 and k2.
 	PenumbralK float64
 	UmbralK    float64
 	// BodyShiftLongitudeArcsec 与 BodyShiftLatitudeArcsec 是星历表里的 Δl/Δb；本库模型不做月面位置平移，恒为零。
+	// BodyShiftLongitudeArcsec and BodyShiftLatitudeArcsec are the Δl/Δb of published element tables;
+	// this model shifts nothing on the lunar surface, so both stay zero.
 	BodyShiftLongitudeArcsec float64
 	BodyShiftLatitudeArcsec  float64
 	// Ephemeris 是所用模型名称。
+	// Ephemeris names the model in use.
 	Ephemeris string
 	// SingleK 表示使用的是 IAU Single-K（k1 同时用于半影与本影）。
+	// SingleK reports the IAU Single-K convention, where k1 serves both the penumbra and the umbra.
 	SingleK bool
 }
 
@@ -74,29 +73,33 @@ func horizontalParallaxArcsec(semidiameterArcsec, radiusRatio float64) float64 {
 // SolarEclipseGeocentricPanelAt 计算给定日食在食甚时刻的地心量面板。
 // SolarEclipseGeocentricPanelAt computes the geocentric panel of one eclipse at greatest eclipse.
 func SolarEclipseGeocentricPanelAt(date time.Time) (SolarEclipseGeocentricPanel, bool) {
-	info, ok := SolarEclipseOnDateNASABulletinSplitK(date)
-	if !ok {
-		return SolarEclipseGeocentricPanel{}, false
-	}
-	panel := solarEclipseGeocentricPanelAt(info)
-	panel.Ephemeris = "NASA bulletin Split-K"
-	panel.PenumbralK = basic.SolarEclipsePenumbralK
-	panel.UmbralK = basic.SolarEclipseUmbralK
-	return panel, true
+	return SolarEclipseGeocentricPanelWithOptions(date, SolarEclipseOptions{RadiusModel: SolarEclipseModelNASABulletinSplitK})
 }
 
 // SolarEclipseGeocentricPanelIAUSingleK 使用 IAU Single-K 计算地心量面板。
 // SolarEclipseGeocentricPanelIAUSingleK computes the geocentric panel with the IAU Single-K model.
 func SolarEclipseGeocentricPanelIAUSingleK(date time.Time) (SolarEclipseGeocentricPanel, bool) {
-	info, ok := SolarEclipseOnDateIAUSingleK(date)
+	return SolarEclipseGeocentricPanelWithOptions(date, SolarEclipseOptions{RadiusModel: SolarEclipseModelIAUSingleK})
+}
+
+// SolarEclipseGeocentricPanelWithOptions 使用自定义半径口径计算食甚时刻的地心量面板。
+// SolarEclipseGeocentricPanelWithOptions computes the geocentric panel at greatest eclipse with custom radius conventions.
+func SolarEclipseGeocentricPanelWithOptions(date time.Time, options SolarEclipseOptions) (SolarEclipseGeocentricPanel, bool) {
+	info, ok := SolarEclipseOnDateWithOptions(date, options)
 	if !ok {
 		return SolarEclipseGeocentricPanel{}, false
 	}
 	panel := solarEclipseGeocentricPanelAt(info)
-	panel.Ephemeris = "IAU Single-K"
+	if info.Model == SolarEclipseModelIAUSingleK {
+		panel.Ephemeris = "IAU Single-K"
+		panel.PenumbralK = basic.SolarEclipseIAUSingleRadiusK
+		panel.UmbralK = basic.SolarEclipseIAUSingleRadiusK
+		panel.SingleK = true
+		return panel, true
+	}
+	panel.Ephemeris = "NASA bulletin Split-K"
 	panel.PenumbralK = basic.SolarEclipsePenumbralK
-	panel.UmbralK = basic.SolarEclipsePenumbralK
-	panel.SingleK = true
+	panel.UmbralK = basic.SolarEclipseUmbralK
 	return panel, true
 }
 
@@ -114,7 +117,8 @@ func solarEclipseGeocentricPanelAt(info SolarEclipseInfo) SolarEclipseGeocentric
 	}
 	panel.SunRightAscensionDeg, panel.SunDeclinationDeg = basic.SunApparentRaDec(tt)
 	panel.MoonRightAscensionDeg, panel.MoonDeclinationDeg = basic.HMoonTrueRaDec(tt)
-	panel.SunSemidiameterArcsec = basic.SunSemidiameter(tt)
+	panel.SunRadiusModel = info.SunRadiusModel
+	panel.SunSemidiameterArcsec = basic.SolarEclipseSunSemidiameter(tt, info.SunRadiusModel)
 	panel.MoonSemidiameterArcsec = basic.MoonSemidiameter(tt)
 	panel.SunParallaxArcsec = horizontalParallaxArcsec(panel.SunSemidiameterArcsec, horizontalParallaxSunRatio)
 	panel.MoonParallaxArcsec = horizontalParallaxArcsec(panel.MoonSemidiameterArcsec, horizontalParallaxMoonRatio)

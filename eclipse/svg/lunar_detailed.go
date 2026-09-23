@@ -1,12 +1,14 @@
 package svg
 
 import (
+	"github.com/starainrt/astro/internal/timenote"
 	"fmt"
 	"html"
 	"math"
 	"strings"
 	"time"
 
+	"github.com/starainrt/astro"
 	"github.com/starainrt/astro/basic"
 	eclipsecore "github.com/starainrt/astro/eclipse"
 	"github.com/starainrt/astro/internal/svgasset"
@@ -33,9 +35,19 @@ type LunarEclipseDetailedSVGOptions struct {
 	// Location 控制显示时刻的时区；nil 使用 UTC+8。
 	// Location controls the display timezone; nil uses UTC+8.
 	Location *time.Location
+	// TimeScale 选择图中时刻的时标：零值 UTC；TimeScaleUT1 改用 UT1 时刻，此时 Location 必须是
+	// nil 或 UTC（否则返回 false）。nil Location 在 UTC 下默认 UTC+8，UT1 下强制为 UTC。
+	// TimeScale selects the label scale: the zero value is UTC; TimeScaleUT1 uses UT1 labels and requires
+	// Location to be nil or UTC (otherwise the renderer returns false).
+	TimeScale astro.TimeScale
 	// Step 是月心路径采样步长；<=0 时使用 5 分钟。
 	// Step is the Moon-center path sampling step; values <= 0 use five minutes.
 	Step time.Duration
+	// DisablePenumbralPhase 关闭底图可见性分区里的半影阶段，含义与 LunarEclipseMapSVGOptions 的同名字段一致；
+	// 零值即画半影。
+	// DisablePenumbralPhase turns the penumbral phase off in the base map partition, with the same
+	// meaning as the LunarEclipseMapSVGOptions field of that name; the zero value draws it.
+	DisablePenumbralPhase bool
 	// Title 与 FooterNote 为空时自动生成。
 	// Empty Title and FooterNote use automatic text.
 	Title      string
@@ -98,6 +110,12 @@ func lunarEclipseDetailedSVG(
 	finder lunarEclipseSVGFinder,
 	model eclipsecore.LunarEclipseShadowModel,
 ) (string, bool) {
+	if options.TimeScale == astro.TimeScaleUT1 {
+		if options.Location != nil && options.Location != time.UTC {
+			return "", false
+		}
+		options.Location = time.UTC
+	}
 	options = normalizeLunarEclipseDetailedSVGOptions(options)
 	diagram := calculator(timeToTTJDE(date), basic.LunarEclipseDiagramOptions{
 		StepDays: durationToDays(options.Step),
@@ -115,7 +133,8 @@ func lunarEclipseDetailedSVG(
 		return "", false
 	}
 	return renderLunarEclipseDetailedSVG(
-		info, diagram, geometry(diagram.Eclipse.Maximum), timeToTTJDE(date), options, model,
+		lunarEclipseDisplayInfo(info, options.TimeScale), info,
+		diagram, geometry(diagram.Eclipse.Maximum), diagram.Eclipse.Maximum, options, model,
 	), true
 }
 
@@ -189,7 +208,7 @@ func validLunarEclipseDetailedSize(width, height int, info LunarEclipseInfo, opt
 	if (w-2*margin-2*columnGap)/3 < lunarEclipseDetailedMinColumnWidth {
 		return false
 	}
-	view := lunarEclipseDetailedViewFor(options)
+	view := lunarEclipseDetailedViewFor(info, options)
 	if solarEclipsePanelsOverlap(lunarEclipseDetailedPanelCells(view, info, options)) {
 		return false
 	}
@@ -275,7 +294,7 @@ func lunarEclipseDetailedPanelCells(
 	}
 }
 
-func lunarEclipseDetailedViewFor(options LunarEclipseDetailedSVGOptions) lunarEclipseDetailedView {
+func lunarEclipseDetailedViewFor(info LunarEclipseInfo, options LunarEclipseDetailedSVGOptions) lunarEclipseDetailedView {
 	width, height := float64(options.Width), float64(options.Height)
 	margin := math.Max(30, math.Min(52, width*0.044))
 	view := lunarEclipseDetailedView{
@@ -304,7 +323,8 @@ func lunarEclipseDetailedViewFor(options LunarEclipseDetailedSVGOptions) lunarEc
 		Projection: svgmap.ProjectionEquirectangular,
 	}
 	view.legendY = mapTop + mapHeight + lunarEclipseDetailedLegendGap
-	view.legendRows = len(lunarEclipseMapLegendRows(view.mapFrame, width, options.Language))
+	view.legendRows = len(lunarEclipseMapLegendRows(view.mapFrame, width, options.Language,
+		lunarEclipseMapDrawsPenumbralBands(info, !options.DisablePenumbralPhase)))
 	if view.legendRows < 1 {
 		view.legendRows = 1
 	}
@@ -319,13 +339,14 @@ func lunarEclipseDetailedViewFor(options LunarEclipseDetailedSVGOptions) lunarEc
 
 func renderLunarEclipseDetailedSVG(
 	info LunarEclipseInfo,
+	geometry LunarEclipseInfo,
 	diagram basic.LunarEclipseDiagramResult,
 	shadow basic.LunarEclipseShadowGeometry,
 	tt float64,
 	options LunarEclipseDetailedSVGOptions,
 	model eclipsecore.LunarEclipseShadowModel,
 ) string {
-	view := lunarEclipseDetailedViewFor(options)
+	view := lunarEclipseDetailedViewFor(info, options)
 	english := options.Language == lunarEclipseSVGLanguageEnglish
 	title := options.Title
 	if title == "" {
@@ -353,13 +374,14 @@ func renderLunarEclipseDetailedSVG(
 		diagramTop: view.diagramTop, diagramEnd: view.diagramBottom,
 		diagramLeft: view.margin, diagramRight: view.width - view.margin,
 	}
+	penumbralBands := lunarEclipseMapDrawsPenumbralBands(info, !options.DisablePenumbralPhase)
 	// 不动的元素先占位：数据块、底图、图例与页脚；示意图标注只在示意图带内选位置。
 	labels := &svgchart.LabelTable{}
 	for _, cell := range lunarEclipseDetailedPanelCells(view, info, options) {
 		labels.Reserve(cell.box.X, cell.box.Y, cell.box.Width, cell.box.Height)
 	}
 	labels.Reserve(view.mapFrame.X, view.mapFrame.Y, view.mapFrame.Width, view.mapFrame.Height)
-	for _, row := range lunarEclipseMapLegendRows(view.mapFrame, view.width, options.Language) {
+	for _, row := range lunarEclipseMapLegendRows(view.mapFrame, view.width, options.Language, penumbralBands) {
 		for _, item := range row {
 			labels.ReserveText(item.x, item.y, lunarEclipseDetailedMapLegendFontSize, item.text, "start")
 		}
@@ -372,7 +394,7 @@ func renderLunarEclipseDetailedSVG(
 		options.Width, options.Height, options.Width, options.Height, html.EscapeString(title))
 	b.WriteString(`<defs>`)
 	b.WriteString(svgasset.MoonFaceSymbol())
-	writeLunarEclipseMapDefinitions(&b, view.mapFrame, info)
+	writeLunarEclipseMapDefinitions(&b, view.mapFrame, geometry, penumbralBands)
 	b.WriteString(`</defs>`)
 	b.WriteString(`<rect width="100%" height="100%" fill="#efefed"/>`)
 	fmt.Fprintf(&b, `<rect x="22" y="18" width="%.3f" height="%.3f" fill="#ffffff" stroke="#c9c9c6" stroke-width="1.2"/>`,
@@ -388,9 +410,9 @@ func renderLunarEclipseDetailedSVG(
 	writeLunarEclipseDetailedGeocentricBlocks(&b, labels, tt, view, options)
 	writeLunarEclipseDiagram(&b, layout, diagram, options.Language, labels)
 	writeLunarEclipseDetailedPanels(&b, info, shadow, scale, view, options)
-	writeLunarEclipseMapRegions(&b, view.mapFrame, info)
+	writeLunarEclipseMapRegions(&b, view.mapFrame, geometry, penumbralBands)
 	view.mapFrame.WriteFrame(&b)
-	writeLunarEclipseMapLegend(&b, view.mapFrame, view.width, options.Language)
+	writeLunarEclipseMapLegend(&b, view.mapFrame, view.width, options.Language, penumbralBands)
 	writeLunarEclipseDetailedFooter(&b, view, options, model)
 	b.WriteString(`</svg>`)
 	return b.String()
@@ -435,16 +457,7 @@ func writeLunarEclipseDetailedSummary(
 		fmt.Fprintf(b, `<text x="%.3f" y="%.3f" fill="#293235" font-family="Arial, sans-serif" font-size="12.5" text-anchor="middle">%s</text>`,
 			view.width/2, view.metaY+float64(index)*22, html.EscapeString(line))
 	}
-	zoneNote := "图中时刻为 UT"
-	if offset := zoneOffsetSeconds(info.Maximum.In(options.Location)); offset != 0 {
-		zoneNote = fmt.Sprintf("图中时刻为 %s（UT%s）", zone, formatZoneOffset(offset))
-	}
-	if english {
-		zoneNote = "All times are UT"
-		if offset := zoneOffsetSeconds(info.Maximum.In(options.Location)); offset != 0 {
-			zoneNote = fmt.Sprintf("All times are %s (UT%s)", zone, formatZoneOffset(offset))
-		}
-	}
+	zoneNote := timenote.Scale(options.TimeScale, info.Maximum, options.Location, options.Language)
 	labels.ReserveText(view.width/2, view.metaY+4*22, 11, zoneNote, "middle")
 	fmt.Fprintf(b, `<text x="%.3f" y="%.3f" fill="#7b8794" font-family="Arial, sans-serif" font-size="11" text-anchor="middle">%s</text>`,
 		view.width/2, view.metaY+4*22, html.EscapeString(zoneNote))
@@ -479,7 +492,7 @@ func writeLunarEclipseDetailedGeocentricBlocks(
 	}
 	sunRa, sunDec := basic.SunApparentRaDec(tt)
 	moonRa, moonDec := basic.HMoonTrueRaDec(tt)
-	sunSd := basic.SunSemidiameter(tt)
+	sunSd := basic.SolarEclipseSunSemidiameter(tt, basic.SolarEclipseSunRadiusStandard)
 	moonSd := basic.MoonSemidiameter(tt)
 	blocks := [2][]svgchart.PanelRow{
 		{
@@ -603,6 +616,10 @@ func writeLunarEclipseArcMinuteScaleBar(
 
 // lunarEclipseDetailedFooterText 是页脚说明：默认模型会在极浅半影上回退 Chauvenet，必须写出实际用的那套。
 func lunarEclipseDetailedFooterText(options LunarEclipseDetailedSVGOptions, model eclipsecore.LunarEclipseShadowModel) string {
+	return lunarEclipseDetailedFooterTextBase(options, model)
+}
+
+func lunarEclipseDetailedFooterTextBase(options LunarEclipseDetailedSVGOptions, model eclipsecore.LunarEclipseShadowModel) string {
 	if options.FooterNote != "" {
 		return options.FooterNote
 	}
@@ -623,10 +640,12 @@ func writeLunarEclipseDetailedFooter(
 	lines := svgchart.TruncateTextLines(
 		svgchart.WrapText(lunarEclipseDetailedFooterText(options, model), maxWidth, lunarEclipseDetailedFooterFontSize),
 		maxWidth, lunarEclipseDetailedFooterFontSize,
-		svgchart.BaselineLineLimit(lunarEclipseDetailedFooterFontSize, 15, view.footerY, view.height-4))
+		svgchart.BaselineLineLimit(lunarEclipseDetailedFooterFontSize, svgchart.FooterLineHeight(lunarEclipseDetailedFooterFontSize),
+			view.footerY, view.height-svgchart.FooterBottomPadding(lunarEclipseDetailedFooterFontSize)))
 	for index, line := range lines {
 		fmt.Fprintf(b, `<text x="%.3f" y="%.3f" fill="#596164" font-family="Georgia, 'Times New Roman', serif" font-size="%.0f">%s</text>`,
-			view.margin, view.footerY+float64(index)*15, lunarEclipseDetailedFooterFontSize, html.EscapeString(line))
+			view.margin, view.footerY+float64(index)*svgchart.FooterLineHeight(lunarEclipseDetailedFooterFontSize),
+			lunarEclipseDetailedFooterFontSize, html.EscapeString(line))
 	}
 }
 

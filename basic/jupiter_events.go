@@ -74,15 +74,15 @@ func jupiterConjunctionFull(jde, degree float64, next uint8) float64 {
 	} else {
 		jde += daysPerDegree * currentDelta
 	}
-	estimateJD := jde
+	estimateJDE := jde
 	converged := false
 	for i := 0; i < eventNewtonMaxIterations; i++ {
-		prevJD := estimateJD
-		longitudeDelta := jupiterSunLongitudeDelta(prevJD, degree, true)
-		longitudeSlope := (jupiterSunLongitudeDelta(prevJD+0.000005, degree, true) - jupiterSunLongitudeDelta(prevJD-0.000005, degree, true)) / 0.00001
-		nextJD := prevJD - longitudeDelta/longitudeSlope
-		estimateJD = nextJD
-		if math.Abs(nextJD-prevJD) <= 0.00001 {
+		prevJDE := estimateJDE
+		longitudeDelta := jupiterSunLongitudeDelta(prevJDE, degree, true)
+		longitudeSlope := (jupiterSunLongitudeDelta(prevJDE+0.000005, degree, true) - jupiterSunLongitudeDelta(prevJDE-0.000005, degree, true)) / 0.00001
+		nextJD := prevJDE - longitudeDelta/longitudeSlope
+		estimateJDE = nextJD
+		if math.Abs(nextJD-prevJDE) <= 0.00001 {
 			converged = true
 			break
 		}
@@ -90,7 +90,7 @@ func jupiterConjunctionFull(jde, degree float64, next uint8) float64 {
 	if !converged {
 		return math.NaN()
 	}
-	return TD2UT(estimateJD, false)
+	return TT2UTC(estimateJDE)
 }
 
 func jupiterConjunction(jde, degree float64, next uint8) float64 {
@@ -105,15 +105,15 @@ func jupiterConjunction(jde, degree float64, next uint8) float64 {
 	} else {
 		jde += daysPerDegree * currentDelta
 	}
-	estimateJD := jde
+	estimateJDE := jde
 	converged := false
 	for i := 0; i < eventNewtonMaxIterations; i++ {
-		prevJD := estimateJD
-		longitudeDelta := jupiterSunLongitudeDeltaN(prevJD, degree, true, jupiterEventSearchN)
-		longitudeSlope := (jupiterSunLongitudeDeltaN(prevJD+0.000005, degree, true, jupiterEventSearchN) - jupiterSunLongitudeDeltaN(prevJD-0.000005, degree, true, jupiterEventSearchN)) / 0.00001
-		nextJD := prevJD - longitudeDelta/longitudeSlope
-		estimateJD = nextJD
-		if math.Abs(nextJD-prevJD) <= jupiterPhaseCoarseTolerance {
+		prevJDE := estimateJDE
+		longitudeDelta := jupiterSunLongitudeDeltaN(prevJDE, degree, true, jupiterEventSearchN)
+		longitudeSlope := (jupiterSunLongitudeDeltaN(prevJDE+0.000005, degree, true, jupiterEventSearchN) - jupiterSunLongitudeDeltaN(prevJDE-0.000005, degree, true, jupiterEventSearchN)) / 0.00001
+		nextJD := prevJDE - longitudeDelta/longitudeSlope
+		estimateJDE = nextJD
+		if math.Abs(nextJD-prevJDE) <= jupiterPhaseCoarseTolerance {
 			converged = true
 			break
 		}
@@ -123,12 +123,12 @@ func jupiterConjunction(jde, degree float64, next uint8) float64 {
 	}
 	converged = false
 	for i := 0; i < eventNewtonMaxIterations; i++ {
-		prevJD := estimateJD
-		longitudeDelta := jupiterSunLongitudeDelta(prevJD, degree, true)
-		longitudeSlope := (jupiterSunLongitudeDelta(prevJD+0.000005, degree, true) - jupiterSunLongitudeDelta(prevJD-0.000005, degree, true)) / 0.00001
-		nextJD := prevJD - longitudeDelta/longitudeSlope
-		estimateJD = nextJD
-		if math.Abs(nextJD-prevJD) <= 0.00001 {
+		prevJDE := estimateJDE
+		longitudeDelta := jupiterSunLongitudeDelta(prevJDE, degree, true)
+		longitudeSlope := (jupiterSunLongitudeDelta(prevJDE+0.000005, degree, true) - jupiterSunLongitudeDelta(prevJDE-0.000005, degree, true)) / 0.00001
+		nextJD := prevJDE - longitudeDelta/longitudeSlope
+		estimateJDE = nextJD
+		if math.Abs(nextJD-prevJDE) <= 0.00001 {
 			converged = true
 			break
 		}
@@ -136,7 +136,7 @@ func jupiterConjunction(jde, degree float64, next uint8) float64 {
 	if !converged {
 		return math.NaN()
 	}
-	return TD2UT(estimateJD, false)
+	return TT2UTC(estimateJDE)
 }
 
 func LastJupiterConjunction(jde float64) float64 {
@@ -175,22 +175,22 @@ func jupiterRetrogradeAroundOpposition(oppositionJD float64, searchBeforeOpposit
 	if !isFiniteFloat(oppositionJD) {
 		return math.NaN()
 	}
-	oppositionTT := TD2UT(oppositionJD, true)
+	oppositionTT := UTC2TT(oppositionJD)
 	startTT := oppositionTT
 	endTT := oppositionTT
 	if searchBeforeOpposition {
 		easternQuadratureUT := jupiterConjunction(oppositionTT, 90, 0)
-		startTT = TD2UT(easternQuadratureUT, true)
+		startTT = UTC2TT(easternQuadratureUT)
 	} else {
 		westernQuadratureUT := jupiterConjunction(oppositionTT, 270, 1)
-		endTT = TD2UT(westernQuadratureUT, true)
+		endTT = UTC2TT(westernQuadratureUT)
 	}
-	bestJD := zeroEventInWindow(startTT, endTT, 2.0, 2.0, 30.0/86400.0, func(jd float64) float64 {
+	bestJDE := zeroEventInWindow(startTT, endTT, 2.0, 2.0, 30.0/86400.0, func(jd float64) float64 {
 		return jupiterRADerivativeN(jd, stationDerivativeStepDay, jupiterEventSearchN)
 	}, func(jd float64) float64 {
 		return jupiterRADerivative(jd, stationDerivativeStepDay)
 	})
-	return TD2UT(bestJD, false)
+	return TT2UTC(bestJDE)
 }
 
 func NextJupiterRetrogradeToPrograde(jde float64) float64 {

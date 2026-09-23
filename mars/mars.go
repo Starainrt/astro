@@ -15,7 +15,7 @@ var (
 	ERR_MARS_NEVER_DOWN = ERR_MARS_NEVER_SET
 )
 
-func riseSetResult(date time.Time, jde float64, err error) (time.Time, error) {
+func riseSetResult(date time.Time, jd float64, err error) (time.Time, error) {
 	if err != nil {
 		switch {
 		case errors.Is(err, basic.ErrNeverRise):
@@ -26,7 +26,8 @@ func riseSetResult(date time.Time, jde float64, err error) (time.Time, error) {
 			return time.Time{}, err
 		}
 	}
-	return basic.JDE2DateByZone(jde, date.Location(), true), nil
+	_, offset := date.Zone()
+	return basic.JD2DateByZone(jd-float64(offset)/86400, date.Location(), false), nil
 }
 
 // ApparentLo 视黄经 / apparent ecliptic longitude.
@@ -34,8 +35,8 @@ func riseSetResult(date time.Time, jde float64, err error) (time.Time, error) {
 // 返回火星在 date 对应绝对时刻的瞬时视黄经，单位度。
 // Returns the apparent ecliptic longitude of Mars at the instant represented by date, in degrees.
 func ApparentLo(date time.Time) float64 {
-	jde := calendar.Date2JDE(date.UTC())
-	return basic.MarsApparentLo(basic.TD2UT(jde, true))
+	jd := calendar.Date2JD(date.UTC())
+	return basic.MarsApparentLo(basic.UTC2TT(jd))
 }
 
 // ApparentBo 视黄纬 / apparent ecliptic latitude.
@@ -43,8 +44,8 @@ func ApparentLo(date time.Time) float64 {
 // 返回火星在 date 对应绝对时刻的瞬时视黄纬，单位度。
 // Returns the apparent ecliptic latitude of Mars at the instant represented by date, in degrees.
 func ApparentBo(date time.Time) float64 {
-	jde := calendar.Date2JDE(date.UTC())
-	return basic.MarsApparentBo(basic.TD2UT(jde, true))
+	jd := calendar.Date2JD(date.UTC())
+	return basic.MarsApparentBo(basic.UTC2TT(jd))
 }
 
 // ApparentRa 视赤经 / apparent right ascension.
@@ -52,8 +53,8 @@ func ApparentBo(date time.Time) float64 {
 // 返回火星在 date 对应绝对时刻的瞬时视赤经，单位度。
 // Returns the apparent right ascension of Mars at the instant represented by date, in degrees.
 func ApparentRa(date time.Time) float64 {
-	jde := calendar.Date2JDE(date.UTC())
-	return basic.MarsApparentRa(basic.TD2UT(jde, true))
+	jd := calendar.Date2JD(date.UTC())
+	return basic.MarsApparentRa(basic.UTC2TT(jd))
 }
 
 // ApparentDec 视赤纬 / apparent declination.
@@ -61,8 +62,8 @@ func ApparentRa(date time.Time) float64 {
 // 返回火星在 date 对应绝对时刻的瞬时视赤纬，单位度。
 // Returns the apparent declination of Mars at the instant represented by date, in degrees.
 func ApparentDec(date time.Time) float64 {
-	jde := calendar.Date2JDE(date.UTC())
-	return basic.MarsApparentDec(basic.TD2UT(jde, true))
+	jd := calendar.Date2JD(date.UTC())
+	return basic.MarsApparentDec(basic.UTC2TT(jd))
 }
 
 // ApparentRaDec 视赤经、视赤纬 / apparent right ascension and declination.
@@ -70,8 +71,8 @@ func ApparentDec(date time.Time) float64 {
 // 返回火星在 date 对应绝对时刻的瞬时视赤经与视赤纬，单位度。
 // Returns the apparent right ascension and declination of Mars at the instant represented by date, in degrees.
 func ApparentRaDec(date time.Time) (float64, float64) {
-	jde := calendar.Date2JDE(date.UTC())
-	return basic.MarsApparentRaDec(basic.TD2UT(jde, true))
+	jd := calendar.Date2JD(date.UTC())
+	return basic.MarsApparentRaDec(basic.UTC2TT(jd))
 }
 
 // ApparentMagnitude 视星等 / apparent magnitude.
@@ -79,8 +80,8 @@ func ApparentRaDec(date time.Time) (float64, float64) {
 // 返回火星在 date 对应绝对时刻的视星等。
 // Returns the apparent visual magnitude of Mars at the instant represented by date.
 func ApparentMagnitude(date time.Time) float64 {
-	jde := calendar.Date2JDE(date.UTC())
-	return basic.MarsMag(basic.TD2UT(jde, true))
+	jd := calendar.Date2JD(date.UTC())
+	return basic.MarsMag(basic.UTC2TT(jd))
 }
 
 // EarthDistance 地心距离 / Earth distance.
@@ -88,8 +89,8 @@ func ApparentMagnitude(date time.Time) float64 {
 // 返回火星在 date 对应绝对时刻到地球的距离，单位 AU。
 // Returns the distance from Mars to Earth at the instant represented by date, in astronomical units.
 func EarthDistance(date time.Time) float64 {
-	jde := calendar.Date2JDE(date.UTC())
-	return basic.EarthMarsAway(basic.TD2UT(jde, true))
+	jd := calendar.Date2JD(date.UTC())
+	return basic.EarthMarsAway(basic.UTC2TT(jd))
 }
 
 // SunDistance 日心距离 / Sun distance.
@@ -97,8 +98,8 @@ func EarthDistance(date time.Time) float64 {
 // 返回火星在 date 对应绝对时刻到太阳的距离，单位 AU。
 // Returns the distance from Mars to the Sun at the instant represented by date, in astronomical units.
 func SunDistance(date time.Time) float64 {
-	jde := calendar.Date2JDE(date.UTC())
-	return planet.WherePlanet(3, 2, basic.TD2UT(jde, true))
+	jd := calendar.Date2JD(date.UTC())
+	return planet.WherePlanet(3, 2, basic.UTC2TT(jd))
 }
 
 // Altitude 高度角 / altitude.
@@ -106,10 +107,10 @@ func SunDistance(date time.Time) float64 {
 // date 表示观测时刻，会读取其时区参与地方时计算；lon 为观测者经度，东正西负；lat 为观测者纬度，北正南负。返回值单位度。
 // date is the observing instant and its zone offset participates in local-time calculations. lon is east-positive longitude, lat is north-positive latitude, and the result is in degrees.
 func Altitude(date time.Time, lon, lat float64) float64 {
-	jde := basic.Date2JDE(date)
+	localJD := basic.Date2JD(date)
 	_, loc := date.Zone()
 	timezone := float64(loc) / 3600.0
-	return basic.MarsHeight(jde, lon, lat, timezone)
+	return basic.MarsHeight(localJD, lon, lat, timezone)
 }
 
 // Zenith 天顶距 / zenith distance.
@@ -125,10 +126,10 @@ func Zenith(date time.Time, lon, lat float64) float64 {
 // date 表示观测时刻，会读取其时区参与地方时计算；lon 为观测者经度，东正西负；lat 为观测者纬度，北正南负。返回值按正北为 0°、向东增加。
 // date is the observing instant and its zone offset participates in local-time calculations. lon is east-positive longitude, lat is north-positive latitude, and azimuth is measured from north toward east.
 func Azimuth(date time.Time, lon, lat float64) float64 {
-	jde := basic.Date2JDE(date)
+	localJD := basic.Date2JD(date)
 	_, loc := date.Zone()
 	timezone := float64(loc) / 3600.0
-	return basic.MarsAzimuth(jde, lon, lat, timezone)
+	return basic.MarsAzimuth(localJD, lon, lat, timezone)
 }
 
 // HourAngle 时角 / hour angle.
@@ -136,10 +137,10 @@ func Azimuth(date time.Time, lon, lat float64) float64 {
 // date 表示观测时刻，会读取其时区参与地方时计算；lon 为观测者经度，东正西负。返回值单位度。
 // date is the observing instant and its zone offset participates in local-time calculations. lon is east-positive longitude and the returned hour angle is in degrees.
 func HourAngle(date time.Time, lon float64) float64 {
-	jde := basic.Date2JDE(date)
+	localJD := basic.Date2JD(date)
 	_, loc := date.Zone()
 	timezone := float64(loc) / 3600.0
-	return basic.MarsHourAngle(jde, lon, timezone)
+	return basic.MarsHourAngle(localJD, lon, timezone)
 }
 
 // CulminationTime 中天时刻 / culmination time.
@@ -147,33 +148,29 @@ func HourAngle(date time.Time, lon float64) float64 {
 // date 取其所在时区的当地日期，返回值保持相同时区；lon 为观测者经度，东正西负。
 // date is interpreted on its local civil day and the result keeps the same time zone. lon is east-positive longitude.
 func CulminationTime(date time.Time, lon float64) time.Time {
-	if date.Hour() > 12 {
-		date = date.Add(time.Hour * -12)
-	}
-	jde := basic.Date2JDE(date)
+	date = time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, date.Location())
+	localJD := basic.Date2JD(date)
 	_, loc := date.Zone()
 	timezone := float64(loc) / 3600.0
-	calcJde := basic.MarsCulminationTime(jde, lon, timezone) - timezone/24.00
-	return basic.JDE2DateByZone(calcJde, date.Location(), false)
+	calcJD := basic.MarsCulminationTime(localJD, lon, timezone) - timezone/24.00
+	return basic.JD2DateByZone(calcJD, date.Location(), false)
 }
 
 // RiseTime 升起时间 / rise time.
 //
-// date 取其所在时区的当地日期，返回值保持相同时区；lon 为东正西负经度，lat 为北正南负纬度；height 为观测点海拔高度（米）；aero 为 true 时加入标准大气折射。
+// date 取其所在时区的当地日期，返回值保持相同时区；lon 为东正西负经度，lat 为北正南负纬度；height 为观测点椭球高（大地高，米）；aero 为 true 时加入标准大气折射。
 // date is interpreted on its local civil day and the result keeps the same time zone. lon is east-positive longitude, lat is north-positive latitude, height is observer elevation in meters, and aero enables standard atmospheric refraction.
 func RiseTime(date time.Time, lon, lat, height float64, aero bool) (time.Time, error) {
 	var aeroFloat float64
 	if aero {
 		aeroFloat = 1
 	}
-	if date.Hour() > 12 {
-		date = date.Add(time.Hour * -12)
-	}
-	jde := basic.Date2JDE(date)
+	date = time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, date.Location())
+	localJD := basic.Date2JD(date)
 	_, loc := date.Zone()
 	timezone := float64(loc) / 3600.0
-	riseJde, err := basic.MarsRiseTime(jde, lon, lat, timezone, aeroFloat, height)
-	return riseSetResult(date, riseJde, err)
+	riseJD, err := basic.MarsRiseTime(localJD, lon, lat, timezone, aeroFloat, height)
+	return riseSetResult(date, riseJD, err)
 }
 
 // DownTime 落下时间别名 / deprecated set-time alias.
@@ -195,14 +192,12 @@ func SetTime(date time.Time, lon, lat, height float64, aero bool) (time.Time, er
 	if aero {
 		aeroFloat = 1
 	}
-	if date.Hour() > 12 {
-		date = date.Add(time.Hour * -12)
-	}
-	jde := basic.Date2JDE(date)
+	date = time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, date.Location())
+	localJD := basic.Date2JD(date)
 	_, loc := date.Zone()
 	timezone := float64(loc) / 3600.0
-	riseJde, err := basic.MarsSetTime(jde, lon, lat, timezone, aeroFloat, height)
-	return riseSetResult(date, riseJde, err)
+	riseJD, err := basic.MarsSetTime(localJD, lon, lat, timezone, aeroFloat, height)
+	return riseSetResult(date, riseJD, err)
 }
 
 // LastConjunction 上一次合日 / previous conjunction with the Sun.
@@ -210,8 +205,8 @@ func SetTime(date time.Time, lon, lat, height float64, aero bool) (time.Time, er
 // 返回 date 当前或之前最近一次与太阳的合日时刻，结果保持 date 的时区。
 // Returns the nearest conjunction with the Sun at or before date, keeping date's time zone.
 func LastConjunction(date time.Time) time.Time {
-	jde := basic.TD2UT(basic.Date2JDE(date.UTC()), true)
-	return basic.JDE2DateByZone(basic.LastMarsConjunction(jde), date.Location(), false)
+	jde := basic.UTC2TT(basic.Date2JD(date.UTC()))
+	return basic.JD2DateByZone(basic.LastMarsConjunction(jde), date.Location(), false)
 }
 
 // NextConjunction 下一次合日 / next conjunction with the Sun.
@@ -219,8 +214,8 @@ func LastConjunction(date time.Time) time.Time {
 // 返回 date 当前或之后最近一次与太阳的合日时刻，结果保持 date 的时区。
 // Returns the nearest conjunction with the Sun at or after date, keeping date's time zone.
 func NextConjunction(date time.Time) time.Time {
-	jde := basic.TD2UT(basic.Date2JDE(date.UTC()), true)
-	return basic.JDE2DateByZone(basic.NextMarsConjunction(jde), date.Location(), false)
+	jde := basic.UTC2TT(basic.Date2JD(date.UTC()))
+	return basic.JD2DateByZone(basic.NextMarsConjunction(jde), date.Location(), false)
 }
 
 // LastOpposition 上一次冲日 / previous opposition.
@@ -228,8 +223,8 @@ func NextConjunction(date time.Time) time.Time {
 // 返回 date 当前或之前最近一次冲日时刻，结果保持 date 的时区。
 // Returns the nearest opposition at or before date, keeping date's time zone.
 func LastOpposition(date time.Time) time.Time {
-	jde := basic.TD2UT(basic.Date2JDE(date.UTC()), true)
-	return basic.JDE2DateByZone(basic.LastMarsOpposition(jde), date.Location(), false)
+	jde := basic.UTC2TT(basic.Date2JD(date.UTC()))
+	return basic.JD2DateByZone(basic.LastMarsOpposition(jde), date.Location(), false)
 }
 
 // NextOpposition 下一次冲日 / next opposition.
@@ -237,8 +232,8 @@ func LastOpposition(date time.Time) time.Time {
 // 返回 date 当前或之后最近一次冲日时刻，结果保持 date 的时区。
 // Returns the nearest opposition at or after date, keeping date's time zone.
 func NextOpposition(date time.Time) time.Time {
-	jde := basic.TD2UT(basic.Date2JDE(date.UTC()), true)
-	return basic.JDE2DateByZone(basic.NextMarsOpposition(jde), date.Location(), false)
+	jde := basic.UTC2TT(basic.Date2JD(date.UTC()))
+	return basic.JD2DateByZone(basic.NextMarsOpposition(jde), date.Location(), false)
 }
 
 // LastProgradeToRetrograde 上一次顺行转逆行留 / previous station from prograde to retrograde.
@@ -246,8 +241,8 @@ func NextOpposition(date time.Time) time.Time {
 // 返回 date 当前或之前最近一次由顺行转为逆行的留时刻，结果保持 date 的时区。
 // Returns the nearest station at or before date where motion changes from prograde to retrograde, keeping date's time zone.
 func LastProgradeToRetrograde(date time.Time) time.Time {
-	jde := basic.TD2UT(basic.Date2JDE(date.UTC()), true)
-	return basic.JDE2DateByZone(basic.LastMarsProgradeToRetrograde(jde), date.Location(), false)
+	jde := basic.UTC2TT(basic.Date2JD(date.UTC()))
+	return basic.JD2DateByZone(basic.LastMarsProgradeToRetrograde(jde), date.Location(), false)
 }
 
 // NextProgradeToRetrograde 下一次顺行转逆行留 / next station from prograde to retrograde.
@@ -255,8 +250,8 @@ func LastProgradeToRetrograde(date time.Time) time.Time {
 // 返回 date 当前或之后最近一次由顺行转为逆行的留时刻，结果保持 date 的时区。
 // Returns the nearest station at or after date where motion changes from prograde to retrograde, keeping date's time zone.
 func NextProgradeToRetrograde(date time.Time) time.Time {
-	jde := basic.TD2UT(basic.Date2JDE(date.UTC()), true)
-	return basic.JDE2DateByZone(basic.NextMarsProgradeToRetrograde(jde), date.Location(), false)
+	jde := basic.UTC2TT(basic.Date2JD(date.UTC()))
+	return basic.JD2DateByZone(basic.NextMarsProgradeToRetrograde(jde), date.Location(), false)
 }
 
 // LastRetrogradeToPrograde 上一次逆行转顺行留 / previous station from retrograde to prograde.
@@ -264,8 +259,8 @@ func NextProgradeToRetrograde(date time.Time) time.Time {
 // 返回 date 当前或之前最近一次由逆行转为顺行的留时刻，结果保持 date 的时区。
 // Returns the nearest station at or before date where motion changes from retrograde to prograde, keeping date's time zone.
 func LastRetrogradeToPrograde(date time.Time) time.Time {
-	jde := basic.TD2UT(basic.Date2JDE(date.UTC()), true)
-	return basic.JDE2DateByZone(basic.LastMarsRetrogradeToPrograde(jde), date.Location(), false)
+	jde := basic.UTC2TT(basic.Date2JD(date.UTC()))
+	return basic.JD2DateByZone(basic.LastMarsRetrogradeToPrograde(jde), date.Location(), false)
 }
 
 // NextRetrogradeToPrograde 下一次逆行转顺行留 / next station from retrograde to prograde.
@@ -273,8 +268,8 @@ func LastRetrogradeToPrograde(date time.Time) time.Time {
 // 返回 date 当前或之后最近一次由逆行转为顺行的留时刻，结果保持 date 的时区。
 // Returns the nearest station at or after date where motion changes from retrograde to prograde, keeping date's time zone.
 func NextRetrogradeToPrograde(date time.Time) time.Time {
-	jde := basic.TD2UT(basic.Date2JDE(date.UTC()), true)
-	return basic.JDE2DateByZone(basic.NextMarsRetrogradeToPrograde(jde), date.Location(), false)
+	jde := basic.UTC2TT(basic.Date2JD(date.UTC()))
+	return basic.JD2DateByZone(basic.NextMarsRetrogradeToPrograde(jde), date.Location(), false)
 }
 
 // LastEasternQuadrature 上一次东方照 / previous eastern quadrature.
@@ -282,8 +277,8 @@ func NextRetrogradeToPrograde(date time.Time) time.Time {
 // 返回 date 当前或之前最近一次东方照时刻，结果保持 date 的时区。
 // Returns the nearest eastern quadrature at or before date, keeping date's time zone.
 func LastEasternQuadrature(date time.Time) time.Time {
-	jde := basic.TD2UT(basic.Date2JDE(date.UTC()), true)
-	return basic.JDE2DateByZone(basic.LastMarsEasternQuadrature(jde), date.Location(), false)
+	jde := basic.UTC2TT(basic.Date2JD(date.UTC()))
+	return basic.JD2DateByZone(basic.LastMarsEasternQuadrature(jde), date.Location(), false)
 }
 
 // NextEasternQuadrature 下一次东方照 / next eastern quadrature.
@@ -291,8 +286,8 @@ func LastEasternQuadrature(date time.Time) time.Time {
 // 返回 date 当前或之后最近一次东方照时刻，结果保持 date 的时区。
 // Returns the nearest eastern quadrature at or after date, keeping date's time zone.
 func NextEasternQuadrature(date time.Time) time.Time {
-	jde := basic.TD2UT(basic.Date2JDE(date.UTC()), true)
-	return basic.JDE2DateByZone(basic.NextMarsEasternQuadrature(jde), date.Location(), false)
+	jde := basic.UTC2TT(basic.Date2JD(date.UTC()))
+	return basic.JD2DateByZone(basic.NextMarsEasternQuadrature(jde), date.Location(), false)
 }
 
 // LastWesternQuadrature 上一次西方照 / previous western quadrature.
@@ -300,8 +295,8 @@ func NextEasternQuadrature(date time.Time) time.Time {
 // 返回 date 当前或之前最近一次西方照时刻，结果保持 date 的时区。
 // Returns the nearest western quadrature at or before date, keeping date's time zone.
 func LastWesternQuadrature(date time.Time) time.Time {
-	jde := basic.TD2UT(basic.Date2JDE(date.UTC()), true)
-	return basic.JDE2DateByZone(basic.LastMarsWesternQuadrature(jde), date.Location(), false)
+	jde := basic.UTC2TT(basic.Date2JD(date.UTC()))
+	return basic.JD2DateByZone(basic.LastMarsWesternQuadrature(jde), date.Location(), false)
 }
 
 // NextWesternQuadrature 下一次西方照 / next western quadrature.
@@ -309,6 +304,6 @@ func LastWesternQuadrature(date time.Time) time.Time {
 // 返回 date 当前或之后最近一次西方照时刻，结果保持 date 的时区。
 // Returns the nearest western quadrature at or after date, keeping date's time zone.
 func NextWesternQuadrature(date time.Time) time.Time {
-	jde := basic.TD2UT(basic.Date2JDE(date.UTC()), true)
-	return basic.JDE2DateByZone(basic.NextMarsWesternQuadrature(jde), date.Location(), false)
+	jde := basic.UTC2TT(basic.Date2JD(date.UTC()))
+	return basic.JD2DateByZone(basic.NextMarsWesternQuadrature(jde), date.Location(), false)
 }
