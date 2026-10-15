@@ -169,7 +169,7 @@ func centralShadowBoundaryLines(t *testing.T, feature decodedFeature) [][][2]flo
 func centralShadowSubsolarPoint(value time.Time) (float64, float64) {
 	ttJDE := basic.UTC2TT(basic.Date2JD(value.UTC()))
 	ra, dec := basic.HSunApparentRaDec(ttJDE)
-	utJDE := basic.TT2UTC(ttJDE)
+	utJDE := basic.TT2UT1(ttJDE)
 	longitude := ra - basic.ApparentSiderealTime(utJDE)*15
 	for longitude > 180 {
 		longitude -= 360
