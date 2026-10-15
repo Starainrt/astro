@@ -216,7 +216,7 @@ func occultationPhaseBoundaryCyclesForEdges(
 	validEdges := make([]bool, len(edges))
 	nodeFor := func(point geodata.GeoPoint) int {
 		for index := range nodes {
-			if geoDistanceKM(nodes[index].point, point) <= curveBoundaryJoinDistanceKM {
+			if geodata.EquatorialDistanceKM(nodes[index].point, point) <= curveBoundaryJoinDistanceKM {
 				return index
 			}
 		}
@@ -294,7 +294,7 @@ func occultationPhaseBoundaryCyclesForEdges(
 						reverseGeoPointRing(next)
 					}
 					nextRing := append([]geodata.GeoPoint(nil), ring...)
-					if len(nextRing) > 0 && geoDistanceKM(nextRing[len(nextRing)-1], next[0]) <= curveBoundaryJoinDistanceKM {
+					if len(nextRing) > 0 && geodata.EquatorialDistanceKM(nextRing[len(nextRing)-1], next[0]) <= curveBoundaryJoinDistanceKM {
 						next[0] = nextRing[len(nextRing)-1]
 					}
 					nextRing = append(nextRing, next[1:]...)
@@ -500,7 +500,7 @@ func curveBoundaryEndpointsMatch(
 }
 
 func curveBoundaryEndpointMatch(first geodata.GeoPoint, firstTime time.Time, second geodata.GeoPoint, secondTime time.Time) bool {
-	return geoDistanceKM(first, second) <= curveBoundaryJoinDistanceKM &&
+	return geodata.EquatorialDistanceKM(first, second) <= curveBoundaryJoinDistanceKM &&
 		!firstTime.IsZero() && !secondTime.IsZero() && absDuration(firstTime.Sub(secondTime)) <= curveBoundaryJoinTime
 }
 
@@ -596,7 +596,7 @@ func densifyOccultationPolygons(
 				continue
 			}
 			next := polygon[index+1]
-			distance := occultationProjectedEdgeDistanceKM(point, next)
+			distance := geodata.WebMercatorDistanceKM(point, next)
 			steps := int(math.Ceil(distance / maximumEdgeKM))
 			if steps < 2 {
 				continue
@@ -610,7 +610,7 @@ func densifyOccultationPolygons(
 		// fallback can still render one long closing chord.
 		if len(polygon) > 2 && !geodata.SameGeoPoint(polygon[0], polygon[len(polygon)-1]) {
 			first, last := polygon[0], polygon[len(polygon)-1]
-			distance := occultationProjectedEdgeDistanceKM(last, first)
+			distance := geodata.WebMercatorDistanceKM(last, first)
 			steps := int(math.Ceil(distance / maximumEdgeKM))
 			if steps >= 2 {
 				for step := 1; step < steps; step++ {
@@ -621,24 +621,6 @@ func densifyOccultationPolygons(
 		result[polygonIndex] = ring
 	}
 	return result
-}
-
-// occultationProjectedEdgeDistanceKM measures an edge in the Web Mercator
-// chart used by the GeoJSON/OpenLayers consumer, while retaining the shortest
-// wrapped longitude. At high latitude a small spherical edge expands strongly
-// in this chart; using only the great-circle distance leaves visible polygon
-// chords even though the source contact contour is densely sampled.
-func occultationProjectedEdgeDistanceKM(first, second geodata.GeoPoint) float64 {
-	const maxLatitude = 85.05112878
-	clampLatitude := func(value float64) float64 {
-		return math.Max(-maxLatitude, math.Min(maxLatitude, value))
-	}
-	longitude := math.Remainder(second.Longitude-first.Longitude, 360) * math.Pi / 180
-	firstLatitude := clampLatitude(first.Latitude) * math.Pi / 180
-	secondLatitude := clampLatitude(second.Latitude) * math.Pi / 180
-	firstY := math.Log(math.Tan(math.Pi/4 + firstLatitude/2))
-	secondY := math.Log(math.Tan(math.Pi/4 + secondLatitude/2))
-	return EarthRadiusKM * math.Hypot(longitude, secondY-firstY)
 }
 
 func interpolateOccultationGeoPoint(
@@ -747,7 +729,7 @@ func interpolateOccultationHorizonPoint(
 	}
 	point := first
 	point.Time = first.Time.Add(time.Duration(float64(second.Time.Sub(first.Time)) * fraction))
-	point.Longitude = normalizeGeoLongitude(first.Longitude + fraction*deltaLongitude)
+	point.Longitude = geodata.NormalizeLongitude(first.Longitude + fraction*deltaLongitude)
 	point.Latitude = first.Latitude + fraction*(second.Latitude-first.Latitude)
 	point.MoonAltitude = 0
 	point.WidthKM = first.WidthKM + fraction*(second.WidthKM-first.WidthKM)
@@ -837,13 +819,13 @@ func occultationVisibleFootprintProbes(
 			continue
 		}
 		midpoint := geodata.GeoPoint{
-			Longitude: normalizeGeoLongitude(first.Longitude + deltaLongitude/2),
+			Longitude: geodata.NormalizeLongitude(first.Longitude + deltaLongitude/2),
 			Latitude:  first.Latitude + deltaLatitude/2,
 		}
 		for _, offset := range []float64{0.0002, 0.002, 0.01, 0.03} {
 			for _, side := range []float64{-1, 1} {
 				edgeCandidates = append(edgeCandidates, geodata.GeoPoint{
-					Longitude: normalizeGeoLongitude(midpoint.Longitude - side*deltaLatitude*offset/length),
+					Longitude: geodata.NormalizeLongitude(midpoint.Longitude - side*deltaLatitude*offset/length),
 					Latitude:  midpoint.Latitude + side*deltaLongitude*offset/length,
 				})
 			}
@@ -922,15 +904,7 @@ func limitOccultationCoveragePaths(
 
 func sameOccultationPoint(first, second basic.OccultationPathPoint) bool {
 	return math.Abs(first.Latitude-second.Latitude) <= 1e-10 &&
-		math.Abs(normalizeGeoLongitude(first.Longitude-second.Longitude)) <= 1e-10
-}
-
-func normalizeGeoLongitude(value float64) float64 {
-	value = math.Mod(value+180, 360)
-	if value < 0 {
-		value += 360
-	}
-	return value - 180
+		math.Abs(geodata.NormalizeLongitude(first.Longitude-second.Longitude)) <= 1e-10
 }
 
 func occultationPolarFootprintProbes(
@@ -1007,11 +981,11 @@ func removeOccultationHairpins(points []geodata.GeoPoint, maximumClosureKM, mini
 			arcLength := 0.0
 			best := -1
 			for end := start + 1; end <= limit; end++ {
-				arcLength += geoDistanceKM(result[end-1], result[end])
+				arcLength += geodata.EquatorialDistanceKM(result[end-1], result[end])
 				if end < start+3 {
 					continue
 				}
-				closure := geoDistanceKM(result[start], result[end])
+				closure := geodata.EquatorialDistanceKM(result[start], result[end])
 				if closure <= maximumClosureKM && arcLength-closure >= minimumDetourKM {
 					best = end
 				}
@@ -1053,11 +1027,11 @@ func smoothOccultationHairpins(
 			best := -1
 			bestDetour := minimumDetourKM
 			for end := start + 1; end <= limit; end++ {
-				arcLength += geoDistanceKM(result[end-1], result[end])
+				arcLength += geodata.EquatorialDistanceKM(result[end-1], result[end])
 				if end < start+3 {
 					continue
 				}
-				closure := geoDistanceKM(result[start], result[end])
+				closure := geodata.EquatorialDistanceKM(result[start], result[end])
 				detour := arcLength - closure
 				if closure <= maximumClosureKM && detour >= bestDetour {
 					best = end
@@ -1068,7 +1042,7 @@ func smoothOccultationHairpins(
 				continue
 			}
 			first, last := result[start], result[best]
-			steps := int(math.Ceil(geoDistanceKM(first, last) / maximumEdgeKM))
+			steps := int(math.Ceil(geodata.EquatorialDistanceKM(first, last) / maximumEdgeKM))
 			if steps < 1 {
 				steps = 1
 			}
@@ -1108,7 +1082,7 @@ func removeOccultationSharpCorners(
 		changed := false
 		for index := 1; index+1 < len(result); index++ {
 			first, middle, last := result[index-1], result[index], result[index+1]
-			if geoDistanceKM(first, last) > maximumChordKM {
+			if geodata.EquatorialDistanceKM(first, last) > maximumChordKM {
 				continue
 			}
 			if occultationTurnAngleDegrees(first, middle, last) >= minimumAngleDegrees {
@@ -1142,7 +1116,7 @@ func removeOccultationPolarSharpCorners(
 		for index := 1; index+1 < len(result); index++ {
 			first, middle, last := result[index-1], result[index], result[index+1]
 			if math.Abs(middle.Latitude) < minimumLatitudeDegrees ||
-				geoDistanceKM(first, last) > maximumChordKM ||
+				geodata.EquatorialDistanceKM(first, last) > maximumChordKM ||
 				occultationTurnAngleDegrees(first, middle, last) >= minimumAngleDegrees {
 				continue
 			}
@@ -1170,7 +1144,7 @@ func smoothOccultationPolarCorners(points []geodata.GeoPoint) []geodata.GeoPoint
 		for index := 1; index+1 < len(result); index++ {
 			first, middle, last := result[index-1], result[index], result[index+1]
 			if math.Abs(middle.Latitude) < 70 ||
-				occultationProjectedEdgeDistanceKM(first, last) > 140 ||
+				geodata.WebMercatorDistanceKM(first, last) > 140 ||
 				occultationTurnAngleDegrees(first, middle, last) >= 165 {
 				continue
 			}
@@ -1180,7 +1154,7 @@ func smoothOccultationPolarCorners(points []geodata.GeoPoint) []geodata.GeoPoint
 			if !longitudeReversal && !latitudeReversal {
 				continue
 			}
-			steps := int(math.Ceil(occultationProjectedEdgeDistanceKM(first, last) / 40))
+			steps := int(math.Ceil(geodata.WebMercatorDistanceKM(first, last) / 40))
 			if steps < 2 {
 				steps = 2
 			}
@@ -1233,7 +1207,7 @@ func smoothOccultationPolarWobbles(points []geodata.GeoPoint) []geodata.GeoPoint
 			first, last := result[start], result[end]
 			if math.Abs(first.Latitude) < minimumPolarLatitudeDegrees ||
 				math.Abs(last.Latitude) < minimumPolarLatitudeDegrees ||
-				occultationProjectedEdgeDistanceKM(first, last) > maximumEndpointSpanKM {
+				geodata.WebMercatorDistanceKM(first, last) > maximumEndpointSpanKM {
 				continue
 			}
 			longitudeDirection := 0.0
@@ -1271,7 +1245,7 @@ func smoothOccultationPolarWobbles(points []geodata.GeoPoint) []geodata.GeoPoint
 			for index := start + 1; index < end; index++ {
 				fraction := float64(index-start) / float64(windowPoints)
 				baseline := interpolateOccultationGeoPoint(first, last, fraction)
-				if geoDistanceKM(result[index], baseline) > maximumDeviationKM {
+				if geodata.EquatorialDistanceKM(result[index], baseline) > maximumDeviationKM {
 					valid = false
 					break
 				}

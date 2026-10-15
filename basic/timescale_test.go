@@ -10,11 +10,11 @@ import (
 func resetTimeScaleState(t *testing.T) {
 	t.Helper()
 	SetTTMinusUTCFn(nil)
-	SetTimeScaleFuturePolicy(TimeScaleLeapSecond)
+	SetTimeScaleFuturePolicy(TimeScaleLeapHour)
 	SetDeltaTFn(nil)
 	t.Cleanup(func() {
 		SetTTMinusUTCFn(nil)
-		SetTimeScaleFuturePolicy(TimeScaleLeapSecond)
+		SetTimeScaleFuturePolicy(TimeScaleLeapHour)
 		SetDeltaTFn(nil)
 	})
 }
@@ -23,8 +23,8 @@ func TestTimeScaleCalendarAnchors(t *testing.T) {
 	if got := JDCalc(1972, 1, 1); got != 2441317.5 {
 		t.Fatalf("JDCalc(1972,1,1)=%v, want 2441317.5", got)
 	}
-	if got := JDCalc(2026, 9, 1); got != timeScaleExactEndJDE {
-		t.Fatalf("JDCalc(2026,9,1)=%v, want %v", got, timeScaleExactEndJDE)
+	if got := JDCalc(2026, 10, 1); got != timeScaleExactEndJDE {
+		t.Fatalf("JDCalc(2026,10,1)=%v, want %v", got, timeScaleExactEndJDE)
 	}
 	if got := deltaTMonthlyJDE[len(deltaTMonthlyJDE)-1]; got != timeScaleExactEndJDE {
 		t.Fatalf("月度表末项=%v, want 精确窗口末端 %v", got, timeScaleExactEndJDE)
@@ -77,24 +77,26 @@ func TestTimeScaleLeapHourPolicyCarriesFromDeltaT(t *testing.T) {
 	}
 }
 
-// 默认与零值均为整数秒外推，首次越限前保持末端偏移。
+// 默认与零值均为闰时（2027 起 CGPM 决议），按整小时施加校正。
 func TestTimeScaleDefaultFuturePolicyIsLeapSecondRegime(t *testing.T) {
 	resetTimeScaleState(t)
-	if got := GetTimeScaleFuturePolicy(); got != TimeScaleLeapSecond {
-		t.Fatalf("默认未来政策=%v, want TimeScaleLeapSecond", got)
+	if got := GetTimeScaleFuturePolicy(); got != TimeScaleLeapHour {
+		t.Fatalf("默认未来政策=%v, want TimeScaleLeapHour", got)
 	}
 	var zero TimeScaleFuturePolicy
-	if zero != TimeScaleLeapSecond {
+	if zero != TimeScaleLeapHour {
 		t.Fatalf("零值政策=%v, 应即默认", zero)
 	}
 	base := TTMinusUTCSeconds(timeScaleExactEndJDE)
 	for _, jd := range []float64{JDCalc(2027, 1, 1), JDCalc(2029, 7, 1), JDCalc(2035, 7, 1)} {
-		if got := utcToTTOffsetSeconds(jd); math.Abs(got-base) > 1e-9 {
-			t.Errorf("%v 年默认政策 TT−UTC=%v, want %v（首次触限前应与已宣告偏移相同）",
-				jd, got, base)
+		got := utcToTTOffsetSeconds(jd)
+		dut1 := math.Abs(DUT1Seconds(jd))
+		if dut1 > timeScaleLeapHourSeconds+1e-9 {
+			t.Errorf("%v 年默认政策 |DUT1|=%v 越过闰时容限 3600 s", jd, dut1)
 		}
-		if got := DUT1Seconds(jd); math.Abs(got) > utcDUT1ToleranceSeconds+1e-9 {
-			t.Errorf("%v 年默认政策 |DUT1|=%v 越过容限", jd, math.Abs(got))
+		// 闰时政策下 TT−UTC 以小时为步阶跃
+		if math.Mod(got-base, 3600) > 1e-6 {
+			t.Errorf("%v 年 TT−UTC=%v 相对基准 %v 的差值非整小时倍", jd, got, base)
 		}
 	}
 	// 平滑跟随 UT1 的政策必须给出不同的值，否则这条守卫会与它混同。
@@ -183,14 +185,17 @@ func TestTimeScaleLeapTableAnchors(t *testing.T) {
 func TestTimeScaleMonthlyDeltaTAnchors(t *testing.T) {
 	resetTimeScaleState(t)
 	// 秒级偏移直接锚定；JDE 级取值受 jd≈2.5e6 的浮点抵消限制（约 2e-5 秒）。
-	if got := DeltaT(timeScaleExactEndJDE, true); math.Abs(got-69.1816) > 1e-12 {
-		t.Errorf("2026-09 TT−UT1=%v, want 69.1816", got)
+	if got := DeltaT(JDCalc(2026, 9, 1), true); math.Abs(got-69.1815) > 1e-12 {
+		t.Errorf("2026-09 TT−UT1=%v, want 69.1815", got)
+	}
+	if got := DeltaT(timeScaleExactEndJDE, true); math.Abs(got-69.2065) > 1e-12 {
+		t.Errorf("2026-10 TT−UT1=%v, want 69.2065", got)
 	}
 	if got := DeltaT(JDCalc(1973, 2, 1), true); math.Abs(got-43.4724) > 1e-12 {
 		t.Errorf("1973-02 TT−UT1=%v, want 43.4724", got)
 	}
-	if got := (UT12TT(timeScaleExactEndJDE) - timeScaleExactEndJDE) * 86400; math.Abs(got-69.1816) > 1e-4 {
-		t.Errorf("2026-09 UT12TT 偏移=%v, want 69.1816", got)
+	if got := (UT12TT(timeScaleExactEndJDE) - timeScaleExactEndJDE) * 86400; math.Abs(got-69.2065) > 1e-4 {
+		t.Errorf("2026-10 UT12TT 偏移=%v, want 69.2065", got)
 	}
 	mid := (deltaTMonthlyJDE[10] + deltaTMonthlyJDE[11]) / 2
 	want := (deltaTMonthlyObserved[10] + deltaTMonthlyObserved[11]) / 2
@@ -240,8 +245,8 @@ func TestTimeScaleMonthlyDeltaTTableHeadAnchored(t *testing.T) {
 // 容限是整个窗口的历史事实：按 1e-3 天全窗扫描，抽样点会漏掉月度 ΔT 表首之前的越界。
 func TestTimeScaleDUT1Identity(t *testing.T) {
 	resetTimeScaleState(t)
-	if got := DUT1Seconds(timeScaleExactEndJDE); math.Abs(got-0.0024) > 1e-12 {
-		t.Errorf("DUT1(2026-09)=%v, want 0.0024", got)
+	if got := DUT1Seconds(timeScaleExactEndJDE); math.Abs(got+0.0225) > 1e-12 {
+		t.Errorf("DUT1(2026-10)=%v, want -0.0225", got)
 	}
 	worst, worstAt := 0.0, 0.0
 	for jd := utcEraStartJDE; jd <= timeScaleExactEndJDE; jd += 1e-3 {
@@ -521,7 +526,7 @@ func TestTimeScaleLeapSecondPolicy(t *testing.T) {
 		if isJd {
 			year = 2026 + (jd-timeScaleExactEndJDE)/365.25
 		}
-		return 69.1816 - 0.2*(year-2026)
+		return 69.2065 - 0.2*(year-2026)
 	})
 	jd := JDCalc(2032, 1, 1)
 	if got := utcToTTOffsetSeconds(jd); math.Abs(got-(base-1)) > 1e-9 {

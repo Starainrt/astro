@@ -3,7 +3,6 @@ package basic
 import (
 	"encoding/json"
 	"math"
-	"os"
 	"testing"
 )
 
@@ -20,10 +19,11 @@ type mercuryEventBaseline struct {
 func loadMercuryEventBaseline(t *testing.T) mercuryEventBaseline {
 	t.Helper()
 
-	data, err := os.ReadFile("testdata/mercury_event_baseline.json")
-	if err != nil {
-		t.Fatal(err)
+	var named []namedEventFunc
+	for _, c := range mercuryEventCases() {
+		named = append(named, namedEventFunc{c.name, c.fn})
 	}
+	data := eventBaselineData(t, "testdata/mercury_event_baseline.json", named)
 
 	var baseline mercuryEventBaseline
 	if err := json.Unmarshal(data, &baseline); err != nil {

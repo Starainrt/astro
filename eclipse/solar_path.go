@@ -21,6 +21,8 @@ type SolarEclipsePathOptions struct {
 	// SkipCentralBand reports that the caller already holds the full-footprint
 	// result for the same eclipse, so the central-band envelope is not rebuilt.
 	SkipCentralBand bool
+	// LunarLimb 月缘剖面，nil 沿用模块设置；修正南北界、带宽、中心带足迹、最长中心食时长与全球始末，中心线不变 / lunar limb profile for limits, widths, band, longest duration and P1/P4.
+	LunarLimb LunarLimb
 }
 
 // SolarEclipsePathPoint 表示日食路径上的一个地理点。
@@ -73,6 +75,8 @@ type SolarEclipsePath struct {
 	// CentralBandSampled reports that the envelope was reconstructed from sampled
 	// instantaneous footprints rather than an analytic envelope.
 	CentralBandSampled bool
+	// CentralLimitsLimbApplied 南北界至少一点按月缘剖面平移，带宽随之修正 / the central limits were moved by the lunar limb.
+	CentralLimitsLimbApplied bool
 	// Step 是实际采用的基础时间采样步长, effective base time step.
 	Step time.Duration
 	// TargetSpacingKM 是实际采用的目标空间采样距离，单位千米。
@@ -113,6 +117,10 @@ type SolarEclipsePartialFootprintOptions struct {
 	// and non-positive values disable the isolines. Levels align to UTC ticks; display layers that
 	// need the viewing timezone grid should generate the instants themselves.
 	GreatestTimeStep time.Duration
+	// LunarLimb 月缘剖面，nil 沿用模块设置；修正偏食可见域外边界（零食分包络与初亏/复圆升落曲线），
+	// 内嵌 Eclipse 与 P1/P4 也与 SolarEclipseOnDate 同源地修正；食分线与等时线仍按圆月面 /
+	// lunar limb profile for the outer partial boundary, the embedded Eclipse and P1/P4.
+	LunarLimb LunarLimb
 }
 
 // SolarEclipsePartialAreaOptions 是 SolarEclipsePartialFootprintOptions 的兼容别名。
@@ -176,6 +184,8 @@ type SolarEclipsePartialFootprintsInfo struct {
 	// RiseSetCurves 是初亏、食甚和复圆分别发生在日出或日落时的六类边界。
 	// RiseSetCurves are the six boundaries where local start, greatest, or end occurs at sunrise or sunset.
 	RiseSetCurves []SolarEclipseRiseSetCurve
+	// PartialBoundaryLimbApplied 偏食可见域外边界已按月缘剖面平移 / the outer partial boundary was moved by the lunar limb.
+	PartialBoundaryLimbApplied bool
 	// P1-P4 是半影与地球的外切/内切接触点；不存在的内切点保持零值。
 	// P1-P4 are external/internal penumbral contacts; absent internal contacts remain zero.
 	P1 SolarEclipsePathPoint
@@ -272,73 +282,80 @@ type SolarEclipsePartialAreaInfo = SolarEclipsePartialFootprintsInfo
 type solarEclipsePathCalculator func(float64, basic.SolarEclipsePathOptions) basic.SolarEclipsePathResult
 type solarEclipsePartialFootprintsCalculator func(float64, basic.SolarEclipsePartialFootprintOptions) basic.SolarEclipsePartialFootprintsResult
 
-// SolarEclipseCentralPath 计算指定日期附近的日食中心路径，默认使用 NASA bulletin Split-K 模型。
-// SolarEclipseCentralPath computes the central path near the given date, using NASA bulletin Split-K by default.
-func SolarEclipseCentralPath(date time.Time, options SolarEclipsePathOptions) (SolarEclipsePath, bool) {
-	return SolarEclipseCentralPathNASABulletinSplitK(date, options)
+// SolarEclipseCentralPath 计算指定日期附近的日食中心路径，默认使用 NASA bulletin Split-K 模型 / solar eclipse central path, NASA bulletin Split-K by default.
+func (module *Eclipse) SolarEclipseCentralPath(date time.Time, options SolarEclipsePathOptions) (SolarEclipsePath, bool) {
+	return module.SolarEclipseCentralPathNASABulletinSplitK(date, options)
 }
 
-// SolarEclipseCentralPathNASABulletinSplitK 使用 NASA bulletin Split-K 模型计算日食中心路径。
-// SolarEclipseCentralPathNASABulletinSplitK computes the central path with the NASA bulletin Split-K model.
-func SolarEclipseCentralPathNASABulletinSplitK(date time.Time, options SolarEclipsePathOptions) (SolarEclipsePath, bool) {
-	return solarEclipseCentralPath(date, options, basic.SolarEclipseCentralPathNASABulletinSplitK)
+// SolarEclipseCentralPathNASABulletinSplitK 使用 NASA bulletin Split-K 模型计算日食中心路径 / solar eclipse central path with NASA bulletin Split-K.
+func (module *Eclipse) SolarEclipseCentralPathNASABulletinSplitK(date time.Time, options SolarEclipsePathOptions) (SolarEclipsePath, bool) {
+	return solarEclipseCentralPath(date, options, func(seedJDE float64, options basic.SolarEclipsePathOptions) basic.SolarEclipsePathResult {
+		return basic.SolarEclipseCentralPathNASABulletinSplitKWithInstance(seedJDE, options, module.inst)
+	}, module)
 }
 
-// SolarEclipseCentralPathIAUSingleK 使用 IAU Single-K 模型计算日食中心路径。
-// SolarEclipseCentralPathIAUSingleK computes the central path with the IAU Single-K model.
-func SolarEclipseCentralPathIAUSingleK(date time.Time, options SolarEclipsePathOptions) (SolarEclipsePath, bool) {
-	return solarEclipseCentralPath(date, options, basic.SolarEclipseCentralPathIAUSingleK)
+// SolarEclipseCentralPathIAUSingleK 使用 IAU Single-K 模型计算日食中心路径 / solar eclipse central path with IAU Single-K.
+func (module *Eclipse) SolarEclipseCentralPathIAUSingleK(date time.Time, options SolarEclipsePathOptions) (SolarEclipsePath, bool) {
+	return solarEclipseCentralPath(date, options, func(seedJDE float64, options basic.SolarEclipsePathOptions) basic.SolarEclipsePathResult {
+		return basic.SolarEclipseCentralPathIAUSingleKWithInstance(seedJDE, options, module.inst)
+	}, module)
 }
 
-// SolarEclipsePartialFootprints 计算指定日期附近的日食半影足迹，默认使用 NASA bulletin Split-K 模型。
-// SolarEclipsePartialFootprints computes penumbral footprint samples near the given date, using NASA bulletin Split-K by default.
-func SolarEclipsePartialFootprints(date time.Time, options SolarEclipsePartialFootprintOptions) (SolarEclipsePartialFootprintsInfo, bool) {
-	return SolarEclipsePartialFootprintsNASABulletinSplitK(date, options)
+// SolarEclipsePartialFootprints 计算指定日期附近的日食半影足迹，默认使用 NASA bulletin Split-K 模型 / solar eclipse penumbral footprints, NASA bulletin Split-K by default.
+func (module *Eclipse) SolarEclipsePartialFootprints(date time.Time, options SolarEclipsePartialFootprintOptions) (SolarEclipsePartialFootprintsInfo, bool) {
+	return module.SolarEclipsePartialFootprintsNASABulletinSplitK(date, options)
 }
 
-// SolarEclipsePartialFootprintsNASABulletinSplitK 使用 NASA bulletin Split-K 模型计算日食半影足迹。
-// SolarEclipsePartialFootprintsNASABulletinSplitK computes penumbral footprint samples with the NASA bulletin Split-K model.
-func SolarEclipsePartialFootprintsNASABulletinSplitK(date time.Time, options SolarEclipsePartialFootprintOptions) (SolarEclipsePartialFootprintsInfo, bool) {
-	return solarEclipsePartialFootprints(date, options, basic.SolarEclipsePartialFootprintsNASABulletinSplitK)
+// SolarEclipsePartialFootprintsNASABulletinSplitK 使用 NASA bulletin Split-K 模型计算日食半影足迹 / solar eclipse penumbral footprints with NASA bulletin Split-K.
+func (module *Eclipse) SolarEclipsePartialFootprintsNASABulletinSplitK(date time.Time, options SolarEclipsePartialFootprintOptions) (SolarEclipsePartialFootprintsInfo, bool) {
+	return solarEclipsePartialFootprints(date, options, func(seedJDE float64, options basic.SolarEclipsePartialFootprintOptions) basic.SolarEclipsePartialFootprintsResult {
+		return basic.SolarEclipsePartialFootprintsNASABulletinSplitKWithInstance(seedJDE, options, module.inst)
+	}, module)
 }
 
-// SolarEclipsePartialFootprintsIAUSingleK 使用 IAU Single-K 模型计算日食半影足迹。
-// SolarEclipsePartialFootprintsIAUSingleK computes penumbral footprint samples with the IAU Single-K model.
-func SolarEclipsePartialFootprintsIAUSingleK(date time.Time, options SolarEclipsePartialFootprintOptions) (SolarEclipsePartialFootprintsInfo, bool) {
-	return solarEclipsePartialFootprints(date, options, basic.SolarEclipsePartialFootprintsIAUSingleK)
+// SolarEclipsePartialFootprintsIAUSingleK 使用 IAU Single-K 模型计算日食半影足迹 / solar eclipse penumbral footprints with IAU Single-K.
+func (module *Eclipse) SolarEclipsePartialFootprintsIAUSingleK(date time.Time, options SolarEclipsePartialFootprintOptions) (SolarEclipsePartialFootprintsInfo, bool) {
+	return solarEclipsePartialFootprints(date, options, func(seedJDE float64, options basic.SolarEclipsePartialFootprintOptions) basic.SolarEclipsePartialFootprintsResult {
+		return basic.SolarEclipsePartialFootprintsIAUSingleKWithInstance(seedJDE, options, module.inst)
+	}, module)
 }
 
-// SolarEclipsePartialArea 计算半影足迹，是 SolarEclipsePartialFootprints 的兼容包装。
-// SolarEclipsePartialArea computes penumbral footprint samples and is a compatibility wrapper for SolarEclipsePartialFootprints.
-func SolarEclipsePartialArea(date time.Time, options SolarEclipsePartialAreaOptions) (SolarEclipsePartialAreaInfo, bool) {
-	return SolarEclipsePartialFootprints(date, options)
+// SolarEclipsePartialArea 计算半影足迹，是 SolarEclipsePartialFootprints 的兼容包装 / compatibility wrapper of SolarEclipsePartialFootprints.
+func (module *Eclipse) SolarEclipsePartialArea(date time.Time, options SolarEclipsePartialAreaOptions) (SolarEclipsePartialAreaInfo, bool) {
+	return module.SolarEclipsePartialFootprints(date, options)
 }
 
-// SolarEclipsePartialAreaNASABulletinSplitK 是 SolarEclipsePartialFootprintsNASABulletinSplitK 的兼容包装。
-// SolarEclipsePartialAreaNASABulletinSplitK is a compatibility wrapper for SolarEclipsePartialFootprintsNASABulletinSplitK.
-func SolarEclipsePartialAreaNASABulletinSplitK(date time.Time, options SolarEclipsePartialAreaOptions) (SolarEclipsePartialAreaInfo, bool) {
-	return SolarEclipsePartialFootprintsNASABulletinSplitK(date, options)
+// SolarEclipsePartialAreaNASABulletinSplitK 是 SolarEclipsePartialFootprintsNASABulletinSplitK 的兼容包装 / compatibility wrapper of SolarEclipsePartialFootprintsNASABulletinSplitK.
+func (module *Eclipse) SolarEclipsePartialAreaNASABulletinSplitK(date time.Time, options SolarEclipsePartialAreaOptions) (SolarEclipsePartialAreaInfo, bool) {
+	return module.SolarEclipsePartialFootprintsNASABulletinSplitK(date, options)
 }
 
-// SolarEclipsePartialAreaIAUSingleK 是 SolarEclipsePartialFootprintsIAUSingleK 的兼容包装。
-// SolarEclipsePartialAreaIAUSingleK is a compatibility wrapper for SolarEclipsePartialFootprintsIAUSingleK.
-func SolarEclipsePartialAreaIAUSingleK(date time.Time, options SolarEclipsePartialAreaOptions) (SolarEclipsePartialAreaInfo, bool) {
-	return SolarEclipsePartialFootprintsIAUSingleK(date, options)
+// SolarEclipsePartialAreaIAUSingleK 是 SolarEclipsePartialFootprintsIAUSingleK 的兼容包装 / compatibility wrapper of SolarEclipsePartialFootprintsIAUSingleK.
+func (module *Eclipse) SolarEclipsePartialAreaIAUSingleK(date time.Time, options SolarEclipsePartialAreaOptions) (SolarEclipsePartialAreaInfo, bool) {
+	return module.SolarEclipsePartialFootprintsIAUSingleK(date, options)
 }
 
 func solarEclipseCentralPath(
 	date time.Time,
 	options SolarEclipsePathOptions,
-	calculator solarEclipsePathCalculator,
-) (SolarEclipsePath, bool) {
+	calculator solarEclipsePathCalculator, modules ...*Eclipse) (SolarEclipsePath, bool) {
+	module := &defaultModule
+	if len(modules) > 0 {
+		module = modules[0]
+	}
+
 	location := date.Location()
-	result := calculator(solarEclipseTimeToTTJDE(date), basicSolarEclipsePathOptions(options))
+	basicOptions := basicSolarEclipsePathOptions(options)
+	if basicOptions.LunarLimb == nil {
+		basicOptions.LunarLimb = module.lunarLimb
+	}
+	result := calculator(solarEclipseTimeToTTJDE(date), basicOptions)
 	if !result.Eclipse.HasCentral || len(result.CenterLine) == 0 {
 		return SolarEclipsePath{}, false
 	}
 
 	path := SolarEclipsePath{
-		Eclipse:                     solarEclipseInfoFromBasic(result.Eclipse, location),
+		Eclipse:                     solarEclipseInfoFromBasic(result.Eclipse, location, module),
 		PathWidthDefined:            result.PathWidthDefined,
 		Greatest:                    solarEclipsePathPointFromBasic(result.Greatest, location),
 		CenterLine:                  solarEclipsePathPointsFromBasic(result.CenterLine, location),
@@ -349,6 +366,7 @@ func solarEclipseCentralPath(
 		MaxCentralDurationLatitude:  result.MaxCentralDurationLatitude,
 		CentralBandSegments:         solarEclipsePathSegmentsFromBasic(result.CentralBandSegments, location),
 		CentralBandSampled:          result.CentralBandSampled,
+		CentralLimitsLimbApplied:    result.CentralLimitsLimbApplied,
 		Step:                        solarEclipsePathStepDuration(result.StepDays),
 		TargetSpacingKM:             result.TargetSpacingKM,
 	}
@@ -419,20 +437,27 @@ func solarEclipseGreatestTimeContoursFromBasic(
 func solarEclipsePartialFootprints(
 	date time.Time,
 	options SolarEclipsePartialFootprintOptions,
-	calculator solarEclipsePartialFootprintsCalculator,
-) (SolarEclipsePartialFootprintsInfo, bool) {
+	calculator solarEclipsePartialFootprintsCalculator, modules ...*Eclipse) (SolarEclipsePartialFootprintsInfo, bool) {
+	module := &defaultModule
+	if len(modules) > 0 {
+		module = modules[0]
+	}
+
 	location := date.Location()
 	basicOptions := basicSolarEclipsePartialFootprintOptions(options)
 	greatestTimeLevels := solarEclipseGreatestTimeLevels(options.GreatestTimeValues)
 	basicOptions.GreatestTimeValues = solarEclipseGreatestTimeLevelJDEs(greatestTimeLevels)
 	basicOptions.GreatestTimeStep = options.GreatestTimeStep
+	if basicOptions.LunarLimb == nil {
+		basicOptions.LunarLimb = module.lunarLimb
+	}
 	result := calculator(solarEclipseTimeToTTJDE(date), basicOptions)
 	if !result.Eclipse.HasPartial || len(result.Footprints) == 0 {
 		return SolarEclipsePartialFootprintsInfo{}, false
 	}
 
 	footprints := SolarEclipsePartialFootprintsInfo{
-		Eclipse:                    solarEclipseInfoFromBasic(result.Eclipse, location),
+		Eclipse:                    solarEclipseInfoFromBasic(result.Eclipse, location, module),
 		Footprints:                 solarEclipsePartialFootprintsFromBasic(result.Footprints, location),
 		CentralShadowFootprints:    solarEclipsePartialFootprintsFromBasic(result.CentralShadowFootprints, location),
 		CentralBandFootprints:      solarEclipsePartialFootprintsFromBasic(result.CentralBandFootprints, location),
@@ -443,6 +468,7 @@ func solarEclipsePartialFootprints(
 		MagnitudeContours:          solarEclipseMagnitudeContoursFromBasic(result.MagnitudeContours, location),
 		GreatestTimeContours:       solarEclipseGreatestTimeContoursFromBasic(result.GreatestTimeContours, greatestTimeLevels, location),
 		RiseSetCurves:              solarEclipseRiseSetCurvesFromBasic(result.RiseSetCurves, location),
+		PartialBoundaryLimbApplied: result.PartialBoundaryLimbApplied,
 		P1:                         solarEclipseOptionalPathPointFromBasic(result.P1, location),
 		P2:                         solarEclipseOptionalPathPointFromBasic(result.P2, location),
 		P3:                         solarEclipseOptionalPathPointFromBasic(result.P3, location),
@@ -483,6 +509,7 @@ func basicSolarEclipsePathOptions(options SolarEclipsePathOptions) basic.SolarEc
 	basicOptions := basic.SolarEclipsePathOptions{
 		TargetSpacingKM: options.TargetSpacingKM,
 		SkipCentralBand: options.SkipCentralBand,
+		LunarLimb:       options.LunarLimb,
 	}
 	if options.Step > 0 {
 		basicOptions.StepDays = options.Step.Hours() / 24
@@ -495,6 +522,7 @@ func basicSolarEclipsePartialFootprintOptions(options SolarEclipsePartialFootpri
 		BoundaryPoints:       options.BoundaryPoints,
 		MagnitudeValues:      append([]float64(nil), options.MagnitudeValues...),
 		DisableRiseSetCurves: options.DisableRiseSet,
+		LunarLimb:            options.LunarLimb,
 	}
 	if options.Step > 0 {
 		basicOptions.StepDays = options.Step.Hours() / 24

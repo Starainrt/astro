@@ -3,6 +3,8 @@ package eclipse
 import (
 	"testing"
 	"time"
+
+	"github.com/starainrt/astro/internal/ephemtest"
 )
 
 func TestLocalLunarEclipseOnDateByLocalDay(t *testing.T) {
@@ -229,13 +231,14 @@ func TestLocalLunarEclipseInfoKeepsLocation(t *testing.T) {
 }
 
 func TestLocalLunarEclipseChauvenetRemainsAvailable(t *testing.T) {
+	values := ephemtest.NewValues(t, "local_lunar_chauvenet_available")
 	date := time.Date(2025, 3, 14, 12, 0, 0, 0, time.FixedZone("CDT", -5*3600))
 	lon, lat, height := -87.65, 41.85, 0.0
 	defaultInfo := ClosestLocalLunarEclipse(date, lon, lat, height)
 	chauvenetInfo := ClosestLocalLunarEclipseChauvenet(date, lon, lat, height)
 
-	assertFloatClose(t, "Chauvenet.PenumbralMagnitude", chauvenetInfo.PenumbralMagnitude, 2.285436461, 1e-6)
-	assertFloatClose(t, "Chauvenet.UmbralMagnitude", chauvenetInfo.UmbralMagnitude, 1.182806541, 1e-6)
+	assertFloatClose(t, "Chauvenet.PenumbralMagnitude", chauvenetInfo.PenumbralMagnitude, values.Want("Chauvenet.PenumbralMagnitude", 2.285436461, chauvenetInfo.PenumbralMagnitude), 1e-6)
+	assertFloatClose(t, "Chauvenet.UmbralMagnitude", chauvenetInfo.UmbralMagnitude, values.Want("Chauvenet.UmbralMagnitude", 1.182806541, chauvenetInfo.UmbralMagnitude), 1e-6)
 
 	if !(chauvenetInfo.PenumbralMagnitude > defaultInfo.PenumbralMagnitude) {
 		t.Fatalf("expected Chauvenet penumbral magnitude > Danjon: chauvenet=%.6f danjon=%.6f", chauvenetInfo.PenumbralMagnitude, defaultInfo.PenumbralMagnitude)

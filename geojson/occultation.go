@@ -5,7 +5,7 @@ import (
 	"math"
 	"time"
 
-	"github.com/starainrt/astro"
+	"github.com/starainrt/astro/basic"
 	"github.com/starainrt/astro/internal/geodata"
 	"github.com/starainrt/astro/internal/occultationgeo"
 	"github.com/starainrt/astro/moon"
@@ -124,7 +124,7 @@ func marshalStarOccultation(path moon.StarOccultationPath, markerOptions *TimeMa
 	if scaleErr != nil {
 		return nil, scaleErr
 	}
-	if timeScale == astro.TimeScaleUT1 {
+	if timeScale == basic.TimeScaleUT1 {
 		path = moon.StarOccultationPathInUT1(path)
 	}
 	if err := validateStarOccultationPathData(path); err != nil {
@@ -269,7 +269,7 @@ func marshalPlanetOccultation(path moon.PlanetOccultationPath, markerOptions *Ti
 	if scaleErr != nil {
 		return nil, scaleErr
 	}
-	if timeScale == astro.TimeScaleUT1 {
+	if timeScale == basic.TimeScaleUT1 {
 		path = moon.PlanetOccultationPathInUT1(path)
 	}
 	if err := path.Planet.Validate(); err != nil {
@@ -846,7 +846,7 @@ func occultationNearestRingVertex(
 	index := -1
 	distance := math.Inf(1)
 	for candidate, value := range ring {
-		current := occultationGeoDistanceKM(point, value)
+		current := geodata.EquatorialDistanceKM(point, value)
 		if current < distance {
 			index, distance = candidate, current
 		}
@@ -862,7 +862,7 @@ func occultationRingPathLengthKM(ring []geodata.GeoPoint, start, end, direction 
 	index := start
 	for index != end {
 		next := (index + direction + len(ring)) % len(ring)
-		length += occultationGeoDistanceKM(ring[index], ring[next])
+		length += geodata.EquatorialDistanceKM(ring[index], ring[next])
 		index = next
 		if length > 1e8 {
 			return math.Inf(1)
@@ -873,7 +873,7 @@ func occultationRingPathLengthKM(ring []geodata.GeoPoint, start, end, direction 
 
 func occultationRingEdgesWithinKM(ring []geodata.GeoPoint, maximum float64) bool {
 	for index := 1; index < len(ring); index++ {
-		if occultationGeoDistanceKM(ring[index-1], ring[index]) > maximum {
+		if geodata.EquatorialDistanceKM(ring[index-1], ring[index]) > maximum {
 			return false
 		}
 	}
@@ -883,21 +883,9 @@ func occultationRingEdgesWithinKM(ring []geodata.GeoPoint, maximum float64) bool
 func occultationGeoLineLengthKM(points []geodata.GeoPoint) float64 {
 	length := 0.0
 	for index := 1; index < len(points); index++ {
-		length += occultationGeoDistanceKM(points[index-1], points[index])
+		length += geodata.EquatorialDistanceKM(points[index-1], points[index])
 	}
 	return length
-}
-
-func occultationGeoDistanceKM(first, second geodata.GeoPoint) float64 {
-	const radiusKM = 6378.1366
-	firstLatitude := first.Latitude * math.Pi / 180
-	secondLatitude := second.Latitude * math.Pi / 180
-	deltaLatitude := secondLatitude - firstLatitude
-	deltaLongitude := math.Remainder(second.Longitude-first.Longitude, 360) * math.Pi / 180
-	sineLatitude := math.Sin(deltaLatitude / 2)
-	sineLongitude := math.Sin(deltaLongitude / 2)
-	a := sineLatitude*sineLatitude + math.Cos(firstLatitude)*math.Cos(secondLatitude)*sineLongitude*sineLongitude
-	return 2 * radiusKM * math.Atan2(math.Sqrt(math.Max(0, a)), math.Sqrt(math.Max(0, 1-a)))
 }
 
 func reverseOccultationGeoPoints(points []geodata.GeoPoint) {

@@ -4,7 +4,9 @@
 
 `sun` 与 `moon` 是主链，`lite/sun` 与 `lite/moon` 是独立近似实现。没有特殊说明时，角度单位为度，视直径与视半径为角秒，`sun.EarthDistance` 为 AU、`moon.EarthDistance` 为千米；观测接口的 `time.Time` 通常表示民用时刻，真太阳时的返回值另按地方太阳时解释，见[时标手册](timescale.md)。
 
-本手册覆盖日月本体：位置、升落与中天、站心量、相位与朔望、近远地点与交点、最大赤纬、天平动、视直径与物理星历。日月食几何见[日食与月食手册](eclipse.md#全球见食图与月食出图)，月掩见[月掩手册](occultation.md#月掩出图)，站心几何与折射的通用换算见[坐标工具](coord.md)。
+本手册的数值输出块用于展示调用形状，取自默认半解析模型的运行结果。与 Legacy 的差别很小：月球事件时刻约 `1–10 s`、地月距离约 `5 km`、相位约 `1e-6`、日月角度约 `1e-5°`，升落时刻仅毫秒级，`lite/*` 不受影响。要按固定模型复现，用显式 `Context`/`Instance`；两个模型的量化误差见[精度与性能](accuracy.md)。
+
+本手册覆盖日月本体：位置、升落与中天、站心量、相位与朔望、近远地点与交点、最大赤纬、天平动、视直径与物理星历。日月食几何见[日月食与凌日手册](eclipse.md#全球见食图与月食出图)，月掩见[月掩手册](occultation.md#月掩出图)，站心几何与折射的通用换算见[坐标工具](coord.md)。
 
 ## 目录
 
@@ -14,7 +16,7 @@
   - [moon](#moon)
   - [lite/sun](#litesun)
   - [lite/moon](#litemoon)
-  - [截断项族](#截断项族)
+  - [`...N` 族](#n-族)
 - [常用场景](#常用场景)
   - [今天的日出日落与晨昏朦影](#今天的日出日落与晨昏朦影)
   - [月出月落与此刻的月亮高度](#月出月落与此刻的月亮高度)
@@ -88,7 +90,7 @@ func main() {
 
 ## API 参考
 
-下表按能力分组列出四个包的导出接口。多数求值接口另有 `...N` 截断变体，统一在[截断项族](#截断项族)里说明；表中所有 `time.Time` 参数都是绝对时刻，`lon`/`lat` 均为东正西负、北正南负。
+下表按能力分组列出四个包的导出接口。多数求值接口另有 `...N` 变体，统一在[`...N` 族](#n-族)里说明；表中所有 `time.Time` 参数都是绝对时刻，`lon`/`lat` 均为东正西负、北正南负。
 
 ### sun
 
@@ -105,7 +107,7 @@ func main() {
 | `DownTime` | 日落别名 | 已废弃，内部转调 `SetTime` |
 | `CulminationTime` | 上中天 | `time.Time` |
 | `MorningTwilight` / `EveningTwilight` | 晨光始 / 暮光终 | `(time.Time, error)`；角度常用 -6 / -12 / -18 度 |
-| `Altitude` / `Zenith` / `Azimuth` / `HourAngle` | 几何高度角 / 天顶距 / 方位角 / 时角 | 度，站心 |
+| `Altitude` / `Zenith` / `Azimuth` / `HourAngle` | 几何高度角 / 天顶距 / 方位角 / 时角 | 度；`Altitude` / `Zenith` / `Azimuth` 为站心，`HourAngle` 为地心视时角（不含站心视差） |
 | `ApparentAltitude` / `ApparentZenith` | 视高度角 / 视天顶距 | 度；需要气压 hPa 与气温 ℃ |
 | `ParallacticAngle` | 视差角（天顶方向角） | 度，有符号 |
 | `ApparentSolarTime` | 真太阳时 | `time.Time`，结果时区按经度换算 |
@@ -170,7 +172,7 @@ func main() {
 | `TrueRa` / `TrueDec` / `TrueRaDec` | 轻量真赤道坐标 | 度，地心 |
 | `ApparentRa` / `ApparentDec` / `ApparentRaDec` | 轻量视赤道坐标 | 度，地心 |
 | `Distance` | 轻量日地距离 | AU |
-| `HourAngle` / `Azimuth` / `Altitude` / `Zenith` | 轻量时角 / 方位角 / 高度角 / 天顶距 | 度，站心 |
+| `HourAngle` / `Azimuth` / `Altitude` / `Zenith` | 轻量时角 / 方位角 / 高度角 / 天顶距 | 度；均按地心视位置计算，太阳视差约 8.8″，忽略 |
 | `RiseTime` / `SetTime` | 轻量日出 / 日落 | `(time.Time, error)` |
 | `ERR_SUN_NEVER_RISE` / `ERR_SUN_NEVER_SET` | 极夜 / 极昼 | 错误值 |
 
@@ -186,14 +188,14 @@ func main() {
 | `RiseTime` / `SetTime` | 轻量月出 / 月落 | `(time.Time, error)` |
 | `ERR_MOON_NEVER_RISE` / `ERR_MOON_NEVER_SET` / `ERR_NOT_TODAY` | 极夜 / 极昼 / 事件不在当天 | 错误值 |
 
-### 截断项族
+### `...N` 族
 
-`sun` 与 `moon` 的多数求值接口提供 `...N` 变体：名字是原接口名加 `N`，参数在末尾多一个 `n int`，返回形状不变。`n < 0` 使用当前仓库内嵌的全部解析项，结果与不带 `N` 的版本一致；`n >= 0` 把级数截断到 `n` 项，适合性能对比、批量粗算或误差敏感性实验。
+`sun` 与 `moon` 的多数求值接口提供 `...N` 变体：名字是原接口名加 `N`，参数在末尾多一个 `n int`，返回形状不变。`n < 0` 使用完整级数，结果与不带 `N` 的版本一致。默认构建使用半解析模型，所有 `n >= 0` 均使用同一张快速表，增大 `n` 不会增加项数；Legacy 则按 `n` 缩短级数。切换模型不改变单位或时区，误差见[精度与性能](accuracy.md)。
 
 - sun：`TrueLoN`、`TrueBoN`、`AltitudeN`、`ZenithN`、`AzimuthN`、`HourAngleN`、`ParallacticAngleN`、`ApparentAltitudeN`、`ApparentZenithN`、`DiameterN`、`SemidiameterN`、`PhysicalN`、`RiseTimeN`、`SetTimeN`、`DownTimeN`、`CulminationTimeN`、`MorningTwilightN`、`EveningTwilightN`、`ApparentSolarTimeN`
 - moon：`TrueLoN`、`TrueBoN`、`AscendingNodeN`、`DescendingNodeN`、`DiameterN`、`SemidiameterN`、`PhysicalN`、`TopocentricPhysicalN`、`BrightLimbPositionAngleN`、`TopocentricBrightLimbPositionAngleN`
 
-站心赤道坐标（`ApparentRa` / `ApparentDec` / `ApparentRaDec`）、月亮的升落（`RiseTime` / `SetTime`）与相位族没有 `N` 变体，它们不受截断开关控制。
+站心赤道坐标（`ApparentRa` / `ApparentDec` / `ApparentRaDec`）、月亮的升落（`RiseTime` / `SetTime`）与相位族没有 `N` 变体（即不接收 `n` 参数）。
 
 ## 常用场景
 
@@ -282,7 +284,7 @@ delta dRA=0.5021 dDec=-0.3978
 280.8950939694744 -23.05840775453492
 ```
 
-月亮离得近，站心与地心能差半度左右（这里赤经差 `0.50°`、赤纬差 `0.40°`），合起来比一个月面视直径还大，所以给观测者用的位置必须走 `moon.ApparentRaDec`；太阳在 1 AU 外视差可忽略，只提供地心量（当然也可以调用站心坐标转换接口得到站心位置=-=）。口径定义见[观测角语义](#观测角语义)。
+月亮离得近，站心与地心能差半度左右（这里赤经差 `0.50°`、赤纬差 `0.40°`），合起来比一个月面视直径还大，所以给观测者用的位置必须走 `moon.ApparentRaDec`；太阳在 1 AU 外视差可忽略，只提供地心量；需要站心位置时用 `coord.TopocentricEquatorial` 换算。口径定义见[观测角语义](#观测角语义)。
 
 ### 主链与 lite 的误差对照
 
@@ -300,7 +302,7 @@ fmt.Println(litesun.RiseTime(date, lon, lat, height, true))                 // �
 2020-01-01 07:49:51.69717729 +0800 CST <nil>
 ```
 
-轻量链路与主链形状同构、精度不同：同一时刻的高度角只差 `0.0027°` 量级，月相只差 `0.0022`；2026 全年 8 站点统计下 `lite/sun` 日出平均绝对误差 `0.02 min`（P95 `0.04 min`、最大 `0.31 min`），`lite/moon` 月出 `0.28 min`（P95 `0.57 min`、最大 `1.44 min`），`lite/moon` 的 `Phase()` 最大绝对误差 `0.00243`。
+轻量链路与主链形状同构、精度不同：上面这组输出中，同一时刻高度角差约 `0.0027°`、月相差约 `0.0022`。2026 全年 8 站点的历史统计是相对 Legacy 主链测的，未针对半解析默认重测，详见[精度与性能](accuracy.md)。
 
 完整对照与截断误差见[与主链的差异与误差量级](#与主链的差异与误差量级)与 README 的 [Lite 轻量链路](accuracy.md#lite-轻量链路)。
 
@@ -325,7 +327,7 @@ fmt.Println(litesun.RiseTime(date, lon, lat, height, true))                 // �
 >
 > 例如月亮可能在凌晨1点落下、中午12点再次升起，此时升起时间会晚于降落时间；这一场景晚上的月落时间对应次日日期。
 >
-> 完整的升降周期由升起时间与降落时间的先后关系决定：判断升起时间是否在降落时间之后，即可确定后续的正确时间点。
+> 完整的升降周期由升起与降落的先后关系决定：若升起的日期晚于（或早于）落下，后一个事件属于次日，跨日查询时应把 `date` 顺延一天。
 
 ```go
 package main
@@ -368,14 +370,14 @@ func main() {
 输出结果：
 
 ```text
-2020-01-01 07:22:27.960488498 +0800 CST <nil>
-2020-01-01 07:49:52.413689196 +0800 CST <nil>
-2020-01-01 12:47:35.933117866 +0800 CST
-2020-01-01 17:45:09.188657999 +0800 CST <nil>
-2020-01-01 18:12:33.624035418 +0800 CST <nil>
-2020-01-01 11:52:49.860912859 +0800 CST <nil>
-2020-01-01 17:36:48.811488747 +0800 CST
-2020-01-01 23:26:49.313553571 +0800 CST <nil>
+2020-01-01 07:22:28.91963303 +0800 CST <nil>
+2020-01-01 07:49:53.401680886 +0800 CST <nil>
+2020-01-01 12:47:35.933721363 +0800 CST
+2020-01-01 17:45:08.557346463 +0800 CST <nil>
+2020-01-01 18:12:33.02157104 +0800 CST <nil>
+2020-01-01 11:52:50.013020932 +0800 CST <nil>
+2020-01-01 17:36:48.954946696 +0800 CST
+2020-01-01 23:26:49.448562562 +0800 CST <nil>
 ```
 
 ### 日月位置
@@ -428,16 +430,16 @@ func main() {
 输出结果：
 
 ```text
-280.01526210031136
+280.0152652754265
 23.4362178391013
-赤经： 18h43m34.82s 赤纬： -23°3′30.27″
+赤经： 18h43m34.82s 赤纬： -23°3′30.20″
 人马座
-方位角： 120.19477090015224 高度角： 2.4014437419430097 天顶距： 87.59855625805699
-0.983292937163176
-赤经： 23h18m56.24s 赤纬： -10°20′54.42″
+方位角： 120.19442333006145 高度角： 2.398445319378493 天顶距： 87.6015546806215
+0.9832929289388871
+赤经： 23h18m56.20s 赤纬： -10°20′54.64″
 宝瓶座
-方位角： 67.63889332004852 高度角： -45.34916937173283 天顶距： 135.34916937173284
-404238.6096080479
+方位角： 67.63846015645981 高度角： -45.349642390635466 天顶距： 135.34964239063547
+404243.3922335782
 ```
 
 ## 太阳
@@ -468,10 +470,10 @@ fmt.Println(sun.EclipticObliquity(date, true), sun.GeometricLo(date), sun.MidFun
 23.438148552330773 280.83169623098 -0.08703499790144194
 ```
 
-同一族接口都提供 `...N` 截断变体。下面的对照用 `n = 8` 截断，`n < 0` 时结果与不带 `N` 的版本逐位一致：
+同一族接口都提供 `...N` 变体。下面用 `n = 8` 选择半解析快速表（Legacy 中为级数截断），`n < 0` 时结果与不带 `N` 的版本逐位一致。示例输出取自默认半解析模型：
 
 ```go
-// n<0 使用全部内嵌 VSOP 项，n>=0 截断解析项。
+// n<0 使用完整级数，n>=0 使用快速表；Legacy 按 n 截断。
 fmt.Println(sun.TrueLo(date), sun.TrueLoN(date, 8))
 fmt.Println(sun.Altitude(date, lon, lat), sun.AltitudeN(date, lon, lat, 8))
 fmt.Println(sun.Diameter(date), sun.DiameterN(date, 8))
@@ -689,12 +691,12 @@ func main() {
 输出结果：
 
 ```text
-0.30004130960877884 // 月面约有 30% 被太阳照亮
+0.3000398794307665 // 月面约有 30% 被太阳照亮
 上峨眉月 // 当前月相描述
-2020-01-25 05:41:58.271192908 +0800 CST // 下一次朔月
-2020-01-03 12:45:23.229190707 +0800 CST // 下一次上弦
-2020-01-11 03:21:17.159625291 +0800 CST // 下一次望月，也就是满月
-2020-01-17 20:58:23.396406769 +0800 CST // 下一次下弦
+2020-01-25 05:41:59.860723614 +0800 CST // 下一次朔月
+2020-01-03 12:45:24.51480031 +0800 CST // 下一次上弦
+2020-01-11 03:21:18.524373471 +0800 CST // 下一次望月，也就是满月
+2020-01-17 20:58:24.686442017 +0800 CST // 下一次下弦
 ```
 
 `Last*`、`Closest*` 与按小数年锚点求解的 `ShuoYue` / `FullMoon` 等返回 UTC；`ClosestConjunctionWithPlanet` 求最近一次行星合月，目标用 `ConjunctionPlanet` 常量给出：
@@ -869,7 +871,7 @@ fmt.Println(moon.Diameter(date), moon.Semidiameter(date), moon.EarthDistance(dat
 
 ## 轻量链路
 
-`lite/sun` 与 `lite/moon` 是独立于主链的近似实现：不依赖 VSOP87 或主链的 ELP2000/82 级数，面向 CPU / 内存受限环境，调用方式与主链同形。升落搜索用固定步长扫描加二分，不走主链的高精度章动迭代。
+`lite/sun` 与 `lite/moon` 是独立于主链的近似实现，不使用半解析或 Legacy 表，也不随全局模型切换，面向 CPU / 内存受限环境，调用方式与主链同形。升落搜索用固定步长扫描加二分，不走主链的高精度章动迭代。
 
 ```go
 package main
@@ -954,9 +956,9 @@ fmt.Println(litemoon.Altitude(date, 121.4737, 31.2304), litemoon.Azimuth(date, 1
 
 ### 与主链的差异与误差量级
 
-轻量链路与主链的差别集中在实现与误差上，接口形状基本一致。位置与月相等纯求值接口相对主链约快 `8.3–27.3x`，升落接口约 `1.0–3.7x`，计算链路零堆分配；升落搜索步长为 `lite/sun` `30` 分钟、`lite/moon` `15` 分钟。与 `sun` / `moon` 的误差（2026 全年，8 个站点）如下，数据见[适用范围与精度](accuracy.md#lite-轻量链路)：
+轻量链路与主链的接口形状基本一致，但性能取决于主链模型、历元缓存和是否进行搜索，不能统一称为快若干倍。Lite 本次表内接口零分配；升落步长为太阳 30 分钟、月球 15 分钟。下面保留相对旧 Legacy 主链的历史误差（2026 全年、8 个站点），新模型性能见[精度与性能](accuracy.md#性能)：
 
-| 能力 | 平均绝对误差 | P95 | 最大绝对误差 |
+| 计算项 | 平均绝对误差 | P95 | 最大绝对误差 |
 | --- | --- | --- | --- |
 | `lite/sun` 日出 | `0.02 min` | `0.04 min` | `0.31 min` |
 | `lite/sun` 日落 | `0.02 min` | `0.06 min` | `0.35 min` |
@@ -967,7 +969,7 @@ fmt.Println(litemoon.Altitude(date, 121.4737, 31.2304), litemoon.Azimuth(date, 1
 | `lite/moon` 地心黄经 | `2.41'` | `6.82'` | `9.91'` |
 | `lite/moon` 地心黄纬 | `0.87'` | `1.83'` | `2.92'` |
 
-两个包都不提供 `...N` 截断族。太阳侧的极夜 / 极昼错误是 `ERR_SUN_NEVER_RISE` / `ERR_SUN_NEVER_SET`；月球侧除 `ERR_MOON_NEVER_RISE` / `ERR_MOON_NEVER_SET` 外还有 `ERR_NOT_TODAY`，语义与主链一致。
+两个包都不提供 `...N` 族。太阳侧的极夜 / 极昼错误是 `ERR_SUN_NEVER_RISE` / `ERR_SUN_NEVER_SET`；月球侧除 `ERR_MOON_NEVER_RISE` / `ERR_MOON_NEVER_SET` 外还有 `ERR_NOT_TODAY`，语义与主链一致。
 
 ## 参数与返回值约定
 
@@ -986,6 +988,8 @@ fmt.Println(litemoon.Altitude(date, 121.4737, 31.2304), litemoon.Azimuth(date, 1
 
 - 升落接口的 `height` 是按椭球高（大地高）解读的观测点高程，单位米，不是正高；换算约定见[观测点高度约定](coord.md#观测点高度)
 - `aero = true`：按动态标准大气折射与实时视半径计算上缘过地平线；`aero = false`：只做几何中心高度过地平线的判定
+- 升落折射默认用标准大气（1010 hPa、10 ℃）；需要实测气象时用 `sun.RiseTimeWithAtmosphere` / `SetTimeWithAtmosphere` 与 `moon.RiseTimeWithAtmosphere` / `SetTimeWithAtmosphere`，每次调用传入气压（hPa）与气温（℃），恒带大气修正；原有 API 不变
+- 与天体无关的真/视高度换算在 `formula` 包：`formula.ApparentAltitude`、`formula.TrueAltitude`、`formula.RefractionFromTrueAltitude`、`formula.RefractionFromApparentAltitude`
 - `ApparentAltitude` / `ApparentZenith` 的 `pressureHPa`、`temperatureC` 是观测时的气压（hPa）与气温（℃）
 
 ### 零值与越界
@@ -994,8 +998,8 @@ fmt.Println(litemoon.Altitude(date, 121.4737, 31.2304), litemoon.Azimuth(date, 1
 - 朦影不存在时返回 `ERR_TWILIGHT_NOT_EXISTS`
 - 月亮升降事件落在查询日期之外时返回 `ERR_NOT_TODAY`，对应上面“月出月落按当天日期计算”的语义
 - `DownTime` / `DownTimeN` 是 `SetTime` 的废弃别名，`ERR_SUN_NEVER_DOWN` / `ERR_MOON_NEVER_DOWN` 是极昼错误的废弃别名，新代码不应使用
-- `...N` 中 `n < 0` 用全部内嵌项、`n >= 0` 截断；`n` 只影响级数长度，不改变返回单位与时区
+- `...N` 中 `n < 0` 用完整级数；半解析的 `n >= 0` 用同一张快速表，Legacy 按 `n` 截断；均不改变返回单位与时区
 
 ### 精度与适用范围
 
-太阳与行星用内置 VSOP87 解析项，月球用内置 ELP2000/82 风格截断级数，覆盖 J2000 前后约 4000 年，无需外部星历文件。截断误差、月球链路的能力边界和 lite 链路的量化误差见[适用范围与精度](accuracy.md)。本手册的太阳 / 月球接口适合历法、观测辅助、科普与业余预报；航天导航、精确掩星预报和严格动力学积分需要 JPL DE 等专业星历。
+默认构建使用内置半解析模型；VSOP87/ELP2000/82 风格级数保留为 Legacy，两者都无需外部星历文件。可用区间不等于实测区间，实测误差也只对测量样本成立。按模型划分的 DE440/DE441 日月对比、快速表误差和 Lite 边界见[精度与性能](accuracy.md)。本手册的太阳/月球接口适合历法、观测辅助、科普与业余预报；航天导航、精确掩星预报和严格动力学积分还需要相应精度的星历、时标与物理模型。

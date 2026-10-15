@@ -12,7 +12,7 @@ func SaturnRingParameters(jde float64) (earthLatitude, sunLatitude, positionAngl
 	return SaturnRingParametersN(jde, -1)
 }
 
-// SaturnRingParametersN 土星环参数（截断版） / truncated Saturn ring parameters.
+// SaturnRingParametersN 土星环参数（n 变体） / n-parameterised Saturn ring parameters.
 func SaturnRingParametersN(jde float64, n int) (earthLatitude, sunLatitude, positionAngle, deltaU, majorAxis, minorAxis float64) {
 	inclination, node := saturnRingPlane(jde)
 	earthLon, earthLat := SaturnApparentLoBoN(jde, n)
@@ -36,7 +36,7 @@ func SaturnRingB(jde float64) float64 {
 	return SaturnRingBN(jde, -1)
 }
 
-// SaturnRingBN 土星环张角 B（截断版） / truncated Saturn ring opening angle B.
+// SaturnRingBN 土星环张角 B（n 变体） / n-parameterised Saturn ring opening angle B.
 func SaturnRingBN(jde float64, n int) float64 {
 	earthLatitude, _, _, _, _, _ := SaturnRingParametersN(jde, n)
 	return earthLatitude
@@ -47,7 +47,7 @@ func SaturnRingSunB(jde float64) float64 {
 	return SaturnRingSunBN(jde, -1)
 }
 
-// SaturnRingSunBN 土星环太阳侧张角 B'（截断版） / truncated Sun-side Saturn ring opening angle B'.
+// SaturnRingSunBN 土星环太阳侧张角 B'（n 变体） / n-parameterised Sun-side Saturn ring opening angle B'.
 func SaturnRingSunBN(jde float64, n int) float64 {
 	_, sunLatitude, _, _, _, _ := SaturnRingParametersN(jde, n)
 	return sunLatitude
@@ -58,7 +58,7 @@ func SaturnRingPositionAngle(jde float64) float64 {
 	return SaturnRingPositionAngleN(jde, -1)
 }
 
-// SaturnRingPositionAngleN 土星环北半短轴位置角（截断版） / truncated position angle of Saturn ring northern semiminor axis.
+// SaturnRingPositionAngleN 土星环北半短轴位置角（n 变体） / n-parameterised position angle of Saturn ring northern semiminor axis.
 func SaturnRingPositionAngleN(jde float64, n int) float64 {
 	_, _, positionAngle, _, _, _ := SaturnRingParametersN(jde, n)
 	return positionAngle
@@ -69,7 +69,7 @@ func SaturnRingDeltaU(jde float64) float64 {
 	return SaturnRingDeltaUN(jde, -1)
 }
 
-// SaturnRingDeltaUN 太阳和地球在环面内的土星心黄经差（截断版） / truncated Saturnicentric ring longitude difference.
+// SaturnRingDeltaUN 太阳和地球在环面内的土星心黄经差（n 变体） / n-parameterised Saturnicentric ring longitude difference.
 func SaturnRingDeltaUN(jde float64, n int) float64 {
 	_, _, _, deltaU, _, _ := SaturnRingParametersN(jde, n)
 	return deltaU
@@ -80,7 +80,7 @@ func SaturnRingAxis(jde float64) (majorAxis, minorAxis float64) {
 	return SaturnRingAxisN(jde, -1)
 }
 
-// SaturnRingAxisN 土星环外缘长短轴（截断版），单位角秒 / truncated outer ring axes in arcseconds.
+// SaturnRingAxisN 土星环外缘长短轴（n 变体），单位角秒 / n-parameterised outer ring axes in arcseconds.
 func SaturnRingAxisN(jde float64, n int) (majorAxis, minorAxis float64) {
 	_, _, _, _, majorAxis, minorAxis = SaturnRingParametersN(jde, n)
 	return

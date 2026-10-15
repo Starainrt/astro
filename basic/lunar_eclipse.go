@@ -1,6 +1,10 @@
 package basic
 
-import "math"
+import (
+	"math"
+
+	"github.com/starainrt/astro/internal/geodata"
+)
 
 // LunarEclipseType 表示月食类型。
 type LunarEclipseType string
@@ -22,6 +26,8 @@ const (
 // 输入 seedJDE 只需要落在目标望月附近，允许相差数天。
 type LunarEclipseResult struct {
 	Type LunarEclipseType
+	// LunarLimbApplied 表示接触时刻已按月缘剖面修正 / reports whether lunar-limb refinement changed the contacts.
+	LunarLimbApplied bool
 	// ShadowModel 是本次使用的影半径模型，决定影半径与食分的具体数值。
 	// ShadowModel is the shadow-radius model used, which fixes the shadow radii and magnitudes.
 	ShadowModel LunarEclipseShadowModel
@@ -86,14 +92,11 @@ const (
 )
 
 const (
-	lunarEarthEquatorialRadiusKM = 6378.1366
-	lunarAstronomicalUnitKM      = 1.49597870691e8
-
 	// 沿用月食常量：
 	// - 0.2725076 用于月亮视半径和半影几何
 	// - 太阳视半径与日食共用标准档常量，太阳视差用常用角秒常量 8.794
 	lunarMoonRadiusRatio      = 0.2725076
-	lunarMoonRadiusScale      = lunarMoonRadiusRatio * lunarEarthEquatorialRadiusKM * 1.0000036
+	lunarMoonRadiusScale      = lunarMoonRadiusRatio * geodata.EarthEquatorialRadiusKM * 1.0000036
 	lunarSolarParallaxArcsec  = 8.794
 	lunarLongitudeAberration  = -3.4e-6
 	lunarFiniteDifferenceStep = 60.0 / 86400.0
@@ -132,7 +135,15 @@ func LunarEclipseChauvenet(seedJDE float64) LunarEclipseResult {
 
 func lunarEclipse(seedJDE float64, shadowModel lunarEclipseShadowModel) LunarEclipseResult {
 	fullMoonJDE := CalcMoonSHByJDE(seedJDE, 1)
-	maximumJDE, state, dxdt, dydt, minimumDistance := refineLunarEclipseMaximum(fullMoonJDE, shadowModel)
+	return lunarEclipseFromFullMoon(fullMoonJDE, shadowModel, func(jde float64) lunarShadowState {
+		return computeLunarShadowState(jde, shadowModel)
+	})
+}
+
+type lunarShadowEvaluator func(float64) lunarShadowState
+
+func lunarEclipseFromFullMoon(fullMoonJDE float64, shadowModel lunarEclipseShadowModel, evaluate lunarShadowEvaluator) LunarEclipseResult {
+	maximumJDE, state, dxdt, dydt, minimumDistance := refineLunarEclipseMaximumWithEvaluator(fullMoonJDE, evaluate)
 
 	// 未发生的阶段保持 NaN：Has* 是权威判据，时刻字段不能拿 0 当哨兵。
 	model := LunarEclipseShadowModelDanjon
@@ -162,11 +173,11 @@ func lunarEclipse(seedJDE float64, shadowModel lunarEclipseShadowModel) LunarEcl
 		result.Type = LunarEclipsePenumbral
 		result.HasPenumbral = true
 		result.Magnitude = rawUmbralMagnitude
-		result.PenumbralStart = refineLunarEclipseContact(
-			state, dxdt, dydt, state.moonRadiusRad+state.penumbraRadiusRad, false, shadowModel,
+		result.PenumbralStart = refineLunarEclipseContactWithEvaluator(
+			state, dxdt, dydt, state.moonRadiusRad+state.penumbraRadiusRad, false, evaluate,
 		)
-		result.PenumbralEnd = refineLunarEclipseContact(
-			state, dxdt, dydt, state.moonRadiusRad+state.penumbraRadiusRad, true, shadowModel,
+		result.PenumbralEnd = refineLunarEclipseContactWithEvaluator(
+			state, dxdt, dydt, state.moonRadiusRad+state.penumbraRadiusRad, true, evaluate,
 		)
 	}
 
@@ -174,22 +185,22 @@ func lunarEclipse(seedJDE float64, shadowModel lunarEclipseShadowModel) LunarEcl
 		result.Type = LunarEclipsePartial
 		result.HasPartial = true
 		result.Magnitude = rawUmbralMagnitude
-		result.PartialStart = refineLunarEclipseContact(
-			state, dxdt, dydt, state.moonRadiusRad+state.umbraRadiusRad, false, shadowModel,
+		result.PartialStart = refineLunarEclipseContactWithEvaluator(
+			state, dxdt, dydt, state.moonRadiusRad+state.umbraRadiusRad, false, evaluate,
 		)
-		result.PartialEnd = refineLunarEclipseContact(
-			state, dxdt, dydt, state.moonRadiusRad+state.umbraRadiusRad, true, shadowModel,
+		result.PartialEnd = refineLunarEclipseContactWithEvaluator(
+			state, dxdt, dydt, state.moonRadiusRad+state.umbraRadiusRad, true, evaluate,
 		)
 	}
 
 	if minimumDistance <= state.umbraRadiusRad-state.moonRadiusRad {
 		result.Type = LunarEclipseTotal
 		result.HasTotal = true
-		result.TotalStart = refineLunarEclipseContact(
-			state, dxdt, dydt, state.umbraRadiusRad-state.moonRadiusRad, false, shadowModel,
+		result.TotalStart = refineLunarEclipseContactWithEvaluator(
+			state, dxdt, dydt, state.umbraRadiusRad-state.moonRadiusRad, false, evaluate,
 		)
-		result.TotalEnd = refineLunarEclipseContact(
-			state, dxdt, dydt, state.umbraRadiusRad-state.moonRadiusRad, true, shadowModel,
+		result.TotalEnd = refineLunarEclipseContactWithEvaluator(
+			state, dxdt, dydt, state.umbraRadiusRad-state.moonRadiusRad, true, evaluate,
 		)
 	}
 
@@ -203,17 +214,23 @@ func refineLunarEclipseMaximum(
 	seedJDE float64,
 	shadowModel lunarEclipseShadowModel,
 ) (float64, lunarShadowState, float64, float64, float64) {
+	return refineLunarEclipseMaximumWithEvaluator(seedJDE, func(jde float64) lunarShadowState {
+		return computeLunarShadowState(jde, shadowModel)
+	})
+}
+
+func refineLunarEclipseMaximumWithEvaluator(seedJDE float64, evaluate lunarShadowEvaluator) (float64, lunarShadowState, float64, float64, float64) {
 	currentJDE := seedJDE
 
 	for i := 0; i < 2; i++ {
-		state := computeLunarShadowState(currentJDE, shadowModel)
-		nextState := computeLunarShadowState(currentJDE+lunarFiniteDifferenceStep, shadowModel)
+		state := evaluate(currentJDE)
+		nextState := evaluate(currentJDE + lunarFiniteDifferenceStep)
 		dxdt := (nextState.x - state.x) / lunarFiniteDifferenceStep
 		dydt := (nextState.y - state.y) / lunarFiniteDifferenceStep
 
 		denominator := dxdt*dxdt + dydt*dydt
 		if denominator == 0 {
-			finalState := computeLunarShadowState(currentJDE, shadowModel)
+			finalState := evaluate(currentJDE)
 			return currentJDE, finalState, 0, 0, math.Hypot(finalState.x, finalState.y)
 		}
 
@@ -221,8 +238,8 @@ func refineLunarEclipseMaximum(
 		currentJDE += correction
 	}
 
-	linearState := computeLunarShadowState(currentJDE, shadowModel)
-	nextLinearState := computeLunarShadowState(currentJDE+lunarFiniteDifferenceStep, shadowModel)
+	linearState := evaluate(currentJDE)
+	nextLinearState := evaluate(currentJDE + lunarFiniteDifferenceStep)
 	dxdt := (nextLinearState.x - linearState.x) / lunarFiniteDifferenceStep
 	dydt := (nextLinearState.y - linearState.y) / lunarFiniteDifferenceStep
 
@@ -234,8 +251,8 @@ func refineLunarEclipseMaximum(
 	correction := -(linearState.x*dxdt + linearState.y*dydt) / denominator
 	maximumJDE := currentJDE + correction
 
-	finalState := computeLunarShadowState(maximumJDE, shadowModel)
-	nextState := computeLunarShadowState(maximumJDE+lunarFiniteDifferenceStep, shadowModel)
+	finalState := evaluate(maximumJDE)
+	nextState := evaluate(maximumJDE + lunarFiniteDifferenceStep)
 	dxdt = (nextState.x - finalState.x) / lunarFiniteDifferenceStep
 	dydt = (nextState.y - finalState.y) / lunarFiniteDifferenceStep
 
@@ -250,12 +267,18 @@ func refineLunarEclipseContact(
 	afterMaximum bool,
 	shadowModel lunarEclipseShadowModel,
 ) float64 {
+	return refineLunarEclipseContactWithEvaluator(maximumState, dxdt, dydt, boundaryRadius, afterMaximum, func(jde float64) lunarShadowState {
+		return computeLunarShadowState(jde, shadowModel)
+	})
+}
+
+func refineLunarEclipseContactWithEvaluator(maximumState lunarShadowState, dxdt, dydt, boundaryRadius float64, afterMaximum bool, evaluate lunarShadowEvaluator) float64 {
 	firstGuess, ok := solveLineCircleContact(maximumState, dxdt, dydt, boundaryRadius, afterMaximum)
 	if !ok {
 		return math.NaN()
 	}
 
-	contactState := computeLunarShadowState(firstGuess, shadowModel)
+	contactState := evaluate(firstGuess)
 	refinedRadius := boundaryRadius
 
 	switch {
@@ -309,16 +332,20 @@ type lunarEclipsePlaneState struct {
 }
 
 func lunarEclipsePlaneStateAt(jde float64) lunarEclipsePlaneState {
+	return lunarEclipsePlaneStateAtWithInstance(jde, nil)
+}
+
+func lunarEclipsePlaneStateAtWithInstance(jde float64, inst *Instance) lunarEclipsePlaneState {
 	julianCentury := (jde - 2451545.0) / 36525.0
 
-	sunLongitude := HSunTrueLo(jde)*rad + sunLongitudeAberrationRad(julianCentury)
-	sunLatitude := HSunTrueBo(jde) * rad
-	moonLongitude := HMoonTrueLo(jde)*rad + lunarLongitudeAberration
-	moonLatitude := HMoonTrueBo(jde)*rad + moonLatitudeAberrationRad(julianCentury)
+	sunLongitude := HSunTrueLoWithInstance(jde, inst)*rad + sunLongitudeAberrationRad(julianCentury)
+	sunLatitude := HSunTrueBoWithInstance(jde, inst) * rad
+	moonLongitude := HMoonTrueLoWithInstance(jde, inst)*rad + lunarLongitudeAberration
+	moonLatitude := HMoonTrueBoWithInstance(jde, inst)*rad + moonLatitudeAberrationRad(julianCentury)
 
 	return lunarEclipsePlaneState{
 		jde: jde,
-		x:   normalizeRadians(moonLongitude+math.Pi-sunLongitude) * math.Cos((moonLatitude-sunLatitude)/2),
+		x:   normalizeSignedRadians(moonLongitude+math.Pi-sunLongitude) * math.Cos((moonLatitude-sunLatitude)/2),
 		y:   moonLatitude + sunLatitude,
 	}
 }
@@ -328,13 +355,17 @@ func lunarEclipsePlaneStateAt(jde float64) lunarEclipsePlaneState {
 // 所有内部角量统一使用弧度。影半径模型允许在 Danjon 与 Chauvenet 之间切换，
 // 其余月心轨迹与几何求交框架保持一致。
 func computeLunarShadowState(jde float64, shadowModel lunarEclipseShadowModel) lunarShadowState {
-	plane := lunarEclipsePlaneStateAt(jde)
+	return computeLunarShadowStateWithInstance(jde, shadowModel, nil)
+}
 
-	moonDistanceKM := HMoonAway(jde)
-	sunDistanceAU := EarthAway(jde)
+func computeLunarShadowStateWithInstance(jde float64, shadowModel lunarEclipseShadowModel, inst *Instance) lunarShadowState {
+	plane := lunarEclipsePlaneStateAtWithInstance(jde, inst)
+
+	moonDistanceKM := HMoonAwayWithInstance(jde, inst)
+	sunDistanceAU := EarthAwayNWithInstance(jde, -1, inst)
 
 	moonRadiusArcsec := lunarMoonRadiusScale * lunarArcsecPerRadian / moonDistanceKM
-	earthParallaxArcsec := lunarEarthEquatorialRadiusKM / moonDistanceKM * lunarArcsecPerRadian
+	earthParallaxArcsec := geodata.EarthEquatorialRadiusKM / moonDistanceKM * lunarArcsecPerRadian
 	solarRadiusArcsec := eclipseSunRadiusStandardArcsec / sunDistanceAU
 	solarParallaxArcsec := lunarSolarParallaxArcsec / sunDistanceAU
 	umbraRadiusArcsec, penumbraRadiusArcsec := lunarEclipseShadowRadiiArcsec(
@@ -368,17 +399,6 @@ func lunarEclipseShadowRadiiArcsec(
 		return (earthTerm - solarRadiusArcsec + solarParallaxArcsec) * lunarChauvenetShadowGain,
 			(earthTerm + solarRadiusArcsec + solarParallaxArcsec) * lunarChauvenetShadowGain
 	}
-}
-
-func normalizeRadians(angle float64) float64 {
-	angle = math.Mod(angle, 2*math.Pi)
-	if angle > math.Pi {
-		angle -= 2 * math.Pi
-	}
-	if angle <= -math.Pi {
-		angle += 2 * math.Pi
-	}
-	return angle
 }
 
 func sunLongitudeAberrationRad(julianCentury float64) float64 {

@@ -1,4 +1,4 @@
-// Package astro 提供进程级时标配置与时标换算 / process-wide time-scale configuration and conversions.
+// Package astro 提供高层星历上下文、模型切换与进程级时标配置 / high-level ephemeris contexts, model switching and process-wide time-scale configuration.
 package astro
 
 import "github.com/starainrt/astro/basic"
@@ -33,18 +33,18 @@ func DefaultTTMinusUTC() func(float64) float64 {
 	return basic.TTMinusUTCSecondsDefault
 }
 
-// TimeScaleFuturePolicy 民用时标换算政策，与输出用的 TimeScale 无关 / civil-time conversion policy, separate from output TimeScale.
+// TimeScaleFuturePolicy 民用时标换算政策，零值为闰时，与输出用的 TimeScale 无关 / civil-time conversion policy, leap hour as the zero value; separate from output TimeScale.
 type TimeScaleFuturePolicy = basic.TimeScaleFuturePolicy
 
 const (
-	// TimeScaleLeapSecond 默认按 ΔT 越限施加整数秒校正，不代表闰秒公告 / default integer-second corrections driven by extrapolated ΔT, not announcements.
+	// TimeScaleLeapHour 按 ΔT 越限施加整小时校正（2027 起 CGPM 决议） / applies hour-sized corrections as adopted by CGPM from 2027.
+	TimeScaleLeapHour = basic.TimeScaleLeapHour
+	// TimeScaleLeapSecond 按 ΔT 越限施加整数秒校正（1972–2026 确定值） / integer-second corrections (definitive 1972–2026).
 	TimeScaleLeapSecond = basic.TimeScaleLeapSecond
 	// TimeScaleAssumeUT1Tracking 窗口外固定末端 DUT1，平滑跟随 UT1 / holds the last observed DUT1 beyond the window.
 	TimeScaleAssumeUT1Tracking = basic.TimeScaleAssumeUT1Tracking
-	// TimeScaleFreezeUTCOffset 假设 UTC 偏移冻结在精确窗口末端 / freezes the UTC offset at the window end.
+	// TimeScaleFreezeUTCOffset 窗口外固定末端 TT−UTC / holds the last TT−UTC offset beyond the window.
 	TimeScaleFreezeUTCOffset = basic.TimeScaleFreezeUTCOffset
-	// TimeScaleLeapHour 按 ΔT 越限施加整小时校正，仅作情景演算 / applies hour-sized corrections as a scenario assumption.
-	TimeScaleLeapHour = basic.TimeScaleLeapHour
 	// TimeScaleUT1Civil 全时轴民用时标等同 UT1，TT−UTC 覆盖仍优先 / uses UT1 as civil time everywhere unless TT−UTC is overridden.
 	TimeScaleUT1Civil = basic.TimeScaleUT1Civil
 )

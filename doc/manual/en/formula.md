@@ -2,15 +2,16 @@
 
 [中文](../formula.md) | [Back to README](../../../README.en.md)
 
-`formula` holds the common formulas that are unrelated to a specific date or ephemeris; they suit popular-science estimates, novel settings, and teaching demonstrations.
+`formula` holds pure formulas that read no ephemeris tables, covering radiation, photometry, telescopes, the atmosphere and Earth orientation for estimates and observing aids.
 
-It performs no time-scale conversion and reads no ephemeris tables: the inputs are only instantaneous or constant parameters such as temperature, wavelength, distance, aperture, and altitude.
+It performs no time-scale conversion and reads no global ephemeris. Most inputs are physical quantities such as temperature, wavelength, distance, aperture and altitude; `TIOLocatorArcsec` is the exception that accepts a TT Julian date.
 
-Altitude and zenith-distance conventions follow [Observing-angle semantics](sun-moon.md#observing-angle-semantics); when coordinate-layer refraction is needed, use `coord`'s [airmass](coord.md#airmass); overall accuracy and applicability are in the manual [Scope And Accuracy](accuracy.md).
+Altitude and zenith-distance conventions follow [Observing-angle semantics](sun-moon.md#observing-angle-semantics); overall accuracy and applicability are in [Accuracy and performance](accuracy.md).
 
 ## Contents
 
 - [Magnitude, synodic period and blackbody radiation](#magnitude-synodic-period-and-blackbody-radiation)
+- [Refraction, extinction and Earth orientation](#refraction-extinction-and-earth-orientation)
 - [API Reference](#api-reference)
   - [Blackbody and Radiation](#blackbody-and-radiation)
   - [Synodic Period](#synodic-period)
@@ -30,6 +31,35 @@ Altitude and zenith-distance conventions follow [Observing-angle semantics](sun-
   - [Angle Quadrants and Degree/Radian Boundaries](#angle-quadrants-and-degreeradian-boundaries)
   - [Zero Values and Invalid Input](#zero-values-and-invalid-input)
   - [Accuracy and Applicability](#accuracy-and-applicability)
+
+## Refraction, extinction and Earth orientation
+
+| Entry point | Input and output convention |
+| --- | --- |
+| `ApparentAltitude` / `TrueAltitude` | True/apparent altitude conversion in degrees; pressure hPa and temperature °C |
+| `RefractionFromTrueAltitude` / `RefractionFromApparentAltitude` | Refraction in degrees, added to true altitude or subtracted from apparent altitude |
+| `ExtinctionSchaefer` | V-band zenith extinction components and `Total`, in magnitudes per airmass |
+| `TIOLocatorArcsec` | TT Julian date to the TIO locator s′ in arcseconds |
+| `PolarMotionMatrix` | `xp`, `yp` and s′ in arcseconds; a matrix acting on column vectors from TIRS to ITRS |
+| `CelestialPoleOffsetMatrix` | dX/dY in mas; a first-order small-angle correction matrix multiplying an existing celestial rotation on the left |
+
+Abbreviations in the table: `TIO` is the terrestrial intermediate origin, `TIRS` and `ITRS` are the terrestrial intermediate and terrestrial reference systems, `s′` is the TIO locator, and `CPO` is the celestial pole offset (`dX`, `dY`) in `mas` (milliarcseconds).
+
+```go
+apparent := formula.ApparentAltitude(5, 1010, 10)
+trueAltitude := formula.TrueAltitude(apparent, 1010, 10)
+extinction := formula.ExtinctionSchaefer(100, 20, 50, 39.9, 120)
+polarMotion := formula.PolarMotionMatrix(0.1, 0.2, formula.TIOLocatorArcsec(2460000.5))
+_ = trueAltitude
+_ = extinction.Total
+_ = polarMotion
+```
+
+The standard refraction constants are 1010 hPa and 10 °C. Pressure must be positive, temperature above absolute zero and inputs finite. Both directions use the same model; a missing inverse returns `NaN`. Refraction is zero at altitudes ≤−5° or ≥90°. These are empirical-model boundaries, not a guarantee for precision near-horizon observing.
+
+`ExtinctionSchaefer` uses site elevation in metres, unlike the ellipsoidal height of most observing APIs. Humidity is a percentage in `(0,100)`; latitude and solar right ascension are degrees. Assign `Total` to `phenomena.HeliacalOptions.ExtinctionCoefficient` to use it; when it is not assigned, the visibility calculation uses that option's own default extinction. Do not reuse a V-band coefficient for a different band without conversion.
+
+Callers supply polar-motion and CPO parameters. The package downloads no IERS (International Earth Rotation and Reference Systems Service) data and does not automatically apply these corrections to default rise/set, eclipse or occultation calculations. The arcseconds of s′ and xp/yp differ from the mas of dX/dY; matrix elements are dimensionless.
 
 ## Magnitude, synodic period and blackbody radiation
 
@@ -299,11 +329,11 @@ Pressure- and temperature-corrected versions live in [Coordinate tools](coord.md
 - Telescope family: aperture millimeters; `DawesLimitArcsec` and `RayleighLimitArcsec` return **arcseconds**, not degrees; `LightGatheringPowerRatio` and `LimitingMagnitudeEmpirical` return a dimensionless ratio and a magnitude respectively.
 - Airmass family: altitude (or zenith distance) in degrees; the return value is the dimensionless relative airmass with 1 at the zenith.
 - Synodic period: the unit is chosen by the caller, both inputs must match, and the output matches them; the package does not assume days.
-- This package produces no apparent diameter or apparent radius. Apparent-radius fields in the eclipse and occultation manuals are in arcseconds; here only the two Dawes/Rayleigh limits use arcseconds while all other angles are degrees, so do not interchange them.
+- This package produces no apparent diameter or radius. Ordinary angles and refraction use degrees; Dawes/Rayleigh and the TIO locator use arcseconds, polar-motion inputs arcseconds and CPO inputs mas.
 
 ### Time Scales
 
-- No entry point accepts an instant or performs any time-scale conversion: the formulas depend only on parameters such as temperature, wavelength, distance, aperture, and altitude, and are independent of UTC, UT1, and TT.
+- The package performs no time-scale conversion. `TIOLocatorArcsec` accepts a TT Julian date; the other formulas use caller-supplied physical quantities or periods without reading global time-scale settings.
 - The synodic period is a length of time, not the instant of the next conjunction.
 
   Landing on a date requires the conjunction APIs in the planet packages plus civil time, whose convention is in the manual [Time Scale Conventions](timescale.md).
@@ -311,10 +341,10 @@ Pressure- and temperature-corrected versions live in [Coordinate tools](coord.md
 
 ### Angle Quadrants and Degree/Radian Boundaries
 
-- All angle parameters are degrees, are converted to radians internally, and come back as degrees or arcseconds; radians never leak to the caller.
-- Altitude and zenith distance are both limited to `[0,90]`: the horizon is `0°`, the zenith is `+90°`, and zenith distance is the complement of altitude.
+- Ordinary angles are degrees, polar-motion angles arcseconds and CPO mas. Follow each function's declared units; internal radians never leak to the caller.
+- Airmass models limit altitude and zenith distance to `[0,90]`, with no quadrant folding. Refraction functions have their own low-altitude boundary; do not apply the airmass range to them.
 
-  The package performs no quadrant folding, so a negative altitude (below the horizon) is simply invalid and is never folded to the zenith or replaced by an absolute value.
+  Negative altitude is invalid for the airmass models rather than folded to the zenith or replaced by an absolute value.
 - Zenith distance `z` and altitude `h` satisfy `z = 90° − h`; `AirmassPlaneParallel` takes `h` and `AirmassPlaneParallelByZenithDistance` takes `z`, and both must agree for the same geometry.
 - Dawes/Rayleigh return arcseconds; divide by 3600 to compare with the degree-based angles in the other manuals.
 

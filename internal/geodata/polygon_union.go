@@ -370,15 +370,10 @@ func polygonUnionRingForPoints(points []polygonUnionPoint) polygonUnionRing {
 		minY, maxY = math.Min(minY, point.y), math.Max(maxY, point.y)
 	}
 	locationEdges := append([]polygonUnionSourceEdge(nil), edges...)
-	sort.Slice(locationEdges, func(first, second int) bool {
-		if locationEdges[first].minY != locationEdges[second].minY {
-			return locationEdges[first].minY < locationEdges[second].minY
-		}
-		return locationEdges[first].maxY < locationEdges[second].maxY
-	})
+	sort.Sort(polygonUnionEdgesByY(locationEdges))
 	return polygonUnionRing{
 		points: points, edges: edges, locationEdges: locationEdges,
-		locationBins: polygonUnionBuildLocationBins(edges, minY, maxY),
+		locationBins: polygonUnionBuildLocationBins(locationEdges, minY, maxY),
 		minX:         minX, maxX: maxX, minY: minY, maxY: maxY,
 	}
 }
@@ -394,19 +389,7 @@ func polygonUnionAddIntersections(rings []polygonUnionRing) {
 			})
 		}
 	}
-	sort.Slice(edges, func(first, second int) bool {
-		a, b := edges[first], edges[second]
-		if a.edge.minX != b.edge.minX {
-			return a.edge.minX < b.edge.minX
-		}
-		if a.edge.maxX != b.edge.maxX {
-			return a.edge.maxX < b.edge.maxX
-		}
-		if a.ringIndex != b.ringIndex {
-			return a.ringIndex < b.ringIndex
-		}
-		return a.edgeIndex < b.edgeIndex
-	})
+	sort.Sort(polygonUnionEdgeRefsByX(edges))
 	for firstIndex, first := range edges {
 		for secondIndex := firstIndex + 1; secondIndex < len(edges); secondIndex++ {
 			second := edges[secondIndex]
@@ -421,13 +404,13 @@ func polygonUnionAddIntersections(rings []polygonUnionRing) {
 			if !polygonUnionEdgeBoundsOverlap(first.edge, second.edge) {
 				continue
 			}
-			firstParams, secondParams := polygonUnionSegmentIntersections(
+			firstParams, firstCount, secondParams, secondCount := polygonUnionSegmentIntersections(
 				first.edge.start, first.edge.end, second.edge.start, second.edge.end,
 			)
 			firstRing := &rings[first.ringIndex]
 			secondRing := &rings[second.ringIndex]
-			firstRing.params[first.edgeIndex] = append(firstRing.params[first.edgeIndex], firstParams...)
-			secondRing.params[second.edgeIndex] = append(secondRing.params[second.edgeIndex], secondParams...)
+			firstRing.params[first.edgeIndex] = append(firstRing.params[first.edgeIndex], firstParams[:firstCount]...)
+			secondRing.params[second.edgeIndex] = append(secondRing.params[second.edgeIndex], secondParams[:secondCount]...)
 		}
 	}
 }
@@ -443,7 +426,7 @@ func polygonUnionEdgesAdjacent(first, second, count int) bool {
 
 func polygonUnionSegmentIntersections(
 	firstStart, firstEnd, secondStart, secondEnd polygonUnionPoint,
-) ([]float64, []float64) {
+) (firstParams [2]float64, firstCount int, secondParams [2]float64, secondCount int) {
 	firstDelta := polygonUnionSubtract(firstEnd, firstStart)
 	secondDelta := polygonUnionSubtract(secondEnd, secondStart)
 	offset := polygonUnionSubtract(secondStart, firstStart)
@@ -453,27 +436,29 @@ func polygonUnionSegmentIntersections(
 		secondParam := polygonUnionCross(offset, firstDelta) / denominator
 		if firstParam < -polygonUnionEpsilon || firstParam > 1+polygonUnionEpsilon ||
 			secondParam < -polygonUnionEpsilon || secondParam > 1+polygonUnionEpsilon {
-			return nil, nil
+			return firstParams, 0, secondParams, 0
 		}
-		return []float64{polygonUnionClampParam(firstParam)}, []float64{polygonUnionClampParam(secondParam)}
+		firstParams[0] = polygonUnionClampParam(firstParam)
+		secondParams[0] = polygonUnionClampParam(secondParam)
+		return firstParams, 1, secondParams, 1
 	}
 	if math.Abs(polygonUnionCross(offset, firstDelta)) > polygonUnionEpsilon {
-		return nil, nil
+		return firstParams, 0, secondParams, 0
 	}
 
-	firstParams := make([]float64, 0, 2)
-	secondParams := make([]float64, 0, 2)
-	for _, point := range []polygonUnionPoint{secondStart, secondEnd} {
+	for _, point := range [2]polygonUnionPoint{secondStart, secondEnd} {
 		if value, ok := polygonUnionPointSegmentParam(point, firstStart, firstEnd); ok {
-			firstParams = append(firstParams, value)
+			firstParams[firstCount] = value
+			firstCount++
 		}
 	}
-	for _, point := range []polygonUnionPoint{firstStart, firstEnd} {
+	for _, point := range [2]polygonUnionPoint{firstStart, firstEnd} {
 		if value, ok := polygonUnionPointSegmentParam(point, secondStart, secondEnd); ok {
-			secondParams = append(secondParams, value)
+			secondParams[secondCount] = value
+			secondCount++
 		}
 	}
-	return firstParams, secondParams
+	return firstParams, firstCount, secondParams, secondCount
 }
 
 func polygonUnionPointSegmentParam(point, start, end polygonUnionPoint) (float64, bool) {
@@ -551,11 +536,11 @@ func polygonUnionOuterEdges(rings []polygonUnionRing) []polygonUnionEdge {
 }
 
 func polygonUnionInsideAnyRing(point polygonUnionPoint, rings []polygonUnionRing, preferred int) bool {
-	if preferred >= 0 && preferred < len(rings) && polygonUnionRingContainsPoint(point, rings[preferred]) {
+	if preferred >= 0 && preferred < len(rings) && polygonUnionRingRefContainsPoint(point, &rings[preferred]) {
 		return true
 	}
-	for index, ring := range rings {
-		if index != preferred && polygonUnionRingContainsPoint(point, ring) {
+	for index := range rings {
+		if index != preferred && polygonUnionRingRefContainsPoint(point, &rings[index]) {
 			return true
 		}
 	}
@@ -563,12 +548,16 @@ func polygonUnionInsideAnyRing(point polygonUnionPoint, rings []polygonUnionRing
 }
 
 func polygonUnionRingContainsPoint(point polygonUnionPoint, ring polygonUnionRing) bool {
+	return polygonUnionRingRefContainsPoint(point, &ring)
+}
+
+func polygonUnionRingRefContainsPoint(point polygonUnionPoint, ring *polygonUnionRing) bool {
 	margin := polygonUnionProbeOffset + polygonUnionEpsilon
 	if point.x < ring.minX-margin || point.x > ring.maxX+margin ||
 		point.y < ring.minY-margin || point.y > ring.maxY+margin {
 		return false
 	}
-	return polygonUnionPointLocationInRing(point, ring) >= 0
+	return polygonUnionPointLocationInRingRef(point, ring) >= 0
 }
 
 func polygonUnionJoinEdges(edges []polygonUnionEdge) ([][]GeoPoint, error) {
@@ -633,7 +622,7 @@ func polygonUnionJoinEdges(edges []polygonUnionEdge) ([][]GeoPoint, error) {
 		geographic := make([]GeoPoint, len(points))
 		for index, point := range points {
 			geographic[index] = GeoPoint{
-				Longitude: polygonUnionNormalizeLongitude(point.x),
+				Longitude: NormalizeLongitude(point.x),
 				Latitude:  point.y,
 			}
 		}
@@ -763,30 +752,43 @@ func polygonUnionPointLocationOnEdges(
 	return -1
 }
 
+// polygonUnionBuildLocationBins 要求 sortedEdges 已按 (minY, maxY) 升序，各分箱沿用该顺序。
 func polygonUnionBuildLocationBins(
-	edges []polygonUnionSourceEdge,
+	sortedEdges []polygonUnionSourceEdge,
 	minimumY, maximumY float64,
 ) [][]polygonUnionSourceEdge {
+	var counts [polygonUnionLocationBinCount]int
+	total := 0
+	for _, edge := range sortedEdges {
+		first := polygonUnionLocationBin(edge.minY-polygonUnionEpsilon, minimumY, maximumY)
+		last := polygonUnionLocationBin(edge.maxY+polygonUnionEpsilon, minimumY, maximumY)
+		for index := first; index <= last; index++ {
+			counts[index]++
+		}
+		total += last - first + 1
+	}
+	backing := make([]polygonUnionSourceEdge, total)
 	bins := make([][]polygonUnionSourceEdge, polygonUnionLocationBinCount)
-	for _, edge := range edges {
+	offset := 0
+	for index, count := range counts {
+		bins[index] = backing[offset : offset : offset+count]
+		offset += count
+	}
+	for _, edge := range sortedEdges {
 		first := polygonUnionLocationBin(edge.minY-polygonUnionEpsilon, minimumY, maximumY)
 		last := polygonUnionLocationBin(edge.maxY+polygonUnionEpsilon, minimumY, maximumY)
 		for index := first; index <= last; index++ {
 			bins[index] = append(bins[index], edge)
 		}
 	}
-	for index := range bins {
-		sort.Slice(bins[index], func(first, second int) bool {
-			if bins[index][first].minY != bins[index][second].minY {
-				return bins[index][first].minY < bins[index][second].minY
-			}
-			return bins[index][first].maxY < bins[index][second].maxY
-		})
-	}
 	return bins
 }
 
 func polygonUnionPointLocationInRing(point polygonUnionPoint, ring polygonUnionRing) int {
+	return polygonUnionPointLocationInRingRef(point, &ring)
+}
+
+func polygonUnionPointLocationInRingRef(point polygonUnionPoint, ring *polygonUnionRing) int {
 	if len(ring.locationBins) != polygonUnionLocationBinCount {
 		return polygonUnionPointLocationOnEdges(point, ring.locationEdges)
 	}
@@ -893,10 +895,31 @@ func polygonUnionKey(edge polygonUnionEdge) polygonUnionEdgeKey {
 	}
 }
 
-func polygonUnionNormalizeLongitude(value float64) float64 {
-	value = math.Mod(value+180, 360)
-	if value < 0 {
-		value += 360
+type polygonUnionEdgesByY []polygonUnionSourceEdge
+
+func (edges polygonUnionEdgesByY) Len() int      { return len(edges) }
+func (edges polygonUnionEdgesByY) Swap(i, j int) { edges[i], edges[j] = edges[j], edges[i] }
+func (edges polygonUnionEdgesByY) Less(i, j int) bool {
+	if edges[i].minY != edges[j].minY {
+		return edges[i].minY < edges[j].minY
 	}
-	return value - 180
+	return edges[i].maxY < edges[j].maxY
+}
+
+type polygonUnionEdgeRefsByX []polygonUnionSourceEdgeRef
+
+func (edges polygonUnionEdgeRefsByX) Len() int      { return len(edges) }
+func (edges polygonUnionEdgeRefsByX) Swap(i, j int) { edges[i], edges[j] = edges[j], edges[i] }
+func (edges polygonUnionEdgeRefsByX) Less(i, j int) bool {
+	a, b := &edges[i], &edges[j]
+	if a.edge.minX != b.edge.minX {
+		return a.edge.minX < b.edge.minX
+	}
+	if a.edge.maxX != b.edge.maxX {
+		return a.edge.maxX < b.edge.maxX
+	}
+	if a.ringIndex != b.ringIndex {
+		return a.ringIndex < b.ringIndex
+	}
+	return a.edgeIndex < b.edgeIndex
 }

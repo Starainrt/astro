@@ -67,6 +67,16 @@ func Nutation2000B(date time.Time) (longitude, obliquity float64) {
 	return basic.Nutation2000B(jdUTC(date))
 }
 
+// Nutation2000A IAU 2000A 章动，度；仅显式调用时使用，默认链路仍为 2000B / IAU 2000A nutation, opt-in.
+func Nutation2000A(date time.Time) (longitude, obliquity float64) {
+	return basic.Nutation2000A(jdUTC(date))
+}
+
+// MeanObliquity2006 IAU 2006 平黄赤交角，度 / IAU 2006 mean obliquity in degrees.
+func MeanObliquity2006(date time.Time) float64 {
+	return basic.MeanObliquity2006(jdUTC(date))
+}
+
 // Nutation1980 IAU 1980 章动 / IAU 1980 nutation.
 func Nutation1980(date time.Time) (longitude, obliquity float64) {
 	return basic.Nutation1980(jdUTC(date))

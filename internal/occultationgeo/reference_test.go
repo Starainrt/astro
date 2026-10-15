@@ -22,7 +22,7 @@ func mergeTouchingVisiblePolygonsReference(polygons [][]geodata.GeoPoint) [][]ge
 			for second := first + 1; second < len(polygons) && firstIndex < 0; second++ {
 				for _, left := range polygons[first] {
 					for _, right := range polygons[second] {
-						if geoDistanceKM(left, right) > touchingDistanceKM {
+						if geodata.EquatorialDistanceKM(left, right) > touchingDistanceKM {
 							continue
 						}
 						firstIndex, secondIndex = first, second
@@ -43,7 +43,7 @@ func mergeTouchingVisiblePolygonsReference(polygons [][]geodata.GeoPoint) [][]ge
 			break
 		}
 		bridgeHalfDeg := minimumBridgeHalfDeg
-		if gap := geoDistanceKM(leftTouch, rightTouch) / EarthRadiusKM * 180 / math.Pi; gap/2+0.002 > bridgeHalfDeg {
+		if gap := geodata.EquatorialDistanceKM(leftTouch, rightTouch) / geodata.EarthEquatorialRadiusKM * 180 / math.Pi; gap/2+0.002 > bridgeHalfDeg {
 			bridgeHalfDeg = gap/2 + 0.002
 		}
 		bridge := []geodata.GeoPoint{

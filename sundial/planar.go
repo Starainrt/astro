@@ -538,6 +538,7 @@ func intervalInteriorSampleAngles(interval HourAngleInterval, step float64) []fl
 		return nil
 	}
 
+	step = math.Max(step, minHourAngleSampleStep)
 	samples := make([]float64, 0, int(math.Ceil((interval.End-interval.Start)/step)))
 	first := math.Ceil((interval.Start+negligibleHourAngle)/step) * step
 	for hourAngle := first; hourAngle < interval.End-negligibleHourAngle; hourAngle += step {
@@ -554,3 +555,6 @@ func fullDayHourAngleIntervals() []HourAngleInterval {
 }
 
 const negligibleHourAngle = 1e-12
+
+// minHourAngleSampleStep 时角采样步长下限，单位度；单区间最多约 36 万个样本。
+const minHourAngleSampleStep = 1e-3

@@ -106,7 +106,7 @@ func sweepEndpointTracksMonotone(group []openBoundarySweepSample) bool {
 			if index > 1 {
 				previousLength := vectorNorm(previousStep)
 				currentLength := vectorNorm(step)
-				if math.Min(previousLength, currentLength)*6371.0088 > openBoundaryEndpointStepNoiseKM &&
+				if math.Min(previousLength, currentLength)*EarthMeanRadiusKM > openBoundaryEndpointStepNoiseKM &&
 					vectorDot(previousStep, step) < -0.1*previousLength*currentLength {
 					return false
 				}
@@ -116,7 +116,7 @@ func sweepEndpointTracksMonotone(group []openBoundarySweepSample) bool {
 			// tangent chord even while every local step remains forward. Reserve a
 			// few kilometres for that projection effect; larger gradual reversals
 			// still invalidate the endpoint envelope.
-			if progress+openBoundaryEndpointProgressBackKM/6371.0088 < previousProgress {
+			if progress+openBoundaryEndpointProgressBackKM/EarthMeanRadiusKM < previousProgress {
 				return false
 			}
 			previousProgress = progress
@@ -266,7 +266,7 @@ func OpenBoundarySweepInnerCaps(
 	caps := make([][]GeoPoint, 0, len(indices))
 	for _, index := range indices {
 		boundary := openGeoRing(JoinPolylineSegments(samples[index].Boundaries))
-		if len(boundary) < 3 || geoPointDistanceKM(boundary[0], boundary[len(boundary)-1]) > maximumGapKM {
+		if len(boundary) < 3 || EquatorialDistanceKM(boundary[0], boundary[len(boundary)-1]) > maximumGapKM {
 			continue
 		}
 		caps = append(caps, boundary)
@@ -281,7 +281,7 @@ func decimateOpenBoundaryPoints(points []GeoPoint, targetSpacingKM float64) []Ge
 	result := make([]GeoPoint, 1, len(points))
 	result[0] = points[0]
 	for _, point := range points[1 : len(points)-1] {
-		if geoPointDistanceKM(result[len(result)-1], point) >= targetSpacingKM {
+		if EquatorialDistanceKM(result[len(result)-1], point) >= targetSpacingKM {
 			result = append(result, point)
 		}
 	}
@@ -330,17 +330,17 @@ func openBoundarySweepGroups(samples []OpenBoundarySweepSample) ([][]openBoundar
 		}
 		value := openBoundarySweepSample{boundary: boundary, start: boundary[0], end: boundary[len(boundary)-1]}
 		if len(current) > 0 {
-			keep := geoPointDistanceKM(previous.start, value.start) +
-				geoPointDistanceKM(previous.end, value.end)
-			reverse := geoPointDistanceKM(previous.start, value.end) +
-				geoPointDistanceKM(previous.end, value.start)
+			keep := EquatorialDistanceKM(previous.start, value.start) +
+				EquatorialDistanceKM(previous.end, value.end)
+			reverse := EquatorialDistanceKM(previous.start, value.end) +
+				EquatorialDistanceKM(previous.end, value.start)
 			if reverse < keep {
 				reverseSweepGeoPoints(value.boundary)
 				value.start, value.end = value.end, value.start
 			}
 			if math.Max(
-				geoPointDistanceKM(previous.start, value.start),
-				geoPointDistanceKM(previous.end, value.end),
+				EquatorialDistanceKM(previous.start, value.start),
+				EquatorialDistanceKM(previous.end, value.end),
 			) > 2000 {
 				groups = append(groups, current)
 				current = nil
@@ -567,7 +567,7 @@ func sweepTouchingPolygonPair(
 						key := sweepTouchingCellKeyFromCoordinates(x+deltaX, y+deltaY, z+deltaZ)
 						for _, candidate := range cells[key] {
 							if candidate.polygon <= polygonIndex ||
-								geoPointDistanceKM(point, candidate.point) > thresholdKM {
+								EquatorialDistanceKM(point, candidate.point) > thresholdKM {
 								continue
 							}
 							pairs[[2]int{polygonIndex, candidate.polygon}] = struct{}{}
@@ -588,7 +588,7 @@ func sweepTouchingPolygonPair(
 	}
 	for _, first := range polygons[firstIndex] {
 		for _, second := range polygons[secondIndex] {
-			if !(geoPointDistanceKM(first, second) > thresholdKM) {
+			if !(EquatorialDistanceKM(first, second) > thresholdKM) {
 				return firstIndex, secondIndex, GeoPoint{
 					Longitude: first.Longitude + math.Remainder(second.Longitude-first.Longitude, 360)/2,
 					Latitude:  (first.Latitude + second.Latitude) / 2,
@@ -659,14 +659,4 @@ func reverseSweepGeoPoints(points []GeoPoint) {
 	for left, right := 0, len(points)-1; left < right; left, right = left+1, right-1 {
 		points[left], points[right] = points[right], points[left]
 	}
-}
-
-func geoPointDistanceKM(first, second GeoPoint) float64 {
-	firstLatitude := first.Latitude * math.Pi / 180
-	secondLatitude := second.Latitude * math.Pi / 180
-	deltaLatitude := secondLatitude - firstLatitude
-	deltaLongitude := math.Remainder((second.Longitude-first.Longitude)*math.Pi/180, 2*math.Pi)
-	haversine := math.Sin(deltaLatitude/2)*math.Sin(deltaLatitude/2) +
-		math.Cos(firstLatitude)*math.Cos(secondLatitude)*math.Sin(deltaLongitude/2)*math.Sin(deltaLongitude/2)
-	return 2 * 6378.1366 * math.Asin(math.Sqrt(math.Min(1, haversine)))
 }

@@ -22,7 +22,7 @@ func SphericalCircle(center GeoPoint, radiusDegrees float64, points int) []GeoPo
 			math.Cos(radius)-math.Sin(latitude)*math.Sin(lat),
 		)
 		result[index] = GeoPoint{
-			Longitude: normalizeLongitude(lon * 180 / math.Pi),
+			Longitude: NormalizeLongitude(lon * 180 / math.Pi),
 			Latitude:  lat * 180 / math.Pi,
 		}
 	}
@@ -53,7 +53,7 @@ func geoVectorPoint(vector geoVector3) GeoPoint {
 	vector.y /= length
 	vector.z /= length
 	return GeoPoint{
-		Longitude: normalizeLongitude(math.Atan2(vector.y, vector.x) * 180 / math.Pi),
+		Longitude: NormalizeLongitude(math.Atan2(vector.y, vector.x) * 180 / math.Pi),
 		Latitude:  math.Asin(math.Max(-1, math.Min(1, vector.z))) * 180 / math.Pi,
 	}
 }
@@ -103,7 +103,7 @@ func sphericalInterpolate(first, second GeoPoint, fraction float64) GeoPoint {
 		// never intentionally create one, but retain a finite fallback for
 		// malformed caller input.
 		return GeoPoint{
-			Longitude: normalizeLongitude(first.Longitude + fraction*normalizeLongitude(second.Longitude-first.Longitude)),
+			Longitude: NormalizeLongitude(first.Longitude + fraction*NormalizeLongitude(second.Longitude-first.Longitude)),
 			Latitude:  first.Latitude + fraction*(second.Latitude-first.Latitude),
 		}
 	}
@@ -376,12 +376,12 @@ func sphericalPointArcDistanceKM(point, start, end GeoPoint) float64 {
 				candidatePoint := geoVectorPoint(candidate)
 				if sphericalPointOnArc(candidatePoint, start, end) {
 					angle := math.Acos(math.Max(-1, math.Min(1, geoVectorDot(pointVector, candidate))))
-					return angle * 6378.1366
+					return angle * EarthEquatorialRadiusKM
 				}
 			}
 		}
 	}
-	return math.Min(geoPointDistanceKM(point, start), geoPointDistanceKM(point, end))
+	return math.Min(EquatorialDistanceKM(point, start), EquatorialDistanceKM(point, end))
 }
 
 // JoinPolylineSegments 按最近端点连接无序边界线段 / JoinPolylineSegments joins unordered boundary segments by their nearest
@@ -482,7 +482,7 @@ func ShortestCircleArc(circle []GeoPoint, from, to GeoPoint) []GeoPoint {
 // SameGeoPoint 判断两个经纬度点是否在拓扑所需精度内相等 / SameGeoPoint reports whether two longitude/latitude points are equal within
 // 地图拓扑辅助函数所需的精度内相等 / the precision needed by the map topology helpers.
 func SameGeoPoint(a, b GeoPoint) bool {
-	return math.Abs(normalizeLongitude(a.Longitude-b.Longitude)) < 1e-9 &&
+	return math.Abs(NormalizeLongitude(a.Longitude-b.Longitude)) < 1e-9 &&
 		math.Abs(a.Latitude-b.Latitude) < 1e-9
 }
 
@@ -500,7 +500,7 @@ func nearestGeoPointIndex(points []GeoPoint, target GeoPoint) int {
 func angularDistanceDegrees(a, b GeoPoint) float64 {
 	lat1 := a.Latitude * math.Pi / 180
 	lat2 := b.Latitude * math.Pi / 180
-	dLongitude := normalizeLongitude(b.Longitude-a.Longitude) * math.Pi / 180
+	dLongitude := NormalizeLongitude(b.Longitude-a.Longitude) * math.Pi / 180
 	cosine := math.Sin(lat1)*math.Sin(lat2) +
 		math.Cos(lat1)*math.Cos(lat2)*math.Cos(dLongitude)
 	return math.Acos(math.Max(-1, math.Min(1, cosine))) * 180 / math.Pi

@@ -72,7 +72,7 @@ func TestRefractionExtremeTemperatureInverse(t *testing.T) {
 	assertClose(t, "ExtremeTemperatureRoundTrip",
 		ApparentAltitude(trueAltitude, pressureHPa, -273), apparentAltitude, 1e-9)
 
-	for _, temperatureC := range []float64{-273.14, math.Nextafter(refractionAbsoluteZeroC, math.Inf(1))} {
+	for _, temperatureC := range []float64{-273.14, math.Nextafter(-273.15, math.Inf(1))} {
 		if got := TrueAltitude(apparentAltitude, pressureHPa, temperatureC); !math.IsNaN(got) {
 			t.Errorf("temperature %.17g C inverse = %v, want NaN when the model has no root", temperatureC, got)
 		}

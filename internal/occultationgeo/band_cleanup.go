@@ -86,7 +86,7 @@ func smoothOccultationOrdinaryWobbles(points []geodata.GeoPoint) []geodata.GeoPo
 				y += weights[offset+2] * projected[1]
 			}
 			candidate := occultationUnprojectedPoint(x/35, y/35)
-			move := geoDistanceKM(original[index], candidate)
+			move := geodata.EquatorialDistanceKM(original[index], candidate)
 			if move > maximumMoveKM {
 				continue
 			}
@@ -109,20 +109,15 @@ func smoothOccultationOrdinaryWobbles(points []geodata.GeoPoint) []geodata.GeoPo
 func occultationProjectedPoint(point geodata.GeoPoint) [2]float64 {
 	latitude := math.Max(-85.05112878, math.Min(85.05112878, point.Latitude)) * math.Pi / 180
 	return [2]float64{
-		EarthRadiusKM * point.Longitude * math.Pi / 180,
-		EarthRadiusKM * math.Log(math.Tan(math.Pi/4+latitude/2)),
+		geodata.EarthEquatorialRadiusKM * point.Longitude * math.Pi / 180,
+		geodata.EarthEquatorialRadiusKM * math.Log(math.Tan(math.Pi/4+latitude/2)),
 	}
 }
 
 func occultationUnprojectedPoint(pointX, pointY float64) geodata.GeoPoint {
-	longitude := pointX / EarthRadiusKM * 180 / math.Pi
-	longitude = math.Mod(longitude+180, 360)
-	if longitude < 0 {
-		longitude += 360
-	}
 	return geodata.GeoPoint{
-		Longitude: longitude - 180,
-		Latitude:  (2*math.Atan(math.Exp(pointY/EarthRadiusKM)) - math.Pi/2) * 180 / math.Pi,
+		Longitude: geodata.NormalizeLongitude(pointX / geodata.EarthEquatorialRadiusKM * 180 / math.Pi),
+		Latitude:  (2*math.Atan(math.Exp(pointY/geodata.EarthEquatorialRadiusKM)) - math.Pi/2) * 180 / math.Pi,
 	}
 }
 
@@ -533,7 +528,7 @@ func roundOccultationBandJunctionRing(
 					continue
 				}
 				previous, next := result[index-1], result[index+1]
-				if occultationProjectedEdgeDistanceKM(previous, next) > maximumChordKM {
+				if geodata.WebMercatorDistanceKM(previous, next) > maximumChordKM {
 					continue
 				}
 				turn := occultationTurnAngleDegrees(previous, point, next)
@@ -716,9 +711,9 @@ func removeOccultationPolarKinks(points []geodata.GeoPoint) []geodata.GeoPoint {
 		for index := 1; index+1 < len(result); index++ {
 			first, middle, last := result[index-1], result[index], result[index+1]
 			if math.Abs(middle.Latitude) < minimumPolarLatitudeDegrees ||
-				occultationProjectedEdgeDistanceKM(first, middle) > maximumAdjacentEdgeKM ||
-				occultationProjectedEdgeDistanceKM(middle, last) > maximumAdjacentEdgeKM ||
-				occultationProjectedEdgeDistanceKM(first, last) > maximumEndpointChordKM {
+				geodata.WebMercatorDistanceKM(first, middle) > maximumAdjacentEdgeKM ||
+				geodata.WebMercatorDistanceKM(middle, last) > maximumAdjacentEdgeKM ||
+				geodata.WebMercatorDistanceKM(first, last) > maximumEndpointChordKM {
 				continue
 			}
 			// A reversal in either projected axis is required. A merely curved
@@ -896,20 +891,20 @@ func occultationCurveCoverageProbes(
 					next = len(segment) - 1
 				}
 				first, second := segment[index], segment[next]
-				deltaLongitude := normalizeGeoLongitude(second.Longitude - first.Longitude)
+				deltaLongitude := geodata.NormalizeLongitude(second.Longitude - first.Longitude)
 				deltaLatitude := second.Latitude - first.Latitude
 				length := math.Hypot(deltaLongitude, deltaLatitude)
 				if length <= 1e-12 {
 					continue
 				}
 				midpoint := geodata.GeoPoint{
-					Longitude: normalizeGeoLongitude(first.Longitude + deltaLongitude/2),
+					Longitude: geodata.NormalizeLongitude(first.Longitude + deltaLongitude/2),
 					Latitude:  first.Latitude + deltaLatitude/2,
 				}
 				for _, offset := range []float64{0.00005, 0.0005, 0.002} {
 					for _, side := range []float64{-1, 1} {
 						candidates = append(candidates, geodata.GeoPoint{
-							Longitude: normalizeGeoLongitude(midpoint.Longitude - side*deltaLatitude*offset/length),
+							Longitude: geodata.NormalizeLongitude(midpoint.Longitude - side*deltaLatitude*offset/length),
 							Latitude:  midpoint.Latitude + side*deltaLongitude*offset/length,
 						})
 					}
@@ -925,7 +920,7 @@ func occultationCurveCoverageProbes(
 		}
 		duplicate := false
 		for _, existing := range probes {
-			if len(existing) > 0 && geoDistanceKM(existing[0], probe) < 1 {
+			if len(existing) > 0 && geodata.EquatorialDistanceKM(existing[0], probe) < 1 {
 				duplicate = true
 				break
 			}

@@ -3,6 +3,8 @@ package basic
 import (
 	"math"
 	"time"
+
+	"github.com/starainrt/astro/internal/geodata"
 )
 
 func refineOccultationRiseSetFold(
@@ -182,7 +184,7 @@ func occultationRiseSetFoldExtremumAt(
 }
 
 func occultationRiseSetHorizonCenter(context occultationRiseSetContext) (float64, float64) {
-	return normalizeLongitude(context.moonRA - context.siderealDegrees), context.moonDec
+	return geodata.NormalizeLongitude(context.moonRA - context.siderealDegrees), context.moonDec
 }
 
 func occultationRiseSetHorizonPoint(
@@ -307,7 +309,7 @@ func occultationRiseSetCirclePointFromTangent(center, tangent [3]float64, radius
 		center[1]*cosRadius + tangent[1]*sinRadius,
 		center[2]*cosRadius + tangent[2]*sinRadius,
 	}
-	return normalizeLongitude(math.Atan2(point[1], point[0]) / rad),
+	return geodata.NormalizeLongitude(math.Atan2(point[1], point[0]) / rad),
 		math.Asin(math.Max(-1, math.Min(1, point[2]))) / rad
 }
 
@@ -385,7 +387,7 @@ func refineOccultationRiseSetFoldPoint(
 		for index := range coordinates {
 			coordinates[index] += delta[index]
 		}
-		coordinates[0] = normalizeLongitude(coordinates[0])
+		coordinates[0] = geodata.NormalizeLongitude(coordinates[0])
 		if coordinates[1] <= -89.999999 || coordinates[1] >= 89.999999 {
 			return OccultationPathPoint{}, false
 		}
@@ -477,7 +479,7 @@ func occultationRiseSetPhaseMidpoint(
 	); ok && occultationRiseSetRefinementPointIsContinuous(start, middle, end) {
 		return middle, true
 	}
-	longitude := normalizeLongitude(start.Longitude + math.Remainder(end.Longitude-start.Longitude, 360)/2)
+	longitude := geodata.NormalizeLongitude(start.Longitude + math.Remainder(end.Longitude-start.Longitude, 360)/2)
 	latitude := (start.Latitude + end.Latitude) / 2
 	evaluation := cache.evaluation(tt)
 	longitude, latitude, ok := riseSetRefineGeographicRoot(longitude, latitude, func(lon, lat float64) (float64, float64, bool) {

@@ -13,6 +13,9 @@ import (
 // 月出侧 = 食终在地平上、本影阶段整段在地平下、食始也在地平下。本影可见性取整个区间的最大高度，
 // 只比 U1/U4 会漏掉极区掠射时两刻之间的短暂窗口。用高度独立复算，并允许边界附近半格误差。
 func TestLunarGeoJSONPenumbraBandsFollowUmbralContacts(t *testing.T) {
+	if testing.Short() {
+		t.Skip("slow regression")
+	}
 	date := time.Date(2029, 1, 1, 0, 0, 0, 0, time.FixedZone("CST", 8*3600))
 	info, ok := eclipse.LunarEclipseOnDate(date)
 	if !ok || !info.HasPartial {

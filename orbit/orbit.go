@@ -15,8 +15,8 @@ var (
 // Elements 日心二体圆锥曲线根数 / heliocentric two-body conic elements.
 // 参考系为 J2000 平黄道/平春分点。
 // The reference frame is the J2000 mean ecliptic and mean equinox.
-// EpochJD 与 TpJD 使用 TT/TDB 对应的儒略日。
-// EpochJD and TpJD are Julian days on the TT/TDB scale.
+// EpochJD 与 TpJD 使用 TT/TDB 对应的儒略日；摄动传播时经典根数必须给出非零 EpochJD。
+// EpochJD and TpJD are Julian days on the TT/TDB scale; perturbed propagation of classical elements requires a non-zero EpochJD.
 //
 // 经典椭圆根数：A/E/I/Omega/W/M0
 // 近日点形式：Q/E/I/Omega/W/TpJD
@@ -151,8 +151,8 @@ func AstrometricGeocentricEquatorialJ2000(date time.Time, elements Elements) Equ
 
 // ApparentGeocentricEcliptic 地心视黄道坐标 / apparent geocentric ecliptic coordinates.
 //
-// 返回加入光行时与章动修正后的地心视黄经、黄纬和距离；角度单位度，距离单位 AU。
-// Returns apparent geocentric ecliptic longitude, latitude, and distance after light-time and nutation corrections. Angles are in degrees and distance is in AU.
+// 返回加入光行时、周年光行差与章动修正后的地心视黄经、黄纬和距离；角度单位度，距离单位 AU。
+// Returns apparent geocentric ecliptic longitude, latitude, and distance after light-time, annual aberration, and nutation corrections. Angles are in degrees and distance is in AU.
 func ApparentGeocentricEcliptic(date time.Time, elements Elements) EclipticPosition {
 	lon, lat, distance := basic.OrbitApparentGeocentricEcliptic(ttJulianDay(date), toBasicElements(elements))
 	return EclipticPosition{Lon: lon, Lat: lat, Distance: distance}
@@ -160,8 +160,8 @@ func ApparentGeocentricEcliptic(date time.Time, elements Elements) EclipticPosit
 
 // ApparentGeocentricEquatorial 地心视赤道坐标 / apparent geocentric equatorial coordinates.
 //
-// 返回加入光行时与章动修正后的地心视赤经、赤纬和距离；角度单位度，距离单位 AU。
-// Returns apparent geocentric right ascension, declination, and distance after light-time and nutation corrections. Angles are in degrees and distance is in AU.
+// 返回加入光行时、周年光行差与章动修正后的地心视赤经、赤纬和距离；角度单位度，距离单位 AU。
+// Returns apparent geocentric right ascension, declination, and distance after light-time, annual aberration, and nutation corrections. Angles are in degrees and distance is in AU.
 func ApparentGeocentricEquatorial(date time.Time, elements Elements) EquatorialPosition {
 	ra, dec, distance := basic.OrbitApparentGeocentricEquatorial(ttJulianDay(date), toBasicElements(elements))
 	return EquatorialPosition{RA: ra, Dec: dec, Distance: distance}
@@ -169,9 +169,9 @@ func ApparentGeocentricEquatorial(date time.Time, elements Elements) EquatorialP
 
 // ApparentTopocentricEquatorial 站心视赤道坐标 / apparent topocentric equatorial coordinates.
 //
-// 返回加入光行时、章动和站心修正后的视赤经、赤纬和距离；
+// 返回加入光行时、周年光行差、章动和站心修正后的视赤经、赤纬和距离；
 // `observerLon` 东经为正，`observerLat` 北纬为正，`observerHeight` 单位米。
-// Returns apparent topocentric right ascension, declination, and distance after light-time, nutation, and topocentric corrections.
+// Returns apparent topocentric right ascension, declination, and distance after light-time, annual aberration, nutation, and topocentric corrections.
 func ApparentTopocentricEquatorial(date time.Time, elements Elements, observerLon, observerLat, observerHeight float64) EquatorialPosition {
 	ra, dec, distance := basic.OrbitApparentTopocentricEquatorial(ttJulianDay(date), observerLon, observerLat, observerHeight, toBasicElements(elements))
 	return EquatorialPosition{RA: ra, Dec: dec, Distance: distance}

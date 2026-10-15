@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/starainrt/astro"
+	"github.com/starainrt/astro/basic"
 )
 
 // 时标声明里同一个 UTC 偏移只写一次：时区名本身是偏移标签（FixedZone("UTC+08:00") 之类）时不再追加偏移。
@@ -27,7 +27,7 @@ func TestScaleWritesTheOffsetOnce(t *testing.T) {
 		{name: "UTC", location: time.UTC, want: "图中时刻为 UTC"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			got := Scale(astro.TimeScaleUTC, instant, test.location, test.language)
+			got := Scale(basic.TimeScaleUTC, instant, test.location, test.language)
 			if got != test.want {
 				t.Fatalf("Scale() = %q, want %q", got, test.want)
 			}

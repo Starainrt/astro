@@ -2,11 +2,14 @@ package geojson_test
 
 import (
 	"encoding/json"
+	"fmt"
 	"testing"
 	"time"
 
 	"github.com/starainrt/astro/eclipse"
 	"github.com/starainrt/astro/geojson"
+
+	"github.com/starainrt/astro/internal/ephemtest"
 )
 
 func TestSolarEclipse20120521HasCentralBandHorizonClosure(t *testing.T) {
@@ -20,10 +23,7 @@ func TestSolarEclipse20120521HasCentralBandHorizonClosure(t *testing.T) {
 	if len(partial.CentralBandHorizonClosures) != 2 {
 		t.Fatalf("central-limit horizon closures=%d, want start and end", len(partial.CentralBandHorizonClosures))
 	}
-	expectedRoots := [2][2][]float64{
-		{{109.6259942, 19.9359024}, {107.7443439, 22.3910851}},
-		{{-100.0855931, 34.1224725}, {-102.2045906, 31.7284072}},
-	}
+	expectedRoots := solarEclipse20120521ExpectedRoots(t, partial)
 	for closureIndex, closure := range partial.CentralBandHorizonClosures {
 		if len(closure) < 2 {
 			t.Fatalf("horizon closure %d has %d points", closureIndex, len(closure))
@@ -152,10 +152,13 @@ func assertSolarPathMaximumEdgeKM(
 
 func TestSolarEclipse20120521HorizonClosuresAreStableAcrossSampling(t *testing.T) {
 	date := time.Date(2012, time.May, 21, 0, 0, 0, 0, time.UTC)
-	expectedRoots := [2][2][]float64{
-		{{109.6259942, 19.9359024}, {107.7443439, 22.3910851}},
-		{{-100.0855931, 34.1224725}, {-102.2045906, 31.7284072}},
+	reference, ok := eclipse.SolarEclipsePartialFootprints(date, eclipse.SolarEclipsePartialFootprintOptions{
+		Step: 2 * time.Minute, BoundaryPoints: 96, CentralShadowStep: 2 * time.Minute,
+	})
+	if !ok || len(reference.CentralBandHorizonClosures) != 2 {
+		t.Fatalf("reference closures=%d ok=%v, want two", len(reference.CentralBandHorizonClosures), ok)
 	}
+	expectedRoots := solarEclipse20120521ExpectedRoots(t, reference)
 	for _, step := range []time.Duration{time.Minute, 5 * time.Minute, 10 * time.Minute} {
 		partial, ok := eclipse.SolarEclipsePartialFootprints(date, eclipse.SolarEclipsePartialFootprintOptions{
 			Step: step, BoundaryPoints: 96, CentralShadowStep: step,
@@ -197,4 +200,25 @@ func solarGreatestCurveContainsPoint(
 		}
 	}
 	return false
+}
+
+// solarEclipse20120521ExpectedRoots 两条地平闭合线的起止根；新模型的值取自 2 分钟步长的参考结果。
+func solarEclipse20120521ExpectedRoots(t *testing.T, reference eclipse.SolarEclipsePartialFootprintsInfo) [2][2][]float64 {
+	t.Helper()
+	roots := [2][2][]float64{
+		{{109.6259942, 19.9359024}, {107.7443439, 22.3910851}},
+		{{-100.0855931, 34.1224725}, {-102.2045906, 31.7284072}},
+	}
+	values := ephemtest.NewValues(t, "solar_eclipse_20120521_roots")
+	for c, closure := range reference.CentralBandHorizonClosures {
+		ends := [2]eclipse.SolarEclipsePathPoint{closure[0], closure[len(closure)-1]}
+		for r, end := range ends {
+			key := fmt.Sprintf("closure%d/root%d", c, r)
+			roots[c][r] = []float64{
+				values.Want(key+"/lon", roots[c][r][0], end.Longitude),
+				values.Want(key+"/lat", roots[c][r][1], end.Latitude),
+			}
+		}
+	}
+	return roots
 }

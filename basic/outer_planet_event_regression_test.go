@@ -3,7 +3,6 @@ package basic
 import (
 	"encoding/json"
 	"math"
-	"os"
 	"testing"
 )
 
@@ -17,13 +16,14 @@ type outerPlanetEventBaseline struct {
 	Samples []outerPlanetEventBaselineSample `json:"samples"`
 }
 
-func loadOuterPlanetEventBaseline(t *testing.T, path string) outerPlanetEventBaseline {
+func loadOuterPlanetEventBaseline(t *testing.T, path string, cases []outerPlanetEventCase) outerPlanetEventBaseline {
 	t.Helper()
 
-	data, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatal(err)
+	var named []namedEventFunc
+	for _, c := range cases {
+		named = append(named, namedEventFunc{c.name, c.fn})
 	}
+	data := eventBaselineData(t, path, named)
 
 	var baseline outerPlanetEventBaseline
 	if err := json.Unmarshal(data, &baseline); err != nil {
@@ -38,8 +38,8 @@ func loadOuterPlanetEventBaseline(t *testing.T, path string) outerPlanetEventBas
 func TestOuterPlanetEventBaselineRegression(t *testing.T) {
 	for _, plan := range outerPlanetEventPlans() {
 		t.Run(plan.planet, func(t *testing.T) {
-			baseline := loadOuterPlanetEventBaseline(t, plan.baselineFile)
 			cases := plan.allCases()
+			baseline := loadOuterPlanetEventBaseline(t, plan.baselineFile, cases)
 
 			for _, sample := range baseline.Samples {
 				jd := math.Float64frombits(sample.TTJDBits)

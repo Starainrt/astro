@@ -1,6 +1,7 @@
 package svg
 
 import (
+	"github.com/starainrt/astro/internal/limbnote"
 	"github.com/starainrt/astro/internal/timenote"
 	"fmt"
 	"html"
@@ -11,6 +12,7 @@ import (
 	"github.com/starainrt/astro"
 	"github.com/starainrt/astro/basic"
 	eclipsecore "github.com/starainrt/astro/eclipse"
+	"github.com/starainrt/astro/internal/geodata"
 	"github.com/starainrt/astro/internal/lunarhorizon"
 	"github.com/starainrt/astro/internal/svgchart"
 	"github.com/starainrt/astro/internal/svgmap"
@@ -39,6 +41,8 @@ type LunarEclipseMapSVGOptions struct {
 	// TimeScale selects the label scale: the zero value is UTC; TimeScaleUT1 uses UT1 labels, requires
 	// Location to be nil or UTC (otherwise the renderer returns false) and declares the scale in the footer.
 	TimeScale astro.TimeScale
+	// LunarLimb 月缘剖面，nil 为圆月面；精修接触时刻，阶段地平圈随之移动 / lunar limb profile; refines contacts and moves phase horizons.
+	LunarLimb basic.LunarLimb
 	// Projection 选择地图投影；零值使用等经纬投影，不支持的值使渲染器返回 false。
 	// Projection selects the map projection. The zero value selects the equirectangular projection; unsupported values make the renderer return false.
 	Projection EclipseMapProjection
@@ -57,19 +61,24 @@ type LunarEclipseMapSVGOptions struct {
 // LunarEclipseMapSVG 使用默认月食模型绘制全球 P1-P4 可见区域。
 // LunarEclipseMapSVG renders the global P1-P4 visibility regions using the default lunar-eclipse model.
 func LunarEclipseMapSVG(date time.Time, options LunarEclipseMapSVGOptions) (string, bool) {
-	return lunarEclipseMapSVG(date, options, eclipsecore.LunarEclipseOnDate)
+	return lunarEclipseMapSVG(date, options, lunarEclipseMapModule(options).LunarEclipseOnDate)
 }
 
 // LunarEclipseMapSVGDanjon 使用 Danjon 模型绘制全球可见区域。
 // LunarEclipseMapSVGDanjon renders the global visibility regions with Danjon's model.
 func LunarEclipseMapSVGDanjon(date time.Time, options LunarEclipseMapSVGOptions) (string, bool) {
-	return lunarEclipseMapSVG(date, options, eclipsecore.LunarEclipseOnDateDanjon)
+	return lunarEclipseMapSVG(date, options, lunarEclipseMapModule(options).LunarEclipseOnDateDanjon)
 }
 
 // LunarEclipseMapSVGChauvenet 使用 Chauvenet 模型绘制全球可见区域。
 // LunarEclipseMapSVGChauvenet renders the global visibility regions with Chauvenet's model.
 func LunarEclipseMapSVGChauvenet(date time.Time, options LunarEclipseMapSVGOptions) (string, bool) {
-	return lunarEclipseMapSVG(date, options, eclipsecore.LunarEclipseOnDateChauvenet)
+	return lunarEclipseMapSVG(date, options, lunarEclipseMapModule(options).LunarEclipseOnDateChauvenet)
+}
+
+// lunarEclipseMapModule 返回按选项月缘配置的核心模块；未设置月缘时等同包级计算。
+func lunarEclipseMapModule(options LunarEclipseMapSVGOptions) *eclipsecore.Eclipse {
+	return eclipsecore.NewWithInstance(nil).WithLunarLimb(options.LunarLimb)
 }
 
 func lunarEclipseMapSVG(
@@ -159,7 +168,7 @@ func renderLunarEclipseMapSVG(
 	frame.WriteFrame(&builder)
 	legendRows := lunarEclipseMapLegendRows(frame, float64(options.Width), options.Language, penumbralBands)
 	writeLunarEclipseMapLegend(&builder, frame, float64(options.Width), options.Language, penumbralBands)
-	writeLunarEclipseMapFooter(&builder, frame, options, projection, info.Maximum, len(legendRows))
+	writeLunarEclipseMapFooter(&builder, frame, options, projection, info.Maximum, info.LunarLimbApplied, len(legendRows))
 	builder.WriteString(`</svg>`)
 	return builder.String()
 }
@@ -223,11 +232,11 @@ func lunarEclipseVisibilityPath(value time.Time, frame svgmap.Frame) (string, []
 	}
 	if frame.Projection == svgmap.ProjectionEquirectangular {
 		// 等距圆柱投影在高纬把经度拉伸：1° 的球面地平弧在极点附近可以横跨近 180° 经度，
-		// 只连端点会在极区切出地平线以外的假可见帽（1904-09-24 实测 −0.054°，约 6 km）。
+		// 只连端点会在极区切出地平线以外的假可见帽。
 		// 极射投影没有这个畸变，保持原输出。
 		// Equirectangular projection stretches longitude near a pole: a 1-degree spherical
 		// horizon arc can span almost 180 degrees there, so joining endpoints alone cuts a fake
-		// visible cap outside the horizon (measured -0.054 deg, about 6 km, on 1904-09-24).
+		// visible cap outside the horizon.
 		// Polar projections have no such distortion and keep their existing output.
 		// 门限取画布上约 0.03 像素：极区细分再多也画不出来，而 GeoJSON 用的 0.002°
 		// 在 812 像素宽的世界图上相当于 0.005 像素，会让 SVG 无谓地大三分之一。
@@ -476,6 +485,7 @@ func writeLunarEclipseMapFooter(
 	options LunarEclipseMapSVGOptions,
 	projection svgmap.Projection,
 	instant time.Time,
+	limbApplied bool,
 	legendRows int,
 ) {
 	text := options.FooterNote
@@ -497,7 +507,8 @@ func writeLunarEclipseMapFooter(
 		}
 	}
 	// 默认说明是单行；调用方文本按图框宽度折行，行数按画布底边截断，首行位置不变。
-	note := timenote.Scale(options.TimeScale, instant, options.Location, options.Language)
+	note := limbnote.Join(timenote.Scale(options.TimeScale, instant, options.Location, options.Language),
+		limbnote.Contacts(limbApplied, options.Language), options.Language)
 	lines := []string{text}
 	if options.FooterNote != "" {
 		lines = svgchart.WrapText(options.FooterNote, float64(options.Width)-frame.X-24, 11)
@@ -511,20 +522,12 @@ func writeLunarEclipseMapFooter(
 	}
 }
 
-func normalizeDegree180(value float64) float64 {
-	value = math.Mod(value+180, 360)
-	if value < 0 {
-		value += 360
-	}
-	return value - 180
-}
-
 // lunarEclipseOrthographicCenter 给出月食正射图的视点：食甚时刻的月下点（月球位于天顶的地点）。
 func lunarEclipseOrthographicCenter(at time.Time) (float64, float64) {
 	jd := basic.Date2JD(at.UTC())
 	tt := basic.UTC2TT(jd)
 	ra, dec := basic.HMoonTrueRaDec(tt)
-	return normalizeDegree180(ra - basic.ApparentSiderealTime(basic.TT2UT1(tt))*15), dec
+	return geodata.NormalizeLongitude(ra - basic.ApparentSiderealTime(basic.TT2UT1(tt))*15), dec
 }
 
 // writeLunarEclipseMapDefinitions 输出四类可见性区域所需的形状与掩膜定义。
@@ -558,8 +561,7 @@ func writeLunarEclipseUmbralVisibilityShapes(b *strings.Builder, frame svgmap.Fr
 }
 
 // writeLunarEclipseUmbralVisibleShapes 输出"本影阶段任意时刻在地平上"的取样半球：本影区间按固定档位
-// 取样，每一刻的可见半球都是一个精确的圆盘（按经纬度插值会把近乎子午线方向的边界切进真实区域——
-// 实测 1932-03-22 西经 75.5° 一带上边界 0.5° 经度内从 +19.9° 掉到 −27.2°，1° 列的弦会切掉十几度）。
+// 取样，每一刻的可见半球都是一个精确的圆盘（按经纬度插值会把近乎子午线方向的边界切进真实区域）。
 // 这些形状同时用于底带的裁剪（取并集）与半影带的掩膜（取补集），两侧严丝合缝。
 func writeLunarEclipseUmbralVisibleShapes(b *strings.Builder, frame svgmap.Frame, info eclipsecore.LunarEclipseInfo) {
 	instants := lunarEclipseUmbralVisibilityInstants(info)

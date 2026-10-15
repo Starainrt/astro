@@ -72,28 +72,26 @@ type planetOccultationDiagramTime struct {
 	labels []string
 }
 
-// PlanetOccultationDiagram 为已求解的固定地点行星月掩计算以月心为原点的切平面轨迹。事件数据无效或不完整时，结果不含帧。
-// PlanetOccultationDiagram computes a Moon-centered tangent-plane track for an already solved fixed-site planetary occultation. Invalid or incomplete event data produces a result without frames.
-func PlanetOccultationDiagram(
+// PlanetOccultationDiagramWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func PlanetOccultationDiagramWithInstance(
 	info PlanetOccultationInfo,
-	options PlanetOccultationDiagramOptions,
-) PlanetOccultationDiagramResult {
+	options PlanetOccultationDiagramOptions, inst *Instance) PlanetOccultationDiagramResult {
 	options = normalizePlanetOccultationDiagramOptions(options)
 	result := PlanetOccultationDiagramResult{Occultation: info, StepDays: options.StepDays}
 	if !planetOccultationDiagramInputValid(info) {
 		return result
 	}
 
-	config, ok := planetOccultationConfigFor(info.Planet)
+	config, ok := planetOccultationConfigFor(info.Planet, inst)
 	if !ok {
 		return result
 	}
 	startTT := occultationTimeToTT(info.ExternalImmersion)
 	greatestTT := occultationTimeToTT(info.Greatest)
 	endTT := occultationTimeToTT(info.ExternalEmersion)
-	externalImmersionFrame, externalImmersionOK := planetOccultationDiagramFrameAt(startTT, config, info.Observer)
-	greatestFrame, greatestOK := planetOccultationDiagramFrameAt(greatestTT, config, info.Observer)
-	externalEmersionFrame, externalEmersionOK := planetOccultationDiagramFrameAt(endTT, config, info.Observer)
+	externalImmersionFrame, externalImmersionOK := planetOccultationDiagramFrameAt(startTT, config, info.Observer, inst)
+	greatestFrame, greatestOK := planetOccultationDiagramFrameAt(greatestTT, config, info.Observer, inst)
+	externalEmersionFrame, externalEmersionOK := planetOccultationDiagramFrameAt(endTT, config, info.Observer, inst)
 	if !externalImmersionOK || !greatestOK || !externalEmersionOK {
 		return result
 	}
@@ -103,10 +101,10 @@ func PlanetOccultationDiagram(
 	)
 	if info.HasInternalContacts {
 		internalImmersionFrame, internalImmersionOK = planetOccultationDiagramFrameAt(
-			occultationTimeToTT(info.InternalImmersion), config, info.Observer,
+			occultationTimeToTT(info.InternalImmersion), config, info.Observer, inst,
 		)
 		internalEmersionFrame, internalEmersionOK = planetOccultationDiagramFrameAt(
-			occultationTimeToTT(info.InternalEmersion), config, info.Observer,
+			occultationTimeToTT(info.InternalEmersion), config, info.Observer, inst,
 		)
 	}
 	if (info.HasInternalContacts && (!internalImmersionOK || !internalEmersionOK)) ||
@@ -120,7 +118,7 @@ func PlanetOccultationDiagram(
 	result.StepDays = stepDays
 	result.Frames = make([]PlanetOccultationDiagramFrame, 0, len(times))
 	for _, item := range times {
-		frame, frameOK := planetOccultationDiagramFrameAt(item.jde, config, info.Observer)
+		frame, frameOK := planetOccultationDiagramFrameAt(item.jde, config, info.Observer, inst)
 		if !frameOK {
 			return PlanetOccultationDiagramResult{Occultation: info, StepDays: stepDays}
 		}
@@ -142,8 +140,10 @@ func planetOccultationDiagramMatchesInfo(
 		!finite(info.PlanetSemidiameterArcsec) || info.PlanetSemidiameterArcsec <= 0 {
 		return false
 	}
-	if math.Abs(externalImmersion.SeparationArcsec-externalImmersion.MoonRadiusArcsec-externalImmersion.PlanetRadiusArcsec) > planetOccultationDiagramGeometryArcsec ||
-		math.Abs(externalEmersion.SeparationArcsec-externalEmersion.MoonRadiusArcsec-externalEmersion.PlanetRadiusArcsec) > planetOccultationDiagramGeometryArcsec {
+	// 已按月缘剖面收敛的接触不在圆月面上，圆月面接触判据只适用于未修正的结果。
+	checkContacts := !info.LunarLimbApplied
+	if checkContacts && (math.Abs(externalImmersion.SeparationArcsec-externalImmersion.MoonRadiusArcsec-externalImmersion.PlanetRadiusArcsec) > planetOccultationDiagramGeometryArcsec ||
+		math.Abs(externalEmersion.SeparationArcsec-externalEmersion.MoonRadiusArcsec-externalEmersion.PlanetRadiusArcsec) > planetOccultationDiagramGeometryArcsec) {
 		return false
 	}
 	if math.Abs(greatest.SeparationArcsec-info.MinimumSeparationArcsec) > planetOccultationDiagramGeometryArcsec ||
@@ -153,6 +153,10 @@ func planetOccultationDiagramMatchesInfo(
 		return false
 	}
 
+	// 月缘结果的食型按剖面判定，圆月面掩甚间隙不再适用。
+	if info.LunarLimbApplied {
+		return info.Type == OccultationPartial || info.Type == OccultationTotal || info.Type == OccultationGrazing
+	}
 	externalMetric := greatest.SeparationArcsec - greatest.MoonRadiusArcsec - greatest.PlanetRadiusArcsec
 	internalMetric := greatest.SeparationArcsec - greatest.MoonRadiusArcsec + greatest.PlanetRadiusArcsec
 	switch info.Type {
@@ -164,8 +168,8 @@ func planetOccultationDiagramMatchesInfo(
 			math.Abs(startTT-greatestTT) <= planetOccultationDiagramContactTimeDays &&
 			math.Abs(endTT-greatestTT) <= planetOccultationDiagramContactTimeDays
 	case OccultationTotal:
-		if math.Abs(internalImmersion.SeparationArcsec-internalImmersion.MoonRadiusArcsec+internalImmersion.PlanetRadiusArcsec) > planetOccultationDiagramGeometryArcsec ||
-			math.Abs(internalEmersion.SeparationArcsec-internalEmersion.MoonRadiusArcsec+internalEmersion.PlanetRadiusArcsec) > planetOccultationDiagramGeometryArcsec {
+		if checkContacts && (math.Abs(internalImmersion.SeparationArcsec-internalImmersion.MoonRadiusArcsec+internalImmersion.PlanetRadiusArcsec) > planetOccultationDiagramGeometryArcsec ||
+			math.Abs(internalEmersion.SeparationArcsec-internalEmersion.MoonRadiusArcsec+internalEmersion.PlanetRadiusArcsec) > planetOccultationDiagramGeometryArcsec) {
 			return false
 		}
 		return externalMetric < -planetOccultationGrazingToleranceArcsec &&
@@ -291,9 +295,10 @@ func planetOccultationDiagramLabelPriority(labels []string) int {
 func planetOccultationDiagramFrameAt(
 	tt float64,
 	config planetOccultationConfig,
-	observer Observer,
-) (PlanetOccultationDiagramFrame, bool) {
-	state := planetOccultationStateAt(tt, config, &observer, -1)
+	observer Observer, instances ...*Instance) (PlanetOccultationDiagramFrame, bool) {
+	inst := instanceValue(instances)
+
+	state := planetOccultationStateAt(tt, config, &observer, -1, inst)
 	if !state.valid {
 		return PlanetOccultationDiagramFrame{}, false
 	}

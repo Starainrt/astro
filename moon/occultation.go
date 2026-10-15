@@ -41,9 +41,12 @@ const (
 	// OccultationPartial 表示掩甚时有限目标盘面只有部分被覆盖。
 	// OccultationPartial means only part of a finite target disk is covered at greatest occultation.
 	OccultationPartial = basic.OccultationPartial
-	// OccultationGrazing 表示两边缘相切，且没有正持续时间的重叠。
-	// OccultationGrazing means the limbs are tangent without a positive-duration overlap.
+	// OccultationGrazing 表示掠掩：圆月面下两边缘相切；按月缘剖面求解时星迹始终在月缘起伏带内，可有多段遮挡。
+	// OccultationGrazing is a graze: tangent limbs with a circular Moon, or a track inside the limb relief band with a limb profile.
 	OccultationGrazing = basic.OccultationGrazing
+	// OccultationNone 表示月缘剖面下恒星未被遮挡，只出现在精密剖面结果中。
+	// OccultationNone means the star is never hidden by the limb profile; it only appears in precise profile results.
+	OccultationNone = basic.OccultationNone
 )
 
 // OccultationPlanet 标识有限盘面行星目标。
@@ -171,14 +174,12 @@ type StarOccultationInstant = basic.StarOccultationInstant
 // PlanetOccultationInstant contains the visible partial and total planetary footprints at one requested instant.
 type PlanetOccultationInstant = basic.PlanetOccultationInstant
 
-// StarOccultationFootprintAt 计算指定时刻的精确恒星月掩可见足迹。
-// StarOccultationFootprintAt calculates the exact visible stellar-occultation footprint at one instant.
-func StarOccultationFootprintAt(at time.Time, star StarCoordinate) (StarOccultationInstant, error) {
-	return basic.StarOccultationFootprintAt(at, star)
+// StarOccultationFootprintAt 计算指定时刻的精确恒星月掩可见足迹 / exact stellar occultation footprint at an instant.
+func (module *Moon) StarOccultationFootprintAt(at time.Time, star StarCoordinate) (StarOccultationInstant, error) {
+	return basic.StarOccultationFootprintAtWithInstance(at, star, module.inst)
 }
 
-// PlanetOccultationFootprintsAt 计算指定时刻的精确行星偏掩和全掩可见足迹。
-// PlanetOccultationFootprintsAt calculates the exact visible partial and total planetary footprints at one instant.
-func PlanetOccultationFootprintsAt(at time.Time, planet OccultationPlanet) (PlanetOccultationInstant, error) {
-	return basic.PlanetOccultationFootprintsAt(at, planet)
+// PlanetOccultationFootprintsAt 计算指定时刻的精确行星偏掩和全掩可见足迹 / exact planetary occultation footprints at an instant.
+func (module *Moon) PlanetOccultationFootprintsAt(at time.Time, planet OccultationPlanet) (PlanetOccultationInstant, error) {
+	return basic.PlanetOccultationFootprintsAtWithInstance(at, planet, module.inst)
 }

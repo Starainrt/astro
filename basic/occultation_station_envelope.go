@@ -3,6 +3,8 @@ package basic
 import (
 	"math"
 	"time"
+
+	"github.com/starainrt/astro/internal/geodata"
 )
 
 // occultationStationDensifyContours applies the map's projection metric after
@@ -68,11 +70,8 @@ func occultationStationDensifyContours(
 }
 
 func occultationStationProjectedSpacingKM(first, second OccultationPathPoint) float64 {
-	const maxLatitude = 85.05112878
-	firstLatitude := math.Max(-maxLatitude, math.Min(maxLatitude, first.Latitude)) * rad
-	secondLatitude := math.Max(-maxLatitude, math.Min(maxLatitude, second.Latitude)) * rad
-	longitudeDelta := math.Remainder(second.Longitude-first.Longitude, 360) * rad
-	firstY := math.Log(math.Tan(math.Pi/4 + firstLatitude/2))
-	secondY := math.Log(math.Tan(math.Pi/4 + secondLatitude/2))
-	return 6378.1366 * math.Hypot(longitudeDelta, secondY-firstY)
+	return geodata.WebMercatorDistanceKM(
+		geodata.GeoPoint{Longitude: first.Longitude, Latitude: first.Latitude},
+		geodata.GeoPoint{Longitude: second.Longitude, Latitude: second.Latitude},
+	)
 }

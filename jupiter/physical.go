@@ -41,17 +41,17 @@ type CentralMeridianInfo struct {
 }
 
 // Physical 木星物理观测参数 / physical observing parameters of Jupiter.
-func Physical(date time.Time) PhysicalInfo {
-	return PhysicalN(date, -1)
+func (module *Jupiter) Physical(date time.Time) PhysicalInfo {
+	return module.PhysicalN(date, -1)
 }
 
-// PhysicalN 木星物理观测参数（截断版） / truncated physical observing parameters of Jupiter.
-func PhysicalN(date time.Time, n int) PhysicalInfo {
+// PhysicalN 木星物理观测参数（n 变体） / n-parameterised physical observing parameters of Jupiter.
+func (module *Jupiter) PhysicalN(date time.Time, n int) PhysicalInfo {
 	jd := basic.Date2JD(date.UTC())
 	jde := basic.UTC2TT(jd)
-	info := basic.JupiterPhysicalN(jde, n)
-	meridians := basic.JupiterCentralMeridiansN(jde, n)
-	ds, de := basic.JupiterDSDEN(jde, n)
+	info := basic.JupiterPhysicalNWithInstance(jde, n, module.inst)
+	meridians := basic.JupiterCentralMeridiansNWithInstance(jde, n, module.inst)
+	ds, de := basic.JupiterDSDENWithInstance(jde, n, module.inst)
 	return PhysicalInfo{
 		SubEarthLongitude:        info.SubEarthLongitude,
 		SubEarthLatitude:         info.SubEarthLatitude,
@@ -67,14 +67,14 @@ func PhysicalN(date time.Time, n int) PhysicalInfo {
 }
 
 // CentralMeridians 木星 System I/II/III 中央经线 / Jupiter System I/II/III central meridians.
-func CentralMeridians(date time.Time) CentralMeridianInfo {
-	return CentralMeridiansN(date, -1)
+func (module *Jupiter) CentralMeridians(date time.Time) CentralMeridianInfo {
+	return module.CentralMeridiansN(date, -1)
 }
 
-// CentralMeridiansN 木星 System I/II/III 中央经线（截断版） / truncated Jupiter System I/II/III central meridians.
-func CentralMeridiansN(date time.Time, n int) CentralMeridianInfo {
+// CentralMeridiansN 木星 System I/II/III 中央经线（n 变体） / n-parameterised Jupiter System I/II/III central meridians.
+func (module *Jupiter) CentralMeridiansN(date time.Time, n int) CentralMeridianInfo {
 	jd := basic.Date2JD(date.UTC())
-	info := basic.JupiterCentralMeridiansN(basic.UTC2TT(jd), n)
+	info := basic.JupiterCentralMeridiansNWithInstance(basic.UTC2TT(jd), n, module.inst)
 	return CentralMeridianInfo{
 		SystemI:   info.SystemI,
 		SystemII:  info.SystemII,

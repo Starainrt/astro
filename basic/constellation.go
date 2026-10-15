@@ -1,6 +1,8 @@
 package basic
 
 import (
+	"math"
+
 	. "github.com/starainrt/astro/tools"
 )
 
@@ -148,29 +150,66 @@ func isCross(a, b, c, d constellationPoint) bool {
 }
 
 func resolveConstellationCode(ra, dec, jde float64) string {
-	var nra, ndec float64
 	initConstellationData()
-	nra = ra
-	if ra >= 360 {
-		nra -= 360
-	}
-	nra, ndec = Precess(nra, dec, jde, 2451545.0)
-	if ra >= 360 && nra < 270 {
-		nra += 360
-	}
-	if code := matchConstellationCode(nra, ndec); code != "" {
+	code, nra, ndec := lookupConstellationCode(ra, dec, jde)
+	if code != "" {
 		return code
 	}
-	if nra <= 270 {
-		ra = ra + 360
-		return resolveConstellationCode(ra, dec, jde)
+	// 只从 [0,360) 补一圈重试一次，匹配 RA 已加 360 的跨零点星座。
+	if nra <= 270 && ra < 360 {
+		if code, _, _ = lookupConstellationCode(ra+360, dec, jde); code != "" {
+			return code
+		}
 	}
 	if ndec > 50 {
 		return "UMI"
 	} else if ndec < -50 {
 		return "OCT"
 	}
-	return ""
+	if ra >= 360 {
+		return ""
+	}
+	// 边界数据相邻多边形之间有细缝，落在缝里的点归最近的边。
+	return nearestConstellationCode(nra, ndec)
+}
+
+func lookupConstellationCode(ra, dec, jde float64) (string, float64, float64) {
+	nra := ra
+	if ra >= 360 {
+		nra -= 360
+	}
+	nra, ndec := Precess(nra, dec, jde, 2451545.0)
+	if ra >= 360 && nra < 270 {
+		nra += 360
+	}
+	return matchConstellationCode(nra, ndec), nra, ndec
+}
+
+func nearestConstellationCode(ra, dec float64) string {
+	cosDec := math.Cos(dec * math.Pi / 180)
+	best, bestDistance := "", math.Inf(1)
+	for _, boundary := range constellationBoundaries {
+		pointCount := len(boundary.points)
+		for index := 0; index < pointCount; index++ {
+			p, q := boundary.points[index], boundary.points[(index+1)%pointCount]
+			px, py := math.Remainder(p.RA-ra, 360)*cosDec, p.DEC-dec
+			qx, qy := math.Remainder(q.RA-ra, 360)*cosDec, q.DEC-dec
+			if distance := originSegmentDistance(px, py, qx, qy); distance < bestDistance {
+				best, bestDistance = boundary.code, distance
+			}
+		}
+	}
+	return best
+}
+
+func originSegmentDistance(px, py, qx, qy float64) float64 {
+	dx, dy := qx-px, qy-py
+	length := dx*dx + dy*dy
+	t := 0.0
+	if length > 0 {
+		t = math.Max(0, math.Min(1, -(px*dx+py*dy)/length))
+	}
+	return math.Hypot(px+t*dx, py+t*dy)
 }
 
 func matchConstellationCode(ra, dec float64) string {

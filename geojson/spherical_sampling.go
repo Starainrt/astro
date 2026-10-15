@@ -69,7 +69,7 @@ func appendSphericalMapArcWithin(
 	// linear in lon/lat (notably the long horizon closure edges of shallow
 	// polar eclipses). The adaptive angular-error test alone cannot see that
 	// case and leaves visually abrupt 250+ km segments.
-	arcDistanceKM := solarCentralBandGeoPointDistanceKM(first, last)
+	arcDistanceKM := geodata.MeanDistanceKM(first, last)
 	if (sphericalMapChordError(first, middle, last) <= chordErrorDegrees && arcDistanceKM <= chordLimitKM) || depth >= 20 {
 		return append(points, first)
 	}
@@ -107,7 +107,7 @@ func sampleSphericalMapPath(source []pathSample) []pathSample {
 func sampleSphericalMapTriangle(points []geodata.GeoPoint) []geodata.GeoPoint {
 	apex, shortest := 0, math.Inf(1)
 	for i := range points {
-		if length := solarCentralBandGeoPointDistanceKM(points[(i+1)%3], points[(i+2)%3]); length < shortest {
+		if length := geodata.MeanDistanceKM(points[(i+1)%3], points[(i+2)%3]); length < shortest {
 			apex, shortest = i, length
 		}
 	}

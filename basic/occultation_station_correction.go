@@ -3,6 +3,8 @@ package basic
 import (
 	"math"
 	"time"
+
+	"github.com/starainrt/astro/internal/geodata"
 )
 
 // occultationStationBoundarySample is the result of correcting one geocentric
@@ -322,8 +324,8 @@ func occultationStationCorrectContactPoint(
 			), true
 		}
 		const coordinateStepDeg = 0.005
-		plusLongitude := context.stateAt(normalizeLongitude(longitude+coordinateStepDeg), latitude)
-		minusLongitude := context.stateAt(normalizeLongitude(longitude-coordinateStepDeg), latitude)
+		plusLongitude := context.stateAt(geodata.NormalizeLongitude(longitude+coordinateStepDeg), latitude)
+		minusLongitude := context.stateAt(geodata.NormalizeLongitude(longitude-coordinateStepDeg), latitude)
 		plusLatitude := context.stateAt(longitude, math.Min(89.999999, latitude+coordinateStepDeg))
 		minusLatitude := context.stateAt(longitude, math.Max(-89.999999, latitude-coordinateStepDeg))
 		if !plusLongitude.valid || !minusLongitude.valid || !plusLatitude.valid || !minusLatitude.valid {
@@ -344,7 +346,7 @@ func occultationStationCorrectContactPoint(
 			deltaX *= scale
 			deltaY *= scale
 		}
-		longitude = normalizeLongitude(longitude + deltaX/cosLatitude)
+		longitude = geodata.NormalizeLongitude(longitude + deltaX/cosLatitude)
 		latitude = math.Max(-89.999999, math.Min(89.999999, latitude+deltaY))
 	}
 	state := context.stateAt(longitude, latitude)
@@ -436,8 +438,8 @@ func occultationStationCorrectEnvelopePoint(
 
 		const coordinateStepDeg = 0.002
 		cosLatitude := math.Max(0.05, math.Cos(latitude*rad))
-		plusLongitude := evaluate(normalizeLongitude(longitude+coordinateStepDeg/cosLatitude), latitude)
-		minusLongitude := evaluate(normalizeLongitude(longitude-coordinateStepDeg/cosLatitude), latitude)
+		plusLongitude := evaluate(geodata.NormalizeLongitude(longitude+coordinateStepDeg/cosLatitude), latitude)
+		minusLongitude := evaluate(geodata.NormalizeLongitude(longitude-coordinateStepDeg/cosLatitude), latitude)
 		plusLatitude := evaluate(longitude, math.Min(89.999999, latitude+coordinateStepDeg))
 		minusLatitude := evaluate(longitude, math.Max(-89.999999, latitude-coordinateStepDeg))
 		if !plusLongitude.valid || !minusLongitude.valid || !plusLatitude.valid || !minusLatitude.valid {
@@ -465,7 +467,7 @@ func occultationStationCorrectEnvelopePoint(
 		currentNorm := residualNorm(state)
 		accepted := false
 		for damping := 1.0; damping >= 1.0/128; damping /= 2 {
-			candidateLongitude := normalizeLongitude(longitude + damping*deltaX/cosLatitude)
+			candidateLongitude := geodata.NormalizeLongitude(longitude + damping*deltaX/cosLatitude)
 			candidateLatitude := math.Max(-89.999999, math.Min(89.999999, latitude+damping*deltaY))
 			if occultationPathDistanceKMValues(
 				seed.Longitude, seed.Latitude, candidateLongitude, candidateLatitude,
@@ -845,7 +847,7 @@ func occultationStationCorrectEnvelopeArc(
 		residual, jacobian, ok := occultationStationEnvelopeJacobian(coordinates, referenceTT, jacobianCache, model)
 		if iterationCache == cache && ok {
 			tt := referenceTT + coordinates[2]/occultationStationEnvelopeTimeScale
-			residual, ok = model.residual(cache.evaluation(tt), normalizeLongitude(coordinates[0]), coordinates[1])
+			residual, ok = model.residual(cache.evaluation(tt), geodata.NormalizeLongitude(coordinates[0]), coordinates[1])
 		}
 		if !ok {
 			if jacobianCache != cache {
@@ -959,7 +961,7 @@ func occultationStationValidEnvelopeArcState(
 	iterations int,
 ) (occultationStationEnvelopeArcState, int, bool) {
 	tt := referenceTT + coordinates[2]/occultationStationEnvelopeTimeScale
-	longitude, latitude := normalizeLongitude(coordinates[0]), coordinates[1]
+	longitude, latitude := geodata.NormalizeLongitude(coordinates[0]), coordinates[1]
 	evaluation := cache.evaluation(tt)
 	state := evaluation.center.stateAt(longitude, latitude)
 	residual, ok := model.residual(evaluation, longitude, latitude)
@@ -989,7 +991,7 @@ func occultationStationEnvelopeJacobian(
 	model occultationStationEnvelopeModel,
 ) ([2]float64, [2][3]float64, bool) {
 	tt := referenceTT + coordinates[2]/occultationStationEnvelopeTimeScale
-	longitude, latitude := normalizeLongitude(coordinates[0]), coordinates[1]
+	longitude, latitude := geodata.NormalizeLongitude(coordinates[0]), coordinates[1]
 	evaluation := cache.evaluation(tt)
 	// 点源目标（恒星）没有盘面半径项，接触度量可用解析速率；有限盘面行星保持中心差分。
 	residualAt := model.residual
@@ -1008,7 +1010,7 @@ func occultationStationEnvelopeJacobian(
 		shiftedTT := referenceTT + shifted[2]/occultationStationEnvelopeTimeScale
 		shiftedEvaluation := cache.evaluation(shiftedTT)
 		shiftedResidual, shiftedOK := residualAt(
-			shiftedEvaluation, normalizeLongitude(shifted[0]), shifted[1],
+			shiftedEvaluation, geodata.NormalizeLongitude(shifted[0]), shifted[1],
 		)
 		if !shiftedOK {
 			return [2]float64{}, [2][3]float64{}, false
@@ -1174,6 +1176,74 @@ func occultationStationDeduplicateEnvelopePoints(points []OccultationPathPoint) 
 	return result
 }
 
+// occultationStationEnvelopeTieBreak 是同时间戳平台内的最大时间步长。追踪点时间来自 JD 的
+// float64，现代历元分辨率约 40 µs；1 µs 远低于这一量化，只用于恢复真实的先后次序。
+const occultationStationEnvelopeTieBreak = time.Microsecond
+
+// occultationStationCollapseTimePlateaus 消除包络追踪中"不同位置、同一时间戳"的平台。
+// 平台是 JD 量化的产物：时间导数在折返顶点或结点附近趋零时，相邻追踪点落进同一量化格。
+// 若把平台当成真折返切开，平台内的边不属于任何严格单调段，轮廓在此断开（Saturn
+// 2025-01-05 顶点处断开 2.8 km，结点处断开时端点被丢弃）。这里沿进入平台的时间方向
+// （平台在首部时取离开方向）为平台各点补上亚量化的递增偏移：非折返平台连成一段，
+// 折返平台的末点成为两段共享的顶点，所有点与边都被保留。整条曲线同一时间戳时没有方向，原样返回。
+func occultationStationCollapseTimePlateaus(points []OccultationPathPoint) []OccultationPathPoint {
+	sign := func(first, second time.Time) int {
+		switch {
+		case second.After(first):
+			return 1
+		case second.Before(first):
+			return -1
+		}
+		return 0
+	}
+	var result []OccultationPathPoint
+	for start := 0; start < len(points); {
+		end := start + 1
+		for end < len(points) && points[end].Time.Equal(points[start].Time) {
+			end++
+		}
+		if end-start == 1 {
+			start = end
+			continue
+		}
+		direction := 0
+		if start > 0 {
+			direction = sign(points[start-1].Time, points[start].Time)
+		}
+		if direction == 0 && end < len(points) {
+			direction = sign(points[end-1].Time, points[end].Time)
+		}
+		if direction == 0 {
+			return points
+		}
+		step := occultationStationEnvelopeTieBreak
+		// 不折返时偏移不能越过下一点，否则平台出口会变成假折返。
+		if end < len(points) && sign(points[end-1].Time, points[end].Time) == direction {
+			if gap := points[end].Time.Sub(points[start].Time) * time.Duration(direction) / time.Duration(end-start); gap < step {
+				step = gap
+			}
+		}
+		if result == nil {
+			result = append([]OccultationPathPoint(nil), points...)
+		}
+		if step <= 0 {
+			// 相邻点只差纳秒级时无法再细分，保留平台首点即可，丢弃的点与首点同一时刻。
+			result = append(result[:start+1], result[end:]...)
+			points = result
+			start++
+			continue
+		}
+		for index := start + 1; index < end; index++ {
+			result[index].Time = result[start].Time.Add(time.Duration(direction*(index-start)) * step)
+		}
+		start = end
+	}
+	if result == nil {
+		return points
+	}
+	return result
+}
+
 func occultationStationSplitEnvelopeAtTimeFolds(
 	points []OccultationPathPoint,
 ) [][]OccultationPathPoint {
@@ -1193,7 +1263,7 @@ func occultationStationSplitEnvelopeAtTimeFolds(
 		}
 		normalized = append(normalized, point)
 	}
-	points = normalized
+	points = occultationStationCollapseTimePlateaus(normalized)
 	if len(points) < 2 {
 		return nil
 	}
@@ -1291,8 +1361,8 @@ func occultationStationCorrectHorizonContactPoint(
 		}
 
 		const coordinateStepDeg = 0.002
-		plusLongitude := context.stateAt(normalizeLongitude(longitude+coordinateStepDeg), latitude)
-		minusLongitude := context.stateAt(normalizeLongitude(longitude-coordinateStepDeg), latitude)
+		plusLongitude := context.stateAt(geodata.NormalizeLongitude(longitude+coordinateStepDeg), latitude)
+		minusLongitude := context.stateAt(geodata.NormalizeLongitude(longitude-coordinateStepDeg), latitude)
 		plusLatitude := context.stateAt(longitude, math.Min(89.999999, latitude+coordinateStepDeg))
 		minusLatitude := context.stateAt(longitude, math.Max(-89.999999, latitude-coordinateStepDeg))
 		if !plusLongitude.valid || !minusLongitude.valid || !plusLatitude.valid || !minusLatitude.valid {
@@ -1321,7 +1391,7 @@ func occultationStationCorrectHorizonContactPoint(
 		currentNorm := residualNorm(state)
 		accepted := false
 		for damping := 1.0; damping >= 1.0/64; damping /= 2 {
-			candidateLongitude := normalizeLongitude(longitude + damping*deltaX/cosLatitude)
+			candidateLongitude := geodata.NormalizeLongitude(longitude + damping*deltaX/cosLatitude)
 			candidateLatitude := math.Max(-89.999999, math.Min(89.999999, latitude+damping*deltaY))
 			if occultationPathDistanceKMValues(
 				seed.Longitude, seed.Latitude, candidateLongitude, candidateLatitude,
@@ -1633,7 +1703,7 @@ func occultationStationSurfaceVector(longitude, latitude float64) occultationPat
 		x: cosU * cosLongitude,
 		y: cosU * sinLongitude,
 		z: polarRatio * sinU,
-	}, occultationPathEarthEquatorialRadiusKM)
+	}, geodata.EarthEquatorialRadiusKM)
 }
 
 func occultationStationOffsetSurfaceVector(
@@ -1645,11 +1715,11 @@ func occultationStationOffsetSurfaceVector(
 	if metric <= 0 || !finite(metric) {
 		return seedFixed
 	}
-	return occultationPathScale(point, occultationPathEarthEquatorialRadiusKM/metric)
+	return occultationPathScale(point, geodata.EarthEquatorialRadiusKM/metric)
 }
 
 func occultationStationGeodetic(fixed occultationPathVector) (float64, float64) {
-	return normalizeLongitude(math.Atan2(fixed.y, fixed.x) / rad), occultationPathGeodeticLatitude(fixed)
+	return geodata.NormalizeLongitude(math.Atan2(fixed.y, fixed.x) / rad), occultationPathGeodeticLatitude(fixed)
 }
 
 func occultationStationInverseEarthRotation(

@@ -8,51 +8,66 @@ import (
 )
 
 func TestOccultationStationEnvelopeEqualTimeBranches(t *testing.T) {
+	// 同时间戳平台是 JD 量化的产物：平台内的点与边都必须保留，只有真折返才切段。
 	for _, test := range []struct {
 		name     string
 		times    []int
+		unit     time.Duration
 		segments int
 	}{
-		{"leading plateau", []int{0, 0, 0, 1, 2}, 1},
-		{"interior plateau", []int{0, 1, 1, 1, 2}, 2},
-		{"trailing plateau", []int{0, 1, 1, 1}, 1},
-		{"entire plateau", []int{0, 0, 0}, 0},
-		{"reverse branches", []int{2, 1, 1, 1, 0}, 2},
-		{"ordinary fold", []int{0, 1, 2, 1, 0}, 2},
+		{"leading plateau", []int{0, 0, 0, 1, 2}, time.Second, 1},
+		{"interior plateau", []int{0, 1, 1, 1, 2}, time.Second, 1},
+		{"trailing plateau", []int{0, 1, 1, 1}, time.Second, 1},
+		{"entire plateau", []int{0, 0, 0}, time.Second, 0},
+		{"reverse branches", []int{2, 1, 1, 1, 0}, time.Second, 1},
+		{"ordinary fold", []int{0, 1, 2, 1, 0}, time.Second, 2},
+		// Saturn 2025-01-05：时间折返的顶点恰好落进同一量化格。
+		{"plateau at fold", []int{0, 1, 2, 2, 1, 0}, time.Second, 2},
+		// 平台出口只晚 1.5 µs：亚量化偏移不能越过出口点。
+		{"tight plateau exit", []int{0, 4, 4, 4, 5}, 375 * time.Nanosecond, 1},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			points := make([]OccultationPathPoint, len(test.times))
-			for index, seconds := range test.times {
-				points[index] = OccultationPathPoint{Time: time.Unix(int64(seconds), 0), Longitude: float64(index)}
+			for index, value := range test.times {
+				points[index] = OccultationPathPoint{
+					Time: time.Unix(1000, 0).Add(time.Duration(value) * test.unit), Longitude: float64(index),
+				}
 			}
 			segments := occultationStationSplitEnvelopeAtTimeFolds(points)
 			if len(segments) != test.segments {
 				t.Fatalf("segments=%d, want %d", len(segments), test.segments)
 			}
+			if test.segments == 0 {
+				return
+			}
+			kept := make([]bool, len(points))
+			edges := map[[2]int]bool{}
 			for _, segment := range segments {
-				for index := 1; index < len(segment); index++ {
-					if !segment[index].Time.After(segment[index-1].Time) {
-						t.Fatalf("non-increasing segment: %+v", segment)
+				for index, point := range segment {
+					// 平台点只允许亚量化（< 1 ms）的时间调整，位置不变。
+					original := points[int(point.Longitude)]
+					if delta := point.Time.Sub(original.Time); delta < -time.Millisecond || delta > time.Millisecond {
+						t.Fatalf("point %v moved by %v", point.Longitude, delta)
+					}
+					kept[int(point.Longitude)] = true
+					if index > 0 {
+						if !point.Time.After(segment[index-1].Time) {
+							t.Fatalf("non-increasing segment: %+v", segment)
+						}
+						first, second := int(segment[index-1].Longitude), int(point.Longitude)
+						if first > second {
+							first, second = second, first
+						}
+						edges[[2]int{first, second}] = true
 					}
 				}
 			}
-			// Every edge with elapsed time must survive the split unchanged.
-			for index := 1; index < len(points); index++ {
-				first, second := points[index-1], points[index]
-				if first.Time.Equal(second.Time) {
-					continue
+			for index := range points {
+				if !kept[index] {
+					t.Fatalf("point %d dropped: %+v", index, segments)
 				}
-				if first.Time.After(second.Time) {
-					first, second = second, first
-				}
-				found := false
-				for _, segment := range segments {
-					for offset := 1; offset < len(segment); offset++ {
-						found = found || segment[offset-1] == first && segment[offset] == second
-					}
-				}
-				if !found {
-					t.Fatalf("lost monotone edge %d", index)
+				if index > 0 && !edges[[2]int{index - 1, index}] {
+					t.Fatalf("lost edge %d-%d: %+v", index-1, index, segments)
 				}
 			}
 		})

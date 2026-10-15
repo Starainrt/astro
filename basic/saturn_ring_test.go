@@ -1,8 +1,11 @@
 package basic
 
 import (
+	"fmt"
 	"math"
 	"testing"
+
+	"github.com/starainrt/astro/internal/ephem"
 )
 
 func TestSaturnRingParametersMeeusExample(t *testing.T) {
@@ -32,6 +35,53 @@ func TestSaturnRingNFullMatchesDefault(t *testing.T) {
 	assertSameFloat(t, "SaturnRingSunB", SaturnRingSunB(jd), SaturnRingSunBN(jd, -1))
 	assertSameFloat(t, "SaturnRingPositionAngle", SaturnRingPositionAngle(jd), SaturnRingPositionAngleN(jd, -1))
 	assertSameFloat(t, "SaturnRingDeltaU", SaturnRingDeltaU(jd), SaturnRingDeltaUN(jd, -1))
+}
+
+func TestSaturnRingParametersNWithInstanceForwardsN(t *testing.T) {
+	previous := ephem.Active()
+	t.Cleanup(func() { ephem.SetActive(previous) })
+	jd := 2458850.5
+	names := []string{"EarthLatitude", "SunLatitude", "PositionAngle", "DeltaU", "MajorAxis", "MinorAxis"}
+	for _, model := range []ephem.Model{ephem.Legacy, ephem.Semianalytic} {
+		ephem.SetActive(model)
+		inst := ephem.NewModelInstance(model)
+		for _, n := range []int{-1, 0} {
+			expectedEarthLatitude, expectedSunLatitude, expectedPositionAngle, expectedDeltaU, expectedMajorAxis, expectedMinorAxis := SaturnRingParametersN(jd, n)
+			gotEarthLatitude, gotSunLatitude, gotPositionAngle, gotDeltaU, gotMajorAxis, gotMinorAxis := SaturnRingParametersNWithInstance(jd, n, inst)
+			got := []float64{gotEarthLatitude, gotSunLatitude, gotPositionAngle, gotDeltaU, gotMajorAxis, gotMinorAxis}
+			expected := []float64{expectedEarthLatitude, expectedSunLatitude, expectedPositionAngle, expectedDeltaU, expectedMajorAxis, expectedMinorAxis}
+			for index := range names {
+				assertClose(t, fmt.Sprintf("model=%d n=%d %s", model, n, names[index]), got[index], expected[index], 1e-10)
+			}
+		}
+	}
+}
+
+func TestSaturnRingParametersNWithInstanceIsolatedFromGlobalModel(t *testing.T) {
+	previous := ephem.Active()
+	t.Cleanup(func() { ephem.SetActive(previous) })
+	jd := 2458850.5
+	names := []string{"EarthLatitude", "SunLatitude", "PositionAngle", "DeltaU", "MajorAxis", "MinorAxis"}
+	for _, testCase := range []struct {
+		globalModel   ephem.Model
+		instanceModel ephem.Model
+	}{
+		{globalModel: ephem.Legacy, instanceModel: ephem.Semianalytic},
+		{globalModel: ephem.Semianalytic, instanceModel: ephem.Legacy},
+	} {
+		inst := ephem.NewModelInstance(testCase.instanceModel)
+		for _, n := range []int{-1, 0} {
+			ephem.SetActive(testCase.instanceModel)
+			expectedEarthLatitude, expectedSunLatitude, expectedPositionAngle, expectedDeltaU, expectedMajorAxis, expectedMinorAxis := SaturnRingParametersN(jd, n)
+			ephem.SetActive(testCase.globalModel)
+			gotEarthLatitude, gotSunLatitude, gotPositionAngle, gotDeltaU, gotMajorAxis, gotMinorAxis := SaturnRingParametersNWithInstance(jd, n, inst)
+			got := []float64{gotEarthLatitude, gotSunLatitude, gotPositionAngle, gotDeltaU, gotMajorAxis, gotMinorAxis}
+			expected := []float64{expectedEarthLatitude, expectedSunLatitude, expectedPositionAngle, expectedDeltaU, expectedMajorAxis, expectedMinorAxis}
+			for index := range names {
+				assertClose(t, fmt.Sprintf("global=%d instance=%d n=%d %s", testCase.globalModel, testCase.instanceModel, n, names[index]), got[index], expected[index], 1e-10)
+			}
+		}
+	}
 }
 
 func assertClose(t *testing.T, name string, got, want, tolerance float64) {

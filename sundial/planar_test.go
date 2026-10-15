@@ -338,3 +338,16 @@ func assertClose(t *testing.T, name string, got, want, tol float64) {
 		t.Fatalf("%s mismatch: got %.12f want %.12f tol %.12f", name, got, want, tol)
 	}
 }
+
+func TestDeclinationCurveBoundsTinyStep(t *testing.T) {
+	dial := PlanarDial{Latitude: 40, PlaneNormalZenithDistance: 0}
+	for _, step := range []float64{1e-300, 1e-9} {
+		samples := 0
+		for _, segment := range dial.DeclinationCurve(10, step) {
+			samples += len(segment.Samples)
+		}
+		if samples == 0 || samples > 400000 {
+			t.Fatalf("step %g: samples = %d", step, samples)
+		}
+	}
+}

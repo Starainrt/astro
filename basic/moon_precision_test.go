@@ -3,9 +3,12 @@ package basic
 import (
 	"math"
 	"testing"
+
+	"github.com/starainrt/astro/internal/ephemtest"
 )
 
 func TestMoonSeriesNumericalPrecision(t *testing.T) {
+	ephemtest.PinLegacy(t)
 	// The existing binary64 coefficients evaluated at 70 decimal digits.
 	// These check arithmetic precision, not the lunar theory's physical error.
 	for _, sample := range []struct{ jd, longitude, latitude, distance, velocity float64 }{
@@ -65,8 +68,7 @@ func TestOccultationContactDerivativeNumericalStability(t *testing.T) {
 	}
 }
 
-// MoonCalcNew 与 HMoonTrueLo 是同一个物理量的两个入口，必须给出同一个值（此前只有一个入口
-// 走线性相位补偿，两者差约 1e-9 度）。
+// MoonCalcNew 与 HMoonTrueLo 是同一个物理量的两个入口，必须给出同一个值。
 func TestMoonCalcNewMatchesHMoonTrueLo(t *testing.T) {
 	for _, jd := range []float64{2451545.0, 2460310.5, 2415020.5, 2299160.5, 2500000.5} {
 		direct := math.Mod(MoonCalcNew(0, jd)*180/math.Pi, 360)

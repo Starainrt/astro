@@ -7,12 +7,13 @@ import (
 	"github.com/starainrt/astro/eclipse"
 	"github.com/starainrt/astro/geojson"
 	"github.com/starainrt/astro/internal/geodata"
+
+	"github.com/starainrt/astro/internal/ephemtest"
 )
 
-// 3288-11-16 in the local display falls on 3288-11-15 UTC. It is an
-// extremely shallow non-central eclipse: the sampled footprints are open,
-// while the rise/set phase tracks still form part of the visible envelope.
+// 极浅非中心食：采样足迹不闭合，日出日没相位线仍须并入可见包络。
 func TestMarshalSolarEclipse32881115FallbackCoversPhaseTracks(t *testing.T) {
+	ephemtest.PinLegacy(t)
 	path, ok := eclipse.SolarEclipsePartialFootprints(
 		time.Date(3288, time.November, 15, 0, 0, 0, 0, time.UTC),
 		eclipse.SolarEclipsePartialFootprintOptions{

@@ -2,7 +2,22 @@
 
 [English](en/orbit.md) | [返回 README](../../README.md)
 
-`orbit` 包用于按日心二体轨道根数传播天体位置，支持小行星、彗星、矮行星和自定义假想轨道。七大行星仍由各行星包使用内置 VSOP87 解析项计算。
+`orbit` 包用于按日心二体轨道根数传播天体位置，支持小行星、彗星、矮行星和自定义假想轨道。七大行星由各行星包使用当前星历模型计算，默认构建使用半解析模型，也可选择 Legacy 或自定义引擎。
+
+需要时可以用 `StateWithOptions` 带行星摄动传播到目标历元：
+
+| `PropagationOptions` 字段 | 含义 |
+| --- | --- |
+| `Perturbers` | 摄动天体；一旦非空就必须同时给出星历源 |
+| `Engine` / `Context` | 摄动星历源，两个字段类型相同（`StateProvider`，即 `astro.Engine`）且 `Engine` 优先；传 `*spk.File` 或自定义引擎 |
+| `Step` | 最大步长，单位日 |
+| `Tolerance` | 步长加倍的相对误差阈值 |
+
+- 选项零值严格走现有二体数学链，与 `State` 完全一致。
+- 积分器按太阳中心引力加直接项与间接项求和。`Perturbers` 只接受水星至海王星、地球、月球与地月质心（3）；未知天体，或地月质心与地球/月球同时出现，都返回 `ErrUnsupportedPerturber`。
+- 积分从 `EpochJD` 起算；近日点形式只有在 `EpochJD` 为 0 时才从 `TpJD` 起算。
+- `NewEphemerisEngine` 可把这条传播链接入 `astro.NewStack`：根数与选项在创建时固定，引擎缓存的检查点不影响结果，任意查询顺序都与直接调用 `StateWithOptions` 逐位一致。
+- 摄动结果依赖根数质量和积分时长，长期高精度任务仍应优先使用 SPK。
 
 `orbit.Elements` 支持两种常见写法：
 
@@ -142,8 +157,8 @@ func main() {
 输出结果：
 
 ```text
-ceres ra=7.739532 dec=-10.625981 distance=2.164391
-halley ra=312.112360 dec=-11.826451 distance=1.533936
+ceres ra=7.743516 dec=-10.625287 distance=2.164391
+halley ra=312.106763 dec=-11.828059 distance=1.533936
 ```
 
 轨道根数本身有历元，离历元越远，静态根数误差越明显。若数据源提供 `ADot/EDot/IDot/OmegaDot/WDot/MDot` 这类长期线性变化率，也可以填入 `Elements`，用于减轻中长期漂移。
@@ -209,7 +224,7 @@ fmt.Printf("r=%.6f delta=%.6f elong=%.6f phase=%.6f k=%.6f mag=%.3f q=%.6f\n",
 
 日距角接近 180° 时相位角接近 0°，`IlluminatedFraction` 接近 1；这三个量都由同一组地心几何推出。
 
-`ParallacticAngle` 不另求赤纬，它和 `HourAngle` 复用同一次站心求解，避免时角与赤纬来自两条相差约 1 ULP 的儒略日路径而引入亚纳度漂移。几何量都只依赖 `date` 的绝对时刻，不含观测者参数；含站心参数的只有 `ParallacticAngle` 一个。
+`ParallacticAngle` 不另求赤纬，它与 `HourAngle` 复用同一次站心求解，两者严格自洽。几何量都只依赖 `date` 的绝对时刻，不含观测者参数；含站心参数的只有 `ParallacticAngle` 一个。
 
 ### 升落与中天
 
@@ -328,7 +343,7 @@ fmt.Println(app.RA, app.Dec, app.Distance)
 7.125008 -10.028726 2.262489
 ```
 
-四个层次含义不同：`Heliocentric*` 是相对太阳的位置（第一个数就是日心距），`Geocentric*J2000` 是 J2000 口径的地心位置，`Astrometric*J2000` 去掉光行时、适合与星表对表，`Apparent*` 是当日视位置、观测与出图用它。需要站心视位置用 `ApparentTopocentricEquatorial(when, ceres, lon, lat, height)`。
+四个层次含义不同：`Heliocentric*` 是相对太阳的位置（第一个数就是日心距），`Geocentric*J2000` 是 J2000 口径的地心位置，`Astrometric*J2000` 已加光行时、适合与星表对表，`Apparent*` 是当日视位置、观测与出图用它。需要站心视位置用 `ApparentTopocentricEquatorial(when, ceres, lon, lat, height)`。
 
 ### 今晚会不会升起、现在多高
 
@@ -413,7 +428,7 @@ NaN NaN
 ### 零值与越界
 
 - `Elements` 零值不是合法轨道。经典椭圆形式要求 `A` 有限且为正、`E` 落在 `[0,1)`、`EpochJD` 与 `M0` 有限；`E >= 1` 的抛物线与双曲线只能走近日点形式，此时要求 `Q` 有限且为正、`TpJD` 有限、`E >= 0`，三个角度 `I`/`Omega`/`W` 都必须有限。
-- `Q > 0` 且 `TpJD` 有限时优先按近日点形式解释，`A`/`M0`/`EpochJD` 被忽略；此时 `ADot`/`EDot`/`IDot`/`OmegaDot`/`WDot` 都不生效，只有 `MDot` 非零时会被当作平均角速度使用。
+- `Q > 0` 且 `TpJD` 有限时优先按近日点形式解释，`A`/`M0`/`EpochJD` 被忽略；此时 `ADot`/`EDot`/`IDot`/`OmegaDot`/`WDot` 都不生效，只有 `MDot` 非零时会被当作平均角速度使用。摄动传播例外：近日点形式同时给出 `EpochJD` 时，它被当作密切历元，即积分起点。
 - 根数非法时 `MeanMotion`、`MeanAnomaly` 返回 `NaN`，位置接口返回三个 `NaN`；`AsteroidMagnitudeHG` 在输入非有限或日心距、地心距、相位角非正时返回 `NaN`，H-G 相位混合项为零时返回 `+Inf`。
 - `RiseTime` 与 `SetTime` 在给定当地日内找不到升/落时返回哨兵错误 `ERR_ORBIT_NEVER_RISE` / `ERR_ORBIT_NEVER_SET`，其它失败原样透传；成功时第二个返回值为 `nil`。
 - `VisualBinary` 与 `VisualBinaryByYear` 在 `PeriodYears <= 0`、`SemiMajorAxis <= 0`、`Eccentricity` 不落在 `[0,1)` 或任一要素非有限时，把 `VisualBinaryPosition` 的全部数值字段填成 `NaN`。

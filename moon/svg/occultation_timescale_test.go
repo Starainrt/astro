@@ -63,7 +63,7 @@ func TestOccultationSVGTimeScaleUT1(t *testing.T) {
 	}
 }
 
-// assertOccultationUT1Declaration 钉住 UT1 声明是可解析的 <text> 元素并写出 DUT1：曾经的裸文本写入不会渲染。
+// assertOccultationUT1Declaration UT1 声明须是可解析的 <text> 元素并写出 DUT1。
 func assertOccultationUT1Declaration(t *testing.T, name, diagram string) {
 	t.Helper()
 	for _, text := range occultationSVGTexts(t, diagram) {

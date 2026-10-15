@@ -1,6 +1,7 @@
 package svg
 
 import (
+	"github.com/starainrt/astro/internal/limbnote"
 	"github.com/starainrt/astro/internal/timenote"
 	"errors"
 	"fmt"
@@ -223,7 +224,7 @@ func renderLocalPlanetOccultationSVG(
 		options.Width, options.Height, options.Width, options.Height, html.EscapeString(title))
 	b.WriteString(`<defs>`)
 	b.WriteString(svgasset.MoonFaceSymbol())
-	b.WriteString(`<marker id="local-planet-occultation-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#9b3f36"/></marker>`)
+	b.WriteString(`<marker id="local-planet-occultation-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#9b3f36"/></marker>`)
 	b.WriteString(`</defs>`)
 	b.WriteString(`<rect width="100%" height="100%" fill="#efefed"/>`)
 	fmt.Fprintf(&b, `<rect x="22" y="18" width="%.3f" height="%.3f" fill="#ffffff" stroke="#c9c9c6" stroke-width="1.2"/>`, layout.width-44, layout.height-36)
@@ -319,8 +320,6 @@ func writeLocalPlanetOccultationOverview(
 		table.Reserve(mapX(event.frame.PlanetXArcsec)-radius, mapY(event.frame.PlanetYArcsec)-radius, 2*radius, 2*radius)
 	}
 	writeLocalStarOccultationAxes(b, cx, cy, moonRadius, options.Language, table)
-	writeLocalPlanetOccultationLunarPath(b, diagram.Frames, mapX, mapY, extent, options.Language)
-	writeLocalPlanetOccultationTrack(b, diagram.Frames, mapX, mapY)
 	for _, event := range events {
 		writeLocalPlanetOccultationDisk(b,
 			mapX(event.frame.PlanetXArcsec), mapY(event.frame.PlanetYArcsec),
@@ -330,6 +329,8 @@ func writeLocalPlanetOccultationOverview(
 	writeLocalOccultationMoon(b, cx, cy, moonRadius, "overview-moon",
 		localOccultationMoonAppearanceAt(diagram.Occultation.Greatest, diagram.Occultation.Observer),
 		"local-planet-occultation-moon-overview")
+	writeLocalPlanetOccultationLunarPath(b, diagram.Frames, mapX, mapY, extent, options.Language)
+	writeLocalPlanetOccultationTrack(b, diagram.Frames, mapX, mapY)
 	overviewLabels := make([]localOccultationOverviewLabel, 0, len(events))
 	for _, event := range events {
 		x := mapX(event.frame.PlanetXArcsec)
@@ -378,7 +379,9 @@ func writeLocalPlanetOccultationTrack(
 		}
 		fmt.Fprintf(&path, "%s %.3f %.3f ", command, mapX(frame.PlanetXArcsec), mapY(frame.PlanetYArcsec))
 	}
-	fmt.Fprintf(b, `<path class="local-planet-track" d="%s" fill="none" stroke="#9b3f36" stroke-width="1.7" stroke-dasharray="5 4" opacity="0.82" marker-end="url(#local-planet-occultation-arrow)"/>`, strings.TrimSpace(path.String()))
+	// 白色衬底保证轨迹叠在暗月面与亮月面上都可见。
+	fmt.Fprintf(b, `<path class="local-planet-track-halo" d="%s" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" opacity="0.7"/>`, strings.TrimSpace(path.String()))
+	fmt.Fprintf(b, `<path class="local-planet-track" d="%s" fill="none" stroke="#9b3f36" stroke-width="1" stroke-dasharray="4 3" opacity="0.85" marker-end="url(#local-planet-occultation-arrow)"/>`, strings.TrimSpace(path.String()))
 }
 
 func writeLocalPlanetOccultationLunarPath(
@@ -447,7 +450,8 @@ func writeLocalPlanetOccultationDisk(
 ) {
 	fill, stroke, dash := "#d6ad69", "#704b2d", ""
 	if hidden {
-		fill, stroke, dash = "none", "#7d3430", ` stroke-dasharray="2 2"`
+		writeLocalOccultationHiddenOutlineHalo(b, x, y, math.Max(radius, 0.15))
+		fill, stroke, dash = "none", localOccultationHiddenOutlineColor, ` stroke-dasharray="3 2"`
 	}
 	fmt.Fprintf(b, `<circle class="%s" data-label="%s" cx="%.3f" cy="%.3f" r="%.3f" fill="%s" stroke="%s" stroke-width="1.2"%s/>`,
 		html.EscapeString(class), html.EscapeString(label), x, y, math.Max(radius, 0.15), fill, stroke, dash)
@@ -516,8 +520,9 @@ func writeLocalPlanetOccultationStages(
 		writeLocalOccultationMoon(b, cx, cy, event.frame.MoonRadiusArcsec*scale, "stage-moon",
 			event.appearance, fmt.Sprintf("local-planet-occultation-moon-stage-%d", index))
 		if event.hidden {
-			fmt.Fprintf(b, `<circle class="stage-planet-hidden-outline" cx="%.3f" cy="%.3f" r="%.3f" fill="none" stroke="#7d3430" stroke-width="1.1" stroke-dasharray="2 2"/>`,
-				x, y, displayRadius)
+			writeLocalOccultationHiddenOutlineHalo(b, x, y, displayRadius)
+			fmt.Fprintf(b, `<circle class="stage-planet-hidden-outline" cx="%.3f" cy="%.3f" r="%.3f" fill="none" stroke="%s" stroke-width="1.4" stroke-dasharray="3 2"/>`,
+				x, y, displayRadius, localOccultationHiddenOutlineColor)
 		}
 		fmt.Fprintf(b, `<text x="%.3f" y="%.3f" fill="#1c2528" font-family="Arial, sans-serif" font-size="10.5" font-weight="700" text-anchor="middle">%s</text>`,
 			cx, cy+radius+18, html.EscapeString(event.name))
@@ -560,7 +565,8 @@ func writeLocalPlanetOccultationFooter(
 	directionLines, footerLines := localOccultationFooterLines(
 		localPlanetOccultationSVGDirectionText(options),
 		localPlanetOccultationSVGFooterNote(info, options),
-		timenote.Scale(options.TimeScale, info.Greatest, options.Location, options.Language),
+		limbnote.Join(timenote.Scale(options.TimeScale, info.Greatest, options.Location, options.Language),
+			limbnote.Contacts(info.LunarLimbApplied, options.Language), options.Language),
 		layout.footerY, layout.width, layout.height)
 	for index, line := range directionLines {
 		fmt.Fprintf(b, `<text x="%.3f" y="%.3f" fill="#4f595b" font-family="Georgia, 'Times New Roman', serif" font-size="10">%s</text>`,

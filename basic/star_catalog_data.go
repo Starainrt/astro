@@ -5,38 +5,38 @@ import (
 	"compress/gzip"
 	_ "embed"
 	"encoding/binary"
+	"errors"
 	"fmt"
-	"io"
+	"io/ioutil"
+	"math"
 )
 
-// star_catalog.dat gzip 解压后的布局 / star_catalog.dat layout after gzip decompression:
-// magic[8] | version[1] | rawDataLen[4] | rawData | stringCount[2]（字符串计数） |
-// repeated(stringLen[uvarint] + stringBytes)（字符串表） |
-// maxHR[2] | repeated(maxHR * 6 * stringIndex[2]) | repeated(maxHR * hip[4])（星表记录）。
-const starCatalogMagic = "STRCAT01"
+// starCatalogMagic star_catalog.dat 为 gzip 压缩、按列存储的 uvarint 整数格式。
+const starCatalogMagic = "STRCAT02"
+
+const starCatalogVersion = 2
+
+const starCatalogDetailFields = 6
 
 //go:embed star_catalog.dat
 var starCatalogCompressed []byte
 
-// supplementalStarDetails 保存嵌入载荷没有对应命名条目的星表元数据 / supplementalStarDetails contains catalog metadata that is maintained in
-// 源码形式 / source form when the embedded payload has no corresponding named entry.
-// 六个字段按编码顺序排列：中文名、别名、拜耳命名、通用名、中文星座和 IAU 星座 / The six fields follow the encoded detail order: Chinese name, alias, Bayer
-// 命名、通用名、中文星座和 IAU 星座 / designation, common name, Chinese constellation, and IAU constellation.
+// supplementalStarDetails 载荷中无命名条目的星表元数据，字段依次为中文名、别名、拜耳命名、通用名、中文星座、IAU 星座。
 var supplementalStarDetails = map[uint16][]string{
 	4799: {"进贤增九", "", "室女座25", "", "室女座", "Virgo"},
 }
 
-func initStarCatalogData() []byte {
+func initStarCatalogData() []InnerStarData {
 	reader, err := gzip.NewReader(bytes.NewReader(starCatalogCompressed))
 	if err != nil {
 		panic(err)
 	}
 	defer reader.Close()
-	payload, err := io.ReadAll(reader)
+	payload, err := ioutil.ReadAll(reader)
 	if err != nil {
 		panic(err)
 	}
-	data, detail, hip, err := decodeStarCatalogPayload(payload)
+	stars, detail, hip, err := decodeStarCatalogPayload(payload)
 	if err != nil {
 		panic(err)
 	}
@@ -45,87 +45,180 @@ func initStarCatalogData() []byte {
 	}
 	hr2detail = detail
 	hr2hip = hip
-	return data
+	return stars
 }
 
-func decodeStarCatalogPayload(payload []byte) ([]byte, map[uint16][]string, map[uint16]uint32, error) {
-	reader := bytes.NewReader(payload)
+// starCatalogReader 顺序读取 uvarint 载荷。
+type starCatalogReader struct {
+	data []byte
+	pos  int
+	err  error
+}
 
-	var magic [len(starCatalogMagic)]byte
-	if _, err := io.ReadFull(reader, magic[:]); err != nil {
-		return nil, nil, nil, fmt.Errorf("read star catalog magic: %w", err)
+func (r *starCatalogReader) uvarint() uint64 {
+	if r.err != nil {
+		return 0
 	}
-	if string(magic[:]) != starCatalogMagic {
-		return nil, nil, nil, fmt.Errorf("invalid star catalog magic %q", string(magic[:]))
+	value, n := binary.Uvarint(r.data[r.pos:])
+	if n <= 0 {
+		r.err = errors.New("truncated star catalog")
+		return 0
 	}
+	r.pos += n
+	return value
+}
 
-	version, err := reader.ReadByte()
-	if err != nil {
-		return nil, nil, nil, fmt.Errorf("read star catalog version: %w", err)
+func (r *starCatalogReader) bytes(n uint64) []byte {
+	if r.err != nil {
+		return nil
 	}
-	if version != 1 {
+	if n > uint64(len(r.data)-r.pos) {
+		r.err = errors.New("truncated star catalog")
+		return nil
+	}
+	value := r.data[r.pos : r.pos+int(n)]
+	r.pos += int(n)
+	return value
+}
+
+// 解码公式须与编码端一致，运算顺序不可调换，否则结果不再逐位相同。
+
+// starCatalogScaled 解码符号-幅值定点数，保留 -0。
+func starCatalogScaled(v uint64, scale float64) float64 {
+	value := float64(v>>1) / scale
+	if v&1 != 0 {
+		return math.Copysign(value, -1)
+	}
+	return value
+}
+
+func starCatalogRa(v uint64) float64 {
+	ra := float64(v / 36000)
+	minute := (v / 600) % 60
+	sec := float64(v%600) / 10
+	ra += float64(minute)/60 + sec/3600
+	return ra * 15
+}
+
+func starCatalogDec(v uint64) float64 {
+	total := v >> 1
+	dec := float64(total / 3600)
+	dec += float64((total/60)%60)/60 + float64(total%60)/3600
+	if v&1 != 0 {
+		dec = -dec
+	}
+	return dec
+}
+
+func starCatalogMag(v uint64) float64 {
+	if v == 0 {
+		return 9999.9999
+	}
+	return starCatalogScaled(v-1, 100)
+}
+
+func starCatalogPc(v uint64) float64 {
+	if rc := starCatalogScaled(v, 1000); rc != 0 {
+		return 1 / rc
+	}
+	return 0
+}
+
+func starCatalogZigzag(v uint64) int64 {
+	return int64(v>>1) ^ -int64(v&1)
+}
+
+func decodeStarCatalogPayload(payload []byte) ([]InnerStarData, map[uint16][]string, map[uint16]uint32, error) {
+	if len(payload) < len(starCatalogMagic)+1 || string(payload[:len(starCatalogMagic)]) != starCatalogMagic {
+		return nil, nil, nil, errors.New("invalid star catalog magic")
+	}
+	if version := payload[len(starCatalogMagic)]; version != starCatalogVersion {
 		return nil, nil, nil, fmt.Errorf("unsupported star catalog version %d", version)
 	}
+	r := &starCatalogReader{data: payload, pos: len(starCatalogMagic) + 1}
+	count := r.uvarint()
+	if r.err == nil && count > math.MaxUint16 {
+		return nil, nil, nil, fmt.Errorf("star catalog count %d out of range", count)
+	}
+	stars := make([]InnerStarData, count)
+	for i := range stars {
+		stars[i].HR = uint16(i + 1)
+		stars[i].Name = string(r.bytes(r.uvarint()))
+	}
+	hd := int64(0)
+	for i := range stars {
+		hd += starCatalogZigzag(r.uvarint())
+		stars[i].HD = uint32(hd)
+	}
+	for i := range stars {
+		stars[i].Ra = starCatalogRa(r.uvarint())
+	}
+	for i := range stars {
+		stars[i].Dec = starCatalogDec(r.uvarint())
+	}
+	for i := range stars {
+		stars[i].Mag = starCatalogMag(r.uvarint())
+	}
+	for i := range stars {
+		stars[i].PmRA = starCatalogScaled(r.uvarint(), 1000)
+	}
+	for i := range stars {
+		stars[i].PmDec = starCatalogScaled(r.uvarint(), 1000)
+	}
+	for i := range stars {
+		stars[i].RadVel = starCatalogScaled(r.uvarint(), 1)
+	}
+	for i := range stars {
+		stars[i].RotVel = starCatalogScaled(r.uvarint(), 1)
+	}
+	for i := range stars {
+		stars[i].Pc = starCatalogPc(r.uvarint())
+	}
 
-	var rawLen uint32
-	if err := binary.Read(reader, binary.LittleEndian, &rawLen); err != nil {
-		return nil, nil, nil, fmt.Errorf("read star catalog data length: %w", err)
+	stringCount := r.uvarint()
+	if r.err == nil && stringCount > uint64(len(payload)) {
+		return nil, nil, nil, fmt.Errorf("star catalog string count %d out of range", stringCount)
 	}
-	data := make([]byte, rawLen)
-	if _, err := io.ReadFull(reader, data); err != nil {
-		return nil, nil, nil, fmt.Errorf("read star catalog data: %w", err)
-	}
-
-	var stringCount uint16
-	if err := binary.Read(reader, binary.LittleEndian, &stringCount); err != nil {
-		return nil, nil, nil, fmt.Errorf("read star catalog string count: %w", err)
-	}
-	stringsTable := make([]string, int(stringCount)+1)
+	stringsTable := make([]string, stringCount+1)
 	for i := 1; i < len(stringsTable); i++ {
-		length, err := binary.ReadUvarint(reader)
-		if err != nil {
-			return nil, nil, nil, fmt.Errorf("read star catalog string length: %w", err)
-		}
-		value := make([]byte, length)
-		if _, err := io.ReadFull(reader, value); err != nil {
-			return nil, nil, nil, fmt.Errorf("read star catalog string: %w", err)
-		}
-		stringsTable[i] = string(value)
+		stringsTable[i] = string(r.bytes(r.uvarint()))
 	}
-
-	var maxHR uint16
-	if err := binary.Read(reader, binary.LittleEndian, &maxHR); err != nil {
-		return nil, nil, nil, fmt.Errorf("read star catalog max HR: %w", err)
+	indexes := make([][starCatalogDetailFields]uint64, count)
+	for k := 0; k < starCatalogDetailFields; k++ {
+		for i := range indexes {
+			indexes[i][k] = r.uvarint()
+		}
 	}
 	detail := make(map[uint16][]string)
-	for hr := uint16(1); hr <= maxHR; hr++ {
-		record := make([]string, 6)
+	for i, record := range indexes {
 		hasValue := false
-		for i := range record {
-			var index uint16
-			if err := binary.Read(reader, binary.LittleEndian, &index); err != nil {
-				return nil, nil, nil, fmt.Errorf("read star catalog detail index: %w", err)
+		values := make([]string, starCatalogDetailFields)
+		for k, index := range record {
+			if index >= uint64(len(stringsTable)) {
+				return nil, nil, nil, fmt.Errorf("detail string index out of range: hr=%d index=%d", i+1, index)
 			}
-			if int(index) >= len(stringsTable) {
-				return nil, nil, nil, fmt.Errorf("detail string index out of range: hr=%d index=%d", hr, index)
-			}
-			record[i] = stringsTable[index]
+			values[k] = stringsTable[index]
 			hasValue = hasValue || index != 0
 		}
 		if hasValue {
-			detail[hr] = record
+			detail[uint16(i+1)] = values
 		}
 	}
-
 	hip := make(map[uint16]uint32)
-	for hr := uint16(1); hr <= maxHR; hr++ {
-		var value uint32
-		if err := binary.Read(reader, binary.LittleEndian, &value); err != nil {
-			return nil, nil, nil, fmt.Errorf("read star catalog HIP: %w", err)
+	prevHIP := int64(0)
+	for i := range stars {
+		value := r.uvarint()
+		if value == 0 {
+			continue
 		}
-		if value != 0 {
-			hip[hr] = value
-		}
+		prevHIP += starCatalogZigzag(value - 1)
+		hip[uint16(i+1)] = uint32(prevHIP)
 	}
-	return data, detail, hip, nil
+	if r.err != nil {
+		return nil, nil, nil, r.err
+	}
+	if r.pos != len(payload) {
+		return nil, nil, nil, fmt.Errorf("%d trailing bytes in star catalog", len(payload)-r.pos)
+	}
+	return stars, detail, hip, nil
 }

@@ -4,7 +4,22 @@
 
 `orbit` propagates heliocentric two-body positions from orbital elements. It supports asteroids, comets, dwarf planets, and custom hypothetical orbits.
 
-The seven major planets are still computed by their own packages using built-in VSOP87 analytical terms.
+The seven major planets use the selected ephemeris through their own packages: default builds default to the semianalytic model, with Legacy or custom engines available explicitly.
+
+Use `StateWithOptions` to propagate to a target epoch with optional planetary perturbations:
+
+| `PropagationOptions` field | Meaning |
+| --- | --- |
+| `Perturbers` | Perturbing bodies; a non-empty value also requires an ephemeris source |
+| `Engine` / `Context` | The perturbation ephemeris source. Both fields have the same type (`StateProvider`, i.e. `astro.Engine`) and `Engine` wins; pass an `*spk.File` or a custom engine |
+| `Step` | Maximum step in days |
+| `Tolerance` | Relative step-doubling error threshold |
+
+- The zero-value options struct follows the existing two-body path exactly, matching `State`.
+- The integrator adds solar gravity plus direct and indirect perturbation terms. `Perturbers` accepts Mercury through Neptune, Earth, the Moon and the Earth-Moon barycenter (3); an unknown body, or the barycenter combined with Earth or the Moon, returns `ErrUnsupportedPerturber`.
+- Integration starts at `EpochJD`; a perihelion-form set starts at `TpJD` only when `EpochJD` is 0.
+- `NewEphemerisEngine` adapts the propagated result for `astro.NewStack`: elements and options are fixed at construction, and the engine's cached checkpoints never change results, so any query order matches a direct `StateWithOptions` call bit for bit.
+- Accuracy depends on the supplied elements and propagation span; use SPK for long-term high-precision work.
 
 `orbit.Elements` supports two common forms:
 
@@ -39,7 +54,7 @@ The positional and topocentric quantities here also work together with the inter
   - [Zero Values and Out-of-Range Input](#zero-values-and-out-of-range-input)
   - [Accuracy and Applicability](#accuracy-and-applicability)
   - [Common Pitfalls](#common-pitfalls)
-- [Related Manuals](#related-manuals)
+- [Related manuals](#related-manuals)
 
 ## Calculating the position of Ceres from orbital elements
 
@@ -146,8 +161,8 @@ func main() {
 Output:
 
 ```text
-ceres ra=7.739532 dec=-10.625981 distance=2.164391
-halley ra=312.112360 dec=-11.826451 distance=1.533936
+ceres ra=7.743516 dec=-10.625287 distance=2.164391
+halley ra=312.106763 dec=-11.828059 distance=1.533936
 ```
 
 Orbital elements have epochs. The farther the target date is from the epoch, the more static-element error can grow.
@@ -215,7 +230,7 @@ fmt.Printf("r=%.6f delta=%.6f elong=%.6f phase=%.6f k=%.6f mag=%.3f q=%.6f\n",
 
 Near 180° elongation the phase angle approaches 0° and `IlluminatedFraction` approaches 1; all three quantities come from the same geocentric geometry.
 
-`ParallacticAngle` does not solve for declination separately: it reuses the same topocentric solve as `HourAngle`, so that hour angle and declination never come from two Julian-day paths about 1 ULP apart and introduce sub-nanodegree drift.
+`ParallacticAngle` does not solve for declination separately: it reuses the same topocentric solve as `HourAngle`, so the two are exactly self-consistent.
 
 All geometry helpers depend only on the absolute instant of `date`; `ParallacticAngle` is the only one that also takes observer parameters.
 
@@ -338,7 +353,7 @@ fmt.Println(app.RA, app.Dec, app.Distance)
 7.125008 -10.028726 2.262489
 ```
 
-The four layers mean different things: `Heliocentric*` is relative to the Sun (the first number is the heliocentric distance), `Geocentric*J2000` is the J2000 geocentric position, `Astrometric*J2000` removes light-time and suits catalog comparison, and `Apparent*` is the apparent position of the day used for observing and charts.
+The four layers mean different things: `Heliocentric*` is relative to the Sun (the first number is the heliocentric distance), `Geocentric*J2000` is the J2000 geocentric position, `Astrometric*J2000` adds light-time and suits catalog comparison, and `Apparent*` is the apparent position of the day used for observing and charts.
 
 For a topocentric apparent position use `ApparentTopocentricEquatorial(when, ceres, lon, lat, height)`.
 
@@ -431,7 +446,7 @@ NaN NaN
 - The zero value of `Elements` is not a valid orbit. The classical elliptical form requires a finite positive `A`, `E` within `[0,1)`, and finite `EpochJD` and `M0`.
 
   Parabolic and hyperbolic orbits with `E >= 1` can only use the perihelion form, which requires a finite positive `Q`, a finite `TpJD`, `E >= 0`, and finite `I`/`Omega`/`W`.
-- When `Q > 0` and `TpJD` is finite the perihelion form wins: `A`, `M0`, and `EpochJD` are ignored, `ADot`/`EDot`/`IDot`/`OmegaDot`/`WDot` have no effect, and only a non-zero `MDot` is used as the mean angular rate.
+- When `Q > 0` and `TpJD` is finite the perihelion form wins: `A`, `M0`, and `EpochJD` are ignored, `ADot`/`EDot`/`IDot`/`OmegaDot`/`WDot` have no effect, and only a non-zero `MDot` is used as the mean angular rate. Perturbed propagation is the exception: when a perihelion-form set also gives `EpochJD`, that epoch is the osculating epoch where integration starts.
 - With invalid elements `MeanMotion` and `MeanAnomaly` return `NaN` and the positional interfaces return three `NaN`s.
 
   `AsteroidMagnitudeHG` returns `NaN` when its inputs are non-finite or when heliocentric distance, geocentric distance, or phase angle is non-positive, and `+Inf` when the H-G phase blend is zero.
@@ -452,7 +467,7 @@ NaN NaN
 - Probing with a zero-value `Elements`: mean motion and the positional interfaces quietly return `NaN` instead of reporting an error.
 - Expecting `ADot`…`WDot` to take effect in the perihelion form: those rates only propagate in the classical elliptical form.
 
-## Related Manuals
+## Related manuals
 
 - Stars and catalogues: [star](star.md#stars)
 - Frame conversion and topocentric quantities: [coordinate tools](coord.md#coordinate-tools)

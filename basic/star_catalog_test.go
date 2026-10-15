@@ -10,9 +10,12 @@ func Test_ParseStar(t *testing.T) {
 	if err := LoadStarData(); err != nil {
 		t.Fatal(err)
 	}
-	for _, v := range stardat {
-		if _, err := parseStarData(v); err != nil {
-			t.Fatal(err)
+	if len(parsedStarData) != 9110 {
+		t.Fatalf("star count = %d, want 9110", len(parsedStarData))
+	}
+	for i, star := range parsedStarData {
+		if int(star.HR) != i+1 {
+			t.Fatalf("star %d carries HR %d", i+1, star.HR)
 		}
 	}
 }

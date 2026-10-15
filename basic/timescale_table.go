@@ -1,7 +1,7 @@
 package basic
 
-// 由月度实测 TT−UT1 序列生成，请勿手改；表尾同时是 UTC2TT 精确窗口的末端。
-// Generated from the monthly observed TT−UT1 series; the last entry also ends the exact window.
+// 由月度 TT−UT1 序列生成，请勿手改；表尾同时是 UTC2TT 精确窗口的末端。
+// Generated from the monthly TT−UT1 series; the last entry also ends the exact window.
 
 // deltaTMonthlyJDE 是逐月实测 TT−UT1 的儒略日，与 deltaTMonthlyObserved 一一对应。
 var deltaTMonthlyJDE = [...]float64{
@@ -165,7 +165,7 @@ var deltaTMonthlyJDE = [...]float64{
 	2460827.5, 2460857.5, 2460888.5, 2460919.5,
 	2460949.5, 2460980.5, 2461010.5, 2461041.5,
 	2461072.5, 2461100.5, 2461131.5, 2461161.5,
-	2461192.5, 2461222.5, 2461253.5, 2461284.5,
+	2461192.5, 2461222.5, 2461253.5, 2461284.5, 2461314.5,
 }
 
 // deltaTMonthlyObserved 是对应月份的 TT−UT1（秒），来自权威逐月实测序列。
@@ -330,5 +330,5 @@ var deltaTMonthlyObserved = [...]float64{
 	69.1550, 69.1406, 69.1219, 69.0994,
 	69.0909, 69.0909, 69.1042, 69.1099,
 	69.1133, 69.1168, 69.1330, 69.1511,
-	69.1662, 69.1695, 69.1713, 69.1816,
+	69.1662, 69.1695, 69.1713, 69.1815, 69.2065,
 }

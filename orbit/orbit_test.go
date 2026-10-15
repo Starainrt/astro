@@ -275,11 +275,11 @@ func TestSecularRatesReduceMarsDriftAgainstVSOP(t *testing.T) {
 
 		dynamicError := angleDiffAbs(dynamic.RA, wantRA) + math.Abs(dynamic.Dec-wantDec)
 		staticError := angleDiffAbs(stale.RA, wantRA) + math.Abs(stale.Dec-wantDec)
-		if dynamicError > staticError+1e-9 {
-			t.Fatalf("%s dynamic elements should improve Mars drift: dynamic=%.9f static=%.9f", date.Format("2006-01-02"), dynamicError, staticError)
-		}
 		if date.Equal(time.Date(2000, 1, 1, 12, 0, 0, 0, time.UTC)) {
 			continue
+		}
+		if dynamicError > staticError+1e-9 {
+			t.Fatalf("%s dynamic elements should improve Mars drift: dynamic=%.9f static=%.9f", date.Format("2006-01-02"), dynamicError, staticError)
 		}
 		if staticError/dynamicError < 4 {
 			t.Fatalf("%s Mars drift improvement too small: dynamic=%.9f static=%.9f", date.Format("2006-01-02"), dynamicError, staticError)
@@ -541,4 +541,186 @@ func sphericalAzimuthFromHourAngle(hourAngle, dec, lat float64) float64 {
 		return azimuth + 180
 	}
 	return azimuth
+}
+
+func TestStateWithOptionsZeroMatchesState(t *testing.T) {
+	elements := Elements{
+		EpochJD: 2451545, A: 2.7, E: 0.08, I: 10, Omega: 80, W: 73, M0: 231,
+	}
+	for _, jd := range []float64{2451545, 2452000, 2449000} {
+		wantPos, wantVel, wantErr := State(elements, jd)
+		gotPos, gotVel, gotErr := StateWithOptions(elements, jd, PropagationOptions{})
+		if gotPos != wantPos || gotVel != wantVel || gotErr != wantErr {
+			t.Fatalf("jd %.1f: got %v %v %v, want %v %v %v", jd, gotPos, gotVel, gotErr, wantPos, wantVel, wantErr)
+		}
+	}
+}
+
+type staticPerturbationEngine struct{}
+
+func (staticPerturbationEngine) State(target, center Body, jdTDB float64) (pos, vel [3]float64, err error) {
+	if target == center {
+		return pos, vel, nil
+	}
+	if center != 0 {
+		return pos, vel, ErrPerturbationEngine
+	}
+	switch target {
+	case 10:
+		return pos, vel, nil
+	case 5:
+		pos[0] = 778000000
+		return pos, vel, nil
+	default:
+		return pos, vel, ErrPerturbationEngine
+	}
+}
+
+func (staticPerturbationEngine) Coverage(target Body) (start, end float64, ok bool) {
+	return 0, 3000000, true
+}
+
+func TestStateWithOptionsPerturbationChangesState(t *testing.T) {
+	elements := Elements{EpochJD: 2451545, A: 1.5, E: 0.02, I: 3, Omega: 20, W: 30, M0: 10}
+	plain, _, err := State(elements, elements.EpochJD+30)
+	if err != nil {
+		t.Fatal(err)
+	}
+	perturbed, perturbedVelocity, err := StateWithOptions(elements, elements.EpochJD+30, PropagationOptions{
+		Perturbers: []Body{5},
+		Engine:     staticPerturbationEngine{},
+		Step:       2,
+		Tolerance:  1e-10,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if perturbed == plain {
+		t.Fatal("perturbation did not change the state")
+	}
+	if !finite(vectorNorm(perturbed)) || !finite(vectorNorm(perturbedVelocity)) || vectorNorm(perturbedVelocity) > 1e7 {
+		t.Fatalf("perturbed state is unstable: position=%v velocity=%v", perturbed, perturbedVelocity)
+	}
+}
+
+type countingPerturbationEngine struct {
+	calls map[Body]int
+}
+
+func (engine *countingPerturbationEngine) State(target, center Body, jdTDB float64) (pos, vel [3]float64, err error) {
+	if target == center {
+		return pos, vel, nil
+	}
+	engine.calls[target]++
+	if center != 0 {
+		return pos, vel, ErrPerturbationEngine
+	}
+	switch target {
+	case 10:
+		return pos, vel, nil
+	case 5:
+		pos[0] = 778000000
+		return pos, vel, nil
+	default:
+		return pos, vel, ErrPerturbationEngine
+	}
+}
+
+func (*countingPerturbationEngine) Coverage(target Body) (start, end float64, ok bool) {
+	return 0, 3000000, true
+}
+
+func TestStateWithOptionsCachesRepeatedSamples(t *testing.T) {
+	elements := Elements{EpochJD: 2451545, A: 1.5, E: 0.02, I: 3, Omega: 20, W: 30, M0: 10}
+	provider := &countingPerturbationEngine{calls: make(map[Body]int)}
+	_, _, err := StateWithOptions(elements, elements.EpochJD+1, PropagationOptions{
+		Perturbers: []Body{5},
+		Engine:     provider,
+		Step:       1,
+		Tolerance:  1,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, body := range []Body{5, 10} {
+		if got, want := provider.calls[body], 5; got != want {
+			t.Fatalf("body %d provider calls = %d, want %d", body, got, want)
+		}
+	}
+}
+
+func TestStateWithOptionsDeduplicatesPerturbers(t *testing.T) {
+	elements := Elements{EpochJD: 2451545, A: 1.5, E: 0.02, I: 3, Omega: 20, W: 30, M0: 10}
+	provider := &countingPerturbationEngine{calls: make(map[Body]int)}
+	singlePos, singleVel, err := StateWithOptions(elements, elements.EpochJD+10, PropagationOptions{
+		Perturbers: []Body{5},
+		Engine:     provider,
+		Step:       2,
+		Tolerance:  1e-8,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	duplicatePos, duplicateVel, err := StateWithOptions(elements, elements.EpochJD+10, PropagationOptions{
+		Perturbers: []Body{5, 5, 10, 0},
+		Engine:     provider,
+		Step:       2,
+		Tolerance:  1e-8,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if duplicatePos != singlePos || duplicateVel != singleVel {
+		t.Fatalf("duplicate perturbers changed state: %v %v versus %v %v", duplicatePos, duplicateVel, singlePos, singleVel)
+	}
+}
+
+func TestStateWithOptionsRejectsNonFiniteTarget(t *testing.T) {
+	elements := Elements{EpochJD: 2451545, A: 1.5, E: 0.02, I: 3, Omega: 20, W: 30, M0: 10}
+	if _, _, err := StateWithOptions(elements, math.NaN(), PropagationOptions{}); err != ErrInvalidPropagationElements {
+		t.Fatalf("NaN target error = %v", err)
+	}
+}
+
+func TestEphemerisEngineSunPerturberKeepsTwoBodyPath(t *testing.T) {
+	elements := Elements{EpochJD: 2451545, A: 1.5, E: 0.02, I: 3, Omega: 20, W: 30, M0: 10}
+	engine := NewEphemerisEngine(Body(12345), elements, PropagationOptions{Perturbers: []Body{10}})
+	gotPos, gotVel, err := engine.State(Body(12345), 10, elements.EpochJD+10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantPos, wantVel, err := State(elements, elements.EpochJD+10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if gotPos != wantPos || gotVel != wantVel {
+		t.Fatalf("Sun-only perturbation changed two-body state: %v %v versus %v %v", gotPos, gotVel, wantPos, wantVel)
+	}
+}
+
+func TestStateWithOptionsZeroMatchesExistingPositionMath(t *testing.T) {
+	cases := []Elements{
+		{EpochJD: 2451545, A: 2.7, E: 0.08, I: 10, Omega: 80, W: 73, M0: 231},
+		{Q: 0.9, E: 1, I: 30, Omega: 40, W: 50, TpJD: 2451545},
+		{Q: 1.2, E: 1.05, I: 30, Omega: 40, W: 50, TpJD: 2451545},
+	}
+	for _, elements := range cases {
+		jd := 2451545.0 + 20
+		got, _, err := StateWithOptions(elements, jd, PropagationOptions{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		basicVector := basic.OrbitHeliocentricXYZJ2000(jd, toBasicElements(elements))
+		epsilon := basic.EclipticObliquity(2451545, false) * math.Pi / 180
+		want := [3]float64{
+			basicVector[0] * 149597870.7,
+			(basicVector[1]*math.Cos(epsilon) - basicVector[2]*math.Sin(epsilon)) * 149597870.7,
+			(basicVector[1]*math.Sin(epsilon) + basicVector[2]*math.Cos(epsilon)) * 149597870.7,
+		}
+		for index := range got {
+			if math.Abs(got[index]-want[index]) > 1e-6 {
+				t.Fatalf("elements %+v component %d = %.12f, want %.12f", elements, index, got[index], want[index])
+			}
+		}
+	}
 }

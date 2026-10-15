@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-// 图例只能画一次：横版曾经在渲染器与横版面板里各画一次，而且两处传入的中心带参数还不一致。
+// 图例只能画一次，横版渲染器与面板不得重复绘制。
 func TestSolarEclipseMapLegendRendersOnce(t *testing.T) {
 	for _, test := range []struct {
 		name           string

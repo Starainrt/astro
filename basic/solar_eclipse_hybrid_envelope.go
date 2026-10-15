@@ -1,6 +1,10 @@
 package basic
 
-import "math"
+import (
+	"math"
+
+	"github.com/starainrt/astro/internal/geodata"
+)
 
 // Absolute Julian dates quantize a moving sky position at about 1e-10 radians.
 const solarEclipseCentralVectorTolerance = 2e-10
@@ -20,8 +24,8 @@ func solarCentralBandSkyOffset(context localSolarEclipseStateContext, longitude,
 	equatorial := math.Hypot(sun[0], sun[1])
 	east := [3]float64{-sun[1] / equatorial, sun[0] / equatorial, 0}
 	north := [3]float64{-sun[2] * east[1], sun[2] * east[0], equatorial}
-	radius := math.Asin(solarEclipseEarthEquatorialRadiusKM*context.params.umbralK*localSolarMoonRadiusScale/moonDistance) -
-		math.Asin(solarEclipseEarthEquatorialRadiusKM*context.params.sunRadiusRatio/sunDistance)
+	radius := math.Asin(geodata.EarthEquatorialRadiusKM*context.params.umbralK*localSolarMoonRadiusScale/moonDistance) -
+		math.Asin(geodata.EarthEquatorialRadiusKM*context.params.sunRadiusRatio/sunDistance)
 	return [3]float64{dotSolarEclipse3(moon, east), dotSolarEclipse3(moon, north), math.Sin(radius)}
 }
 
@@ -96,7 +100,7 @@ func (solver solarEclipseSolver) correctCentralBandVectorBoundary(predictor, tan
 			state := evaluation.center.stateAt(coordinates[0]*rad, coordinates[1]*rad, 0)
 			return solarEclipseNonCentralBandState{
 				coordinates: coordinates, tangent: nextTangent,
-				point: SolarEclipsePathPoint{JDE: jde, Longitude: normalizeLongitude(coordinates[0]), Latitude: coordinates[1], SunAltitude: state.sunAltitudeRad / rad},
+				point: SolarEclipsePathPoint{JDE: jde, Longitude: geodata.NormalizeLongitude(coordinates[0]), Latitude: coordinates[1], SunAltitude: state.sunAltitudeRad / rad},
 			}, valid
 		}
 		delta, valid := solveSolarEclipse3x3([3][3]float64{jacobian[0], jacobian[1], tangent}, [3]float64{-residual[0], -residual[1], -plane})
@@ -257,7 +261,7 @@ func (solver solarEclipseSolver) hybridCentralBandTransition(seed SolarEclipsePa
 		residual := solarCentralBandSkyOffset(context, coordinates[0], coordinates[1])
 		if math.Hypot(residual[0], residual[1]) < solarEclipseCentralVectorTolerance/2 && math.Abs(residual[2]) < 1e-12 {
 			state := context.stateAt(coordinates[0]*rad, coordinates[1]*rad, 0)
-			return SolarEclipsePathPoint{JDE: jde, Longitude: normalizeLongitude(coordinates[0]), Latitude: coordinates[1], SunAltitude: state.sunAltitudeRad / rad}, true
+			return SolarEclipsePathPoint{JDE: jde, Longitude: geodata.NormalizeLongitude(coordinates[0]), Latitude: coordinates[1], SunAltitude: state.sunAltitudeRad / rad}, true
 		}
 		var jacobian [3][3]float64
 		for column := range coordinates {
@@ -305,7 +309,7 @@ func (solver solarEclipseSolver) centralBandVectorHorizonRoots(axisContactJDE, d
 			context := solver.localStateContextAt(jde)
 			state := context.stateAt(coordinates[0]*rad, coordinates[1]*rad, 0)
 			if math.Hypot(residual[0], residual[1]) <= solarEclipseCentralVectorTolerance && math.Abs(state.sunAltitudeRad) < 1e-8 {
-				roots[i] = SolarEclipsePathPoint{JDE: jde, Longitude: normalizeLongitude(coordinates[0]), Latitude: coordinates[1], SunAltitude: state.sunAltitudeRad / rad}
+				roots[i] = SolarEclipsePathPoint{JDE: jde, Longitude: geodata.NormalizeLongitude(coordinates[0]), Latitude: coordinates[1], SunAltitude: state.sunAltitudeRad / rad}
 				// Grazing horizon roots can be many minutes from axis contact.
 				// Bound them by the shadow's limb-crossing interval, not a fixed
 				// window around the seed.

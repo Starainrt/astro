@@ -4,6 +4,8 @@ import (
 	"math"
 	"testing"
 	"time"
+
+	"github.com/starainrt/astro/internal/geodata"
 )
 
 func TestPlanetOccultationSupportsAllPlanetTargets(t *testing.T) {
@@ -103,9 +105,9 @@ func TestPlanetOccultationUsesStationMoonDistanceForRadius(t *testing.T) {
 		t.Fatal("Saturn occultation config is unavailable")
 	}
 	moonRA, _ := HMoonGeocentricApparentRaDecN(tt, -1)
-	subMoonLongitude := normalizeLongitude180(moonRA - ApparentSiderealTime(TT2UTC(tt))*15)
+	subMoonLongitude := geodata.NormalizeLongitude(moonRA - ApparentSiderealTime(TT2UTC(tt))*15)
 	near := Observer{Longitude: subMoonLongitude, Latitude: 0}
-	far := Observer{Longitude: normalizeLongitude180(subMoonLongitude + 180), Latitude: 0}
+	far := Observer{Longitude: geodata.NormalizeLongitude(subMoonLongitude + 180), Latitude: 0}
 	nearState := planetOccultationStateAt(tt, config, &near, -1)
 	farState := planetOccultationStateAt(tt, config, &far, -1)
 	if !nearState.valid || !farState.valid {
@@ -128,9 +130,9 @@ func TestPlanetOccultationUsesStationPlanetDistanceForRadius(t *testing.T) {
 		t.Fatal("Mercury occultation config is unavailable")
 	}
 	planetRA, _ := config.apparentRaDecN(tt, -1)
-	subPlanetLongitude := normalizeLongitude180(planetRA - ApparentSiderealTime(TT2UTC(tt))*15)
+	subPlanetLongitude := geodata.NormalizeLongitude(planetRA - ApparentSiderealTime(TT2UTC(tt))*15)
 	near := Observer{Longitude: subPlanetLongitude, Latitude: 0}
-	far := Observer{Longitude: normalizeLongitude180(subPlanetLongitude + 180), Latitude: 0}
+	far := Observer{Longitude: geodata.NormalizeLongitude(subPlanetLongitude + 180), Latitude: 0}
 	nearState := planetOccultationStateAt(tt, config, &near, -1)
 	farState := planetOccultationStateAt(tt, config, &far, -1)
 	if !nearState.valid || !farState.valid {

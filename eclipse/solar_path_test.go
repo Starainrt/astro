@@ -4,6 +4,8 @@ import (
 	"math"
 	"testing"
 	"time"
+
+	"github.com/starainrt/astro/internal/ephemtest"
 )
 
 func TestSolarEclipseCentralPathKeepsLocation(t *testing.T) {
@@ -168,6 +170,8 @@ func TestSolarEclipsePartialAreaCompatibilityWrapper(t *testing.T) {
 }
 
 func TestSolarEclipsePartialFootprints20140429NonCentralContactsMatchNASA(t *testing.T) {
+	// NASA 交食根数由 VSOP87/ELP 算出，接触时刻只与旧模型逐秒可比。
+	ephemtest.PinLegacy(t)
 	partial, ok := SolarEclipsePartialFootprints(
 		time.Date(2014, time.April, 29, 0, 0, 0, 0, time.UTC),
 		SolarEclipsePartialFootprintOptions{Step: 10 * time.Minute, BoundaryPoints: 96},
@@ -213,6 +217,8 @@ func TestSolarEclipsePartialFootprintsRetryTinyGrazingFootprints(t *testing.T) {
 }
 
 func TestSolarEclipseCentralPathRecoversFromCoarseSampling(t *testing.T) {
+	// 夹具按旧模型几何选取，用来覆盖该边界分支。
+	ephemtest.PinLegacy(t)
 	path, ok := SolarEclipseCentralPath(
 		time.Date(2119, 3, 11, 0, 0, 0, 0, time.UTC),
 		SolarEclipsePathOptions{Step: time.Hour},

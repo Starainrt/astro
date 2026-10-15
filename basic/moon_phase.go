@@ -205,3 +205,15 @@ func CalcMoonX(year float64, quarterType int) float64 {
 	}
 	return jde
 }
+
+// solarEclipseAnchorNewMoon 种子所在朔望月的朔（TT）；同一朔望月内任意种子返回逐位相同的结果。
+func solarEclipseAnchorNewMoon(seedJDE float64, instances ...*Instance) float64 {
+	inst := instanceValue(instances)
+
+	first := CalcMoonSHByJDEWithInstance(seedJDE, 0, inst)
+	if math.IsNaN(first) {
+		return first
+	}
+	k := math.Round((first - 2451550.09765) / 29.530588853)
+	return CalcMoonSHByJDEWithInstance(2451550.09765+29.530588853*k, 0, inst)
+}

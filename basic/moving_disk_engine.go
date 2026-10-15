@@ -197,11 +197,12 @@ func (engine movingDiskEventEngine) sampleTimes(
 	if step <= 0 || math.IsNaN(step) || math.IsInf(step, 0) {
 		step = duration
 	}
-	baseSampleCount := int(math.Ceil(duration/step)) + 1
+	// 先按浮点比较，避免极小步长下 int 转换溢出成负数而绕过上限。
+	baseSampleCount := math.Ceil(duration/step) + 1
 	if engine.reserveAnchorSlot {
 		baseSampleCount++
 	}
-	if baseSampleCount > maximum && engine.uniformOverflow {
+	if baseSampleCount > float64(maximum) && engine.uniformOverflow {
 		interiorCount := maximum - 3
 		if interiorCount < 0 {
 			interiorCount = 0
@@ -214,7 +215,7 @@ func (engine movingDiskEventEngine) sampleTimes(
 		sort.Float64s(bounded)
 		return movingDiskUniqueTimes(bounded), step
 	}
-	if baseSampleCount > maximum {
+	if baseSampleCount > float64(maximum) {
 		step = duration / float64(maximum-1)
 	}
 

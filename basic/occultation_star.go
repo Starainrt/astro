@@ -4,6 +4,8 @@ import (
 	"math"
 	"sort"
 	"time"
+
+	"github.com/starainrt/astro/internal/iau2006"
 )
 
 const (
@@ -18,15 +20,9 @@ const (
 	starOccultationMaxContactSteps   = 10000
 )
 
-// FindStarOccultations 搜索单颗点源恒星的月掩星。
-//
-// 输入坐标会从历元传播并转换到当日视坐标系；若提供视差，还会修正观测者的恒星视差。
-// 搜索不会加载内嵌 9100 星表；需要全星表搜索时，调用者必须显式加载并选择恒星。经度东为正、纬度北为正，单位为度；高度为平均海平面以上米数。
-// FindStarOccultations searches for lunar occultations of one point-source star.
-// The input coordinate is propagated from its epoch, converted to the apparent frame of date, and corrected for the observer's stellar parallax when one is supplied.
-// The search does not load the embedded 9100-star catalog; callers that need a catalog-wide search must load and select stars explicitly. Longitude is east-positive in degrees, latitude is north-positive in degrees, and height is the observer elevation above mean sea level in meters.
-func FindStarOccultations(start, end time.Time, star StarCoordinate, longitude, latitude, height float64,
-	options OccultationSearchOptions) ([]StarOccultationInfo, error) {
+// FindStarOccultationsWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func FindStarOccultationsWithInstance(start, end time.Time, star StarCoordinate, longitude, latitude, height float64,
+	options OccultationSearchOptions, inst *Instance) ([]StarOccultationInfo, error) {
 	if err := validateOccultationTimeRange(start, end); err != nil {
 		return nil, err
 	}
@@ -45,8 +41,8 @@ func FindStarOccultations(start, end time.Time, star StarCoordinate, longitude, 
 	endTT := occultationTimeToTT(end)
 	resultLocation := start.Location()
 	results := make([]StarOccultationInfo, 0)
-	for _, greatestTT := range starOccultationCandidateGreatestTimes(startTT, endTT, starOccultationCoarseStepDays(options), star, observer, options.SafetyMarginArcsec) {
-		info, ok := starOccultationInfoAtGreatest(greatestTT, star, observer, options.SafetyMarginArcsec, resultLocation)
+	for _, greatestTT := range starOccultationCandidateGreatestTimes(startTT, endTT, starOccultationCoarseStepDays(options), star, observer, options.SafetyMarginArcsec, inst) {
+		info, ok := starOccultationInfoWithLimb(greatestTT, star, observer, options.SafetyMarginArcsec, resultLocation, options.LunarLimb, inst)
 		if !ok {
 			continue
 		}
@@ -62,14 +58,8 @@ func FindStarOccultations(start, end time.Time, star StarCoordinate, longitude, 
 	return results, nil
 }
 
-// FindBestStarOccultations 返回窗口内每次恒星月掩在地球上的全球几何掩甚点。
-// 返回的 StarOccultationInfo.Observer 是海平面大地测量位置，由月掩几何选择，不使用地平线或可见性评分。
-//
-// 地心数据只用于月周期搜索初值；最终点是与 FindStarOccultationPaths 一致的标准全球掩甚路径点，然后在该处重新进行站心接触和可见性计算。查询端点 10 ms 内的掩甚时刻也会包含，与数值根精度一致。
-// FindBestStarOccultations returns the global geometric greatest point on Earth for each stellar occultation in the window.
-// The returned StarOccultationInfo.Observer is the geodetic location at sea level; it is selected from the occultation geometry, without a horizon or visibility score.
-// Geocentric data only seeds each lunar-month search. The final point is the canonical global greatest-path point, matching FindStarOccultationPaths; event contacts and visibility are then recomputed topocentrically there. A greatest instant within 10 ms of either query endpoint is included, matching the numerical root precision.
-func FindBestStarOccultations(start, end time.Time, star StarCoordinate, options OccultationSearchOptions) ([]StarOccultationInfo, error) {
+// FindBestStarOccultationsWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func FindBestStarOccultationsWithInstance(start, end time.Time, star StarCoordinate, options OccultationSearchOptions, inst *Instance) ([]StarOccultationInfo, error) {
 	if err := validateOccultationTimeRange(start, end); err != nil {
 		return nil, err
 	}
@@ -88,12 +78,12 @@ func FindBestStarOccultations(start, end time.Time, star StarCoordinate, options
 	candidateEndTT := endTT + occultationPathSearchSpanDays
 	resultLocation := start.Location()
 	results := make([]StarOccultationInfo, 0)
-	for _, seedTT := range starOccultationGeocentricCandidateGreatestTimes(candidateStartTT, candidateEndTT, starOccultationCoarseStepDays(options), star, options.SafetyMarginArcsec) {
-		greatestTT, observer, _, observerOK := starOccultationBestObserver(seedTT, selectionStartTT, selectionEndTT, star)
+	for _, seedTT := range starOccultationGeocentricCandidateGreatestTimes(candidateStartTT, candidateEndTT, starOccultationCoarseStepDays(options), star, options.SafetyMarginArcsec, inst) {
+		greatestTT, observer, _, observerOK := starOccultationBestObserver(seedTT, selectionStartTT, selectionEndTT, star, inst)
 		if !observerOK {
 			continue
 		}
-		info, ok := starOccultationInfoAtGreatest(greatestTT, star, observer, options.SafetyMarginArcsec, resultLocation)
+		info, ok := starOccultationInfoWithLimb(greatestTT, star, observer, options.SafetyMarginArcsec, resultLocation, options.LunarLimb, inst)
 		if !ok {
 			continue
 		}
@@ -108,40 +98,44 @@ func FindBestStarOccultations(start, end time.Time, star StarCoordinate, options
 	return results, nil
 }
 
-func starOccultationCandidateGreatestTimes(startTT, endTT, step float64, star StarCoordinate, observer Observer, safetyMarginArcsec float64) []float64 {
+func starOccultationCandidateGreatestTimes(startTT, endTT, step float64, star StarCoordinate, observer Observer, safetyMarginArcsec float64, instances ...*Instance) []float64 {
+	inst := instanceValue(instances)
+
 	results := make([]float64, 0)
 	for cycleStart := startTT; cycleStart < endTT; cycleStart += starOccultationSiderealMonthDays {
 		cycleEnd := math.Min(cycleStart+starOccultationSiderealMonthDays, endTT)
 		scanStart := math.Max(startTT-step, cycleStart-step)
 		scanEnd := math.Min(endTT+step, cycleEnd+step)
-		if !starOccultationLatitudeEnvelopePass(scanStart, scanEnd, star, &observer, safetyMarginArcsec) {
+		if !starOccultationLatitudeEnvelopePass(scanStart, scanEnd, star, &observer, safetyMarginArcsec, inst) {
 			continue
 		}
 		results = append(results, starOccultationScanCandidates(
 			scanStart, scanEnd, step,
-			func(tt float64) float64 { return starMoonSeparationArcsec(tt, star, observer) },
+			func(tt float64) float64 { return starMoonSeparationArcsec(tt, star, observer, inst) },
 			func(tt float64) bool {
-				return starOccultationLatitudePass(tt, star, observer, safetyMarginArcsec)
+				return starOccultationLatitudePass(tt, star, observer, safetyMarginArcsec, inst)
 			},
 		)...)
 	}
 	return uniqueOccultationCandidateTimes(results, startTT, endTT)
 }
 
-func starOccultationGeocentricCandidateGreatestTimes(startTT, endTT, step float64, star StarCoordinate, safetyMarginArcsec float64) []float64 {
+func starOccultationGeocentricCandidateGreatestTimes(startTT, endTT, step float64, star StarCoordinate, safetyMarginArcsec float64, instances ...*Instance) []float64 {
+	inst := instanceValue(instances)
+
 	results := make([]float64, 0)
 	for cycleStart := startTT; cycleStart < endTT; cycleStart += starOccultationSiderealMonthDays {
 		cycleEnd := math.Min(cycleStart+starOccultationSiderealMonthDays, endTT)
 		scanStart := math.Max(startTT-step, cycleStart-step)
 		scanEnd := math.Min(endTT+step, cycleEnd+step)
-		if !starOccultationLatitudeEnvelopePass(scanStart, scanEnd, star, nil, safetyMarginArcsec) {
+		if !starOccultationLatitudeEnvelopePass(scanStart, scanEnd, star, nil, safetyMarginArcsec, inst) {
 			continue
 		}
 		results = append(results, starOccultationScanCandidates(
 			scanStart, scanEnd, step,
-			func(tt float64) float64 { return starOccultationGeocentricSeparationArcsec(tt, star) },
+			func(tt float64) float64 { return starOccultationGeocentricSeparationArcsec(tt, star, inst) },
 			func(tt float64) bool {
-				return starOccultationLatitudePassGeocentric(tt, star, safetyMarginArcsec)
+				return starOccultationLatitudePassGeocentric(tt, star, safetyMarginArcsec, inst)
 			},
 		)...)
 	}
@@ -216,23 +210,25 @@ func uniqueOccultationCandidateTimes(times []float64, startTT, endTT float64) []
 	return unique
 }
 
-func starOccultationLatitudeEnvelopePass(startTT, endTT float64, star StarCoordinate, observer *Observer, safetyMarginArcsec float64) bool {
+func starOccultationLatitudeEnvelopePass(startTT, endTT float64, star StarCoordinate, observer *Observer, safetyMarginArcsec float64, instances ...*Instance) bool {
+	inst := instanceValue(instances)
+
 	minimumLatitude := math.Inf(1)
 	maximumLatitude := math.Inf(-1)
 	maximumMoonRadiusDeg := 0.0
 	for _, tt := range []float64{startTT, (startTT + endTT) / 2, endTT} {
 		var ra, dec float64
 		if observer == nil {
-			ra, dec = starApparentRaDecGeocentric(tt, star)
+			ra, dec = starApparentRaDecGeocentric(tt, star, inst)
 		} else {
-			ra, dec = starApparentRaDec(tt, star, *observer)
+			ra, dec = starApparentRaDec(tt, star, *observer, inst)
 		}
 		_, latitude := RaDecToLoBo(tt, ra, dec)
 		minimumLatitude = math.Min(minimumLatitude, latitude)
 		maximumLatitude = math.Max(maximumLatitude, latitude)
-		moonRadius := MoonSemidiameter(tt)
+		moonRadius := MoonSemidiameterWithInstance(tt, inst)
 		if observer != nil {
-			moonRadius = moonTopocentricSemidiameterN(tt, *observer, -1)
+			moonRadius = moonTopocentricSemidiameterN(tt, *observer, -1, inst)
 		}
 		maximumMoonRadiusDeg = math.Max(maximumMoonRadiusDeg, moonRadius/3600)
 	}
@@ -271,27 +267,31 @@ func starOccultationMinimizeValue(left, right float64, value func(float64) float
 	return (left + right) / 2
 }
 
-func starOccultationGeocentricSeparationArcsec(tt float64, star StarCoordinate) float64 {
-	moonRA, moonDec := HMoonGeocentricApparentRaDecN(tt, -1)
-	starRA, starDec, _ := starApparentRaDecDistanceGeocentric(tt, star)
+func starOccultationGeocentricSeparationArcsec(tt float64, star StarCoordinate, instances ...*Instance) float64 {
+	inst := instanceValue(instances)
+
+	moonRA, moonDec := HMoonGeocentricApparentRaDecNWithInstance(tt, -1, inst)
+	starRA, starDec, _ := starApparentRaDecDistanceGeocentric(tt, star, inst)
 	return angularSeparationDegrees(moonRA, moonDec, starRA, starDec) * 3600
 }
 
-func starOccultationBestObserver(seedTT, startTT, endTT float64, star StarCoordinate) (float64, Observer, float64, bool) {
+func starOccultationBestObserver(seedTT, startTT, endTT float64, star StarCoordinate, instances ...*Instance) (float64, Observer, float64, bool) {
+	inst := instanceValue(instances)
+
 	searchStart := seedTT - occultationPathSearchSpanDays
 	searchEnd := seedTT + occultationPathSearchSpanDays
-	outerStart, outerEnd, ok := starOccultationPathWindow(seedTT, searchStart, searchEnd, star, false)
+	outerStart, outerEnd, ok := starOccultationPathWindow(seedTT, searchStart, searchEnd, star, false, inst)
 	if !ok {
 		return 0, Observer{}, 0, false
 	}
-	greatestTT := starOccultationPathGreatest(seedTT, outerStart, outerEnd, star)
+	greatestTT := starOccultationPathGreatest(seedTT, outerStart, outerEnd, star, inst)
 	if greatestTT < startTT || greatestTT > endTT {
 		return 0, Observer{}, 0, false
 	}
-	point, pointOK := starOccultationPathCenterPoint(greatestTT, star, time.UTC)
+	point, pointOK := starOccultationPathCenterPoint(greatestTT, star, time.UTC, inst)
 	if !pointOK {
 		frameAt := func(tt float64) (occultationPathFrame, bool) {
-			return starOccultationPathFrameAt(tt, star)
+			return starOccultationPathFrameAt(tt, star, inst)
 		}
 		// 同行星最佳事件搜索：非中心路径的最佳站心取离影轴最近的椭球点，
 		// 外接触切点位于掩带边缘，只作最后回退。
@@ -300,15 +300,15 @@ func starOccultationBestObserver(seedTT, startTT, endTT float64, star StarCoordi
 		// the outer contact tangent on the band edge stays the last resort.
 		point, pointOK = occultationPathTrackPointForFrame(greatestTT, frameAt, time.UTC)
 		if !pointOK {
-			point, pointOK = occultationPathBoundaryPointForFrame(greatestTT, frameAt, time.UTC)
+			point, pointOK = occultationPathBoundaryPointForFrame(greatestTT, frameAt, time.UTC, inst)
 		}
 	}
 	if !pointOK {
 		return 0, Observer{}, 0, false
 	}
 	observer := Observer{Longitude: point.Longitude, Latitude: point.Latitude}
-	position := starMoonPositionAt(greatestTT, star, observer)
-	moonRadius := moonTopocentricSemidiameterN(greatestTT, observer, -1)
+	position := starMoonPositionAt(greatestTT, star, observer, inst)
+	moonRadius := moonTopocentricSemidiameterN(greatestTT, observer, -1, inst)
 	if !position.valid || !finite(moonRadius) {
 		return 0, Observer{}, 0, false
 	}
@@ -316,24 +316,43 @@ func starOccultationBestObserver(seedTT, startTT, endTT float64, star StarCoordi
 	return greatestTT, observer, metric, finite(metric)
 }
 
-func normalizeLongitude180(longitude float64) float64 {
-	longitude = math.Mod(longitude+180, 360)
-	if longitude < 0 {
-		longitude += 360
+func starOccultationInfoAtGreatest(greatestTT float64, star StarCoordinate, observer Observer, safetyMarginArcsec float64, location *time.Location, instances ...*Instance) (StarOccultationInfo, bool) {
+	inst := instanceValue(instances)
+
+	info, ok := starOccultationGreatestInfo(greatestTT, star, observer, safetyMarginArcsec, location, inst)
+	if !ok || info.MinimumSeparationArcsec > info.MoonSemidiameterArcsec {
+		return StarOccultationInfo{}, false
 	}
-	return longitude - 180
+	minimumResidual := info.MinimumSeparationArcsec - info.MoonSemidiameterArcsec
+	if math.Abs(minimumResidual) <= starOccultationGrazingTolerance {
+		info.Type = OccultationGrazing
+		info.Immersion = info.Greatest
+		info.Emersion = info.Greatest
+		info.ContactsComplete = true
+		return info, true
+	}
+	immersionTT, immersionOK := starOccultationContact(greatestTT, greatestTT-starOccultationContactSpanDays, -1, star, observer, inst)
+	emersionTT, emersionOK := starOccultationContact(greatestTT, greatestTT+starOccultationContactSpanDays, 1, star, observer, inst)
+	if !immersionOK || !emersionOK {
+		return StarOccultationInfo{}, false
+	}
+	info.Immersion = occultationTTToLocation(immersionTT, location)
+	info.Emersion = occultationTTToLocation(emersionTT, location)
+	info.ContactsComplete = true
+	return info, true
 }
 
-func starOccultationInfoAtGreatest(greatestTT float64, star StarCoordinate, observer Observer, safetyMarginArcsec float64, location *time.Location) (StarOccultationInfo, bool) {
-	if !starOccultationLatitudePass(greatestTT, star, observer, safetyMarginArcsec) {
+// starOccultationGreatestInfo 只填掩甚几何，不判断圆月面是否成掩、不求接触。
+func starOccultationGreatestInfo(greatestTT float64, star StarCoordinate, observer Observer, safetyMarginArcsec float64, location *time.Location, inst *Instance) (StarOccultationInfo, bool) {
+	if !starOccultationLatitudePass(greatestTT, star, observer, safetyMarginArcsec, inst) {
 		return StarOccultationInfo{}, false
 	}
-	minimumSeparation := starMoonSeparationArcsec(greatestTT, star, observer)
-	moonRadius := moonTopocentricSemidiameterN(greatestTT, observer, -1)
-	if !finite(minimumSeparation) || !finite(moonRadius) || minimumSeparation > moonRadius {
+	minimumSeparation := starMoonSeparationArcsec(greatestTT, star, observer, inst)
+	moonRadius := moonTopocentricSemidiameterN(greatestTT, observer, -1, inst)
+	if !finite(minimumSeparation) || !finite(moonRadius) {
 		return StarOccultationInfo{}, false
 	}
-	greatestPosition := starMoonPositionAt(greatestTT, star, observer)
+	greatestPosition := starMoonPositionAt(greatestTT, star, observer, inst)
 	if !greatestPosition.valid {
 		return StarOccultationInfo{}, false
 	}
@@ -349,23 +368,6 @@ func starOccultationInfoAtGreatest(greatestTT float64, star StarCoordinate, obse
 		MoonAzimuthAtGreatest:   occultationAzimuth(greatestTT, observer, greatestPosition.moonRA, greatestPosition.moonDec),
 	}
 	info.VisibleAtGreatest = info.MoonAltitudeAtGreatest >= 0
-
-	minimumResidual := minimumSeparation - moonRadius
-	if math.Abs(minimumResidual) <= starOccultationGrazingTolerance {
-		info.Type = OccultationGrazing
-		info.Immersion = info.Greatest
-		info.Emersion = info.Greatest
-		info.ContactsComplete = true
-		return info, true
-	}
-	immersionTT, immersionOK := starOccultationContact(greatestTT, greatestTT-starOccultationContactSpanDays, -1, star, observer)
-	emersionTT, emersionOK := starOccultationContact(greatestTT, greatestTT+starOccultationContactSpanDays, 1, star, observer)
-	if !immersionOK || !emersionOK {
-		return StarOccultationInfo{}, false
-	}
-	info.Immersion = occultationTTToLocation(immersionTT, location)
-	info.Emersion = occultationTTToLocation(emersionTT, location)
-	info.ContactsComplete = true
 	return info, true
 }
 
@@ -375,9 +377,11 @@ type starMoonPosition struct {
 	valid           bool
 }
 
-func starMoonPositionAt(tt float64, star StarCoordinate, observer Observer) starMoonPosition {
-	moonRA, moonDec := moonTopocentricApparentRaDec(tt, observer, -1)
-	starRA, starDec := starApparentRaDec(tt, star, observer)
+func starMoonPositionAt(tt float64, star StarCoordinate, observer Observer, instances ...*Instance) starMoonPosition {
+	inst := instanceValue(instances)
+
+	moonRA, moonDec := moonTopocentricApparentRaDec(tt, observer, -1, inst)
+	starRA, starDec := starApparentRaDec(tt, star, observer, inst)
 	return starMoonPosition{
 		moonRA:  moonRA,
 		moonDec: moonDec,
@@ -387,16 +391,20 @@ func starMoonPositionAt(tt float64, star StarCoordinate, observer Observer) star
 	}
 }
 
-func moonTopocentricApparentRaDec(tt float64, observer Observer, n int) (float64, float64) {
-	ra, dec := HMoonGeocentricApparentRaDecN(tt, n)
+func moonTopocentricApparentRaDec(tt float64, observer Observer, n int, instances ...*Instance) (float64, float64) {
+	inst := instanceValue(instances)
+
+	ra, dec := HMoonGeocentricApparentRaDecNWithInstance(tt, n, inst)
 	ut := TT2UTC(tt)
-	distanceAU := HMoonAwayN(tt, n) / 149597870.7
+	distanceAU := HMoonAwayNWithInstance(tt, n, inst) / 149597870.7
 	ra, dec = TopocentricRaDec(ra, dec, observer.Latitude, observer.Longitude, ut, distanceAU, observer.Height)
 	return normalizeRA(ra), dec
 }
 
-func starApparentRaDec(tt float64, star StarCoordinate, observer Observer) (float64, float64) {
-	ra, dec, distanceAU := starApparentRaDecDistanceGeocentric(tt, star)
+func starApparentRaDec(tt float64, star StarCoordinate, observer Observer, instances ...*Instance) (float64, float64) {
+	inst := instanceValue(instances)
+
+	ra, dec, distanceAU := starApparentRaDecDistanceGeocentric(tt, star, inst)
 	if distanceAU > 0 {
 		ra, dec = TopocentricRaDec(ra, dec, observer.Latitude, observer.Longitude, TT2UTC(tt), distanceAU, observer.Height)
 		ra = normalizeRA(ra)
@@ -404,13 +412,17 @@ func starApparentRaDec(tt float64, star StarCoordinate, observer Observer) (floa
 	return ra, dec
 }
 
-func starApparentRaDecGeocentric(tt float64, star StarCoordinate) (float64, float64) {
-	ra, dec, _ := starApparentRaDecDistanceGeocentric(tt, star)
+func starApparentRaDecGeocentric(tt float64, star StarCoordinate, instances ...*Instance) (float64, float64) {
+	inst := instanceValue(instances)
+
+	ra, dec, _ := starApparentRaDecDistanceGeocentric(tt, star, inst)
 	return ra, dec
 }
 
 // starApparentRaDecDistanceGeocentric 同时给出视位置与推进后的距离（天文单位，0 表示距离未知）。
-func starApparentRaDecDistanceGeocentric(tt float64, star StarCoordinate) (float64, float64, float64) {
+func starApparentRaDecDistanceGeocentric(tt float64, star StarCoordinate, instances ...*Instance) (float64, float64, float64) {
+	inst := instanceValue(instances)
+
 	epochJD := occultationTimeToTT(star.Epoch)
 	parallaxMas := star.parallaxMas()
 	ra := star.RA
@@ -419,13 +431,13 @@ func starApparentRaDecDistanceGeocentric(tt float64, star StarCoordinate) (float
 	if star.Frame == CoordinateFrameICRS {
 		ra, dec = starICRSToMeanJ2000RaDec(ra, dec)
 	} else if star.Frame == CoordinateFrameApparentOfDate {
-		ra, dec = starApparentToMeanRaDec(epochJD, ra, dec, parallaxMas)
+		ra, dec = starApparentToMeanRaDec(epochJD, ra, dec, parallaxMas, inst)
 		precessionEpoch = epochJD
 	}
 	epochDistanceAU := starEpochDistanceAU(parallaxMas)
 	ra, dec, distanceAU := starProperMotionRaDec(tt, star, ra, dec, epochDistanceAU)
 	ra, dec = Precess(ra, dec, precessionEpoch, tt)
-	ra, dec = starMeanToApparentRaDec(tt, ra, dec, parallaxMasAtDistance(parallaxMas, distanceAU))
+	ra, dec = starMeanToApparentRaDec(tt, ra, dec, parallaxMasAtDistance(parallaxMas, distanceAU), inst)
 	return ra, dec, distanceAU
 }
 
@@ -493,47 +505,39 @@ func starProperMotionRaDec3D(ra, dec, years, epochDistanceAU float64, star StarC
 }
 
 func starICRSToMeanJ2000RaDec(ra, dec float64) (float64, float64) {
-	// IAU SOFA 框架偏差矩阵，将 GCRS/ICRS 向量转换为 J2000.0 平均赤道和春分点。
-	// IAU SOFA frame-bias matrix, transforming a GCRS/ICRS vector to the mean equator and equinox of J2000.0.
-	const (
-		b00 = 0.9999999999999942
-		b01 = -0.7078279744199197e-7
-		b02 = 0.8056217146976134e-7
-		b10 = 0.7078279477857337e-7
-		b11 = 0.9999999999999969
-		b12 = 0.3306041454222148e-7
-		b20 = -0.8056217380986972e-7
-		b21 = -0.3306040883980553e-7
-		b22 = 0.9999999999999962
-	)
+	b := iau2006.FrameBias()
 	raRad := ra * math.Pi / 180
 	decRad := dec * math.Pi / 180
 	x := math.Cos(decRad) * math.Cos(raRad)
 	y := math.Cos(decRad) * math.Sin(raRad)
 	z := math.Sin(decRad)
-	biasedX := b00*x + b01*y + b02*z
-	biasedY := b10*x + b11*y + b12*z
-	biasedZ := b20*x + b21*y + b22*z
+	biasedX := b[0][0]*x + b[0][1]*y + b[0][2]*z
+	biasedY := b[1][0]*x + b[1][1]*y + b[1][2]*z
+	biasedZ := b[2][0]*x + b[2][1]*y + b[2][2]*z
 	return normalizeRA(math.Atan2(biasedY, biasedX) * 180 / math.Pi),
 		math.Atan2(biasedZ, math.Hypot(biasedX, biasedY)) * 180 / math.Pi
 }
 
-func starMeanToApparentRaDec(tt, ra, dec, parallaxMas float64) (float64, float64) {
+func starMeanToApparentRaDec(tt, ra, dec, parallaxMas float64, instances ...*Instance) (float64, float64) {
+	inst := instanceValue(instances)
+
 	longitude, latitude := starMeanEquatorialToEcliptic(tt, ra, dec)
 	if parallaxMas > 0 {
-		longitude, latitude = starAnnualParallaxEcliptic(tt, longitude, latitude, parallaxMas)
+		longitude, latitude = starAnnualParallaxEcliptic(tt, longitude, latitude, parallaxMas, inst)
 	}
 	meanLongitude, meanLatitude := longitude, latitude
-	longitude = normalizeRA(meanLongitude + GXCLo(meanLongitude, meanLatitude, tt)/3600 + Nutation2000Bi(tt))
-	latitude = meanLatitude + GXCBo(meanLongitude, meanLatitude, tt)/3600
+	longitude = normalizeRA(meanLongitude + GXCLoWithInstance(meanLongitude, meanLatitude, tt, inst)/3600 + Nutation2000Bi(tt))
+	latitude = meanLatitude + GXCBoWithInstance(meanLongitude, meanLatitude, tt, inst)/3600
 	ra, dec = LoBoToRaDec(tt, longitude, latitude)
 	return normalizeRA(ra), dec
 }
 
-func starApparentToMeanRaDec(tt, apparentRA, apparentDec, parallaxMas float64) (float64, float64) {
+func starApparentToMeanRaDec(tt, apparentRA, apparentDec, parallaxMas float64, instances ...*Instance) (float64, float64) {
+	inst := instanceValue(instances)
+
 	meanRA, meanDec := apparentRA, apparentDec
 	for i := 0; i < 8; i++ {
-		computedRA, computedDec := starMeanToApparentRaDec(tt, meanRA, meanDec, parallaxMas)
+		computedRA, computedDec := starMeanToApparentRaDec(tt, meanRA, meanDec, parallaxMas, inst)
 		meanRA = normalizeRA(meanRA - signedAngleDifference(computedRA, apparentRA))
 		meanDec -= computedDec - apparentDec
 	}
@@ -554,7 +558,9 @@ func starMeanEquatorialToEcliptic(tt, ra, dec float64) (float64, float64) {
 	return normalizeRA(longitude), latitude
 }
 
-func starAnnualParallaxEcliptic(tt, longitude, latitude, parallaxMas float64) (float64, float64) {
+func starAnnualParallaxEcliptic(tt, longitude, latitude, parallaxMas float64, instances ...*Instance) (float64, float64) {
+	inst := instanceValue(instances)
+
 	distanceAU := 206264806.247 / parallaxMas
 	longitudeRad := longitude * math.Pi / 180
 	latitudeRad := latitude * math.Pi / 180
@@ -563,8 +569,8 @@ func starAnnualParallaxEcliptic(tt, longitude, latitude, parallaxMas float64) (f
 	starY := distanceAU * cosLatitude * math.Sin(longitudeRad)
 	starZ := distanceAU * math.Sin(latitudeRad)
 
-	earthLongitude := normalizeRA(HSunTrueLoN(tt, -1)+180) * math.Pi / 180
-	earthDistance := EarthAwayN(tt, -1)
+	earthLongitude := normalizeRA(HSunTrueLoNWithInstance(tt, -1, inst)+180) * math.Pi / 180
+	earthDistance := EarthAwayNWithInstance(tt, -1, inst)
 	starX -= earthDistance * math.Cos(earthLongitude)
 	starY -= earthDistance * math.Sin(earthLongitude)
 
@@ -580,33 +586,41 @@ func starOccultationLongitudeDistance(tt float64, star StarCoordinate, observer 
 	return math.Abs(signedAngleDifference(moonLongitude, starLongitude))
 }
 
-func starMoonSeparationArcsec(tt float64, star StarCoordinate, observer Observer) float64 {
-	position := starMoonPositionAt(tt, star, observer)
+func starMoonSeparationArcsec(tt float64, star StarCoordinate, observer Observer, instances ...*Instance) float64 {
+	inst := instanceValue(instances)
+
+	position := starMoonPositionAt(tt, star, observer, inst)
 	if !position.valid {
 		return math.Inf(1)
 	}
 	return angularSeparationDegrees(position.moonRA, position.moonDec, position.starRA, position.starDec) * 3600
 }
 
-func starOccultationLatitudePass(tt float64, star StarCoordinate, observer Observer, safetyMarginArcsec float64) bool {
-	starRA, starDec := starApparentRaDec(tt, star, observer)
+func starOccultationLatitudePass(tt float64, star StarCoordinate, observer Observer, safetyMarginArcsec float64, instances ...*Instance) bool {
+	inst := instanceValue(instances)
+
+	starRA, starDec := starApparentRaDec(tt, star, observer, inst)
 	_, starLatitude := RaDecToLoBo(tt, starRA, starDec)
-	moonLatitude := HMoonTrueBoN(tt, 8)
-	moonRadius := moonTopocentricSemidiameterN(tt, observer, -1)
+	moonLatitude := HMoonTrueBoNWithInstance(tt, 8, inst)
+	moonRadius := moonTopocentricSemidiameterN(tt, observer, -1, inst)
 	limit := moonRadius + starOccultationLatitudeMarginAS + safetyMarginArcsec
 	return math.Abs(starLatitude-moonLatitude)*3600 <= limit
 }
 
-func starOccultationLatitudePassGeocentric(tt float64, star StarCoordinate, safetyMarginArcsec float64) bool {
-	starRA, starDec := starApparentRaDecGeocentric(tt, star)
+func starOccultationLatitudePassGeocentric(tt float64, star StarCoordinate, safetyMarginArcsec float64, instances ...*Instance) bool {
+	inst := instanceValue(instances)
+
+	starRA, starDec := starApparentRaDecGeocentric(tt, star, inst)
 	_, starLatitude := RaDecToLoBo(tt, starRA, starDec)
-	moonLatitude := HMoonTrueBoN(tt, 8)
-	limit := MoonSemidiameter(tt) + starOccultationLatitudeMarginAS + safetyMarginArcsec
+	moonLatitude := HMoonTrueBoNWithInstance(tt, 8, inst)
+	limit := MoonSemidiameterWithInstance(tt, inst) + starOccultationLatitudeMarginAS + safetyMarginArcsec
 	return math.Abs(starLatitude-moonLatitude)*3600 <= limit
 }
 
-func starOccultationContact(greatestTT, boundaryTT float64, direction int, star StarCoordinate, observer Observer) (float64, bool) {
-	valueAtGreatest := starMoonSeparationArcsec(greatestTT, star, observer) - moonTopocentricSemidiameterN(greatestTT, observer, -1)
+func starOccultationContact(greatestTT, boundaryTT float64, direction int, star StarCoordinate, observer Observer, instances ...*Instance) (float64, bool) {
+	inst := instanceValue(instances)
+
+	valueAtGreatest := starMoonSeparationArcsec(greatestTT, star, observer, inst) - moonTopocentricSemidiameterN(greatestTT, observer, -1, inst)
 	if !finite(valueAtGreatest) || valueAtGreatest > 0 {
 		return math.NaN(), false
 	}
@@ -621,9 +635,9 @@ func starOccultationContact(greatestTT, boundaryTT float64, direction int, star 
 		if direction > 0 && nextTT > boundaryTT {
 			nextTT = boundaryTT
 		}
-		nextValue := starMoonSeparationArcsec(nextTT, star, observer) - moonTopocentricSemidiameterN(nextTT, observer, -1)
+		nextValue := starMoonSeparationArcsec(nextTT, star, observer, inst) - moonTopocentricSemidiameterN(nextTT, observer, -1, inst)
 		if finite(nextValue) && nextValue >= 0 {
-			return starOccultationRoot(currentTT, nextTT, currentValue, nextValue, star, observer)
+			return starOccultationRoot(currentTT, nextTT, currentValue, nextValue, star, observer, inst)
 		}
 		if nextTT == boundaryTT {
 			return math.NaN(), false
@@ -634,7 +648,9 @@ func starOccultationContact(greatestTT, boundaryTT float64, direction int, star 
 	return math.NaN(), false
 }
 
-func starOccultationRoot(leftTT, rightTT, leftValue, rightValue float64, star StarCoordinate, observer Observer) (float64, bool) {
+func starOccultationRoot(leftTT, rightTT, leftValue, rightValue float64, star StarCoordinate, observer Observer, instances ...*Instance) (float64, bool) {
+	inst := instanceValue(instances)
+
 	if !finite(leftValue) || !finite(rightValue) || leftValue*rightValue > 0 {
 		return math.NaN(), false
 	}
@@ -646,7 +662,7 @@ func starOccultationRoot(leftTT, rightTT, leftValue, rightValue float64, star St
 	}
 	for i := 0; i < 64 && math.Abs(rightTT-leftTT) > starOccultationRootToleranceDays; i++ {
 		midTT := (leftTT + rightTT) / 2
-		midValue := starMoonSeparationArcsec(midTT, star, observer) - moonTopocentricSemidiameterN(midTT, observer, -1)
+		midValue := starMoonSeparationArcsec(midTT, star, observer, inst) - moonTopocentricSemidiameterN(midTT, observer, -1, inst)
 		if !finite(midValue) {
 			return math.NaN(), false
 		}

@@ -1,6 +1,10 @@
 package basic
 
-import "math"
+import (
+	"math"
+
+	"github.com/starainrt/astro/internal/geodata"
+)
 
 func uniqueSolarEclipsePathTimes(times []float64) []float64 {
 	return movingDiskUniqueTimes(times)
@@ -229,12 +233,12 @@ func (solver solarEclipseSolver) centralPathPointAt(jde float64) (SolarEclipsePa
 	}
 
 	longitude, latitude := solarEclipseIntersectionGeodetic(intersection, axis)
-	sunAltitudeRad := solarEclipseSunAltitudeAtGreatest(jde, longitude, latitude, axis.gst)
+	sunAltitudeRad := solarEclipseSunAltitudeAtGreatest(jde, longitude, latitude, axis.gst, solver.inst)
 	radii := solver.shadowRadiiAt(moon[2] - intersection.r2)
 
 	widthKM := 0.0
 	if math.Abs(math.Sin(sunAltitudeRad)) > 1e-12 {
-		widthKM = math.Abs(2*radii.umbraRadius*solarEclipseEarthEquatorialRadiusKM) / math.Abs(math.Sin(sunAltitudeRad))
+		widthKM = math.Abs(2*radii.umbraRadius*geodata.EarthEquatorialRadiusKM) / math.Abs(math.Sin(sunAltitudeRad))
 	}
 
 	return SolarEclipsePathPoint{
@@ -364,13 +368,13 @@ func (solver solarEclipseSolver) centralPathLimitsAtAlong(
 		if fraction <= 0 || fraction >= 1 {
 			return
 		}
-		longitude := normalizeLongitude(first.Longitude + math.Remainder(second.Longitude-first.Longitude, 360)*fraction)
+		longitude := geodata.NormalizeLongitude(first.Longitude + math.Remainder(second.Longitude-first.Longitude, 360)*fraction)
 		latitudeValue := first.Latitude + (second.Latitude-first.Latitude)*fraction
 		candidates = append(candidates, SolarEclipsePathPoint{
 			JDE:         center.JDE,
 			Longitude:   longitude,
 			Latitude:    latitudeValue,
-			SunAltitude: solarEclipseSunAltitudeAtGreatest(center.JDE, longitude, latitudeValue, axis.gst) / rad,
+			SunAltitude: solarEclipseSunAltitudeAtGreatest(center.JDE, longitude, latitudeValue, axis.gst, solver.inst) / rad,
 			WidthKM:     center.WidthKM,
 		})
 	}
@@ -726,7 +730,7 @@ func (solver solarEclipseSolver) shadowContactPointAt(
 		return SolarEclipsePathPoint{}, false
 	}
 	longitude, latitude := solarEclipseIntersectionGeodetic(intersection, axis)
-	sunAltitudeRad := solarEclipseSunAltitudeAtGreatest(jde, longitude, latitude, axis.gst)
+	sunAltitudeRad := solarEclipseSunAltitudeAtGreatest(jde, longitude, latitude, axis.gst, solver.inst)
 	return SolarEclipsePathPoint{
 		JDE:         jde,
 		Longitude:   longitude,
@@ -1317,7 +1321,7 @@ func solarEclipsePathSphericalInterpolate(
 		firstWeight*firstVector[2] + secondWeight*secondVector[2],
 	}
 	coordinates := solarEclipseXYZToLLR(vector[0], vector[1], vector[2])
-	longitude := solarEclipseNormalizeSignedRadians(coordinates[0]) / rad
+	longitude := normalizeSignedRadians(coordinates[0]) / rad
 	return SolarEclipsePathPoint{
 		JDE:         first.JDE + fraction*(second.JDE-first.JDE),
 		Longitude:   longitude,
@@ -1328,14 +1332,5 @@ func solarEclipsePathSphericalInterpolate(
 }
 
 func solarEclipsePathDistanceKM(a, b SolarEclipsePathPoint) float64 {
-	lat1 := a.Latitude * rad
-	lat2 := b.Latitude * rad
-	dlat := lat2 - lat1
-	dlon := solarEclipseNormalizeSignedRadians((b.Longitude - a.Longitude) * rad)
-	h := math.Sin(dlat/2)*math.Sin(dlat/2) +
-		math.Cos(lat1)*math.Cos(lat2)*math.Sin(dlon/2)*math.Sin(dlon/2)
-	if h > 1 {
-		h = 1
-	}
-	return 2 * solarEclipseEarthEquatorialRadiusKM * math.Asin(math.Sqrt(h))
+	return geodata.EarthEquatorialRadiusKM * geodata.CentralAngle(a.Longitude, a.Latitude, b.Longitude, b.Latitude)
 }

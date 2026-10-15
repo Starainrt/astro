@@ -80,7 +80,7 @@ func prepareTopologyPoints(points []GeoPoint) ([]GeoPoint, bool) {
 	normalized := make([]GeoPoint, len(points))
 	copy(normalized, points)
 	for index := range normalized {
-		normalized[index].Longitude = normalizeLongitude(normalized[index].Longitude)
+		normalized[index].Longitude = NormalizeLongitude(normalized[index].Longitude)
 	}
 	return normalized, true
 }
@@ -382,17 +382,17 @@ func hemisphereIntersection(a, b GeoPoint) GeoPoint {
 	firstSign := firstVector.z
 	secondSign := secondVector.z
 	if math.Abs(firstSign) <= 1e-15 {
-		return GeoPoint{Longitude: normalizeLongitude(first.Longitude), Latitude: 0}
+		return GeoPoint{Longitude: NormalizeLongitude(first.Longitude), Latitude: 0}
 	}
 	if math.Abs(secondSign) <= 1e-15 {
-		return GeoPoint{Longitude: normalizeLongitude(second.Longitude), Latitude: 0}
+		return GeoPoint{Longitude: NormalizeLongitude(second.Longitude), Latitude: 0}
 	}
 	left, right := 0.0, 1.0
 	for iteration := 0; iteration < 64; iteration++ {
 		middle := (left + right) / 2
 		point := sphericalInterpolate(first, second, middle)
 		if point.Latitude == 0 || right-left <= 1e-13 {
-			return GeoPoint{Longitude: normalizeLongitude(point.Longitude), Latitude: 0}
+			return GeoPoint{Longitude: NormalizeLongitude(point.Longitude), Latitude: 0}
 		}
 		if point.Latitude*first.Latitude > 0 {
 			left = middle
@@ -401,7 +401,7 @@ func hemisphereIntersection(a, b GeoPoint) GeoPoint {
 		}
 	}
 	point := sphericalInterpolate(first, second, (left+right)/2)
-	return GeoPoint{Longitude: normalizeLongitude(point.Longitude), Latitude: 0}
+	return GeoPoint{Longitude: NormalizeLongitude(point.Longitude), Latitude: 0}
 }
 
 func sphericalLongitudeIntersection(a, b GeoPoint, boundary, adjustedLongitude float64) GeoPoint {
@@ -432,14 +432,6 @@ func sphericalLongitudeIntersection(a, b GeoPoint, boundary, adjustedLongitude f
 	}
 	point := sphericalInterpolate(a, b, (left+right)/2)
 	return GeoPoint{Longitude: boundary, Latitude: point.Latitude}
-}
-
-func normalizeLongitude(value float64) float64 {
-	value = math.Mod(value+180, 360)
-	if value < 0 {
-		value += 360
-	}
-	return value - 180
 }
 
 // equirectangularSeamShift 返回把等经纬接缝从 ±180 搬到视图中心对面所需的经度旋转量。
@@ -473,7 +465,7 @@ func rotateLongitudes(points []GeoPoint, shift float64) []GeoPoint {
 	rotated := make([]GeoPoint, len(points))
 	copy(rotated, points)
 	for index := range rotated {
-		rotated[index].Longitude = normalizeLongitude180(rotated[index].Longitude + shift)
+		rotated[index].Longitude = NormalizeLongitude(rotated[index].Longitude + shift)
 	}
 	return rotated
 }
@@ -492,12 +484,4 @@ func unshiftLongitudesInPlace(points []GeoPoint, shift float64) {
 		}
 		points[index].Longitude = value
 	}
-}
-
-func normalizeLongitude180(longitude float64) float64 {
-	value := math.Mod(longitude+180, 360)
-	if value < 0 {
-		value += 360
-	}
-	return value - 180
 }

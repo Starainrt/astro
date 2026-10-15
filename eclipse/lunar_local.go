@@ -99,57 +99,63 @@ type LocalLunarEclipseInfo struct {
 }
 
 // LocalLunarEclipseOnDate 当地可见月食查询 / local visible lunar eclipse query.
-// Determine whether a visible local lunar eclipse occurs on the local date, using Danjon by default.
-func LocalLunarEclipseOnDate(date time.Time, lon, lat, height float64) (LocalLunarEclipseInfo, bool) {
-	return LocalLunarEclipseOnDateDanjon(date, lon, lat, height)
+func (module *Eclipse) LocalLunarEclipseOnDate(date time.Time, lon, lat, height float64) (LocalLunarEclipseInfo, bool) {
+	return module.LocalLunarEclipseOnDateDanjon(date, lon, lat, height)
 }
 
 // LocalLunarEclipseOnDateDanjon 当地可见月食查询（Danjon） / local visible lunar eclipse query with Danjon model.
-// Determine whether a visible local lunar eclipse occurs on the local date with the Danjon model.
-func LocalLunarEclipseOnDateDanjon(date time.Time, lon, lat, height float64) (LocalLunarEclipseInfo, bool) {
-	return localLunarEclipseOnDate(date, lon, lat, height, basic.LunarEclipseDanjon, localLunarEclipseQueryVisible)
+func (module *Eclipse) LocalLunarEclipseOnDateDanjon(date time.Time, lon, lat, height float64) (LocalLunarEclipseInfo, bool) {
+	return localLunarEclipseOnDate(date, lon, lat, height, func(seedJDE float64) basic.LunarEclipseResult {
+		return module.lunarResult(seedJDE, false)
+	}, localLunarEclipseQueryVisible, module)
 }
 
 // LocalLunarEclipseOnDateChauvenet 当地可见月食查询（Chauvenet） / local visible lunar eclipse query with Chauvenet model.
-// Determine whether a visible local lunar eclipse occurs on the local date with the Chauvenet model.
-func LocalLunarEclipseOnDateChauvenet(date time.Time, lon, lat, height float64) (LocalLunarEclipseInfo, bool) {
-	return localLunarEclipseOnDate(date, lon, lat, height, basic.LunarEclipseChauvenet, localLunarEclipseQueryVisible)
+func (module *Eclipse) LocalLunarEclipseOnDateChauvenet(date time.Time, lon, lat, height float64) (LocalLunarEclipseInfo, bool) {
+	return localLunarEclipseOnDate(date, lon, lat, height, func(seedJDE float64) basic.LunarEclipseResult {
+		return module.lunarResult(seedJDE, true)
+	}, localLunarEclipseQueryVisible, module)
 }
 
 // GeometricLocalLunarEclipseOnDate 当地几何月食查询 / local geometric lunar eclipse query.
-// Determine whether a geometric local lunar eclipse occurs on the local date, using Danjon by default.
-func GeometricLocalLunarEclipseOnDate(date time.Time, lon, lat, height float64) (LocalLunarEclipseInfo, bool) {
-	return GeometricLocalLunarEclipseOnDateDanjon(date, lon, lat, height)
+func (module *Eclipse) GeometricLocalLunarEclipseOnDate(date time.Time, lon, lat, height float64) (LocalLunarEclipseInfo, bool) {
+	return module.GeometricLocalLunarEclipseOnDateDanjon(date, lon, lat, height)
 }
 
 // GeometricLocalLunarEclipseOnDateDanjon 当地几何月食查询（Danjon） / local geometric lunar eclipse query with Danjon model.
-// Determine whether a geometric local lunar eclipse occurs on the local date with the Danjon model.
-func GeometricLocalLunarEclipseOnDateDanjon(date time.Time, lon, lat, height float64) (LocalLunarEclipseInfo, bool) {
-	return localLunarEclipseOnDate(date, lon, lat, height, basic.LunarEclipseDanjon, localLunarEclipseQueryGeometric)
+func (module *Eclipse) GeometricLocalLunarEclipseOnDateDanjon(date time.Time, lon, lat, height float64) (LocalLunarEclipseInfo, bool) {
+	return localLunarEclipseOnDate(date, lon, lat, height, func(seedJDE float64) basic.LunarEclipseResult {
+		return module.lunarResult(seedJDE, false)
+	}, localLunarEclipseQueryGeometric, module)
 }
 
 // GeometricLocalLunarEclipseOnDateChauvenet 当地几何月食查询（Chauvenet） / local geometric lunar eclipse query with Chauvenet model.
-// Determine whether a geometric local lunar eclipse occurs on the local date with the Chauvenet model.
-func GeometricLocalLunarEclipseOnDateChauvenet(date time.Time, lon, lat, height float64) (LocalLunarEclipseInfo, bool) {
-	return localLunarEclipseOnDate(date, lon, lat, height, basic.LunarEclipseChauvenet, localLunarEclipseQueryGeometric)
+func (module *Eclipse) GeometricLocalLunarEclipseOnDateChauvenet(date time.Time, lon, lat, height float64) (LocalLunarEclipseInfo, bool) {
+	return localLunarEclipseOnDate(date, lon, lat, height, func(seedJDE float64) basic.LunarEclipseResult {
+		return module.lunarResult(seedJDE, true)
+	}, localLunarEclipseQueryGeometric, module)
 }
 
 func localLunarEclipseOnDate(
 	date time.Time,
 	lon, lat, height float64,
 	calculator lunarEclipseCalculator,
-	mode localLunarEclipseQueryMode,
-) (LocalLunarEclipseInfo, bool) {
+	mode localLunarEclipseQueryMode, modules ...*Eclipse) (LocalLunarEclipseInfo, bool) {
+	module := &defaultModule
+	if len(modules) > 0 {
+		module = modules[0]
+	}
+
 	location := date.Location()
 	dayStart, dayMid, dayEnd := lunarEclipseLocalDayBounds(date)
 
-	phaseDiff := moonSunLoDiff(dayMid)
+	phaseDiff := moonSunLoDiffWithInstance(dayMid, module.inst)
 	if phaseDiff < lunarEclipseDayPhaseMin || phaseDiff > lunarEclipseDayPhaseMax {
 		return LocalLunarEclipseInfo{}, false
 	}
 
-	candidateTT := basic.CalcMoonSHByJDE(timeToTTJDE(dayMid), 1)
-	if !isPotentialLunarEclipse(candidateTT) {
+	candidateTT := basic.CalcMoonSHByJDEWithInstance(timeToTTJDE(dayMid), 1, module.inst)
+	if !isPotentialLunarEclipseWithInstance(candidateTT, module.inst) {
 		return LocalLunarEclipseInfo{}, false
 	}
 
@@ -158,157 +164,176 @@ func localLunarEclipseOnDate(
 		return LocalLunarEclipseInfo{}, false
 	}
 
-	info := localLunarEclipseInfoFromBasic(result, lon, lat, height, location)
+	info := localLunarEclipseInfoFromBasic(result, lon, lat, height, location, module)
 	if !localLunarEclipseOverlapsDate(info, dayStart, dayEnd) {
 		return LocalLunarEclipseInfo{}, false
 	}
-	if mode == localLunarEclipseQueryVisible && !localLunarEclipseVisibleOnDate(info, dayStart, dayEnd) {
+	if mode == localLunarEclipseQueryVisible && !localLunarEclipseVisibleOnDate(info, dayStart, dayEnd, module) {
 		return LocalLunarEclipseInfo{}, false
 	}
 	return info, true
 }
 
 // LastLocalLunarEclipse 上次可见月食 / previous visible local lunar eclipse.
-// Previous visible local lunar eclipse, using Danjon by default.
-func LastLocalLunarEclipse(date time.Time, lon, lat, height float64) LocalLunarEclipseInfo {
-	return LastLocalLunarEclipseDanjon(date, lon, lat, height)
+func (module *Eclipse) LastLocalLunarEclipse(date time.Time, lon, lat, height float64) LocalLunarEclipseInfo {
+	return module.LastLocalLunarEclipseDanjon(date, lon, lat, height)
 }
 
 // LastLocalTotalLunarEclipse 上次可见月全食 / previous visible local total lunar eclipse.
-// Previous visible local total lunar eclipse, using Danjon by default.
-func LastLocalTotalLunarEclipse(date time.Time, lon, lat, height float64) (LocalLunarEclipseInfo, bool) {
-	return searchLocalTotalLunarEclipse(date, lon, lat, height, -1, true, basic.LunarEclipseDanjon, localLunarEclipseQueryVisible)
+func (module *Eclipse) LastLocalTotalLunarEclipse(date time.Time, lon, lat, height float64) (LocalLunarEclipseInfo, bool) {
+	return searchLocalTotalLunarEclipse(date, lon, lat, height, -1, true, func(seedJDE float64) basic.LunarEclipseResult {
+		return module.lunarResult(seedJDE, false)
+	}, localLunarEclipseQueryVisible, module)
 }
 
 // LastLocalLunarEclipseDanjon 上次可见月食（Danjon） / previous visible local lunar eclipse with Danjon model.
-// Previous visible local lunar eclipse with the Danjon model.
-func LastLocalLunarEclipseDanjon(date time.Time, lon, lat, height float64) LocalLunarEclipseInfo {
-	info, _ := searchLocalLunarEclipse(date, lon, lat, height, -1, true, basic.LunarEclipseDanjon, localLunarEclipseQueryVisible)
+func (module *Eclipse) LastLocalLunarEclipseDanjon(date time.Time, lon, lat, height float64) LocalLunarEclipseInfo {
+	info, _ := searchLocalLunarEclipse(date, lon, lat, height, -1, true, func(seedJDE float64) basic.LunarEclipseResult {
+		return module.lunarResult(seedJDE, false)
+	}, localLunarEclipseQueryVisible, module)
 	return info
 }
 
 // LastLocalLunarEclipseChauvenet 上次可见月食（Chauvenet） / previous visible local lunar eclipse with Chauvenet model.
-// Previous visible local lunar eclipse with the Chauvenet model.
-func LastLocalLunarEclipseChauvenet(date time.Time, lon, lat, height float64) LocalLunarEclipseInfo {
-	info, _ := searchLocalLunarEclipse(date, lon, lat, height, -1, true, basic.LunarEclipseChauvenet, localLunarEclipseQueryVisible)
+func (module *Eclipse) LastLocalLunarEclipseChauvenet(date time.Time, lon, lat, height float64) LocalLunarEclipseInfo {
+	info, _ := searchLocalLunarEclipse(date, lon, lat, height, -1, true, func(seedJDE float64) basic.LunarEclipseResult {
+		return module.lunarResult(seedJDE, true)
+	}, localLunarEclipseQueryVisible, module)
 	return info
 }
 
 // LastGeometricLocalLunarEclipse 上次几何月食 / previous geometric local lunar eclipse.
-// Previous geometric local lunar eclipse, using Danjon by default.
-func LastGeometricLocalLunarEclipse(date time.Time, lon, lat, height float64) LocalLunarEclipseInfo {
-	return LastGeometricLocalLunarEclipseDanjon(date, lon, lat, height)
+func (module *Eclipse) LastGeometricLocalLunarEclipse(date time.Time, lon, lat, height float64) LocalLunarEclipseInfo {
+	return module.LastGeometricLocalLunarEclipseDanjon(date, lon, lat, height)
 }
 
 // LastGeometricLocalLunarEclipseDanjon 上次几何月食（Danjon） / previous geometric local lunar eclipse with Danjon model.
-// Previous geometric local lunar eclipse with the Danjon model.
-func LastGeometricLocalLunarEclipseDanjon(date time.Time, lon, lat, height float64) LocalLunarEclipseInfo {
-	info, _ := searchLocalLunarEclipse(date, lon, lat, height, -1, true, basic.LunarEclipseDanjon, localLunarEclipseQueryGeometric)
+func (module *Eclipse) LastGeometricLocalLunarEclipseDanjon(date time.Time, lon, lat, height float64) LocalLunarEclipseInfo {
+	info, _ := searchLocalLunarEclipse(date, lon, lat, height, -1, true, func(seedJDE float64) basic.LunarEclipseResult {
+		return module.lunarResult(seedJDE, false)
+	}, localLunarEclipseQueryGeometric, module)
 	return info
 }
 
 // LastGeometricLocalLunarEclipseChauvenet 上次几何月食（Chauvenet） / previous geometric local lunar eclipse with Chauvenet model.
-// Previous geometric local lunar eclipse with the Chauvenet model.
-func LastGeometricLocalLunarEclipseChauvenet(date time.Time, lon, lat, height float64) LocalLunarEclipseInfo {
-	info, _ := searchLocalLunarEclipse(date, lon, lat, height, -1, true, basic.LunarEclipseChauvenet, localLunarEclipseQueryGeometric)
+func (module *Eclipse) LastGeometricLocalLunarEclipseChauvenet(date time.Time, lon, lat, height float64) LocalLunarEclipseInfo {
+	info, _ := searchLocalLunarEclipse(date, lon, lat, height, -1, true, func(seedJDE float64) basic.LunarEclipseResult {
+		return module.lunarResult(seedJDE, true)
+	}, localLunarEclipseQueryGeometric, module)
 	return info
 }
 
 // NextLocalLunarEclipse 下次可见月食 / next visible local lunar eclipse.
-// Next visible local lunar eclipse, using Danjon by default.
-func NextLocalLunarEclipse(date time.Time, lon, lat, height float64) LocalLunarEclipseInfo {
-	return NextLocalLunarEclipseDanjon(date, lon, lat, height)
+func (module *Eclipse) NextLocalLunarEclipse(date time.Time, lon, lat, height float64) LocalLunarEclipseInfo {
+	return module.NextLocalLunarEclipseDanjon(date, lon, lat, height)
 }
 
 // NextLocalTotalLunarEclipse 下次可见月全食 / next visible local total lunar eclipse.
-// Next visible local total lunar eclipse, using Danjon by default.
-func NextLocalTotalLunarEclipse(date time.Time, lon, lat, height float64) (LocalLunarEclipseInfo, bool) {
-	return searchLocalTotalLunarEclipse(date, lon, lat, height, 1, false, basic.LunarEclipseDanjon, localLunarEclipseQueryVisible)
+func (module *Eclipse) NextLocalTotalLunarEclipse(date time.Time, lon, lat, height float64) (LocalLunarEclipseInfo, bool) {
+	return searchLocalTotalLunarEclipse(date, lon, lat, height, 1, false, func(seedJDE float64) basic.LunarEclipseResult {
+		return module.lunarResult(seedJDE, false)
+	}, localLunarEclipseQueryVisible, module)
 }
 
 // NextLocalLunarEclipseDanjon 下次可见月食（Danjon） / next visible local lunar eclipse with Danjon model.
-// Next visible local lunar eclipse with the Danjon model.
-func NextLocalLunarEclipseDanjon(date time.Time, lon, lat, height float64) LocalLunarEclipseInfo {
-	info, _ := searchLocalLunarEclipse(date, lon, lat, height, 1, false, basic.LunarEclipseDanjon, localLunarEclipseQueryVisible)
+func (module *Eclipse) NextLocalLunarEclipseDanjon(date time.Time, lon, lat, height float64) LocalLunarEclipseInfo {
+	info, _ := searchLocalLunarEclipse(date, lon, lat, height, 1, false, func(seedJDE float64) basic.LunarEclipseResult {
+		return module.lunarResult(seedJDE, false)
+	}, localLunarEclipseQueryVisible, module)
 	return info
 }
 
 // NextLocalLunarEclipseChauvenet 下次可见月食（Chauvenet） / next visible local lunar eclipse with Chauvenet model.
-// Next visible local lunar eclipse with the Chauvenet model.
-func NextLocalLunarEclipseChauvenet(date time.Time, lon, lat, height float64) LocalLunarEclipseInfo {
-	info, _ := searchLocalLunarEclipse(date, lon, lat, height, 1, false, basic.LunarEclipseChauvenet, localLunarEclipseQueryVisible)
+func (module *Eclipse) NextLocalLunarEclipseChauvenet(date time.Time, lon, lat, height float64) LocalLunarEclipseInfo {
+	info, _ := searchLocalLunarEclipse(date, lon, lat, height, 1, false, func(seedJDE float64) basic.LunarEclipseResult {
+		return module.lunarResult(seedJDE, true)
+	}, localLunarEclipseQueryVisible, module)
 	return info
 }
 
 // NextGeometricLocalLunarEclipse 下次几何月食 / next geometric local lunar eclipse.
-// Next geometric local lunar eclipse, using Danjon by default.
-func NextGeometricLocalLunarEclipse(date time.Time, lon, lat, height float64) LocalLunarEclipseInfo {
-	return NextGeometricLocalLunarEclipseDanjon(date, lon, lat, height)
+func (module *Eclipse) NextGeometricLocalLunarEclipse(date time.Time, lon, lat, height float64) LocalLunarEclipseInfo {
+	return module.NextGeometricLocalLunarEclipseDanjon(date, lon, lat, height)
 }
 
 // NextGeometricLocalLunarEclipseDanjon 下次几何月食（Danjon） / next geometric local lunar eclipse with Danjon model.
-// Next geometric local lunar eclipse with the Danjon model.
-func NextGeometricLocalLunarEclipseDanjon(date time.Time, lon, lat, height float64) LocalLunarEclipseInfo {
-	info, _ := searchLocalLunarEclipse(date, lon, lat, height, 1, false, basic.LunarEclipseDanjon, localLunarEclipseQueryGeometric)
+func (module *Eclipse) NextGeometricLocalLunarEclipseDanjon(date time.Time, lon, lat, height float64) LocalLunarEclipseInfo {
+	info, _ := searchLocalLunarEclipse(date, lon, lat, height, 1, false, func(seedJDE float64) basic.LunarEclipseResult {
+		return module.lunarResult(seedJDE, false)
+	}, localLunarEclipseQueryGeometric, module)
 	return info
 }
 
 // NextGeometricLocalLunarEclipseChauvenet 下次几何月食（Chauvenet） / next geometric local lunar eclipse with Chauvenet model.
-// Next geometric local lunar eclipse with the Chauvenet model.
-func NextGeometricLocalLunarEclipseChauvenet(date time.Time, lon, lat, height float64) LocalLunarEclipseInfo {
-	info, _ := searchLocalLunarEclipse(date, lon, lat, height, 1, false, basic.LunarEclipseChauvenet, localLunarEclipseQueryGeometric)
+func (module *Eclipse) NextGeometricLocalLunarEclipseChauvenet(date time.Time, lon, lat, height float64) LocalLunarEclipseInfo {
+	info, _ := searchLocalLunarEclipse(date, lon, lat, height, 1, false, func(seedJDE float64) basic.LunarEclipseResult {
+		return module.lunarResult(seedJDE, true)
+	}, localLunarEclipseQueryGeometric, module)
 	return info
 }
 
 // ClosestLocalLunarEclipse 最近一次可见月食 / closest visible local lunar eclipse.
-// Closest visible local lunar eclipse, using Danjon by default.
-func ClosestLocalLunarEclipse(date time.Time, lon, lat, height float64) LocalLunarEclipseInfo {
-	return ClosestLocalLunarEclipseDanjon(date, lon, lat, height)
+func (module *Eclipse) ClosestLocalLunarEclipse(date time.Time, lon, lat, height float64) LocalLunarEclipseInfo {
+	return module.ClosestLocalLunarEclipseDanjon(date, lon, lat, height)
 }
 
 // ClosestLocalTotalLunarEclipse 最近一次可见月全食 / closest visible local total lunar eclipse.
-// Closest visible local total lunar eclipse, using Danjon by default.
-func ClosestLocalTotalLunarEclipse(date time.Time, lon, lat, height float64) (LocalLunarEclipseInfo, bool) {
-	last, hasLast := searchLocalTotalLunarEclipse(date, lon, lat, height, -1, true, basic.LunarEclipseDanjon, localLunarEclipseQueryVisible)
-	next, hasNext := searchLocalTotalLunarEclipse(date, lon, lat, height, 1, false, basic.LunarEclipseDanjon, localLunarEclipseQueryVisible)
+func (module *Eclipse) ClosestLocalTotalLunarEclipse(date time.Time, lon, lat, height float64) (LocalLunarEclipseInfo, bool) {
+	last, hasLast := searchLocalTotalLunarEclipse(date, lon, lat, height, -1, true, func(seedJDE float64) basic.LunarEclipseResult {
+		return module.lunarResult(seedJDE, false)
+	}, localLunarEclipseQueryVisible, module)
+	next, hasNext := searchLocalTotalLunarEclipse(date, lon, lat, height, 1, false, func(seedJDE float64) basic.LunarEclipseResult {
+		return module.lunarResult(seedJDE, false)
+	}, localLunarEclipseQueryVisible, module)
 	return closestLocalLunarEclipseResult(date, last, hasLast, next, hasNext)
 }
 
 // ClosestLocalLunarEclipseDanjon 最近一次可见月食（Danjon） / closest visible local lunar eclipse with Danjon model.
-// Closest visible local lunar eclipse with the Danjon model.
-func ClosestLocalLunarEclipseDanjon(date time.Time, lon, lat, height float64) LocalLunarEclipseInfo {
-	last, hasLast := searchLocalLunarEclipse(date, lon, lat, height, -1, true, basic.LunarEclipseDanjon, localLunarEclipseQueryVisible)
-	next, hasNext := searchLocalLunarEclipse(date, lon, lat, height, 1, false, basic.LunarEclipseDanjon, localLunarEclipseQueryVisible)
+func (module *Eclipse) ClosestLocalLunarEclipseDanjon(date time.Time, lon, lat, height float64) LocalLunarEclipseInfo {
+	last, hasLast := searchLocalLunarEclipse(date, lon, lat, height, -1, true, func(seedJDE float64) basic.LunarEclipseResult {
+		return module.lunarResult(seedJDE, false)
+	}, localLunarEclipseQueryVisible, module)
+	next, hasNext := searchLocalLunarEclipse(date, lon, lat, height, 1, false, func(seedJDE float64) basic.LunarEclipseResult {
+		return module.lunarResult(seedJDE, false)
+	}, localLunarEclipseQueryVisible, module)
 	return closestLocalLunarEclipse(date, last, hasLast, next, hasNext)
 }
 
 // ClosestLocalLunarEclipseChauvenet 最近一次可见月食（Chauvenet） / closest visible local lunar eclipse with Chauvenet model.
-// Closest visible local lunar eclipse with the Chauvenet model.
-func ClosestLocalLunarEclipseChauvenet(date time.Time, lon, lat, height float64) LocalLunarEclipseInfo {
-	last, hasLast := searchLocalLunarEclipse(date, lon, lat, height, -1, true, basic.LunarEclipseChauvenet, localLunarEclipseQueryVisible)
-	next, hasNext := searchLocalLunarEclipse(date, lon, lat, height, 1, false, basic.LunarEclipseChauvenet, localLunarEclipseQueryVisible)
+func (module *Eclipse) ClosestLocalLunarEclipseChauvenet(date time.Time, lon, lat, height float64) LocalLunarEclipseInfo {
+	last, hasLast := searchLocalLunarEclipse(date, lon, lat, height, -1, true, func(seedJDE float64) basic.LunarEclipseResult {
+		return module.lunarResult(seedJDE, true)
+	}, localLunarEclipseQueryVisible, module)
+	next, hasNext := searchLocalLunarEclipse(date, lon, lat, height, 1, false, func(seedJDE float64) basic.LunarEclipseResult {
+		return module.lunarResult(seedJDE, true)
+	}, localLunarEclipseQueryVisible, module)
 	return closestLocalLunarEclipse(date, last, hasLast, next, hasNext)
 }
 
 // ClosestGeometricLocalLunarEclipse 最近一次几何月食 / closest geometric local lunar eclipse.
-// Closest geometric local lunar eclipse, using Danjon by default.
-func ClosestGeometricLocalLunarEclipse(date time.Time, lon, lat, height float64) LocalLunarEclipseInfo {
-	return ClosestGeometricLocalLunarEclipseDanjon(date, lon, lat, height)
+func (module *Eclipse) ClosestGeometricLocalLunarEclipse(date time.Time, lon, lat, height float64) LocalLunarEclipseInfo {
+	return module.ClosestGeometricLocalLunarEclipseDanjon(date, lon, lat, height)
 }
 
 // ClosestGeometricLocalLunarEclipseDanjon 最近一次几何月食（Danjon） / closest geometric local lunar eclipse with Danjon model.
-// Closest geometric local lunar eclipse with the Danjon model.
-func ClosestGeometricLocalLunarEclipseDanjon(date time.Time, lon, lat, height float64) LocalLunarEclipseInfo {
-	last, hasLast := searchLocalLunarEclipse(date, lon, lat, height, -1, true, basic.LunarEclipseDanjon, localLunarEclipseQueryGeometric)
-	next, hasNext := searchLocalLunarEclipse(date, lon, lat, height, 1, false, basic.LunarEclipseDanjon, localLunarEclipseQueryGeometric)
+func (module *Eclipse) ClosestGeometricLocalLunarEclipseDanjon(date time.Time, lon, lat, height float64) LocalLunarEclipseInfo {
+	last, hasLast := searchLocalLunarEclipse(date, lon, lat, height, -1, true, func(seedJDE float64) basic.LunarEclipseResult {
+		return module.lunarResult(seedJDE, false)
+	}, localLunarEclipseQueryGeometric, module)
+	next, hasNext := searchLocalLunarEclipse(date, lon, lat, height, 1, false, func(seedJDE float64) basic.LunarEclipseResult {
+		return module.lunarResult(seedJDE, false)
+	}, localLunarEclipseQueryGeometric, module)
 	return closestLocalLunarEclipse(date, last, hasLast, next, hasNext)
 }
 
 // ClosestGeometricLocalLunarEclipseChauvenet 最近一次几何月食（Chauvenet） / closest geometric local lunar eclipse with Chauvenet model.
-// Closest geometric local lunar eclipse with the Chauvenet model.
-func ClosestGeometricLocalLunarEclipseChauvenet(date time.Time, lon, lat, height float64) LocalLunarEclipseInfo {
-	last, hasLast := searchLocalLunarEclipse(date, lon, lat, height, -1, true, basic.LunarEclipseChauvenet, localLunarEclipseQueryGeometric)
-	next, hasNext := searchLocalLunarEclipse(date, lon, lat, height, 1, false, basic.LunarEclipseChauvenet, localLunarEclipseQueryGeometric)
+func (module *Eclipse) ClosestGeometricLocalLunarEclipseChauvenet(date time.Time, lon, lat, height float64) LocalLunarEclipseInfo {
+	last, hasLast := searchLocalLunarEclipse(date, lon, lat, height, -1, true, func(seedJDE float64) basic.LunarEclipseResult {
+		return module.lunarResult(seedJDE, true)
+	}, localLunarEclipseQueryGeometric, module)
+	next, hasNext := searchLocalLunarEclipse(date, lon, lat, height, 1, false, func(seedJDE float64) basic.LunarEclipseResult {
+		return module.lunarResult(seedJDE, true)
+	}, localLunarEclipseQueryGeometric, module)
 	return closestLocalLunarEclipse(date, last, hasLast, next, hasNext)
 }
 
@@ -353,23 +378,27 @@ func searchLocalLunarEclipse(
 	direction int,
 	includeCurrent bool,
 	calculator lunarEclipseCalculator,
-	mode localLunarEclipseQueryMode,
-) (LocalLunarEclipseInfo, bool) {
+	mode localLunarEclipseQueryMode, modules ...*Eclipse) (LocalLunarEclipseInfo, bool) {
+	module := &defaultModule
+	if len(modules) > 0 {
+		module = modules[0]
+	}
+
 	targetTT := timeToTTJDE(date)
-	candidateTT := basic.CalcMoonSHByJDE(targetTT, 1)
+	candidateTT := basic.CalcMoonSHByJDEWithInstance(targetTT, 1, module.inst)
 
 	for i := 0; i < localLunarEclipseSearchLimit; i++ {
-		if isPotentialLunarEclipse(candidateTT) {
+		if isPotentialLunarEclipseWithInstance(candidateTT, module.inst) {
 			result := calculator(candidateTT)
 			if result.Type != basic.LunarEclipseNone {
-				info := localLunarEclipseInfoFromBasic(result, lon, lat, height, date.Location())
-				if (mode != localLunarEclipseQueryVisible || localLunarEclipseVisible(info)) &&
+				info := localLunarEclipseInfoFromBasic(result, lon, lat, height, date.Location(), module)
+				if (mode != localLunarEclipseQueryVisible || localLunarEclipseVisible(info, module)) &&
 					lunarEclipseMatchesDirection(result.Maximum, targetTT, direction, includeCurrent) {
 					return info, true
 				}
 			}
 		}
-		candidateTT = nextEclipseSearchCandidateTT(candidateTT, 1, direction, lunarEclipseSynodicMonthDays)
+		candidateTT = nextEclipseSearchCandidateTT(candidateTT, 1, direction, lunarEclipseSynodicMonthDays, module)
 	}
 
 	return LocalLunarEclipseInfo{}, false
@@ -381,23 +410,27 @@ func searchLocalTotalLunarEclipse(
 	direction int,
 	includeCurrent bool,
 	calculator lunarEclipseCalculator,
-	mode localLunarEclipseQueryMode,
-) (LocalLunarEclipseInfo, bool) {
+	mode localLunarEclipseQueryMode, modules ...*Eclipse) (LocalLunarEclipseInfo, bool) {
+	module := &defaultModule
+	if len(modules) > 0 {
+		module = modules[0]
+	}
+
 	targetTT := timeToTTJDE(date)
-	candidateTT := basic.CalcMoonSHByJDE(targetTT, 1)
+	candidateTT := basic.CalcMoonSHByJDEWithInstance(targetTT, 1, module.inst)
 
 	for i := 0; i < localLunarEclipseSearchLimit; i++ {
-		if isPotentialLunarEclipse(candidateTT) {
+		if isPotentialLunarEclipseWithInstance(candidateTT, module.inst) {
 			result := calculator(candidateTT)
 			if result.HasTotal {
-				info := localLunarEclipseInfoFromBasic(result, lon, lat, height, date.Location())
-				if (mode != localLunarEclipseQueryVisible || localTotalLunarEclipseVisible(info)) &&
+				info := localLunarEclipseInfoFromBasic(result, lon, lat, height, date.Location(), module)
+				if (mode != localLunarEclipseQueryVisible || localTotalLunarEclipseVisible(info, module)) &&
 					lunarEclipseMatchesDirection(result.Maximum, targetTT, direction, includeCurrent) {
 					return info, true
 				}
 			}
 		}
-		candidateTT = nextEclipseSearchCandidateTT(candidateTT, 1, direction, lunarEclipseSynodicMonthDays)
+		candidateTT = nextEclipseSearchCandidateTT(candidateTT, 1, direction, lunarEclipseSynodicMonthDays, module)
 	}
 
 	return LocalLunarEclipseInfo{}, false
@@ -406,12 +439,16 @@ func searchLocalTotalLunarEclipse(
 func localLunarEclipseInfoFromBasic(
 	result basic.LunarEclipseResult,
 	lon, lat, height float64,
-	location *time.Location,
-) LocalLunarEclipseInfo {
+	location *time.Location, modules ...*Eclipse) LocalLunarEclipseInfo {
+	module := &defaultModule
+	if len(modules) > 0 {
+		module = modules[0]
+	}
+
 	maximum := ttJDEToTime(result.Maximum, location)
 	visibleThreshold := localLunarEclipseVisibilityThreshold(height, lat)
-	moonAltitude := lunarAltitude(maximum, lon, lat)
-	saros, hasSaros := lunarSarosInfo(result.Maximum)
+	moonAltitude := lunarAltitude(maximum, lon, lat, module)
+	saros, hasSaros := lunarSarosInfoWithInstance(result.Maximum, module.inst)
 
 	info := LocalLunarEclipseInfo{
 		HasSaros:           hasSaros,
@@ -430,13 +467,13 @@ func localLunarEclipseInfoFromBasic(
 		PartialEnd:         ttJDEToTime(result.PartialEnd, location),
 		PenumbralEnd:       ttJDEToTime(result.PenumbralEnd, location),
 		MoonAltitude:       moonAltitude,
-		MoonAzimuth:        lunarAzimuth(maximum, lon, lat),
+		MoonAzimuth:        lunarAzimuth(maximum, lon, lat, module),
 		VisibleAtMaximum:   moonAltitude > visibleThreshold,
 		HasPenumbral:       result.HasPenumbral,
 		HasPartial:         result.HasPartial,
 		HasTotal:           result.HasTotal,
 	}
-	info.Visibility = localLunarEclipseVisibility(info)
+	info.Visibility = localLunarEclipseVisibility(info, module)
 	return info
 }
 
@@ -455,22 +492,37 @@ func localLunarEclipseRange(info LocalLunarEclipseInfo) (time.Time, time.Time, b
 	return info.PenumbralStart, info.PenumbralEnd, true
 }
 
-func localLunarEclipseVisible(info LocalLunarEclipseInfo) bool {
+func localLunarEclipseVisible(info LocalLunarEclipseInfo, modules ...*Eclipse) bool {
+	module := &defaultModule
+	if len(modules) > 0 {
+		module = modules[0]
+	}
+
 	eventStart, eventEnd, ok := localLunarEclipseRange(info)
 	if !ok {
 		return false
 	}
-	return localLunarEclipseVisibleDuring(info, eventStart, eventEnd)
+	return localLunarEclipseVisibleDuring(info, eventStart, eventEnd, module)
 }
 
-func localTotalLunarEclipseVisible(info LocalLunarEclipseInfo) bool {
+func localTotalLunarEclipseVisible(info LocalLunarEclipseInfo, modules ...*Eclipse) bool {
+	module := &defaultModule
+	if len(modules) > 0 {
+		module = modules[0]
+	}
+
 	if !info.HasTotal || info.TotalStart.IsZero() || info.TotalEnd.IsZero() {
 		return false
 	}
-	return localLunarEclipseVisibleDuring(info, info.TotalStart, info.TotalEnd)
+	return localLunarEclipseVisibleDuring(info, info.TotalStart, info.TotalEnd, module)
 }
 
-func localLunarEclipseVisibleOnDate(info LocalLunarEclipseInfo, dayStart, dayEnd time.Time) bool {
+func localLunarEclipseVisibleOnDate(info LocalLunarEclipseInfo, dayStart, dayEnd time.Time, modules ...*Eclipse) bool {
+	module := &defaultModule
+	if len(modules) > 0 {
+		module = modules[0]
+	}
+
 	eventStart, eventEnd, ok := localLunarEclipseRange(info)
 	if !ok {
 		return false
@@ -480,21 +532,26 @@ func localLunarEclipseVisibleOnDate(info LocalLunarEclipseInfo, dayStart, dayEnd
 	if !segmentStart.Before(segmentEnd) {
 		return false
 	}
-	return localLunarEclipseVisibleDuring(info, segmentStart, segmentEnd)
+	return localLunarEclipseVisibleDuring(info, segmentStart, segmentEnd, module)
 }
 
 // localLunarEclipseVisibility 按站点自己的中天对食内高度分类。
-func localLunarEclipseVisibility(info LocalLunarEclipseInfo) LocalLunarEclipseVisibility {
+func localLunarEclipseVisibility(info LocalLunarEclipseInfo, modules ...*Eclipse) LocalLunarEclipseVisibility {
+	module := &defaultModule
+	if len(modules) > 0 {
+		module = modules[0]
+	}
+
 	start, end, ok := localLunarEclipseRange(info)
 	if !ok {
 		return LocalLunarEclipseInvisible
 	}
-	startVisible := localLunarEclipseAltitudeVisible(start, info)
-	endVisible := localLunarEclipseAltitudeVisible(end, info)
-	umbralVisible := localLunarEclipseUmbralVisible(info)
+	startVisible := localLunarEclipseAltitudeVisible(start, info, module)
+	endVisible := localLunarEclipseAltitudeVisible(end, info, module)
+	umbralVisible := localLunarEclipseUmbralVisible(info, module)
 	switch {
 	case startVisible && endVisible:
-		if localLunarEclipseExtremumAltitude(info, start, end, false) > localLunarEclipseVisibilityThreshold(info.Height, info.Latitude) {
+		if localLunarEclipseExtremumAltitude(info, start, end, false, module) > localLunarEclipseVisibilityThreshold(info.Height, info.Latitude) {
 			return LocalLunarEclipseFull
 		}
 		return LocalLunarEclipseInterrupted
@@ -508,7 +565,7 @@ func localLunarEclipseVisibility(info LocalLunarEclipseInfo) LocalLunarEclipseVi
 			return LocalLunarEclipsePenumbraMoonset
 		}
 		return LocalLunarEclipseMoonset
-	case localLunarEclipseVisibleDuring(info, start, end):
+	case localLunarEclipseVisibleDuring(info, start, end, module):
 		return LocalLunarEclipseRiseAndSet
 	default:
 		return LocalLunarEclipseInvisible
@@ -518,7 +575,12 @@ func localLunarEclipseVisibility(info LocalLunarEclipseInfo) LocalLunarEclipseVi
 // localLunarEclipseUmbralVisible 本影阶段是否有任何时刻月亮在地平线上；纯半影月食没有本影可看，
 // 恒为 true，不把这类站点降级成"仅见半影"。极区掠射时 U1、食甚、U4 三点都可能在地平下而中途
 // 短暂露出，所以这里取整个本影区间的高度极值，不能只比三个采样点。
-func localLunarEclipseUmbralVisible(info LocalLunarEclipseInfo) bool {
+func localLunarEclipseUmbralVisible(info LocalLunarEclipseInfo, modules ...*Eclipse) bool {
+	module := &defaultModule
+	if len(modules) > 0 {
+		module = modules[0]
+	}
+
 	if !info.HasPartial {
 		return true
 	}
@@ -526,25 +588,30 @@ func localLunarEclipseUmbralVisible(info LocalLunarEclipseInfo) bool {
 	if start.IsZero() || end.IsZero() || !start.Before(end) {
 		return false
 	}
-	if localLunarEclipseAltitudeVisible(start, info) || localLunarEclipseAltitudeVisible(end, info) {
+	if localLunarEclipseAltitudeVisible(start, info, module) || localLunarEclipseAltitudeVisible(end, info, module) {
 		return true
 	}
-	return localLunarEclipseExtremumAltitude(info, start, end, true) >
+	return localLunarEclipseExtremumAltitude(info, start, end, true, module) >
 		localLunarEclipseVisibilityThreshold(info.Height, info.Latitude)
 }
 
 const lunarEclipseVisibilityScanSamples = 48
 
 // localLunarEclipseExtremumAltitude 先粗扫定位、再在相邻两格内三分细化地取有限窗口内的月心高度极值。
-func localLunarEclipseExtremumAltitude(info LocalLunarEclipseInfo, start, end time.Time, maximum bool) float64 {
+func localLunarEclipseExtremumAltitude(info LocalLunarEclipseInfo, start, end time.Time, maximum bool, modules ...*Eclipse) float64 {
+	module := &defaultModule
+	if len(modules) > 0 {
+		module = modules[0]
+	}
+
 	if !start.Before(end) {
-		return lunarAltitude(start, info.Longitude, info.Latitude)
+		return lunarAltitude(start, info.Longitude, info.Latitude, module)
 	}
 	step := end.Sub(start) / lunarEclipseVisibilityScanSamples
-	best := lunarAltitude(start, info.Longitude, info.Latitude)
+	best := lunarAltitude(start, info.Longitude, info.Latitude, module)
 	bestIndex := 0
 	for index := 1; index <= lunarEclipseVisibilityScanSamples; index++ {
-		value := lunarAltitude(start.Add(step*time.Duration(index)), info.Longitude, info.Latitude)
+		value := lunarAltitude(start.Add(step*time.Duration(index)), info.Longitude, info.Latitude, module)
 		if (value > best) == maximum {
 			best, bestIndex = value, index
 		}
@@ -561,29 +628,39 @@ func localLunarEclipseExtremumAltitude(info LocalLunarEclipseInfo, start, end ti
 	for iteration := 0; iteration < 30; iteration++ {
 		third := high.Sub(low) / 3
 		first, second := low.Add(third), high.Add(-third)
-		if (lunarAltitude(first, info.Longitude, info.Latitude) < lunarAltitude(second, info.Longitude, info.Latitude)) == maximum {
+		if (lunarAltitude(first, info.Longitude, info.Latitude, module) < lunarAltitude(second, info.Longitude, info.Latitude, module)) == maximum {
 			low = first
 		} else {
 			high = second
 		}
 	}
-	refined := lunarAltitude(low.Add(high.Sub(low)/2), info.Longitude, info.Latitude)
+	refined := lunarAltitude(low.Add(high.Sub(low)/2), info.Longitude, info.Latitude, module)
 	if maximum {
 		return math.Max(best, refined)
 	}
 	return math.Min(best, refined)
 }
 
-func localLunarEclipseVisibleDuring(info LocalLunarEclipseInfo, start, end time.Time) bool {
-	if localLunarEclipseAltitudeVisible(start, info) || localLunarEclipseAltitudeVisible(end, info) {
+func localLunarEclipseVisibleDuring(info LocalLunarEclipseInfo, start, end time.Time, modules ...*Eclipse) bool {
+	module := &defaultModule
+	if len(modules) > 0 {
+		module = modules[0]
+	}
+
+	if localLunarEclipseAltitudeVisible(start, info, module) || localLunarEclipseAltitudeVisible(end, info, module) {
 		return true
 	}
-	return localLunarEclipseExtremumAltitude(info, start, end, true) >
+	return localLunarEclipseExtremumAltitude(info, start, end, true, module) >
 		localLunarEclipseVisibilityThreshold(info.Height, info.Latitude)
 }
 
-func localLunarEclipseAltitudeVisible(date time.Time, info LocalLunarEclipseInfo) bool {
-	return lunarAltitude(date, info.Longitude, info.Latitude) > localLunarEclipseVisibilityThreshold(info.Height, info.Latitude)
+func localLunarEclipseAltitudeVisible(date time.Time, info LocalLunarEclipseInfo, modules ...*Eclipse) bool {
+	module := &defaultModule
+	if len(modules) > 0 {
+		module = modules[0]
+	}
+
+	return lunarAltitude(date, info.Longitude, info.Latitude, module) > localLunarEclipseVisibilityThreshold(info.Height, info.Latitude)
 }
 
 func localLunarEclipseVisibilityThreshold(height, latitude float64) float64 {

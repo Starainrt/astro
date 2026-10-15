@@ -55,15 +55,17 @@ func MoonHeight(jd, lon, lat, tz float64) float64 {
 	return ArcSin(tmp2)
 }
 
-func HMoonAzimuth(jd, lon, lat, tz float64) float64 {
-	return HMoonAzimuthN(jd, lon, lat, tz, -1)
+// HMoonAzimuthWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func HMoonAzimuthWithInstance(jd, lon, lat, tz float64, inst *Instance) float64 {
+	return HMoonAzimuthNWithInstance(jd, lon, lat, tz, -1, inst)
 }
 
-func HMoonAzimuthN(jd, lon, lat, tz float64, n int) float64 {
+// HMoonAzimuthNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func HMoonAzimuthNWithInstance(jd, lon, lat, tz float64, n int, inst *Instance) float64 {
 	jde := UTC2TT(jd - tz/24)
-	ra := HMoonTrueRaN(jde, n)
-	dec := HMoonTrueDecN(jde, n)
-	away := HMoonAwayN(jde, n) / 149597870.7
+	ra := HMoonTrueRaNWithInstance(jde, n, inst)
+	dec := HMoonTrueDecNWithInstance(jde, n, inst)
+	away := HMoonAwayNWithInstance(jde, n, inst) / 149597870.7
 	ndec := TopocentricDec(ra, dec, lat, lon, jd-tz/24, away, 0)
 	nra := TopocentricRa(ra, dec, lat, lon, jd-tz/24, away, 0)
 	jdUT := jd - tz/24
@@ -86,15 +88,9 @@ func HMoonAzimuthN(jd, lon, lat, tz float64, n int) float64 {
 	}
 }
 
-// HMoonHeight 当地民用时儒略日下的月心几何高度角（度，不含折射）/ geometric Moon-centre altitude in degrees for a local civil Julian day.
-//
-// jd 是该时区的当地民用时（墙上时刻）儒略日，tz 是时区偏移小时数，库内按 jd−tz/24 换成 UTC。
-// 只有 tz 给 0 时 jd 才是 UTC 儒略日；不要拿 UTC 数值再配非零 tz，那会多减一次时区。
-// jd is that zone's local civil (wall-clock) Julian day and tz is the zone offset in hours,
-// converted internally as jd-tz/24. Only tz 0 makes jd a UTC Julian day: pairing a UTC value with a
-// non-zero tz subtracts the offset twice.
-func HMoonHeight(jd, lon, lat, tz float64) float64 {
-	return HMoonHeightN(jd, lon, lat, tz, -1)
+// HMoonHeightWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func HMoonHeightWithInstance(jd, lon, lat, tz float64, inst *Instance) float64 {
+	return HMoonHeightNWithInstance(jd, lon, lat, tz, -1, inst)
 }
 
 type moonObservationState struct {
@@ -102,10 +98,12 @@ type moonObservationState struct {
 	distanceKM float64
 }
 
-func hMoonObservationStateN(jd, lon, lat, tz, height float64, n int) moonObservationState {
+func hMoonObservationStateN(jd, lon, lat, tz, height float64, n int, instances ...*Instance) moonObservationState {
+	inst := instanceValue(instances)
+
 	calculationJDE := UTC2TT(jd - tz/24)
-	ra, dec := HMoonTrueRaDecN(calculationJDE, n)
-	distanceKM := HMoonAwayN(calculationJDE, n)
+	ra, dec := HMoonTrueRaDecNWithInstance(calculationJDE, n, inst)
+	distanceKM := HMoonAwayNWithInstance(calculationJDE, n, inst)
 	distanceAU := distanceKM / angularDiameterAstronomicalUnitKM
 	topocentricRA, topocentricDec := TopocentricRaDec(ra, dec, lat, lon, jd-tz/24, distanceAU, height)
 	siderealTime := Limit360(ApparentSiderealTime(UTC2UT1(jd-tz/24))*15 + lon)
@@ -117,8 +115,9 @@ func hMoonObservationStateN(jd, lon, lat, tz, height float64, n int) moonObserva
 	}
 }
 
-func HMoonHeightN(jd, lon, lat, tz float64, n int) float64 {
-	return hMoonObservationStateN(jd, lon, lat, tz, 0, n).altitude
+// HMoonHeightNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func HMoonHeightNWithInstance(jd, lon, lat, tz float64, n int, inst *Instance) float64 {
+	return hMoonObservationStateN(jd, lon, lat, tz, 0, n, inst).altitude
 }
 
 // MoonState 同一瞬间可对任意观测点复用的月球位置与恒星时 / one instant's lunar position and sidereal time, reusable across observers.
@@ -129,14 +128,14 @@ type MoonState struct {
 	siderealTime   float64
 }
 
-// MoonStateAt 由 UTC 儒略日构造该瞬间的可复用月球状态 / builds the reusable state for one UTC Julian day.
-func MoonStateAt(utcJD float64) MoonState {
+// MoonStateAtWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func MoonStateAtWithInstance(utcJD float64, inst *Instance) MoonState {
 	jde := UTC2TT(utcJD)
-	rightAscension, declination := HMoonTrueRaDec(jde)
+	rightAscension, declination := HMoonTrueRaDecWithInstance(jde, inst)
 	return MoonState{
 		rightAscension: rightAscension,
 		declination:    declination,
-		distanceAU:     HMoonAway(jde) / angularDiameterAstronomicalUnitKM,
+		distanceAU:     HMoonAwayWithInstance(jde, inst) / angularDiameterAstronomicalUnitKM,
 		siderealTime:   ApparentSiderealTime(UTC2UT1(utcJD)) * 15,
 	}
 }
@@ -204,12 +203,17 @@ func (state MoonState) MoonHorizon(samples int) [][2]float64 {
 	return points
 }
 
-func moonRiseSetResidual(jd, longitude, latitude, timeZone, zenithShift, height float64, n int) float64 {
-	state := hMoonObservationStateN(jd, longitude, latitude, timeZone, height, n)
+func moonRiseSetResidual(jd, longitude, latitude, timeZone, zenithShift, height float64, n int, instances ...*Instance) float64 {
+	return moonRiseSetResidualWeather(jd, longitude, latitude, timeZone, zenithShift, height,
+		refractionStandardPressureHPa, refractionStandardTemperatureC, n, instanceValue(instances))
+}
+
+func moonRiseSetResidualWeather(jd, longitude, latitude, timeZone, zenithShift, height, pressureHPa, temperatureC float64, n int, inst *Instance) float64 {
+	state := hMoonObservationStateN(jd, longitude, latitude, timeZone, height, n, inst)
 	// 相对观测者下沉地平线的视上缘高度角 / Apparent upper-limb altitude relative to the observer's depressed horizon.
 	residual := state.altitude + HeightDegreeByLat(height, latitude)
 	if zenithShift != 0 {
-		residual += RefractionFromTrueAltitude(state.altitude, refractionStandardPressureHPa, refractionStandardTemperatureC)
+		residual += RefractionFromTrueAltitude(state.altitude, pressureHPa, temperatureC)
 		residual += angularSemidiameterArcsec(moonEquatorialRadiusKM, state.distanceKM) / 3600
 	}
 	return residual
@@ -218,13 +222,15 @@ func moonRiseSetResidual(jd, longitude, latitude, timeZone, zenithShift, height 
 // moonRiseSetOnCivilDay 在民用日内求升/落时刻；找不到过零时的错误口径与 rise_set.go 的 ErrNeverRise/ErrNeverSet 一致，
 // fallbackErr 是调用方用中天/下中天残差预判的同一几何结论，命中时优先于扫描结果。
 func moonRiseSetOnCivilDay(candidate, slope, civilDayStart, longitude, latitude, originalTimeZone,
-	localTimeZone, zenithShift, height float64, isRise bool, fallbackErr error) (float64, error) {
+	localTimeZone, zenithShift, height float64, isRise bool, fallbackErr error, instances ...*Instance) (float64, error) {
+	inst := instanceValue(instances)
+
 	if eventRiseSetCandidateValid(candidate, civilDayStart, slope, isRise) {
 		return candidate, nil
 	}
 	return eventDirectionalRiseSetSearch(civilDayStart, isRise, fallbackErr, func(outputJD float64) float64 {
 		localJD := outputJD + localTimeZone/24 - originalTimeZone/24
-		return moonRiseSetResidual(localJD, longitude, latitude, localTimeZone, zenithShift, height, -1)
+		return moonRiseSetResidual(localJD, longitude, latitude, localTimeZone, zenithShift, height, -1, inst)
 	})
 }
 
@@ -248,12 +254,13 @@ func GetMoonTZTime(jd, lon, lat, tz float64) float64 { //实际中天时间{
 	return estimateJD
 }
 
-func MoonCulminationTime(localJD, lon, lat, timezone float64) float64 {
+// MoonCulminationTimeWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func MoonCulminationTimeWithInstance(localJD, lon, lat, timezone float64, inst *Instance) float64 {
 	// localJD 是本地民用日锚点（当地 0 时），不是力学时；ra/dec 为瞬时天球坐标，非 J2000 等固定历元。
 	localJD = math.Floor(localJD) + 0.5
-	estimateJD := localJD + Limit360(360-MoonTimeAngle(localJD, lon, lat, timezone))/15.0/24.0/0.9
+	estimateJD := localJD + Limit360(360-MoonTimeAngleWithInstance(localJD, lon, lat, timezone, inst))/15.0/24.0/0.9
 	limitHA := func(localJD, lon, timezone float64) float64 {
-		ha := MoonTimeAngle(localJD, lon, lat, timezone)
+		ha := MoonTimeAngleWithInstance(localJD, lon, lat, timezone, inst)
 		if ha < 180 {
 			ha += 360
 		}
@@ -271,16 +278,18 @@ func MoonCulminationTime(localJD, lon, lat, timezone float64) float64 {
 	return estimateJD
 }
 
-func MoonTimeAngle(jd, lon, lat, tz float64) float64 {
+// MoonTimeAngleWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func MoonTimeAngleWithInstance(jd, lon, lat, tz float64, inst *Instance) float64 {
 	startime := Limit360(ApparentSiderealTime(UTC2UT1(jd-tz/24))*15 + lon)
-	timeangle := startime - HMoonApparentRa(jd, lon, lat, tz)
+	timeangle := startime - HMoonApparentRaWithInstance(jd, lon, lat, tz, inst)
 	if timeangle < 0 {
 		timeangle += 360
 	}
 	return timeangle
 }
 
-func GetMoonRiseTime(julianDay, longitude, latitude, timeZone, zenithShift, height float64) (float64, error) {
+// GetMoonRiseTimeWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func GetMoonRiseTimeWithInstance(julianDay, longitude, latitude, timeZone, zenithShift, height float64, inst *Instance) (float64, error) {
 	if !isFiniteFloat(julianDay) || !isFiniteFloat(longitude) || !isFiniteFloat(latitude) || !isFiniteFloat(timeZone) || !isFiniteFloat(zenithShift) || !isFiniteFloat(height) {
 		return 0, ErrInvalidObservationInput
 	}
@@ -291,11 +300,11 @@ func GetMoonRiseTime(julianDay, longitude, latitude, timeZone, zenithShift, heig
 	// 时间分界线以传入的时区为准，不用当地时区，否则 0 时的判断会出错。
 	julianDay = math.Floor(julianDay) + 0.5
 	estimatedTime := julianDay
-	moonResidual := moonRiseSetResidual(julianDay, longitude, latitude, originalTimeZone, zenithShift, height, -1)
+	moonResidual := moonRiseSetResidual(julianDay, longitude, latitude, originalTimeZone, zenithShift, height, -1, inst)
 
 	moonAngle := StandardAltitudeMoon(zenithShift, height, latitude)
 
-	moonAngleTime := MoonTimeAngle(julianDay, longitude, latitude, originalTimeZone)
+	moonAngleTime := MoonTimeAngleWithInstance(julianDay, longitude, latitude, originalTimeZone, inst)
 
 	if moonResidual > 0 { // 月亮在地平线上或在落下与下中天之间
 		if moonAngleTime > 180 {
@@ -314,32 +323,32 @@ func GetMoonRiseTime(julianDay, longitude, latitude, timeZone, zenithShift, heig
 		estimatedTime += (timeToMeridian/24 + (timeToMeridian/24*12.0)/15.0/24.0)
 	}
 
-	currentAngle := MoonTimeAngle(estimatedTime, longitude, latitude, timeZone)
+	currentAngle := MoonTimeAngleWithInstance(estimatedTime, longitude, latitude, timeZone, inst)
 	if math.Abs(currentAngle-180) > 0.5 {
 		estimatedTime += (180 - currentAngle) * 4.0 / 60.0 / 24.0
 	}
 
-	currentResidual := moonRiseSetResidual(estimatedTime, longitude, latitude, timeZone, zenithShift, height, -1)
+	currentResidual := moonRiseSetResidual(estimatedTime, longitude, latitude, timeZone, zenithShift, height, -1, inst)
 	if !(currentResidual < -10 && math.Abs(latitude) < 60) {
 		if currentResidual > 0 {
 			// 下中天仍在地平线上：当日无落下（也无可升起），口径见 moonRiseSetOnCivilDay。
 			return moonRiseSetOnCivilDay(math.NaN(), math.NaN(), civilDayStart, longitude, latitude,
-				originalTimeZone, timeZone, zenithShift, height, true, ErrNeverSet)
+				originalTimeZone, timeZone, zenithShift, height, true, ErrNeverSet, inst)
 		}
 		checkTime := estimatedTime + 12.0/24.0 + 6.0/15.0/24.0
-		checkAngle := MoonTimeAngle(checkTime, longitude, latitude, timeZone)
+		checkAngle := MoonTimeAngleWithInstance(checkTime, longitude, latitude, timeZone, inst)
 		if checkAngle < 90 {
 			checkAngle += 360
 		}
 		checkTime += (360 - checkAngle) * 4.0 / 60.0 / 24.0
-		if moonRiseSetResidual(checkTime, longitude, latitude, timeZone, zenithShift, height, -1) < 0 {
+		if moonRiseSetResidual(checkTime, longitude, latitude, timeZone, zenithShift, height, -1, inst) < 0 {
 			// 上中天仍在地平线下：当日无升起。
 			return moonRiseSetOnCivilDay(math.NaN(), math.NaN(), civilDayStart, longitude, latitude,
-				originalTimeZone, timeZone, zenithShift, height, true, ErrNeverRise)
+				originalTimeZone, timeZone, zenithShift, height, true, ErrNeverRise, inst)
 		}
 	}
 
-	moonDeclination := MoonApparentDec(estimatedTime, longitude, latitude, timeZone)
+	moonDeclination := MoonApparentDecWithInstance(estimatedTime, longitude, latitude, timeZone, inst)
 	tmp := (Sin(moonAngle) - Sin(moonDeclination)*Sin(latitude)) / (Cos(moonDeclination) * Cos(latitude))
 
 	if math.Abs(tmp) <= 1 && latitude < 85 {
@@ -347,7 +356,7 @@ func GetMoonRiseTime(julianDay, longitude, latitude, timeZone, zenithShift, heig
 		estimatedTime += hourAngle/24.00 + hourAngle/33.00/15.00
 	} else {
 		i := 0
-		for moonRiseSetResidual(estimatedTime, longitude, latitude, timeZone, zenithShift, height, -1) < 0 {
+		for moonRiseSetResidual(estimatedTime, longitude, latitude, timeZone, zenithShift, height, -1, inst) < 0 {
 			i++
 			estimatedTime += 15.0 / 60.0 / 24.0
 			if i > 48 {
@@ -357,13 +366,14 @@ func GetMoonRiseTime(julianDay, longitude, latitude, timeZone, zenithShift, heig
 	}
 
 	// 使用牛顿迭代法求精确解
-	estimatedTime, slope := moonRiseSetResidualIteration(estimatedTime, longitude, latitude, timeZone, zenithShift, height, 0.00002)
+	estimatedTime, slope := moonRiseSetResidualIteration(estimatedTime, longitude, latitude, timeZone, zenithShift, height, 0.00002, inst)
 	estimatedTime = estimatedTime - timeZone/24 + originalTimeZone/24
 	return moonRiseSetOnCivilDay(estimatedTime, slope, civilDayStart, longitude, latitude,
-		originalTimeZone, timeZone, zenithShift, height, true, nil)
+		originalTimeZone, timeZone, zenithShift, height, true, nil, inst)
 }
 
-func GetMoonSetTime(julianDay, longitude, latitude, timeZone, zenithShift, height float64) (float64, error) {
+// GetMoonSetTimeWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func GetMoonSetTimeWithInstance(julianDay, longitude, latitude, timeZone, zenithShift, height float64, inst *Instance) (float64, error) {
 	if !isFiniteFloat(julianDay) || !isFiniteFloat(longitude) || !isFiniteFloat(latitude) || !isFiniteFloat(timeZone) || !isFiniteFloat(zenithShift) || !isFiniteFloat(height) {
 		return 0, ErrInvalidObservationInput
 	}
@@ -374,11 +384,11 @@ func GetMoonSetTime(julianDay, longitude, latitude, timeZone, zenithShift, heigh
 	// 时间分界线以传入的时区为准，不用当地时区，否则 0 时的判断会出错。
 	julianDay = math.Floor(julianDay) + 0.5
 	estimatedTime := julianDay
-	moonResidual := moonRiseSetResidual(julianDay, longitude, latitude, originalTimeZone, zenithShift, height, -1)
+	moonResidual := moonRiseSetResidual(julianDay, longitude, latitude, originalTimeZone, zenithShift, height, -1, inst)
 
 	moonAngle := StandardAltitudeMoon(zenithShift, height, latitude)
 
-	moonAngleTime := MoonTimeAngle(julianDay, longitude, latitude, originalTimeZone)
+	moonAngleTime := MoonTimeAngleWithInstance(julianDay, longitude, latitude, originalTimeZone, inst)
 
 	if moonResidual < 0 {
 		timeToMeridian = (360 - moonAngleTime) / 15
@@ -394,7 +404,7 @@ func GetMoonSetTime(julianDay, longitude, latitude, timeZone, zenithShift, heigh
 		estimatedTime += (timeToMeridian/24.0 + (timeToMeridian/24.0*12.0)/15.0/24.0)
 	}
 
-	currentAngle := MoonTimeAngle(estimatedTime, longitude, latitude, timeZone)
+	currentAngle := MoonTimeAngleWithInstance(estimatedTime, longitude, latitude, timeZone, inst)
 	if currentAngle < 180 {
 		currentAngle += 360
 	}
@@ -403,24 +413,24 @@ func GetMoonSetTime(julianDay, longitude, latitude, timeZone, zenithShift, heigh
 	}
 
 	// estimatedTime = 月球中天时间
-	currentResidual := moonRiseSetResidual(estimatedTime, longitude, latitude, timeZone, zenithShift, height, -1)
+	currentResidual := moonRiseSetResidual(estimatedTime, longitude, latitude, timeZone, zenithShift, height, -1, inst)
 	if !(currentResidual > 10 && math.Abs(latitude) < 60) {
 		if currentResidual < 0 {
 			// 上中天仍在地平线下：当日无升起，也就无落下。
 			return moonRiseSetOnCivilDay(math.NaN(), math.NaN(), civilDayStart, longitude, latitude,
-				originalTimeZone, timeZone, zenithShift, height, false, ErrNeverRise)
+				originalTimeZone, timeZone, zenithShift, height, false, ErrNeverRise, inst)
 		}
 		checkTime := estimatedTime + 12.0/24.0 + 6.0/15.0/24.0
-		angleSubtraction := 180 - MoonTimeAngle(checkTime, longitude, latitude, timeZone)
+		angleSubtraction := 180 - MoonTimeAngleWithInstance(checkTime, longitude, latitude, timeZone, inst)
 		checkTime += angleSubtraction * 4.0 / 60.0 / 24.0
-		if moonRiseSetResidual(checkTime, longitude, latitude, timeZone, zenithShift, height, -1) > 0 {
+		if moonRiseSetResidual(checkTime, longitude, latitude, timeZone, zenithShift, height, -1, inst) > 0 {
 			// 下中天仍在地平线上：当日无落下。
 			return moonRiseSetOnCivilDay(math.NaN(), math.NaN(), civilDayStart, longitude, latitude,
-				originalTimeZone, timeZone, zenithShift, height, false, ErrNeverSet)
+				originalTimeZone, timeZone, zenithShift, height, false, ErrNeverSet, inst)
 		}
 	}
 
-	moonDeclination := MoonApparentDec(estimatedTime, longitude, latitude, timeZone)
+	moonDeclination := MoonApparentDecWithInstance(estimatedTime, longitude, latitude, timeZone, inst)
 	tmp := (Sin(moonAngle) - Sin(moonDeclination)*Sin(latitude)) / (Cos(moonDeclination) * Cos(latitude))
 
 	if math.Abs(tmp) <= 1 && latitude < 85 {
@@ -428,7 +438,7 @@ func GetMoonSetTime(julianDay, longitude, latitude, timeZone, zenithShift, heigh
 		estimatedTime += hourAngle/24 + hourAngle/33.0/15.0
 	} else {
 		i := 0
-		for moonRiseSetResidual(estimatedTime, longitude, latitude, timeZone, zenithShift, height, -1) > 0 {
+		for moonRiseSetResidual(estimatedTime, longitude, latitude, timeZone, zenithShift, height, -1, inst) > 0 {
 			i++
 			estimatedTime += 15.0 / 60.0 / 24.0
 			if i > 48 {
@@ -438,10 +448,10 @@ func GetMoonSetTime(julianDay, longitude, latitude, timeZone, zenithShift, heigh
 	}
 
 	// 使用牛顿迭代法求精确解
-	estimatedTime, slope := moonRiseSetResidualIteration(estimatedTime, longitude, latitude, timeZone, zenithShift, height, 0.00002)
+	estimatedTime, slope := moonRiseSetResidualIteration(estimatedTime, longitude, latitude, timeZone, zenithShift, height, 0.00002, inst)
 	estimatedTime = estimatedTime - timeZone/24 + originalTimeZone/24
 	return moonRiseSetOnCivilDay(estimatedTime, slope, civilDayStart, longitude, latitude,
-		originalTimeZone, timeZone, zenithShift, height, false, nil)
+		originalTimeZone, timeZone, zenithShift, height, false, nil, inst)
 }
 
 // heightFunction 高度函数类型定义，用于牛顿迭代法
@@ -468,14 +478,16 @@ func moonRiseSetNewtonRaphsonIteration(initialTime, longitude, latitude, timeZon
 	return currentTime
 }
 
-func moonRiseSetResidualIteration(initialTime, longitude, latitude, timeZone, zenithShift, height, tolerance float64) (float64, float64) {
+func moonRiseSetResidualIteration(initialTime, longitude, latitude, timeZone, zenithShift, height, tolerance float64, instances ...*Instance) (float64, float64) {
+	inst := instanceValue(instances)
+
 	const derivativeStep = 0.000005
 
 	slope := math.NaN()
 	currentTime, ok := eventNewtonRefine(initialTime, tolerance, func(previousTime float64) float64 {
-		functionValue := moonRiseSetResidual(previousTime, longitude, latitude, timeZone, zenithShift, height, -1)
-		slope = (moonRiseSetResidual(previousTime+derivativeStep, longitude, latitude, timeZone, zenithShift, height, -1) -
-			moonRiseSetResidual(previousTime-derivativeStep, longitude, latitude, timeZone, zenithShift, height, -1)) / (2 * derivativeStep)
+		functionValue := moonRiseSetResidual(previousTime, longitude, latitude, timeZone, zenithShift, height, -1, inst)
+		slope = (moonRiseSetResidual(previousTime+derivativeStep, longitude, latitude, timeZone, zenithShift, height, -1, inst) -
+			moonRiseSetResidual(previousTime-derivativeStep, longitude, latitude, timeZone, zenithShift, height, -1, inst)) / (2 * derivativeStep)
 		return functionValue / slope
 	})
 	if !ok {

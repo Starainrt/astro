@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/starainrt/astro/basic"
+	"github.com/starainrt/astro/internal/ephem"
 )
 
 const (
@@ -83,6 +84,8 @@ type LunarEclipseContactPoint struct {
 type LunarEclipseInfo struct {
 	// Type 月食类型, eclipse type.
 	Type LunarEclipseType
+	// LunarLimbApplied 接触时刻已按月缘剖面修正；剖面失败时为 false 且结果保持圆月面 / contacts refined with a lunar limb profile.
+	LunarLimbApplied bool
 	// HasSaros 存在沙罗序列信息（可能是锚点外推结果）, has Saros series metadata (possibly extrapolated).
 	HasSaros bool
 	// Saros 是沙罗序列信息，包括系列号、系列内序号和总成员数。
@@ -166,22 +169,26 @@ func LunarEclipseOnDateChauvenet(date time.Time) (LunarEclipseInfo, bool) {
 }
 
 func lunarEclipseOnDateWithFallback(date time.Time, calculator lunarEclipseCalculator, allowDefaultFallback bool) (LunarEclipseInfo, bool) {
+	return lunarEclipseOnDateWithInstance(date, calculator, allowDefaultFallback, nil)
+}
+
+func lunarEclipseOnDateWithInstance(date time.Time, calculator lunarEclipseCalculator, allowDefaultFallback bool, inst *ephem.Instance) (LunarEclipseInfo, bool) {
 	location := date.Location()
 	dayStart, dayMid, dayEnd := lunarEclipseLocalDayBounds(date)
 
-	phaseDiff := moonSunLoDiff(dayMid)
+	phaseDiff := moonSunLoDiffWithInstance(dayMid, inst)
 	if phaseDiff < lunarEclipseDayPhaseMin || phaseDiff > lunarEclipseDayPhaseMax {
 		return LunarEclipseInfo{}, false
 	}
 
-	candidateTT := basic.CalcMoonSHByJDE(timeToTTJDE(dayMid), 1)
-	if !isPotentialLunarEclipse(candidateTT) {
+	candidateTT := basic.CalcMoonSHByJDEWithInstance(timeToTTJDE(dayMid), 1, inst)
+	if !isPotentialLunarEclipseWithInstance(candidateTT, inst) {
 		return LunarEclipseInfo{}, false
 	}
 
 	result := calculator(candidateTT)
 	if result.Type == basic.LunarEclipseNone && allowDefaultFallback {
-		if fallback, ok := lunarEclipseDefaultFallback(candidateTT); ok {
+		if fallback, ok := lunarEclipseDefaultFallbackWithInstance(candidateTT, inst); ok {
 			result = fallback
 		}
 	}
@@ -189,7 +196,7 @@ func lunarEclipseOnDateWithFallback(date time.Time, calculator lunarEclipseCalcu
 		return LunarEclipseInfo{}, false
 	}
 
-	info := lunarEclipseInfoFromBasic(result, location)
+	info := lunarEclipseInfoFromBasicWithInstance(result, location, inst)
 	if !lunarEclipseOverlapsDate(info, dayStart, dayEnd) {
 		return LunarEclipseInfo{}, false
 	}
@@ -298,29 +305,40 @@ func searchLunarEclipse(
 	calculator lunarEclipseCalculator,
 	allowDefaultFallback bool,
 ) (LunarEclipseInfo, bool) {
+	return searchLunarEclipseWithInstance(date, direction, includeCurrent, calculator, allowDefaultFallback, nil)
+}
+
+func searchLunarEclipseWithInstance(date time.Time, direction int, includeCurrent bool, calculator lunarEclipseCalculator, allowDefaultFallback bool, inst *ephem.Instance) (LunarEclipseInfo, bool) {
 	targetTT := timeToTTJDE(date)
-	candidateTT := basic.CalcMoonSHByJDE(targetTT, 1)
+	candidateTT := basic.CalcMoonSHByJDEWithInstance(targetTT, 1, inst)
 
 	for i := 0; i < lunarEclipseSearchLimit; i++ {
-		if isPotentialLunarEclipse(candidateTT) {
+		if math.IsNaN(candidateTT) || math.IsInf(candidateTT, 0) {
+			break
+		}
+		if isPotentialLunarEclipseWithInstance(candidateTT, inst) {
 			result := calculator(candidateTT)
 			if result.Type == basic.LunarEclipseNone && allowDefaultFallback {
-				if fallback, ok := lunarEclipseDefaultFallback(candidateTT); ok {
+				if fallback, ok := lunarEclipseDefaultFallbackWithInstance(candidateTT, inst); ok {
 					result = fallback
 				}
 			}
 			if result.Type != basic.LunarEclipseNone && lunarEclipseMatchesDirection(result.Maximum, targetTT, direction, includeCurrent) {
-				return lunarEclipseInfoFromBasic(result, date.Location()), true
+				return lunarEclipseInfoFromBasicWithInstance(result, date.Location(), inst), true
 			}
 		}
-		candidateTT = nextEclipseSearchCandidateTT(candidateTT, 1, direction, lunarEclipseSynodicMonthDays)
+		candidateTT = nextLunarEclipseSearchCandidateTTWithInstance(candidateTT, direction, inst)
 	}
 
 	return LunarEclipseInfo{}, false
 }
 
 func lunarEclipseDefaultFallback(candidateTT float64) (basic.LunarEclipseResult, bool) {
-	result := basic.LunarEclipseChauvenet(candidateTT)
+	return lunarEclipseDefaultFallbackWithInstance(candidateTT, nil)
+}
+
+func lunarEclipseDefaultFallbackWithInstance(candidateTT float64, inst *ephem.Instance) (basic.LunarEclipseResult, bool) {
+	result := basic.LunarEclipseChauvenetWithInstance(candidateTT, inst)
 	if result.Type != basic.LunarEclipsePenumbral {
 		return basic.LunarEclipseResult{}, false
 	}
@@ -345,18 +363,26 @@ func lunarEclipseMatchesDirection(maximumTT, targetTT float64, direction int, in
 }
 
 func isPotentialLunarEclipse(fullMoonTT float64) bool {
-	moonLatitude := math.Abs(basic.HMoonTrueBo(fullMoonTT))
+	return isPotentialLunarEclipseWithInstance(fullMoonTT, nil)
+}
+
+func isPotentialLunarEclipseWithInstance(fullMoonTT float64, inst *ephem.Instance) bool {
+	moonLatitude := math.Abs(basic.HMoonTrueBoWithInstance(fullMoonTT, inst))
 	if moonLatitude > lunarEclipseLatitudeLimitDeg {
 		return false
 	}
 
-	phaseDiff := math.Abs(normalizeDegree180(basic.HMoonApparentLo(fullMoonTT) - basic.HSunApparentLo(fullMoonTT) - 180))
+	phaseDiff := math.Abs(normalizeDegree180(basic.HMoonApparentLoWithInstance(fullMoonTT, inst) - basic.HSunApparentLoWithInstance(fullMoonTT, inst) - 180))
 	return phaseDiff <= lunarEclipseLongitudeLimitDeg
 }
 
 func lunarEclipseInfoFromBasic(result basic.LunarEclipseResult, location *time.Location) LunarEclipseInfo {
-	saros, hasSaros := lunarSarosInfo(result.Maximum)
-	geometry := basic.LunarEclipseShadowGeometryAtModel(result.Maximum, result.ShadowModel)
+	return lunarEclipseInfoFromBasicWithInstance(result, location, nil)
+}
+
+func lunarEclipseInfoFromBasicWithInstance(result basic.LunarEclipseResult, location *time.Location, inst *ephem.Instance) LunarEclipseInfo {
+	saros, hasSaros := lunarSarosInfoWithInstance(result.Maximum, inst)
+	geometry := basic.LunarEclipseShadowGeometryAtModelWithInstance(result.Maximum, result.ShadowModel, inst)
 	return LunarEclipseInfo{
 		ShadowModel:            LunarEclipseShadowModel(result.ShadowModel),
 		Gamma:                  geometry.Gamma,
@@ -367,6 +393,7 @@ func lunarEclipseInfoFromBasic(result basic.LunarEclipseResult, location *time.L
 		HasSaros:               hasSaros,
 		Saros:                  saros,
 		Type:                   mapBasicLunarEclipseType(result.Type),
+		LunarLimbApplied:       result.LunarLimbApplied,
 		PenumbralMagnitude:     result.PenumbralMagnitude,
 		UmbralMagnitude:        result.Magnitude,
 		PenumbralStart:         ttJDEToTime(result.PenumbralStart, location),
@@ -378,7 +405,7 @@ func lunarEclipseInfoFromBasic(result basic.LunarEclipseResult, location *time.L
 		PenumbralEnd:           ttJDEToTime(result.PenumbralEnd, location),
 		GreatestJDE:            result.Maximum,
 		DeltaTSeconds:          basic.DeltaT(result.Maximum, true),
-		ContactPoints:          lunarEclipseContactPointsFromBasic(result, location),
+		ContactPoints:          lunarEclipseContactPointsFromBasicWithInstance(result, location, inst),
 		HasPenumbral:           result.HasPenumbral,
 		HasPartial:             result.HasPartial,
 		HasTotal:               result.HasTotal,
@@ -389,26 +416,30 @@ func lunarEclipseContactPointsFromBasic(
 	result basic.LunarEclipseResult,
 	location *time.Location,
 ) []LunarEclipseContactPoint {
+	return lunarEclipseContactPointsFromBasicWithInstance(result, location, nil)
+}
+
+func lunarEclipseContactPointsFromBasicWithInstance(result basic.LunarEclipseResult, location *time.Location, inst *ephem.Instance) []LunarEclipseContactPoint {
 	if !result.HasPenumbral {
 		return nil
 	}
 
 	contacts := []LunarEclipseContactPoint{
-		lunarEclipseContactPoint("P1", result.PenumbralStart, location, false),
+		lunarEclipseContactPointWithInstance("P1", result.PenumbralStart, location, false, inst),
 	}
 	if result.HasPartial {
-		contacts = append(contacts, lunarEclipseContactPoint("U1", result.PartialStart, location, false))
+		contacts = append(contacts, lunarEclipseContactPointWithInstance("U1", result.PartialStart, location, false, inst))
 	}
 	if result.HasTotal {
-		contacts = append(contacts, lunarEclipseContactPoint("U2", result.TotalStart, location, true))
+		contacts = append(contacts, lunarEclipseContactPointWithInstance("U2", result.TotalStart, location, true, inst))
 	}
 	if result.HasTotal {
-		contacts = append(contacts, lunarEclipseContactPoint("U3", result.TotalEnd, location, true))
+		contacts = append(contacts, lunarEclipseContactPointWithInstance("U3", result.TotalEnd, location, true, inst))
 	}
 	if result.HasPartial {
-		contacts = append(contacts, lunarEclipseContactPoint("U4", result.PartialEnd, location, false))
+		contacts = append(contacts, lunarEclipseContactPointWithInstance("U4", result.PartialEnd, location, false, inst))
 	}
-	contacts = append(contacts, lunarEclipseContactPoint("P4", result.PenumbralEnd, location, false))
+	contacts = append(contacts, lunarEclipseContactPointWithInstance("P4", result.PenumbralEnd, location, false, inst))
 	return contacts
 }
 
@@ -418,7 +449,11 @@ func lunarEclipseContactPoint(
 	location *time.Location,
 	internalContact bool,
 ) LunarEclipseContactPoint {
-	moonCenterPA := lunarEclipseMoonCenterPositionAngle(ttJDE)
+	return lunarEclipseContactPointWithInstance(label, ttJDE, location, internalContact, nil)
+}
+
+func lunarEclipseContactPointWithInstance(label string, ttJDE float64, location *time.Location, internalContact bool, inst *ephem.Instance) LunarEclipseContactPoint {
+	moonCenterPA := lunarEclipseMoonCenterPositionAngleWithInstance(ttJDE, inst)
 	shadowCenterPA := normalizeDegree360(moonCenterPA + 180)
 	contactPA := shadowCenterPA
 	if internalContact {

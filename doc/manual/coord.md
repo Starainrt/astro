@@ -4,7 +4,7 @@
 
 `coord` 提供天球坐标转换与观测辅助计算。没有特殊说明时，角度单位为度；恒星时单位为小时；`time.Time` 按绝对时刻使用，内部转换为 UTC 后计算。
 
-高度角、天顶距与地平可见性的语义沿用[观测角语义](sun-moon.md#观测角语义)；站心几何的完整应用见[月掩·站心事件图](occultation.md#站心事件图)与[日月位置](sun-moon.md#日月位置)；站心日食的初亏、食甚、复圆见[日食](eclipse.md#日食)。时标、观测点高度与整体精度的约定见[时标约定](timescale.md)、[观测点高度约定](coord.md#观测点高度)与[适用范围与精度](accuracy.md)。
+相关约定：观测角语义见[观测角语义](sun-moon.md#观测角语义)，站心几何的应用见[站心事件图](occultation.md#站心事件图)与[日月位置](sun-moon.md#日月位置)，时标与观测点高度见[时标约定](timescale.md)与[观测点高度约定](coord.md#观测点高度)，整体精度见[精度与性能](accuracy.md)。
 
 ## 目录
 
@@ -148,12 +148,13 @@ fmt.Printf("HA=%.6f deg\n", coord.HourAngle(date, eq.RA, 115))
 
 ### 岁差与章动
 
-| 名称 | 用途 | 单位与口径 |
-| --- | --- | --- |
-| `Precess` | 赤道坐标从一个日期岁差到另一个日期 | RA/Dec 单位度；两个日期都是民用时刻；只做岁差旋转，不含自行 |
-| `EclipticObliquity` | 黄赤交角 | 度；`nutation=false` 给 IAU 1980 平交角，`true` 再叠加 IAU 2000B 交角章动 |
-| `Nutation2000B` | IAU 2000B 章动 | 返回 `(黄经章动, 交角章动)`，度 |
-| `Nutation1980` | IAU 1980 章动 | 返回 `(黄经章动, 交角章动)`，度 |
+| 名称 | 用途 | 单位与口径                                                                      |
+| --- | --- |----------------------------------------------------------------------------|
+| `Precess` | 赤道坐标从一个日期岁差到另一个日期 | RA/Dec 单位度；两个日期都是民用时刻；只做岁差旋转，不含自行                                          |
+| `EclipticObliquity` | 黄赤交角 | 度；`nutation=false` 给 IAU 1980 平交角，`true` 再叠加 IAU 2000B 交角章动                |
+| `Nutation2000B` | IAU 2000B 章动 | 返回 `(黄经章动, 交角章动)`，度                                                        |
+| `Nutation1980` | IAU 1980 章动 | 返回 `(黄经章动, 交角章动)`，度                                                        |
+| `Nutation2000A` / `MeanObliquity2006` | IAU 2000A 章动、IAU 2006 平交角 | 度；仅供显式调用，默认链路不变；完整 IAU 2006/2000A 旋转矩阵见 `basic.BiasPrecessionNutation2006` |
 
 ```go
 // 把 J2000 的赤道坐标岁差到 date，并列出两套章动供对照。
@@ -386,11 +387,11 @@ fmt.Printf("q=%.6f airmass=%.6f\n", q, x)
 ### 精度与适用范围
 
 - 黄赤交角：平均项取 IAU 1980 模型，`EclipticObliquity(date, true)` 在其上叠加 IAU 2000B 交角章动；`Nutation1980` 与 `Nutation2000B` 都可用，需要逐项对照时显式调用。
-- 恒星时：走 IAU 2006 的 ERA 路线，视恒星时叠加 IAU 2000B 黄经章动；同一儒略日的视恒星时做了有界记忆化，注入 ΔT 覆盖会按世代失效。
+- 恒星时：走 IAU 2006 的 ERA 路线，视恒星时叠加 IAU 2000B 黄经章动；视恒星时按儒略日缓存；调用 ΔT 覆盖接口后缓存立即失效，结果随之更新。
 - 岁差：`Precess` 在赤道坐标上做长期岁差旋转（赤道极/黄极向量含周期项），不含自行、章动与光行差；它适合把一个历元的平坐标转到另一个历元，不能代替完整的“J2000 → 当日视位置”链路。
 - 银道：使用固定的 ICRS ↔ Galactic 旋转矩阵，等价于 SOFA 的 `iauIcrs2g`/`iauG2icrs`，只适用于 ICRS 口径的输入。
 - 站心改正：周日视差量级随 `distanceAU` 反比变化，月球最大（约 1°），较远天体是否可忽略应按精度要求判断；`height` 只影响视差项的幅度，量级为米级高程对应的角秒级差异。
-- 站心黄道坐标由站心赤道坐标换算（`basic.TopocentricLoBo` 一次求值给出黄经与黄纬）：`TopocentricEcliptic.Lat` 保证落在 `[−90,90]`，并与 `EquatorialToEcliptic(TopocentricEquatorial(...))` 这条独立路径一致。
+- 站心黄道坐标由站心赤道坐标换算：`TopocentricEcliptic.Lat` 保证落在 `[−90,90]`，并与 `EquatorialToEcliptic(TopocentricEquatorial(...))` 这条独立路径一致。
 - 折射：Saemundsson 公式，有效真高度窗口 `(−5°, 90°)`，窗口外不修正；低空（< 5°）折射变化剧烈，气压 ±1 hPa、气温 ±1 ℃ 都会带来可见误差。
 - 大气质量：三种经验模型在中高空接近，低空差异最大；平行平板只是几何近似，接近地平线发散，低空精细估算用 Kasten-Young 或 Pickering，纯公式见 `formula` 的[大气质量模型](formula.md#大气质量模型)。
 - 视差角：`ParallacticAngle` 用瞬时赤经赤纬与站点经纬度，`ParallacticAngleByHourAngle` 用同一几何的时角形式，两者对同一几何应给出一致结果。

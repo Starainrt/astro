@@ -25,14 +25,14 @@ type PhysicalInfo struct {
 }
 
 // Physical 月球物理观测参数 / physical observing parameters of the Moon.
-func Physical(date time.Time) PhysicalInfo {
-	return PhysicalN(date, -1)
+func (module *Moon) Physical(date time.Time) PhysicalInfo {
+	return module.PhysicalN(date, -1)
 }
 
-// PhysicalN 月球物理观测参数（截断版） / truncated physical observing parameters of the Moon.
-func PhysicalN(date time.Time, n int) PhysicalInfo {
+// PhysicalN 月球物理观测参数（n 变体） / n-parameterised physical observing parameters of the Moon.
+func (module *Moon) PhysicalN(date time.Time, n int) PhysicalInfo {
 	jd := basic.Date2JD(date.UTC())
-	info := basic.MoonPhysicalN(basic.UTC2TT(jd), n)
+	info := basic.MoonPhysicalNWithInstance(basic.UTC2TT(jd), n, module.inst)
 	return PhysicalInfo{
 		OpticalLongitude:   info.OpticalLongitude,
 		OpticalLatitude:    info.OpticalLatitude,

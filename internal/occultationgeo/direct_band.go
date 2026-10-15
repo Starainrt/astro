@@ -39,8 +39,8 @@ func DirectVisibleBandPolygons(
 		}
 		if len(samples) > 0 {
 			previous := samples[len(samples)-1]
-			direct := geoDistanceKM(previous.a, boundary[0]) + geoDistanceKM(previous.b, boundary[len(boundary)-1])
-			swapped := geoDistanceKM(previous.a, boundary[len(boundary)-1]) + geoDistanceKM(previous.b, boundary[0])
+			direct := geodata.EquatorialDistanceKM(previous.a, boundary[0]) + geodata.EquatorialDistanceKM(previous.b, boundary[len(boundary)-1])
+			swapped := geodata.EquatorialDistanceKM(previous.a, boundary[len(boundary)-1]) + geodata.EquatorialDistanceKM(previous.b, boundary[0])
 			if swapped < direct {
 				reverseGeoPoints(boundary)
 			}
@@ -140,7 +140,7 @@ func removeDirectProjectedSharpCorners(
 		changed := false
 		for index := 1; index+1 < len(result); index++ {
 			first, middle, last := result[index-1], result[index], result[index+1]
-			if geoDistanceKM(first, last) > maximumChordKM {
+			if geodata.EquatorialDistanceKM(first, last) > maximumChordKM {
 				continue
 			}
 			scale := math.Cos(middle.Latitude * math.Pi / 180)
@@ -281,7 +281,7 @@ func reverseGeoPoints(points []geodata.GeoPoint) {
 }
 
 func appendDirectRingPoint(ring *[]geodata.GeoPoint, point geodata.GeoPoint) {
-	if len(*ring) > 0 && geoDistanceKM((*ring)[len(*ring)-1], point) <= 1e-6 {
+	if len(*ring) > 0 && geodata.EquatorialDistanceKM((*ring)[len(*ring)-1], point) <= 1e-6 {
 		return
 	}
 	*ring = append(*ring, point)
@@ -299,7 +299,7 @@ func densifyDirectRing(ring []geodata.GeoPoint, maximumEdgeKM float64) []geodata
 		}
 		next := ring[index+1]
 		steps := int(math.Ceil(math.Max(
-			geoDistanceKM(point, next), occultationProjectedEdgeDistanceKM(point, next),
+			geodata.EquatorialDistanceKM(point, next), geodata.WebMercatorDistanceKM(point, next),
 		) / maximumEdgeKM))
 		if steps < 2 {
 			continue

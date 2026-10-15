@@ -1,8 +1,10 @@
-# 日食与月食
+# 日月食与凌日
 
 [English](en/eclipse.md) | [返回 README](../../README.md)
 
 > 本手册的完整示例以仓库根目录为工作目录执行，生成的图片写入 `doc/img/`。
+
+本手册讲日食、月食的查询与出图，以及水星、金星凌日的两张 SVG 图。凌日的接触时刻与站心可见性由 `planets` 包的凌日接口给出，见[行星：水星与金星凌日](planets.md#水星与金星凌日)。
 
 ## 目录
 
@@ -23,10 +25,14 @@
   - [与 NASA 数据对照](#与-nasa-数据对照)
   - [月食 SVG](#月食-svg)
   - [参考资料](#参考资料)
+- [月缘地形修正](#月缘地形修正)
 - [全球见食图与月食出图](#全球见食图与月食出图)
   - [全球见食图](#全球见食图)
   - [月食出图](#月食出图)
   - [时标口径与 UT1](#时标口径与-ut1)
+- [凌日出图](#凌日出图)
+  - [水星：2032-11-13（北京）](#水星2032-11-13北京)
+  - [金星：2012-06-06（北京）](#金星2012-06-06北京)
 
 ## 简单示例：2009长江大日食，上海某地见食情况
 
@@ -63,7 +69,7 @@ SVG 片段使用导入别名 `eclipsesvg "github.com/starainrt/astro/eclipse/svg
 | --- | --- | --- |
 | `LocalSolarEclipseOnDate` / `LocalSolarEclipseOnDateNASABulletinSplitK` | 站心日食查询 | 返回 `(info, bool)`；默认 NASA Split-K 口径 |
 | `LunarEclipseOnDate` / `LunarEclipseOnDateDanjon` / `LunarEclipseOnDateChauvenet` | 月食查询 | 同上；后缀强制影半径模型 |
-| `SearchLocalCentralSolarEclipse` / `SolarEclipseCandidates` | 跨年搜索中心食 / 候选时刻表 | 前者带 `status.Exhausted` |
+| `SearchLocalCentralSolarEclipse` / `SolarEclipseCandidates` | 跨年搜索中心食 / 候选时刻表 | 前者返回 `(info, SolarEclipseLocalSearchStatus)` |
 | `SolarEclipseCentralPath` / `SolarEclipsePartialFootprints` | 中心线和偏食足迹几何 | 选项见 `SolarEclipsePathOptions` / `SolarEclipsePartialFootprintOptions` |
 | `SolarEclipseBesselianElements` / `SolarEclipseBesselianMuForPublishedTable` | 贝塞尔根数与已发布表换算 | 用来对表 |
 | `eclipsesvg.SolarEclipseMapSVG` / `LunarEclipseMapSVG` | 全球见食图 / 月食可见区图 | 返回 `(string, bool)` |
@@ -89,7 +95,7 @@ true total
 ```
 
 - `LocalSolarEclipseOnDate` 一次给出食型、各阶段时刻、食分、遮掩比例与食甚太阳高度；只关心"有没有"时看第二个返回值。
-- 要跨年份找"下一次中心食"，用 `SearchLocalCentralSolarEclipse`（返回 `status.Exhausted` 区分"跨度内确实没有"）；只要候选时刻表用 `SolarEclipseCandidates`。
+- 要跨年份找"下一次中心食"，用 `SearchLocalCentralSolarEclipse`（第二个返回值 `SolarEclipseLocalSearchStatus` 的 `Exhausted` 区分"跨度内确实没有"）；只要候选时刻表用 `SolarEclipseCandidates`。
 - 月食侧对应 `LunarEclipseOnDate` 与带 `Danjon` / `Chauvenet` 后缀的强制模型入口。
 
 ### 全球见食图与月食图
@@ -152,9 +158,13 @@ true {136 37 71 true}
 
 太阳半径有两个口径：**标准档**（1 AU 处 `959.639″`，与已发布星历表、目录一致，默认）与**边缘档**（1 AU 处 `959.95″`，由全食边缘的光变曲线实测得到的食半径），两者相差 `0.31″`。以 2024-04-08 全食为例，改用边缘档会让全食带每侧收窄约 0.6 千米、中心食时长缩短约 1.5 秒；2023-10-14 环食则带变宽约 1.3 千米、时长延长约 2.1 秒；偏食食分变化约 `1e-4`。
 
-可据此评估食限与中心时长对太阳半径的敏感性。
+两个口径都可以选：
 
-两个口径都可以选：`eclipse.SolarEclipseOptions{SunRadiusModel: ...}` 配合 `SolarEclipseOnDateWithOptions`、`LocalSolarEclipseOnDateWithOptions`，以及搜索与面板的 `LastSolarEclipseWithOptions` / `NextSolarEclipseWithOptions` / `ClosestSolarEclipseWithOptions` / `SolarEclipseGeocentricPanelWithOptions`，或 `basic` 侧的 `SolarEclipseWithOptions` / `LocalSolarEclipseWithOptions` 与各 `...Options` 结构里的 `SunRadiusModel` 字段；结果里的 `SunRadiusModel` 记录实际使用的口径，`basic.SolarEclipseSunSemidiameter` 与面板里的“视半径 S.D.”都按同一口径计算。
+- 求值：`eclipse.SolarEclipseOptions{SunRadiusModel: ...}` 配合 `SolarEclipseOnDateWithOptions`、`LocalSolarEclipseOnDateWithOptions`
+- 搜索与面板：`LastSolarEclipseWithOptions`、`NextSolarEclipseWithOptions`、`ClosestSolarEclipseWithOptions`、`SolarEclipseGeocentricPanelWithOptions`
+- `basic` 侧：`SolarEclipseWithOptions`、`LocalSolarEclipseWithOptions`，以及各 `...Options` 结构里的 `SunRadiusModel` 字段
+
+结果里的 `SunRadiusModel` 记录实际使用的口径，`basic.SolarEclipseSunSemidiameter` 与面板里的“视半径 S.D.”都按同一口径计算。
 
 常用接口：
 
@@ -222,7 +232,6 @@ if ok {
 - **全局日食**：关注整次日食的食甚 UT、食分、Gamma、食甚点经纬度和食带宽度。当前用 NASA GSFC 的日食搜索/贝塞尔根数资料对照了 `2023-04-20` 全环食、`2024-04-08` 日全食、`2024-10-02` 日环食、`2025-03-29` 日偏食。
 - **站心日食**：关注某个观测点看到的初亏、食甚、复圆和中心食持续时间。当前用 NASA GSFC 的 local circumstances / Google map 日食资料对照了芝加哥偏食、2024 日全食食甚点、2024 日环食食甚点。
 
-
 | 时标类型 | 比较项 | 作用 | 已知量级 |
 | --- | --- | --- | --- |
 | **TT / TD 层**（力学时，去掉 ΔT） | 几何与星历：贝塞尔根数、影轴位置、接触时刻的 TD 值 | 星历与影子几何本身 | 4 个回归样例中位差约 `0.2 s`；1901–2100 与 NASA 配对 195 次的中位差 `0.40 s`、p99 `2.37 s`、max `2.51 s` |
@@ -241,10 +250,11 @@ if ok {
 | 站心日食 | 3 个本地观测点 | 食甚、初亏、复圆 | UT 层，但公开值多为整分钟 | 与公开分钟值一致（分辨率限制，不按秒级解读） |
 | 站心日食 | 2 个中心食点 | 全食/环食持续时间 | **TT 层**：两端时刻相减，ΔT 自动抵消 | 秒级对齐，在 `5 s` 阈值内 |
 
-- **日食持续时间反应模型层面精度**：它是两个接触时刻之差，ΔT 口径自动抵消，所以 `5 s` 阈值反映的是几何与星历（对食带边缘最敏感），与 ΔT 无关。
+- **日食持续时间反映几何与星历精度**：它是两个接触时刻之差，ΔT 口径自动抵消，所以 `5 s` 阈值反映的是几何与星历（对食带边缘最敏感），与 ΔT 无关。
 - **UT 世界时时刻的 `8 s` 差异主要是口径差异**：不能当成几何精度，它的构成是 `4.8–5.9 s`（ΔT 口径）+ 不到 `1 s`（TD 层几何残差）+ NASA 整秒打印的舍入，所以是个宽松上界而不是精度指标。
 - **更大范围的一致性对比结果**：1901–2100 与 NASA 五千年目录配对 195 次（NASA 页面缺 1986–2000、2088–2100 两段），类型普查 `A145/T139/H13/P155` 与 NASA 逐一相等、类型不一致 `0`；食甚 TD 差中位 `0.40 s`、p99 `2.37 s`、max `2.51 s`；gamma 差中位 `3.2e-5`、食分差中位 `4.2e-5`、带宽差中位 `0.5 km`（max `8.3 km`）、中心食时长差中位 `0.25 s`（max `0.59 s`）。
 
+- **两套内置模型的差异**：以上对照在 Legacy 为默认的时期完成。用 4 个回归样例实测，半解析与 Legacy 的食甚 TT 差只有 `0.008–0.198 s`，小于 TD 层残差，更远小于 UT 层的 `4.8–5.9 s` ΔT 口径差；`astro_legacy` 构建同样通过同一组 NASA 基线。因此这里不按模型分列。
 - **复现NASA的 UT 值**：用 `astro.SetDeltaT` 注入NASA采用的 ΔT（例如 2024 年 `74 s`）后取 UT，就能把ΔT差值从比较里去掉；注入只影响换算，不改变 TT 几何。
 - 此外，全局日食资料通常给到秒，适合直接做秒级对照；很多站心日食页面的初亏、复圆和本地食甚只公开到整分钟，因此这类资料只按分钟级核对，公开资料舍入造成的残差不按秒级误差解读。
 - 下面的 2009 上海洋山港和 2012 厦门示例只展示接口调用与 SVG 输出，未承诺地方接触时刻的发布级精度；需要逐项核对时可与 NASA/IMCCE local circumstances 比对。
@@ -298,14 +308,14 @@ func main() {
 ```text
 true total // 洋山站点当天命中日食，食型为日全食
 true {136 37 71 true} // Solar Saros 136，第 37/71 个成员，已核验
-2009-07-22 08:23:55.092397034 +0800 CST // 初亏
-2009-07-22 09:37:23.088684976 +0800 CST // 全食开始
-2009-07-22 09:40:20.87983489 +0800 CST // 食甚
-2009-07-22 09:43:19.723805487 +0800 CST // 全食结束
-2009-07-22 11:03:13.914820253 +0800 CST // 复圆
-5m56.635120511s // 全食持续时间
-magnitude=1.076997 obscuration=1.000000 altitude=57.293 // 食分、遮掩比例、食甚太阳高度
-greatest lon=144.1167 lat=24.2193 width=258.3km center=289 // 全局食甚点经纬度、食带宽度、中心线采样点数
+2009-07-22 08:23:55.491912066 +0800 CST // 初亏
+2009-07-22 09:37:23.525415658 +0800 CST // 全食开始
+2009-07-22 09:40:21.314272284 +0800 CST // 食甚
+2009-07-22 09:43:20.161139667 +0800 CST // 全食结束
+2009-07-22 11:03:14.368167221 +0800 CST // 复圆
+5m56.635724009s // 全食持续时间
+magnitude=1.076997 obscuration=1.000000 altitude=57.295 // 食分、遮掩比例、食甚太阳高度
+greatest lon=144.1154 lat=24.2190 width=258.3km center=289 // 全局食甚点经纬度、食带宽度、中心线采样点数
 ```
 
 ### 2012 年日环食：厦门示例
@@ -344,12 +354,12 @@ func main() {
 ```text
 true annular // 厦门站点当天命中日食，食型为日环食
 true {128 58 73 true} // Solar Saros 128，第 58/73 个成员，已核验
-2012-05-21 05:08:12.878718674 +0800 CST // 初亏
-2012-05-21 06:08:15.561088621 +0800 CST // 环食开始
-2012-05-21 06:10:25.180663168 +0800 CST // 食甚
-2012-05-21 06:12:34.80941087 +0800 CST // 环食结束
-2012-05-21 07:20:54.806806147 +0800 CST // 复圆
-4m19.248322249s // 环食持续时间
+2012-05-21 05:08:12.807224392 +0800 CST // 初亏
+2012-05-21 06:08:15.319126546 +0800 CST // 环食开始
+2012-05-21 06:10:25.112628936 +0800 CST // 食甚
+2012-05-21 06:12:34.91297096 +0800 CST // 环食结束
+2012-05-21 07:20:54.736518859 +0800 CST // 复圆
+4m19.593844414s // 环食持续时间
 magnitude=0.933289 obscuration=0.872354 altitude=9.565 // 食分、遮掩比例、食甚太阳高度
 ```
 
@@ -438,12 +448,12 @@ func main() {
 输出结果：
 
 ```text
-true 13625 // 洋山日全食 SVG 生成成功，长度 13625 字节
-true 13542 // 厦门日环食 SVG 生成成功，长度 13542 字节
+true 13640 // 洋山日全食 SVG 生成成功，长度 13640 字节
+true 13557 // 厦门日环食 SVG 生成成功，长度 13557 字节
 true total // 北京站点当天命中日食，食型为日全食
 true {145 23 77 true} // Solar Saros 145，第 23/77 个成员，已核验
-1m33.329527974s // 北京市区近似坐标下的全食持续时间
-true 13589 // 北京日全食 SVG 生成成功，长度 13589 字节
+1m33.053206801s // 北京市区近似坐标下的全食持续时间
+true 13604 // 北京日全食 SVG 生成成功，长度 13604 字节
 ```
 
 生成效果：
@@ -550,25 +560,27 @@ func main() {
 输出结果：
 
 ```text
-total
-true {125 49 72 true}
-2028-12-31 16:52:05.603753328 +0000 UTC
-2.2739938633996872 1.2461094682708755
-2028-12-31 14:03:54.239418804 +0000 UTC
-2028-12-31 15:07:42.171904742 +0000 UTC
-2028-12-31 16:16:27.306801974 +0000 UTC
-2028-12-31 17:27:46.228030622 +0000 UTC
-2028-12-31 18:36:32.270547151 +0000 UTC
-2028-12-31 19:40:11.575520038 +0000 UTC
-2.299608256177245 1.2511661731458574
-true
-total
-2029-01-01 00:52:05.603753328 +0800 CST
+total // 食型
+true {125 49 72 true} // 沙罗 125 号第 49/72 次，已核对
+2028-12-31 16:52:05.797516107 +0000 UTC // 食甚
+2.2740102011228953 1.246124858428628 // 半影与影锥食分
+2028-12-31 14:03:54.428796172 +0000 UTC // P1
+2028-12-31 15:07:42.35383898 +0000 UTC // U1
+2028-12-31 16:16:27.44777888 +0000 UTC // U2
+2028-12-31 17:27:46.474579274 +0000 UTC // U3
+2028-12-31 18:36:32.476299405 +0000 UTC // U4
+2028-12-31 19:40:11.773990094 +0000 UTC // P4
+2.29962460346294 1.2511815539147877 // Chauvenet 口径的半影与影锥食分
+true // 当地日期落在月食当天
+total // 站心食型
+2029-01-01 00:52:05.797516107 +0800 CST // UTC+8 下的食甚
 ```
 
 ### 与 NASA 数据对照
 
 对照值取自 NASA GSFC 的月食目录（食甚印为 **TD**、食分为目录值）。**UT 层的比较必须先扣掉时标口径**：目录与单次图页的 UT 时刻是用其出版时采用的 ΔT 从 TD 换算的（2026 年取 `75 s`、2024 年取 `74 s`），而实测 ΔT 只有约 `69.1–69.2 s`，两者相差 `4.8–5.9 s`。所以 UT 层的逐接触比较会整体带上这个时标差，它不是月球几何误差；TD 层（不含 ΔT）才是能单独检验星历与几何的一层。
+
+下表在 Legacy 为默认的时期测量。用半解析重测 `2026-03-03` 得食甚 TD `+0.083 s`，表内 Legacy 为 `+0.114 s`，两套模型相差 `0.031 s`；差异远小于表内 `0.1–1.0 s` 的口径残差，因此不按模型分列。
 
 | 样例 | 模型 | 半影食分误差 | 本影食分误差 | 食甚 TD 差（不含 ΔT） | 食甚 UT 差（含 ΔT 口径） |
 |------|------|--------------|--------------|----------------------|--------------------------|
@@ -643,7 +655,7 @@ func main() {
 输出结果：
 
 ```text
-true 19831
+true 19846
 ```
 
 生成效果：
@@ -657,6 +669,60 @@ true 19831
 - NASA 2026-08-28 月偏食图页：<https://eclipse.gsfc.nasa.gov/LEplot/LEplot2001/LE2026Aug28P.pdf>
 - NASA 2024-03-25 半影月食图页：<https://eclipse.gsfc.nasa.gov/LEplot/LEplot2001/LE2024Mar25N.pdf>
 - NASA 月食算法与历史说明：<https://eclipse.gsfc.nasa.gov/LEhistory/LEhistory.html>
+
+## 月缘地形修正
+
+默认月面是圆盘；站心日食、全球日食、月食和固定地点的月掩都可以改用 `moon/limb` 的月缘剖面。剖面给出月心指向目标方向上的实际月缘半径，用来精修接触时刻。
+
+| 计算项 | 是否按月缘修正 |
+| --- | --- |
+| 站心日食的初亏、复圆、中心食始末与中心食时长 | 是 |
+| 站心日食食甚时刻的食分与遮蔽率 | 是，食甚时刻本身不变 |
+| 全球日食的偏食始末（P1/P4）与食甚点中心食时长 | 是 |
+| 日食中心路径的全食/环食带南北界、逐点带宽、食甚带宽、中心带足迹、中心线最长时长 | 是，`SolarEclipsePathOptions.LunarLimb` 或模块设置 |
+| 偏食可见域外边界（零食分包络与初亏、复圆的日出日落曲线） | 是，`SolarEclipsePartialFootprintOptions.LunarLimb` 或模块设置 |
+| 月食的六个接触时刻 | 是，只能通过模块或上下文设置 |
+| 月掩的掩始、掩终及行星内外切 | 是，见[月掩手册](occultation.md#月缘地形修正) |
+| 站心与全球食甚时刻、全球食分、食型、中心线本身、食分线、食甚等时线与食甚日出日落曲线 | 否，仍按圆月面 |
+
+修正规则：
+
+- 环食内切与月全食内切取月缘背向接触中心的一侧。
+- 全球日食的 P1/P4 在圆月面切点两侧沿地球边缘扫描，取最早（最晚）的接触。
+- 中心路径南北界在中心方向两侧 ±45° 位置角内取最不利点：全食取月缘最低处仍盖住日面的界线，环食取月缘最高处仍在日面内的界线；地平线上的端点保留圆月面。
+- 偏食可见域外边界取月缘最高处刚好碰到日面近侧的界线；地平线上的端点与初亏、复圆日出日落曲线在同一时刻沿晨昏线移动，两者仍在同一点相接。太阳高度在 0.05°～0.5° 之间的点保留圆月面。结果的 `PartialBoundaryLimbApplied` 表示至少平移了一点；同一结果里的 `Eclipse`（偏食始末、食甚点中心食时长、`LunarLimbApplied`）与 `P1`/`P4` 也按月缘修正，与 `SolarEclipseOnDate` 一致。以 2024-04-08 等四场日食（含高纬偏食）实测：零等食分外包络的垂向平移中位数 1～4 km、最大约 7 km；初亏、复圆的升落曲线沿晨昏线滑动，个别点可移动 10 km 以上；默认步长下足迹计算耗时增加约 10%～20%。
+
+```go
+import "github.com/starainrt/astro/moon/limb"
+
+// 方式一：单次查询
+info, ok := eclipse.LocalSolarEclipseOnDateWithOptions(date, lon, lat, 0,
+	eclipse.SolarEclipseOptions{LunarLimb: limb.Default()})
+
+// 方式二：整个上下文的站心日食都用月缘
+base, err := astro.NewContext(astro.ModelSemianalytic)
+if err != nil {
+	panic(err)
+}
+ctx := base.WithLunarLimb(limb.Default())
+info, ok = ctx.Eclipse().LocalSolarEclipseOnDate(date, lon, lat, 0)
+```
+
+出图同样可用：`eclipse/svg` 五个入口的选项都有 `LunarLimb` 字段。站心日食图修正接触时刻与食甚时的食分、遮蔽率；两种月食示意图修正接触时刻，日月盘仍画圆面、食甚时刻不变；月食世界图的各阶段地平圈随修正后的接触时刻移动；日食全球图修正中心带南北界、食甚带宽、偏食可见域外边界、全球 P1/P4 与食甚点站心面板（含中心食时长），食分线、等时线与地心面板仍按圆月面。
+
+各层修正彼此独立，剖面只在部分位置有值时可能只修正其中几层；日食全球图页脚只列出实际修正的层，如“按月缘剖面修正可见域边界（食分线与等时线仍按圆月面）。”；中心路径结果的 `CentralLimitsLimbApplied` 记录南北界与带宽是否修正。
+
+每张图都在时标声明后写明所用口径（站心图为“圆月面。”或“月缘剖面。”），自定义 `FooterNote` 不会覆盖它。
+
+结果上的 `LunarLimbApplied` 记录月缘是否真正生效，图注按它而不是按选项是否为空来写。剖面在需要的位置无值时（`LimbRadiusKM` 返回 `false`），该处半径退回圆月面且不参与修正；整个结果没有任何量被月缘修正时字段为 `false`，数值与圆月面结果完全相同。
+
+选项里的 `LunarLimb` 优先于模块设置；`eclipse.(*Eclipse).WithLunarLimb` 返回新模块，不改原模块。也可以实现 `eclipse.LunarLimb` 接口接入别的剖面；底层 `basic.LunarEclipseWithLunarLimb` 提供同一能力。
+
+内置剖面在独立子包 `moon/limb`，由 ISAS/JAXA 的 SELENE（Kaguya）LALT 全球地形数据（DARTS 发布，16 像素/度栅格）加工而成，数据约 1.5 MB，只有导入该包才会链接；剖面按观测者月面经纬（±9° / ±8°，步长 1°）与位置角（步长 0.1°）制表，三线性插值对 DEM 直接求剖面的均方根误差约 90 m。
+
+修正量是秒级：2024-04-08 达拉斯全食时长 `227.6 s` → `229.8 s`，托雷翁 `250.6 s` → `255.0 s`；2023-10-14 阿尔伯克基环食 `289.4 s` → `290.3 s`；2025-09-07 月全食各接触移动 `-4.4 s` 至 `+0.2 s`。全食带南北界平均移动约 `2.1 km` / `1.0 km`（最大约 `3.2 km`），食甚带宽 `198.6 km` → `196.8 km`，中心线最长时长 `268.0 s` → `271.7 s`，食甚点中心食时长 `268.0 s` → `271.2 s`。
+
+需要逐项核对时，可与《中国天文年历》（紫金山天文台）的发布值比较：整秒精度下误差约 `-0.8 s` / `+0.2 s`；Chauvenet 口径、0.1 分钟精度下平均误差为圆月 `1.5 s`、月缘 `2.2 s`，都在发布舍入以内。
 
 ## 全球见食图与月食出图
 
@@ -917,3 +983,42 @@ ut1, ok := eclipsesvg.SolarEclipseMapSVG(
 ```
 
 ![2009 长江大日食全球见食图（UT1 口径）](../img/solar-eclipse-yangshan-2009-global-ut1.svg)
+
+## 凌日出图
+
+凌日的接触时刻、站心可见性和 `LocalTransit` 见[行星：水星与金星凌日](planets.md#水星与金星凌日)；本节只讲 `eclipse/svg` 的两张图。两个凌日入口同样返回 `(string, bool)`，`date` 取距它最近的一次凌日（同日查询能找到当天凌日）。
+
+| 入口 | 画面 | 画布建议 |
+| --- | --- | --- |
+| `TransitMapSVG` | 地心几何的全球可见图：全程可见、日出时已在凌日、日落时仍在凌日、不可见四区 | 960×640 起 |
+| `TransitLocalSVG` | 站心日面图：上北左东，行星中心轨迹、各接触与凌甚的行星圆面、接触时刻表 | 960×680 起 |
+
+可见区按一触、凌甚、四触三刻太阳中心是否在视地平上划分，计入标准大气折射（地平圈半径 90°34′）。等时线默认不画，用 `Isochrones` 按位开启：`TransitIsochroneC1` … `TransitIsochroneC4`，或组合 `TransitIsochroneExternal`（一触、四触）、`TransitIsochroneAll`；掠凌没有内切接触时 C2/C3 自动略去。等时线是站心接触时刻，只画太阳在视地平上的部分；`IsochroneStep` 非正时水星取 20 秒、金星取 1 分钟。凌日可见范围接近半个地球，地图始终画全球，`Projection` 可选四种投影。
+
+```go
+venus := time.Date(2012, 6, 6, 0, 0, 0, 0, time.UTC)
+world, ok := eclipsesvg.TransitMapSVG(eclipsesvg.TransitVenus, venus, eclipsesvg.TransitMapSVGOptions{
+	Isochrones:    eclipsesvg.TransitIsochroneExternal,
+	IsochroneStep: 10 * time.Minute,
+})
+local, ok := eclipsesvg.TransitLocalSVG(eclipsesvg.TransitVenus, venus, 116.4, 39.9, 50,
+	eclipsesvg.TransitLocalSVGOptions{Location: time.FixedZone("UTC+8", 8*3600)})
+```
+
+站心图中太阳中心在视地平下的轨迹段画成灰色虚线，时刻表补出凌日期间的日出、日落。该地几何上看不到凌日（行星圆面不进入站心日面）时 `TransitLocalSVG` 返回 `false`。站心接触的算法与口径见[行星：水星与金星凌日](planets.md#水星与金星凌日)。
+
+### 水星：2032-11-13（北京）
+
+2032-11-13 是北京下一次可见的水星凌日。北京可见一触、二触与凌甚，凌甚时太阳高度只有 `+0.2°`；三触、四触发生在日落后（太阳高度约 `-24°`），站心图上画成灰色虚线。
+
+![2032 水星凌日北京站心图](../img/transit-mercury-beijing-2032.svg)
+
+![2032 水星凌日全球可见图](../img/transit-mercury-beijing-2032-global.svg)
+
+### 金星：2012-06-06（北京）
+
+2012-06-06 金星凌日在北京全程可见，一触到四触历时 `6h39m4s`，各接触的太阳高度为 `+14°` 至 `+71°`。
+
+![2012 金星凌日北京站心图](../img/transit-venus-beijing-2012.svg)
+
+![2012 金星凌日全球可见图](../img/transit-venus-beijing-2012-global.svg)

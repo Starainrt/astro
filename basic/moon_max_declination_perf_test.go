@@ -47,6 +47,9 @@ func moonMaximumDeclinationReferenceClosest(jd float64, coeffs moonMaxDeclinatio
 }
 
 func TestMoonMaximumDeclinationPruningMatchesFullSearch(t *testing.T) {
+	if testing.Short() {
+		t.Skip("slow regression")
+	}
 	for _, coeffs := range []moonMaxDeclinationCoefficients{moonMaxDeclinationNorthCoefficients, moonMaxDeclinationSouthCoefficients} {
 		for jd := JDCalc(2024, 1, 1); jd <= JDCalc(2025, 6, 1); jd += 2.5 {
 			for _, direction := range []struct {

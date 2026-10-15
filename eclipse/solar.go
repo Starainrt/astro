@@ -42,7 +42,15 @@ type SolarEclipseOptions struct {
 	RadiusModel SolarEclipseRadiusModel
 	// SunRadiusModel 太阳半径口径，零值为标准档, solar radius convention.
 	SunRadiusModel SolarEclipseSunRadiusModel
+	// LunarLimb 月缘剖面，nil 沿用模块设置；修正站心接触、食分与遮蔽率，以及全球始末与食甚点中心食时长 / lunar limb profile for local contacts and values, global P1/P4 and central duration.
+	LunarLimb LunarLimb
 }
+
+// LunarLimb 月缘剖面接口，内置实现见 github.com/starainrt/astro/moon/limb, lunar limb profile interface.
+type LunarLimb = basic.LunarLimb
+
+// SolarEclipseLimbContact 月缘修正后的全球偏食始末接触点位置 / limb-corrected global contact location.
+type SolarEclipseLimbContact = basic.SolarEclipseLimbContact
 
 // SolarEclipseType 全局日食食型, global solar eclipse type.
 type SolarEclipseType string
@@ -85,6 +93,11 @@ type SolarEclipseInfo struct {
 	Type SolarEclipseType
 	// Centrality 中心性, eclipse centrality.
 	Centrality SolarEclipseCentrality
+	// LunarLimbApplied 全球偏食始末与食甚点中心食时长已按月缘剖面修正；剖面失败时为 false 且结果保持圆月面 / contacts refined with a lunar limb profile.
+	LunarLimbApplied bool
+	// PartialBeginContact / PartialEndContact 月缘修正后的偏食始末接触点位置，未修正时 Defined 为 false / limb-corrected contact locations.
+	PartialBeginContact SolarEclipseLimbContact
+	PartialEndContact   SolarEclipseLimbContact
 	// HasSaros 存在沙罗序列信息（可能是锚点外推结果）, has Saros series metadata (possibly extrapolated).
 	HasSaros bool
 	// Saros 是沙罗序列信息，包括系列号、系列内序号和总成员数。
@@ -148,48 +161,54 @@ type SolarEclipseInfo struct {
 }
 
 // SolarEclipseOnDate 当地自然日全局日食查询 / local-date global solar eclipse query.
-// Determine whether a global solar eclipse overlaps the local date, using NASA bulletin Split-K by default.
-func SolarEclipseOnDate(date time.Time) (SolarEclipseInfo, bool) {
-	return SolarEclipseOnDateNASABulletinSplitK(date)
+func (module *Eclipse) SolarEclipseOnDate(date time.Time) (SolarEclipseInfo, bool) {
+	return module.SolarEclipseOnDateNASABulletinSplitK(date)
 }
 
 // SolarEclipseOnDateNASABulletinSplitK 当地自然日全局日食查询（NASA bulletin Split-K） / local-date global solar eclipse query with NASA bulletin Split-K.
-// Determine whether a global solar eclipse overlaps the local date with the NASA bulletin Split-K model.
-func SolarEclipseOnDateNASABulletinSplitK(date time.Time) (SolarEclipseInfo, bool) {
-	return solarEclipseOnDate(date, basic.SolarEclipseNASABulletinSplitK)
+func (module *Eclipse) SolarEclipseOnDateNASABulletinSplitK(date time.Time) (SolarEclipseInfo, bool) {
+	return solarEclipseOnDate(date, func(seedJDE float64) basic.SolarEclipseResult {
+		return module.solarResult(seedJDE, basic.SolarEclipseModelNASABulletinSplitK)
+	}, module)
 }
 
 // SolarEclipseOnDateIAUSingleK 当地自然日全局日食查询（IAU Single-K） / local-date global solar eclipse query with IAU Single-K.
-// Determine whether a global solar eclipse overlaps the local date with the IAU Single-K model.
-func SolarEclipseOnDateIAUSingleK(date time.Time) (SolarEclipseInfo, bool) {
-	return solarEclipseOnDate(date, basic.SolarEclipseIAUSingleK)
+func (module *Eclipse) SolarEclipseOnDateIAUSingleK(date time.Time) (SolarEclipseInfo, bool) {
+	return solarEclipseOnDate(date, func(seedJDE float64) basic.SolarEclipseResult {
+		return module.solarResult(seedJDE, basic.SolarEclipseModelIAUSingleK)
+	}, module)
 }
 
 // SolarEclipseOnDateWithOptions 当地自然日全局日食查询（自定义半径口径） / local-date global solar eclipse query with custom radius conventions.
-func SolarEclipseOnDateWithOptions(date time.Time, options SolarEclipseOptions) (SolarEclipseInfo, bool) {
-	return solarEclipseOnDate(date, solarEclipseCalculatorFor(options))
+func (module *Eclipse) SolarEclipseOnDateWithOptions(date time.Time, options SolarEclipseOptions) (SolarEclipseInfo, bool) {
+	return solarEclipseOnDate(date, solarEclipseCalculatorFor(options, module), module)
 }
 
 // LastSolarEclipseWithOptions 上次日食（自定义半径口径） / previous solar eclipse with custom radius conventions.
-func LastSolarEclipseWithOptions(date time.Time, options SolarEclipseOptions) SolarEclipseInfo {
-	info, _ := searchSolarEclipse(date, -1, true, solarEclipseCalculatorFor(options))
+func (module *Eclipse) LastSolarEclipseWithOptions(date time.Time, options SolarEclipseOptions) SolarEclipseInfo {
+	info, _ := searchSolarEclipse(date, -1, true, solarEclipseCalculatorFor(options, module), module)
 	return info
 }
 
 // NextSolarEclipseWithOptions 下次日食（自定义半径口径） / next solar eclipse with custom radius conventions.
-func NextSolarEclipseWithOptions(date time.Time, options SolarEclipseOptions) SolarEclipseInfo {
-	info, _ := searchSolarEclipse(date, 1, false, solarEclipseCalculatorFor(options))
+func (module *Eclipse) NextSolarEclipseWithOptions(date time.Time, options SolarEclipseOptions) SolarEclipseInfo {
+	info, _ := searchSolarEclipse(date, 1, false, solarEclipseCalculatorFor(options, module), module)
 	return info
 }
 
 // ClosestSolarEclipseWithOptions 最近一次日食（自定义半径口径） / closest solar eclipse with custom radius conventions.
-func ClosestSolarEclipseWithOptions(date time.Time, options SolarEclipseOptions) SolarEclipseInfo {
-	last, hasLast := searchSolarEclipse(date, -1, true, solarEclipseCalculatorFor(options))
-	next, hasNext := searchSolarEclipse(date, 1, false, solarEclipseCalculatorFor(options))
+func (module *Eclipse) ClosestSolarEclipseWithOptions(date time.Time, options SolarEclipseOptions) SolarEclipseInfo {
+	last, hasLast := searchSolarEclipse(date, -1, true, solarEclipseCalculatorFor(options, module), module)
+	next, hasNext := searchSolarEclipse(date, 1, false, solarEclipseCalculatorFor(options, module), module)
 	return closestSolarEclipse(date, last, hasLast, next, hasNext)
 }
 
-func solarEclipseCalculatorFor(options SolarEclipseOptions) solarEclipseCalculator {
+func solarEclipseCalculatorFor(options SolarEclipseOptions, modules ...*Eclipse) solarEclipseCalculator {
+	module := &defaultModule
+	if len(modules) > 0 {
+		module = modules[0]
+	}
+
 	basicOptions := basic.SolarEclipseOptions{
 		RadiusModel:    basic.SolarEclipseRadiusModel(options.RadiusModel),
 		SunRadiusModel: basic.SolarEclipseSunRadiusModel(options.SunRadiusModel),
@@ -197,22 +216,43 @@ func solarEclipseCalculatorFor(options SolarEclipseOptions) solarEclipseCalculat
 	if basicOptions.RadiusModel != basic.SolarEclipseModelIAUSingleK {
 		basicOptions.RadiusModel = basic.SolarEclipseModelNASABulletinSplitK
 	}
+	basicOptions.LunarLimb = options.LunarLimb
+	if basicOptions.LunarLimb == nil {
+		basicOptions.LunarLimb = module.lunarLimb
+	}
 	return func(seed float64) basic.SolarEclipseResult {
-		return basic.SolarEclipseWithOptions(seed, basicOptions)
+		return basic.SolarEclipseWithOptionsWithInstance(seed, basicOptions, module.inst)
 	}
 }
 
-func solarEclipseOnDate(date time.Time, calculator solarEclipseCalculator) (SolarEclipseInfo, bool) {
+// solarResult 按模块星历与月缘计算一次全球日食；未设置月缘时与包级计算相同。
+func (module *Eclipse) solarResult(seedJDE float64, model basic.SolarEclipseRadiusModel) basic.SolarEclipseResult {
+	if module.lunarLimb == nil {
+		if model == basic.SolarEclipseModelIAUSingleK {
+			return basic.SolarEclipseIAUSingleKWithInstance(seedJDE, module.inst)
+		}
+		return basic.SolarEclipseNASABulletinSplitKWithInstance(seedJDE, module.inst)
+	}
+	return basic.SolarEclipseWithOptionsWithInstance(seedJDE,
+		basic.SolarEclipseOptions{RadiusModel: model, LunarLimb: module.lunarLimb}, module.inst)
+}
+
+func solarEclipseOnDate(date time.Time, calculator solarEclipseCalculator, modules ...*Eclipse) (SolarEclipseInfo, bool) {
+	module := &defaultModule
+	if len(modules) > 0 {
+		module = modules[0]
+	}
+
 	location := date.Location()
 	dayStart, dayMid, dayEnd := solarEclipseLocalDayBounds(date)
 
-	candidateTT := basic.CalcMoonSHByJDE(solarEclipseTimeToTTJDE(dayMid), 0)
+	candidateTT := basic.CalcMoonSHByJDEWithInstance(solarEclipseTimeToTTJDE(dayMid), 0, module.inst)
 	result := calculator(candidateTT)
 	if result.Type == basic.SolarEclipseNone {
 		return SolarEclipseInfo{}, false
 	}
 
-	info := solarEclipseInfoFromBasic(result, location)
+	info := solarEclipseInfoFromBasic(result, location, module)
 	if !solarEclipseOverlapsDate(info, dayStart, dayEnd) {
 		return SolarEclipseInfo{}, false
 	}
@@ -220,64 +260,71 @@ func solarEclipseOnDate(date time.Time, calculator solarEclipseCalculator) (Sola
 }
 
 // LastSolarEclipse 上次日食 / previous solar eclipse.
-// Previous solar eclipse, using NASA bulletin Split-K by default.
-func LastSolarEclipse(date time.Time) SolarEclipseInfo {
-	return LastSolarEclipseNASABulletinSplitK(date)
+func (module *Eclipse) LastSolarEclipse(date time.Time) SolarEclipseInfo {
+	return module.LastSolarEclipseNASABulletinSplitK(date)
 }
 
 // LastSolarEclipseNASABulletinSplitK 上次日食（NASA bulletin Split-K） / previous solar eclipse with NASA bulletin Split-K.
-// Previous solar eclipse with the NASA bulletin Split-K model.
-func LastSolarEclipseNASABulletinSplitK(date time.Time) SolarEclipseInfo {
-	info, _ := searchSolarEclipse(date, -1, true, basic.SolarEclipseNASABulletinSplitK)
+func (module *Eclipse) LastSolarEclipseNASABulletinSplitK(date time.Time) SolarEclipseInfo {
+	info, _ := searchSolarEclipse(date, -1, true, func(seedJDE float64) basic.SolarEclipseResult {
+		return module.solarResult(seedJDE, basic.SolarEclipseModelNASABulletinSplitK)
+	}, module)
 	return info
 }
 
 // LastSolarEclipseIAUSingleK 上次日食（IAU Single-K） / previous solar eclipse with IAU Single-K.
-// Previous solar eclipse with the IAU Single-K model.
-func LastSolarEclipseIAUSingleK(date time.Time) SolarEclipseInfo {
-	info, _ := searchSolarEclipse(date, -1, true, basic.SolarEclipseIAUSingleK)
+func (module *Eclipse) LastSolarEclipseIAUSingleK(date time.Time) SolarEclipseInfo {
+	info, _ := searchSolarEclipse(date, -1, true, func(seedJDE float64) basic.SolarEclipseResult {
+		return module.solarResult(seedJDE, basic.SolarEclipseModelIAUSingleK)
+	}, module)
 	return info
 }
 
 // NextSolarEclipse 下次日食 / next solar eclipse.
-// Next solar eclipse, using NASA bulletin Split-K by default.
-func NextSolarEclipse(date time.Time) SolarEclipseInfo {
-	return NextSolarEclipseNASABulletinSplitK(date)
+func (module *Eclipse) NextSolarEclipse(date time.Time) SolarEclipseInfo {
+	return module.NextSolarEclipseNASABulletinSplitK(date)
 }
 
 // NextSolarEclipseNASABulletinSplitK 下次日食（NASA bulletin Split-K） / next solar eclipse with NASA bulletin Split-K.
-// Next solar eclipse with the NASA bulletin Split-K model.
-func NextSolarEclipseNASABulletinSplitK(date time.Time) SolarEclipseInfo {
-	info, _ := searchSolarEclipse(date, 1, false, basic.SolarEclipseNASABulletinSplitK)
+func (module *Eclipse) NextSolarEclipseNASABulletinSplitK(date time.Time) SolarEclipseInfo {
+	info, _ := searchSolarEclipse(date, 1, false, func(seedJDE float64) basic.SolarEclipseResult {
+		return module.solarResult(seedJDE, basic.SolarEclipseModelNASABulletinSplitK)
+	}, module)
 	return info
 }
 
 // NextSolarEclipseIAUSingleK 下次日食（IAU Single-K） / next solar eclipse with IAU Single-K.
-// Next solar eclipse with the IAU Single-K model.
-func NextSolarEclipseIAUSingleK(date time.Time) SolarEclipseInfo {
-	info, _ := searchSolarEclipse(date, 1, false, basic.SolarEclipseIAUSingleK)
+func (module *Eclipse) NextSolarEclipseIAUSingleK(date time.Time) SolarEclipseInfo {
+	info, _ := searchSolarEclipse(date, 1, false, func(seedJDE float64) basic.SolarEclipseResult {
+		return module.solarResult(seedJDE, basic.SolarEclipseModelIAUSingleK)
+	}, module)
 	return info
 }
 
 // ClosestSolarEclipse 最近一次日食 / closest solar eclipse.
-// Closest solar eclipse, using NASA bulletin Split-K by default.
-func ClosestSolarEclipse(date time.Time) SolarEclipseInfo {
-	return ClosestSolarEclipseNASABulletinSplitK(date)
+func (module *Eclipse) ClosestSolarEclipse(date time.Time) SolarEclipseInfo {
+	return module.ClosestSolarEclipseNASABulletinSplitK(date)
 }
 
 // ClosestSolarEclipseNASABulletinSplitK 最近一次日食（NASA bulletin Split-K） / closest solar eclipse with NASA bulletin Split-K.
-// Closest solar eclipse with the NASA bulletin Split-K model.
-func ClosestSolarEclipseNASABulletinSplitK(date time.Time) SolarEclipseInfo {
-	last, hasLast := searchSolarEclipse(date, -1, true, basic.SolarEclipseNASABulletinSplitK)
-	next, hasNext := searchSolarEclipse(date, 1, false, basic.SolarEclipseNASABulletinSplitK)
+func (module *Eclipse) ClosestSolarEclipseNASABulletinSplitK(date time.Time) SolarEclipseInfo {
+	last, hasLast := searchSolarEclipse(date, -1, true, func(seedJDE float64) basic.SolarEclipseResult {
+		return module.solarResult(seedJDE, basic.SolarEclipseModelNASABulletinSplitK)
+	}, module)
+	next, hasNext := searchSolarEclipse(date, 1, false, func(seedJDE float64) basic.SolarEclipseResult {
+		return module.solarResult(seedJDE, basic.SolarEclipseModelNASABulletinSplitK)
+	}, module)
 	return closestSolarEclipse(date, last, hasLast, next, hasNext)
 }
 
 // ClosestSolarEclipseIAUSingleK 最近一次日食（IAU Single-K） / closest solar eclipse with IAU Single-K.
-// Closest solar eclipse with the IAU Single-K model.
-func ClosestSolarEclipseIAUSingleK(date time.Time) SolarEclipseInfo {
-	last, hasLast := searchSolarEclipse(date, -1, true, basic.SolarEclipseIAUSingleK)
-	next, hasNext := searchSolarEclipse(date, 1, false, basic.SolarEclipseIAUSingleK)
+func (module *Eclipse) ClosestSolarEclipseIAUSingleK(date time.Time) SolarEclipseInfo {
+	last, hasLast := searchSolarEclipse(date, -1, true, func(seedJDE float64) basic.SolarEclipseResult {
+		return module.solarResult(seedJDE, basic.SolarEclipseModelIAUSingleK)
+	}, module)
+	next, hasNext := searchSolarEclipse(date, 1, false, func(seedJDE float64) basic.SolarEclipseResult {
+		return module.solarResult(seedJDE, basic.SolarEclipseModelIAUSingleK)
+	}, module)
 	return closestSolarEclipse(date, last, hasLast, next, hasNext)
 }
 
@@ -309,26 +356,34 @@ func searchSolarEclipse(
 	date time.Time,
 	direction int,
 	includeCurrent bool,
-	calculator solarEclipseCalculator,
-) (SolarEclipseInfo, bool) {
+	calculator solarEclipseCalculator, modules ...*Eclipse) (SolarEclipseInfo, bool) {
+	module := &defaultModule
+	if len(modules) > 0 {
+		module = modules[0]
+	}
+
 	targetTT := solarEclipseTimeToTTJDE(date)
-	candidateTT := basic.CalcMoonSHByJDE(targetTT, 0)
+	candidateTT := basic.CalcMoonSHByJDEWithInstance(targetTT, 0, module.inst)
 
 	for i := 0; i < solarEclipseSearchLimit; i++ {
-		if isPotentialSolarEclipse(candidateTT) {
+		if module.isPotentialSolarEclipse(candidateTT) {
 			result := calculator(candidateTT)
 			if result.Type != basic.SolarEclipseNone && solarEclipseMatchesDirection(result.GreatestEclipse, targetTT, direction, includeCurrent) {
-				return solarEclipseInfoFromBasic(result, date.Location()), true
+				return solarEclipseInfoFromBasic(result, date.Location(), module), true
 			}
 		}
-		candidateTT = nextEclipseSearchCandidateTT(candidateTT, 0, direction, solarEclipseSynodicMonthDays)
+		candidateTT = nextEclipseSearchCandidateTT(candidateTT, 0, direction, solarEclipseSynodicMonthDays, module)
 	}
 
 	return SolarEclipseInfo{}, false
 }
 
 func isPotentialSolarEclipse(newMoonTT float64) bool {
-	return math.Abs(basic.HMoonTrueBo(newMoonTT)) <= solarEclipseLatitudeLimitDeg
+	return defaultModule.isPotentialSolarEclipse(newMoonTT)
+}
+
+func (module *Eclipse) isPotentialSolarEclipse(newMoonTT float64) bool {
+	return math.Abs(basic.HMoonTrueBoWithInstance(newMoonTT, module.inst)) <= solarEclipseLatitudeLimitDeg
 }
 
 func solarEclipseMatchesDirection(greatestTT, targetTT float64, direction int, includeCurrent bool) bool {
@@ -355,13 +410,21 @@ func nextSolarEclipseLocalDayStart(dayStart time.Time) time.Time {
 	return time.Date(dayStart.Year(), dayStart.Month(), dayStart.Day()+1, 0, 0, 0, 0, location)
 }
 
-func solarEclipseInfoFromBasic(result basic.SolarEclipseResult, location *time.Location) SolarEclipseInfo {
-	saros, hasSaros := solarSarosInfo(result.GreatestEclipse)
+func solarEclipseInfoFromBasic(result basic.SolarEclipseResult, location *time.Location, modules ...*Eclipse) SolarEclipseInfo {
+	module := &defaultModule
+	if len(modules) > 0 {
+		module = modules[0]
+	}
+
+	saros, hasSaros := solarSarosInfo(result.GreatestEclipse, module)
 	return SolarEclipseInfo{
 		Model:               mapBasicSolarEclipseModel(result.Model),
 		SunRadiusModel:      result.SunRadiusModel,
 		Type:                mapBasicSolarEclipseType(result.Type),
 		Centrality:          mapBasicSolarEclipseCentrality(result.Centrality),
+		LunarLimbApplied:    result.LunarLimbApplied,
+		PartialBeginContact: result.PartialBeginContact,
+		PartialEndContact:   result.PartialEndContact,
 		HasSaros:            hasSaros,
 		Saros:               saros,
 		GreatestEclipse:     solarEclipseTTJDEToTime(result.GreatestEclipse, location),

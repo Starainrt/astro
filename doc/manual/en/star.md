@@ -8,6 +8,7 @@ The library ships a catalog of 9100 stars (BSC / HR numbers `1-9110`, apparent m
 
 ## Contents
 
+- [External catalogs](#external-catalogs)
 - [Finding Sirius and its rise time](#finding-sirius-and-its-rise-time)
 - [API Reference](#api-reference)
   - [Constellation lookup](#constellation-lookup)
@@ -25,6 +26,55 @@ The library ships a catalog of 9100 stars (BSC / HR numbers `1-9110`, apparent m
   - [Polar edges and catalog conventions](#polar-edges-and-catalog-conventions)
 - [Parameter and result conventions](#parameter-and-result-conventions)
 - [Related manuals](#related-manuals)
+
+## External catalogs
+
+`star/catalog` is independent of the embedded 9100-star database and does not automatically download or load large catalogs. `Entry.Coordinate` is a `basic.StarCoordinate` with epoch, frame and proper motion; pass it directly to `moon.FindStarOccultations` or `phenomena.StarApproaches`.
+
+| Entry point | Input and purpose |
+| --- | --- |
+| `ReadCSV` | Header-based CSV / TSV; `ColumnMap` sets columns, epoch and frame; zero `Delimiter` enables detection |
+| `ReadHipparcos2007` / `ReadBSC5` | Corresponding fixed-width catalog text |
+| `ReadStellariumStars` / `ReadStellariumDir` | One binary shard or an `fs.FS` directory; directory options load names/cross-IDs and filter by `MaxMagnitude` |
+| `Lookup` / `Entries` / `Len` | ID or alias lookup, copied records and count |
+| `Near` / `Band` | Cone / declination-band searches at catalog epochs, without propagation to the observing date |
+| `Merge` / `WithNames` | Return new catalogs; right-hand records win for the same primary ID and component; names use `id\|name` lines |
+
+```go
+import (
+	"strings"
+	"time"
+
+	"github.com/starainrt/astro/basic"
+	"github.com/starainrt/astro/star/catalog"
+)
+
+input := strings.NewReader("id,ra,dec,pmra,pmdec,V\nSirius,101.28715533,-16.71611586,-546.01,-1223.07,-1.46\n")
+stars, err := catalog.ReadCSV(input, catalog.ColumnMap{
+	ID: "id", RA: "ra", Dec: "dec", PMRA: "pmra", PMDec: "pmdec", Magnitude: "V",
+	PMRAIncludesCosDec: true, Band: catalog.BandV,
+	Epoch: time.Date(2000, 1, 1, 12, 0, 0, 0, time.UTC), Frame: basic.CoordinateFrameJ2000,
+}, catalog.ReadOptions{Strict: true})
+if err != nil {
+	panic(err)
+}
+entry, found := stars.Lookup("Sirius")
+_ = entry.Coordinate
+_ = found
+```
+
+Units and required fields:
+
+- `RA` and `Dec` default to degrees; `AnglesInRadians` selects radians. Proper motions are mas/year, parallax mas and radial velocity km/s.
+- Set `PMRAIncludesCosDec: true` if PMRA already represents `dRA*cos(Dec)`; otherwise the reader multiplies by the cosine.
+- Supply `Epoch` or `EpochColumn` (Julian year) and the correct `Frame`; a zero epoch is not an unknown-epoch placeholder.
+
+Reading behavior:
+
+- With `ReadOptions.Strict`, invalid records return an error; otherwise they are skipped and counted by `Skipped()`. Structural errors such as missing required headers always fail.
+- `Filter` controls admission without counting rejected records as bad.
+- Missing magnitudes are `NaN`; do not use `BandV`, `BandG` and `BandHp` interchangeably for a V-band visibility threshold.
+- `Near` searches at each record's own epoch: normalize mixed epochs/frames first and apply proper-motion propagation for exact observing-date selection.
 
 ## Finding Sirius and its rise time
 
@@ -60,7 +110,7 @@ func main() {
 
 Catalog coordinates have epoch J2000. `RaDecByDate` applies proper motion, precession and nutation before date-specific rise/set, altitude or constellation calculations.
 
-Proper motion is propagated in **Julian years** (365.25 days), and `RaDecByDate` converts the civil instant to TT before taking the epoch difference. Whenever a record carries a distance (`Pc > 0`), `RaDecByJde` advances a full **three-dimensional space motion**: proper motion supplies the tangential velocity and `RadVel` the line-of-sight component, the position vector is extrapolated linearly and its direction is taken. Records without a distance fall back to two dimensions, advancing only the two angular components, which is equivalent to treating the star as infinitely distant. The two differ by second-order terms only — the curvature of the great-circle path and the change in angular scale as radial motion alters the distance; even the fastest bright star moves less than about 0.09 arcseconds from it within 26 years.
+Proper motion is propagated in **Julian years** (365.25 days), and `RaDecByDate` converts the civil instant to TT before taking the epoch difference. Whenever a record carries a distance (`Pc > 0`), `RaDecByJde` advances a full **three-dimensional space motion**: proper motion supplies the tangential velocity and `RadVel` the line-of-sight component, the position vector is extrapolated linearly and its direction is taken. Records without a distance fall back to two dimensions, advancing only the two angular components, which is equivalent to treating the star as infinitely distant. The two differ only in second-order terms: three-dimensional propagation also changes the star's distance, so the apparent place is slightly smaller than in the two-dimensional case; even the fastest bright star moves less than about 0.09 arcseconds from it within 26 years.
 
 ## API Reference
 
@@ -70,11 +120,12 @@ Proper motion is propagated in **Julian years** (365.25 days), and `RaDecByDate`
 | Star catalog | `InitStarDatabase` / `StarDataByHR` / `StarDataByName` / `TopBrightStars` | Initialise the embedded catalog, look up by HR number or Chinese name, fetch the bright-star sample | HR `1-9110`; `Mag` is apparent magnitude |
 | Coordinate correction | `StarData.RaDecByDate` (`RaDecByJde` on the `basic` side) | Correct a J2000 position to the given instant | Returns RA/Dec in degrees |
 | Rise, set, culmination | `RiseTime` / `SetTime` / `CulminationTime` (`DownTime` is a deprecated alias of `SetTime`) | Rise, set and culmination instants | Civil instants; polar cases return sentinel errors |
+| Rise/set with weather | `RiseTimeWithAtmosphere` / `SetTimeWithAtmosphere` | Rise and set with measured pressure (hPa) and temperature (°C) | Refraction always applied |
 | Topocentric quantities | `Altitude` / `ApparentAltitude` / `Azimuth` / `Zenith` / `ApparentZenith` | (Apparent) altitude, azimuth, (apparent) zenith distance | Degrees |
 | Hour angle and parallactic angle | `HourAngle` / `ParallacticAngle` | Stellar hour angle, zenith-direction parallactic angle | Degrees |
 | Sidereal time | `MeanSiderealTime` / `ApparentSiderealTime` | Mean and apparent sidereal time | Hours |
 
-The `star` package has no `...N` truncated entry points; truncated analytical series live on the matching functions of `sun`, `moon`, the planets and `coord`, where `n < 0` uses every built-in term and `n >= 0` truncates the series (see those manuals).
+The `star` package has no `...N` entry points; the `n`-parameterised evaluation functions live on the matching functions of `sun`, `moon`, the planets and `coord`, with the semantics described in those manuals (`n < 0` uses the full series; under the semianalytic model every `n >= 0` uses the fast table, and Legacy truncates by `n`).
 
 The snippets below omit shared preamble variables: `date` (observation instant, civil time scale), `lon`/`lat` (observer longitude/latitude, east/north positive, degrees), `height` (observer height, **ellipsoidal**, metres), `aero` (whether refraction and apparent-radius corrections are applied).
 
@@ -100,7 +151,7 @@ bright, _ := star.TopBrightStars()
 fmt.Println(len(bright), bright[0].HR) // size of the bright-star sample and the leading HR number
 ```
 
-The catalog loads lazily behind `sync.Once`; `InitStarDatabase()` only warms it up. It is idempotent and surfaces the load error explicitly, and skipping it still works because the first lookup loads the catalog automatically.
+The catalog loads on first lookup; `InitStarDatabase()` only warms it up. It is idempotent and surfaces the load error explicitly, and skipping it still works because the first lookup loads the catalog automatically.
 
 `TopBrightStars()` returns 169 built-in entries around magnitude 3 or brighter, roughly ordered from brighter to dimmer.
 
@@ -164,7 +215,7 @@ for _, s := range bright[:3] {
 }
 ```
 
-Run at `date = 2020-01-01 08:08:08 CST` from `115 E, 40 N` with pressure `1010 hPa` and temperature `10 C`, this prints:
+Run at `date = 2020-01-01 08:08:08 CST` from `115°E, 40°N` with pressure `1010 hPa` and temperature `10 °C`, this prints:
 
 ```text
 天狼     Canis Major    mag=-1.46 alt=-30.180
@@ -218,11 +269,11 @@ func main() {
 Output:
 
 ```text
-2019-12-31 19:22:56.144202053 +0800 CST // Sirius rising
-2020-01-01 05:30:39.802506566 +0800 CST // Sirius setting
+2019-12-31 19:22:56.32125467 +0800 CST // Sirius rising
+2020-01-01 05:30:39.979518949 +0800 CST // Sirius setting
 大犬座 // constellation of Sirius
-6h3m46.61s // Vega right ascension in 13600 CE
-84°18′27.15″ // Vega declination in 13600 CE
+6h4m44.89s // Vega right ascension in 13600 CE
+84°19′13.71″ // Vega declination in 13600 CE
 天狼 Sirius -1.46 // first bright-star entry: Chinese name, common name, magnitude
 ```
 
@@ -310,7 +361,6 @@ if errors.Is(err, star.ERR_STAR_NEVER_RISE) || errors.Is(err, star.ERR_STAR_NEVE
   In the catalog `PmRA`/`PmDec` are arcseconds per year, `RadVel`/`RotVel` are km/s and `Pc` is parsecs.
 - **Time scale**: every public time argument and return value is a civil instant (a UTC label, equal to UT1 before 1972-01-01); see [Time Scale Declaration](map-geojson.md#time-scale-declaration).
 - **Coordinate convention**: the catalog is J2000; `RaDecByDate` adds proper motion, precession and nutation. Skipping it puts rise/set and constellation lookups off by a large margin (a century of precession is a degree-level shift).
-- **Polar sentinel errors**: `RiseTime` returns `star.ERR_STAR_NEVER_RISE` during a polar night (the star stays below the horizon all day) and `SetTime` returns `star.ERR_STAR_NEVER_SET` during a midnight sun (it stays above it); test with `errors.Is`. `ERR_STAR_NEVER_DOWN` is a deprecated alias of `ERR_STAR_NEVER_SET`.
 - **Observer height**: `height` is ellipsoidal height in metres; when you only have orthometric height, add the geoid undulation first, as described under "Observer Height Convention" in the README.
 - **Refraction range**: the Saemundsson approximation behind `ApparentAltitude`/`ApparentZenith` only applies for true altitudes inside `(-5, 90)` degrees and contributes zero outside that range, so well below the horizon the apparent altitude equals the geometric one (the `alt=-30.180` above is the same value `Altitude` returns).
 

@@ -1,6 +1,10 @@
 package basic
 
-import "math"
+import (
+	"math"
+
+	"github.com/starainrt/astro/internal/geodata"
+)
 
 func (solver solarEclipseSolver) completeRiseSetCurveEndpoints(
 	curves []SolarEclipseRiseSetCurve,
@@ -320,7 +324,7 @@ type solarEclipseRiseSetPhaseAttachment struct {
 func solarEclipseRiseSetMidpoint(first, second SolarEclipsePathPoint) SolarEclipsePathPoint {
 	return SolarEclipsePathPoint{
 		JDE: (first.JDE + second.JDE) / 2,
-		Longitude: normalizeLongitude(
+		Longitude: geodata.NormalizeLongitude(
 			first.Longitude + math.Remainder(second.Longitude-first.Longitude, 360)/2,
 		),
 		Latitude:    (first.Latitude + second.Latitude) / 2,
@@ -472,7 +476,7 @@ func (solver solarEclipseSolver) completeRiseSetDirectionJunctions(
 				continue
 			}
 			setEndpoint := setEndpoints[bestSetIndex]
-			longitude := normalizeLongitude(
+			longitude := geodata.NormalizeLongitude(
 				riseEndpoint.point.Longitude + math.Remainder(setEndpoint.point.Longitude-riseEndpoint.point.Longitude, 360)/2,
 			)
 			latitude := (riseEndpoint.point.Latitude + setEndpoint.point.Latitude) / 2
@@ -577,7 +581,7 @@ func (solver solarEclipseSolver) refineRiseSetDirectionJunction(
 		if math.Abs(delta[2]) > 5.0/1440.0 {
 			delta[2] = math.Copysign(5.0/1440.0, delta[2])
 		}
-		longitude = normalizeLongitude(longitude + delta[0])
+		longitude = geodata.NormalizeLongitude(longitude + delta[0])
 		latitude += delta[1]
 		jde += delta[2]
 		if latitude <= -89.999999 || latitude >= 89.999999 {

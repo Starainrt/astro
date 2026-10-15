@@ -11,7 +11,6 @@ import (
 
 // 掩星边界连续性判定的几何门限 / geometric thresholds for occultation-boundary continuity checks.
 const (
-	EarthRadiusKM        = 6378.1366
 	BoundaryBranchJumpKM = 750.0
 	// BoundaryBranchSpeedKMPerSecond 是判定"物理上不可能的支路跳变"的地面速度门限：
 	// 掩星边界随月球影子移动，地面速度上限约 1.1 km/s，取 2 km/s 留约两倍余量。
@@ -287,7 +286,7 @@ func nearestPolygonVertex(
 	distance := math.Inf(1)
 	for _, polygon := range polygons {
 		for _, candidate := range polygon {
-			value := geoDistanceKM(point, candidate)
+			value := geodata.EquatorialDistanceKM(point, candidate)
 			if value < distance {
 				nearest, distance = candidate, value
 			}
@@ -327,7 +326,7 @@ func nearestPolygonBoundaryPoint(
 				))
 			}
 			candidate := interpolateOccultationGeoPoint(start, end, fraction)
-			value := geoDistanceKM(point, candidate)
+			value := geodata.EquatorialDistanceKM(point, candidate)
 			if value < distance {
 				nearest, distance = candidate, value
 			}
@@ -742,12 +741,21 @@ func visibleBandPolygonsFromAnalyticContours(
 		}
 		return footprintFill
 	}
-	var selectionFill [][]geodata.GeoPoint
+	var selectionFill, footprintSelection [][]geodata.GeoPoint
 	if pointSource || len(visibilityContours) == 0 {
 		// Geocentric limit strips can extend beyond the station-corrected
 		// stellar envelope or omit a finite-disk horizon extremum. Use visible
 		// footprints as witnesses; the analytic linework supplies every edge.
 		selectionFill = getFootprintFill()
+		if pointSource && len(visibilityContours) == 0 {
+			// 密集恒星时间轴含大量重叠环；连续界限用于选面，逐环仍用于覆盖见证；界限条带选面失败时退回逐环。
+			footprintSelection = selectionFill
+			if limit := occultationLimitVisibleFillPolygons(northern, southern); len(limit) > 0 {
+				selectionFill = limit
+			} else if union := footprintVisibleUnionPolygons(footprints); len(union) > 0 {
+				selectionFill = union
+			}
+		}
 	}
 	if len(selectionFill) == 0 {
 		selectionFill = occultationLimitVisibleFillPolygons(northern, southern)
@@ -779,13 +787,21 @@ func visibleBandPolygonsFromAnalyticContours(
 	if pointSource && len(visibilityContours) == 0 {
 		initialCoverage = phaseLines
 	}
-	polygons, err := polygonize(initialCoverage)
-	if err != nil && len(phaseLines) > 0 {
-		// A multi-branch rise/set network can contain several closed faces with
-		// identical physical junctions. If fill-only selection chooses the
-		// adjacent face, require every exported phase line as a coverage witness
-		// and retry without changing the boundary network or snap tolerance.
-		polygons, err = polygonize(phaseLines)
+	selectFaces := func() ([][]geodata.GeoPoint, error) {
+		polygons, err := polygonize(initialCoverage)
+		if err != nil && len(phaseLines) > 0 {
+			// A multi-branch rise/set network can contain several closed faces with
+			// identical physical junctions. If fill-only selection chooses the
+			// adjacent face, require every exported phase line as a coverage witness
+			// and retry without changing the boundary network or snap tolerance.
+			polygons, err = polygonize(phaseLines)
+		}
+		return polygons, err
+	}
+	polygons, err := selectFaces()
+	if err != nil && len(footprintSelection) > 0 {
+		selectionFill = footprintSelection
+		polygons, err = selectFaces()
 	}
 	if err != nil {
 		if fallback, ok := fallbackVisible(); ok {

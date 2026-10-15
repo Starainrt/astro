@@ -2,13 +2,14 @@
 
 [English](en/formula.md) | [返回 README](../../README.md)
 
-`formula` 包放的是和具体日期、星历表无关的常用公式，适合科普估算、小说设定和教学演示。
+`formula` 包放的是不读取星历表的纯公式，覆盖辐射、测光、望远镜、大气和地球姿态，适合估算与观测辅助。
 
-它不做任何时标换算，也不读星历表：输入只有温度、波长、距离、口径、高度角这类瞬时或常量参数。高度角与天顶距的口径沿用[观测角语义](sun-moon.md#观测角语义)；需要坐标层的折射修正时改用 `coord` 的[大气质量](coord.md#大气质量)；整体精度与适用范围见[适用范围与精度](accuracy.md)。
+它不做时标换算，也不读取全局星历：多数输入是温度、波长、距离、口径和高度角，`TIOLocatorArcsec` 例外接收 TT 儒略日。高度角与天顶距沿用[观测角语义](sun-moon.md#观测角语义)，整体精度与适用范围见[精度与性能](accuracy.md)。
 
 ## 目录
 
 - [星等、会合周期与黑体辐射](#星等会合周期与黑体辐射)
+- [折射、消光与地球姿态](#折射消光与地球姿态)
 - [API 参考](#api-参考)
   - [黑体与辐射](#黑体与辐射)
   - [会合周期](#会合周期)
@@ -28,6 +29,35 @@
   - [角度象限与弧度/度的边界](#角度象限与弧度度的边界)
   - [零值与无效输入](#零值与无效输入)
   - [精度与适用范围](#精度与适用范围)
+
+## 折射、消光与地球姿态
+
+| 入口 | 输入与输出口径 |
+| --- | --- |
+| `ApparentAltitude` / `TrueAltitude` | 真高度/视高度互换，角度为度；气压 hPa、气温 ℃ |
+| `RefractionFromTrueAltitude` / `RefractionFromApparentAltitude` | 折射量为度；分别加到真高度或从视高度扣除 |
+| `ExtinctionSchaefer` | 合成 V 波段天顶消光分量及 `Total`，单位星等/大气质量 |
+| `TIOLocatorArcsec` | TT 儒略日转 TIO 定位角 s′，返回角秒 |
+| `PolarMotionMatrix` | `xp`、`yp`、s′ 均为角秒，矩阵按列向量将 TIRS 转为 ITRS |
+| `CelestialPoleOffsetMatrix` | dX、dY 为 mas，返回一阶小角修正矩阵，左乘已有天球旋转矩阵 |
+
+表中的缩写：`TIO` 是地球中间原点，`TIRS` 与 `ITRS` 分别是地固中间系与地固系，`s′` 是 TIO 定位角；`CPO` 是天球中间极偏移（`dX`、`dY`），单位 `mas`（毫角秒）。
+
+```go
+apparent := formula.ApparentAltitude(5, 1010, 10)
+trueAltitude := formula.TrueAltitude(apparent, 1010, 10)
+extinction := formula.ExtinctionSchaefer(100, 20, 50, 39.9, 120)
+polarMotion := formula.PolarMotionMatrix(0.1, 0.2, formula.TIOLocatorArcsec(2460000.5))
+_ = trueAltitude
+_ = extinction.Total
+_ = polarMotion
+```
+
+折射默认常量是 1010 hPa、10 ℃；气压必须为正、气温高于绝对零度，输入必须有限。真/视高度互换使用同一折射模型，逆解不存在时返回 `NaN`；高度 ≤−5° 或 ≥90° 时折射量为 0。这是经验模型边界，不是地平线附近精密观测的保证。
+
+`ExtinctionSchaefer` 的高度是测站海拔（米），不同于多数观测接口的椭球高；湿度是百分比且必须在 `(0,100)`，纬度和太阳赤经为度。把 `Total` 赋给 `phenomena.HeliacalOptions.ExtinctionCoefficient` 才会生效；不赋值时可见性计算使用该选项自身的默认消光。不同波段不能直接共用 V 波段系数。
+
+极移和 CPO 参数由调用者提供，本包不下载 IERS（国际地球自转与参考系服务）数据，也不会把修正自动接入默认升落、食或月掩链路。s′、xp/yp 的角秒与 dX/dY 的 mas 不可混用；返回矩阵的元素无量纲。
 
 ## 星等、会合周期与黑体辐射
 
@@ -295,18 +325,18 @@ alt=90 KY=0.999712 Pickering=1.000000 plane=1.000000
 - 望远镜族：口径毫米 mm；`DawesLimitArcsec`、`RayleighLimitArcsec` 返回**角秒**，不是度；`LightGatheringPowerRatio` 与 `LimitingMagnitudeEmpirical` 分别为无量纲比值与 mag。
 - 大气质量族：高度角（或天顶距）为度；返回值是以天顶为 1 的无量纲相对大气质量。
 - 会合周期：单位由调用者自定，两个输入必须一致，输出与之一致；本包不假定“天”。
-- 本包不产生视直径/视半径。日食、月掩手册里的视半径字段以角秒计，本包只有 Dawes/Rayleigh 两个极限角用角秒，其余角度一律为度，不要混用。
+- 本包不产生视直径/视半径。常规角度与折射量为度，Dawes/Rayleigh 和 TIO 定位角为角秒，极移输入为角秒、CPO 输入为 mas，不要混用。
 
 ### 时标
 
-- 全部接口都不接收时刻，也不做任何时标换算：公式只依赖温度、波长、距离、口径、高度角等参数，与 UTC、UT1、TT 无关。
+- 本包不做时标换算；`TIOLocatorArcsec` 接收 TT 儒略日，其余公式使用调用者提供的物理量或周期长度，不读取全局时标状态。
 - 会合周期给的是周期长度，不是“下一次会合的时刻”。要落到日期，需要配合行星包的会合接口与民用时刻，时标口径见[时标约定](timescale.md)。
 - 本包没有 ΔT、闰秒或 UT1 修正入口；这些只在 `coord`、`eclipse`、`moon` 等依赖时刻的链路里出现。
 
 ### 角度象限与弧度/度的边界
 
-- 角度参数一律为度，内部转弧度计算，返回值也回到度或角秒，不会把弧度泄漏给调用者。
-- 高度角与天顶距都限制在 `[0,90]`：地平为 `0°`、天顶为 `+90°`，天顶距与高度角互补。本包不做象限折叠，负高度（地平线以下）直接被判为无效，不会自动取绝对值或折到天顶。
+- 常规角度参数为度，极移角为角秒，CPO 为 mas；单位见对应签名说明，内部弧度不泄漏给调用者。
+- 大气质量模型的高度角/天顶距限制在 `[0,90]`，不做象限折叠；折射函数有独立的低高度边界，不能套用大气质量的输入范围。
 - 天顶距 `z` 与高度角 `h` 的关系是 `z = 90° − h`；`AirmassPlaneParallel` 收 `h`，`AirmassPlaneParallelByZenithDistance` 收 `z`，两者对同一几何应给出一致结果。
 - Dawes/Rayleigh 的返回值是角秒；若要与其他手册的“度”角度换算，需除以 3600。
 

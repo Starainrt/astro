@@ -1,11 +1,8 @@
 package basic
 
 import (
-	"bytes"
 	"errors"
-	"fmt"
 	"math"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -39,124 +36,6 @@ type StarData struct {
 	CstChinese       string
 }
 
-func parseStarData(star []byte) (InnerStarData, error) {
-	var err error
-	var stardata InnerStarData
-	if len(star) < 160 {
-		return stardata, errors.New("invalid stardat")
-	}
-	for i := 0; i < 4; i++ {
-		if star[i] == ' ' {
-			continue
-		}
-		stardata.HR = stardata.HR*10 + uint16(star[i]-48)
-	}
-	stardata.Name = string(bytes.TrimSpace(star[4:14]))
-	for i := 25; i < 31; i++ {
-		if star[i] == ' ' {
-			continue
-		}
-		stardata.HD = stardata.HD*10 + uint32(star[i]-48)
-	}
-	stardata.Ra, err = parseRa(star)
-	if err != nil {
-		return stardata, fmt.Errorf("parse ra failed:%v", err)
-	}
-	stardata.Dec, err = parseDec(star)
-	if err != nil {
-		return stardata, fmt.Errorf("parse dec failed:%v", err)
-	}
-	magOri := string(bytes.TrimSpace(star[102:107]))
-	if magOri != "" {
-		stardata.Mag, err = strconv.ParseFloat(magOri, 64)
-		if err != nil {
-			return stardata, fmt.Errorf("parse mag failed:%v", err)
-		}
-	} else {
-		stardata.Mag = 9999.9999
-	}
-	stardata.PmRA, _ = strconv.ParseFloat(string(bytes.TrimSpace(star[148:154])), 64)
-	stardata.PmDec, _ = strconv.ParseFloat(string(bytes.TrimSpace(star[154:160])), 64)
-	if len(star) >= 170 {
-		stardata.RadVel, _ = strconv.ParseFloat(string(bytes.TrimSpace(star[166:170])), 64)
-	}
-	if len(star) >= 179 {
-		stardata.RotVel, _ = strconv.ParseFloat(string(bytes.TrimSpace(star[176:179])), 64)
-	}
-	if len(star) > 161 {
-		rc, _ := strconv.ParseFloat(string(bytes.TrimSpace(star[162:166])), 64)
-		if rc != 0 {
-			stardata.Pc = 1 / rc
-		}
-	}
-	return stardata, nil
-}
-
-func parseRa(star []byte) (float64, error) {
-	var sec float64
-	var err error
-	ra := float64(0)
-	for i := 75; i < 77; i++ {
-		if star[i] == ' ' {
-			continue
-		}
-		ra = ra*10 + float64(star[i]-48)
-	}
-	minute := uint8(0)
-	for i := 77; i < 79; i++ {
-		if star[i] == ' ' {
-			continue
-		}
-		minute = minute*10 + (star[i] - 48)
-	}
-	ori := string(bytes.TrimSpace(star[79:83]))
-	if ori != "" {
-		sec, err = strconv.ParseFloat(ori, 64)
-		if err != nil {
-			return ra, err
-		}
-	}
-	ra += float64(minute)/60 + sec/3600
-	return ra * 15, nil
-}
-
-func parseDec(star []byte) (float64, error) {
-	var sec float64
-	var err error
-	underZero := false
-	if star[83] == '-' {
-		underZero = true
-	}
-	dec := float64(0)
-	for i := 84; i < 86; i++ {
-		if star[i] == ' ' {
-			continue
-		}
-		dec = dec*10 + float64(star[i]-48)
-	}
-	minute := uint8(0)
-	for i := 86; i < 88; i++ {
-		if star[i] == ' ' {
-			continue
-		}
-		minute = minute*10 + (star[i] - 48)
-	}
-	ori := string(bytes.TrimSpace(star[88:90]))
-	if ori != "" {
-		sec, err = strconv.ParseFloat(ori, 64)
-		if err != nil {
-			return dec, err
-		}
-	}
-	dec += float64(minute)/60 + sec/3600
-	if underZero {
-		dec = -dec
-	}
-	return dec, nil
-}
-
-var stardat [][]byte
-var starhdindex map[string]int
 var hr2detail map[uint16][]string
 var hr2hip map[uint16]uint32
 var chnidx map[string]uint16
@@ -173,16 +52,9 @@ func LoadStarData() error {
 }
 
 func initStarData() error {
-	data := initStarCatalogData()
-	stardat = bytes.Split(data, []byte("\n"))
-	parsedStarData = make([]InnerStarData, len(stardat))
-	cachedStarData = make([]StarData, len(stardat))
-	for i, row := range stardat {
-		parsed, err := parseStarData(row)
-		if err != nil {
-			return fmt.Errorf("parse star %d failed: %w", i+1, err)
-		}
-		parsedStarData[i] = parsed
+	parsedStarData = initStarCatalogData()
+	cachedStarData = make([]StarData, len(parsedStarData))
+	for i, parsed := range parsedStarData {
 		cachedStarData[i] = fullStarData(parsed)
 	}
 	chnidx = make(map[string]uint16, len(hr2detail)*2)

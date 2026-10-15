@@ -56,36 +56,36 @@ type GalileanPhenomenonContactEvent struct {
 }
 
 // LastGalileanPhenomenonContactEvent 上一次 IMCCE 风格接触事件 / previous IMCCE-style contact event.
-func LastGalileanPhenomenonContactEvent(date time.Time, satellite int, phenomenonType GalileanPhenomenonType) GalileanPhenomenonContactEvent {
+func (module *Jupiter) LastGalileanPhenomenonContactEvent(date time.Time, satellite int, phenomenonType GalileanPhenomenonType) GalileanPhenomenonContactEvent {
 	return galileanPhenomenonContactEventFromBasic(
-		basic.LastJupiterGalileanPhenomenonContactEvent(
+		basic.LastJupiterGalileanPhenomenonContactEventWithInstance(
 			basic.Date2JD(date.UTC()),
 			satellite,
-			basic.JupiterGalileanPhenomenonType(phenomenonType),
+			basic.JupiterGalileanPhenomenonType(phenomenonType), module.inst,
 		),
 		date.Location(),
 	)
 }
 
 // NextGalileanPhenomenonContactEvent 下一次 IMCCE 风格接触事件 / next IMCCE-style contact event.
-func NextGalileanPhenomenonContactEvent(date time.Time, satellite int, phenomenonType GalileanPhenomenonType) GalileanPhenomenonContactEvent {
+func (module *Jupiter) NextGalileanPhenomenonContactEvent(date time.Time, satellite int, phenomenonType GalileanPhenomenonType) GalileanPhenomenonContactEvent {
 	return galileanPhenomenonContactEventFromBasic(
-		basic.NextJupiterGalileanPhenomenonContactEvent(
+		basic.NextJupiterGalileanPhenomenonContactEventWithInstance(
 			basic.Date2JD(date.UTC()),
 			satellite,
-			basic.JupiterGalileanPhenomenonType(phenomenonType),
+			basic.JupiterGalileanPhenomenonType(phenomenonType), module.inst,
 		),
 		date.Location(),
 	)
 }
 
 // ClosestGalileanPhenomenonContactEvent 最近一次 IMCCE 风格接触事件 / closest IMCCE-style contact event.
-func ClosestGalileanPhenomenonContactEvent(date time.Time, satellite int, phenomenonType GalileanPhenomenonType) GalileanPhenomenonContactEvent {
+func (module *Jupiter) ClosestGalileanPhenomenonContactEvent(date time.Time, satellite int, phenomenonType GalileanPhenomenonType) GalileanPhenomenonContactEvent {
 	return galileanPhenomenonContactEventFromBasic(
-		basic.ClosestJupiterGalileanPhenomenonContactEvent(
+		basic.ClosestJupiterGalileanPhenomenonContactEventWithInstance(
 			basic.Date2JD(date.UTC()),
 			satellite,
-			basic.JupiterGalileanPhenomenonType(phenomenonType),
+			basic.JupiterGalileanPhenomenonType(phenomenonType), module.inst,
 		),
 		date.Location(),
 	)

@@ -9,6 +9,8 @@ import (
 
 	"github.com/starainrt/astro/basic"
 	eclipsecore "github.com/starainrt/astro/eclipse"
+
+	"github.com/starainrt/astro/internal/ephemtest"
 )
 
 // 详细版"食甚时的月亮（地心坐标）"块必须用食甚时刻的力学时求值，与 NASA 月食图同一时刻；
@@ -26,6 +28,7 @@ func TestLunarEclipseDetailedGeocentricBlockUsesGreatestEclipse(t *testing.T) {
 		{"2026-03-03", time.Date(2026, 3, 3, 0, 0, 0, 0, cst), "10h56m15.1s", "+06°24&#39;05.2&#34;"},
 		{"2025-03-14", time.Date(2025, 3, 14, 0, 0, 0, 0, cst), "11h38m23.0s", "+02°40&#39;54.3&#34;"},
 	}
+	values := ephemtest.NewValues(t, "lunar_geocentric_block")
 	for _, want := range cases {
 		doc, ok := LunarEclipseDetailedSVG(want.date, LunarEclipseDetailedSVGOptions{
 			Language: "zh", Location: cst})
@@ -33,6 +36,8 @@ func TestLunarEclipseDetailedGeocentricBlockUsesGreatestEclipse(t *testing.T) {
 			t.Fatalf("%s: missing chart", want.name)
 		}
 		ra, dec := lunarGeocentricMoonBlock(t, doc)
+		want.ra = values.WantString(want.name+"/ra", want.ra, ra)
+		want.dec = values.WantString(want.name+"/dec", want.dec, dec)
 		if ra != want.ra || dec != want.dec {
 			t.Errorf("%s: 食甚坐标 RA=%s Dec=%s, want RA=%s Dec=%s", want.name, ra, dec, want.ra, want.dec)
 		}

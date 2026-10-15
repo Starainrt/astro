@@ -14,8 +14,10 @@ const (
 	jupiterPhaseCoarseTolerance = 30.0 / 86400.0
 )
 
-func jupiterSunLongitudeDelta(jde, degree float64, filter bool) float64 {
-	sub := Limit360(Limit360(JupiterApparentLo(jde)-HSunApparentLo(jde)) - degree)
+func jupiterSunLongitudeDelta(jde, degree float64, filter bool, instances ...*Instance) float64 {
+	inst := instanceValue(instances)
+
+	sub := Limit360(Limit360(JupiterApparentLoWithInstance(jde, inst)-HSunApparentLoWithInstance(jde, inst)) - degree)
 	if filter {
 		if sub > 180 {
 			sub -= 360
@@ -27,8 +29,10 @@ func jupiterSunLongitudeDelta(jde, degree float64, filter bool) float64 {
 	return sub
 }
 
-func jupiterSunLongitudeDeltaN(jde, degree float64, filter bool, n int) float64 {
-	sub := Limit360(Limit360(JupiterApparentLoN(jde, n)-HSunApparentLoN(jde, n)) - degree)
+func jupiterSunLongitudeDeltaN(jde, degree float64, filter bool, n int, instances ...*Instance) float64 {
+	inst := instanceValue(instances)
+
+	sub := Limit360(Limit360(JupiterApparentLoNWithInstance(jde, n, inst)-HSunApparentLoNWithInstance(jde, n, inst)) - degree)
 	if filter {
 		if sub > 180 {
 			sub -= 360
@@ -40,8 +44,10 @@ func jupiterSunLongitudeDeltaN(jde, degree float64, filter bool, n int) float64 
 	return sub
 }
 
-func jupiterRADerivative(jde, delta float64) float64 {
-	sub := JupiterApparentRa(jde+delta) - JupiterApparentRa(jde-delta)
+func jupiterRADerivative(jde, delta float64, instances ...*Instance) float64 {
+	inst := instanceValue(instances)
+
+	sub := JupiterApparentRaWithInstance(jde+delta, inst) - JupiterApparentRaWithInstance(jde-delta, inst)
 	if sub > 180 {
 		sub -= 360
 	}
@@ -51,8 +57,10 @@ func jupiterRADerivative(jde, delta float64) float64 {
 	return sub / (2 * delta)
 }
 
-func jupiterRADerivativeN(jde, delta float64, n int) float64 {
-	sub := JupiterApparentRaN(jde+delta, n) - JupiterApparentRaN(jde-delta, n)
+func jupiterRADerivativeN(jde, delta float64, n int, instances ...*Instance) float64 {
+	inst := instanceValue(instances)
+
+	sub := JupiterApparentRaNWithInstance(jde+delta, n, inst) - JupiterApparentRaNWithInstance(jde-delta, n, inst)
 	if sub > 180 {
 		sub -= 360
 	}
@@ -62,13 +70,15 @@ func jupiterRADerivativeN(jde, delta float64, n int) float64 {
 	return sub / (2 * delta)
 }
 
-func jupiterConjunctionFull(jde, degree float64, next uint8) float64 {
+func jupiterConjunctionFull(jde, degree float64, next uint8, instances ...*Instance) float64 {
+	inst := instanceValue(instances)
+
 	//0=last 1=next
 	if !isFiniteFloat(jde) || !isFiniteFloat(degree) {
 		return math.NaN()
 	}
 	daysPerDegree := JUPITER_S_PERIOD / 360
-	currentDelta := jupiterSunLongitudeDelta(jde, degree, false)
+	currentDelta := jupiterSunLongitudeDelta(jde, degree, false, inst)
 	if next == 0 {
 		jde -= (360 - currentDelta) * daysPerDegree
 	} else {
@@ -78,8 +88,8 @@ func jupiterConjunctionFull(jde, degree float64, next uint8) float64 {
 	converged := false
 	for i := 0; i < eventNewtonMaxIterations; i++ {
 		prevJDE := estimateJDE
-		longitudeDelta := jupiterSunLongitudeDelta(prevJDE, degree, true)
-		longitudeSlope := (jupiterSunLongitudeDelta(prevJDE+0.000005, degree, true) - jupiterSunLongitudeDelta(prevJDE-0.000005, degree, true)) / 0.00001
+		longitudeDelta := jupiterSunLongitudeDelta(prevJDE, degree, true, inst)
+		longitudeSlope := (jupiterSunLongitudeDelta(prevJDE+0.000005, degree, true, inst) - jupiterSunLongitudeDelta(prevJDE-0.000005, degree, true, inst)) / 0.00001
 		nextJD := prevJDE - longitudeDelta/longitudeSlope
 		estimateJDE = nextJD
 		if math.Abs(nextJD-prevJDE) <= 0.00001 {
@@ -93,13 +103,15 @@ func jupiterConjunctionFull(jde, degree float64, next uint8) float64 {
 	return TT2UTC(estimateJDE)
 }
 
-func jupiterConjunction(jde, degree float64, next uint8) float64 {
+func jupiterConjunction(jde, degree float64, next uint8, instances ...*Instance) float64 {
+	inst := instanceValue(instances)
+
 	//0=last 1=next
 	if !isFiniteFloat(jde) || !isFiniteFloat(degree) {
 		return math.NaN()
 	}
 	daysPerDegree := JUPITER_S_PERIOD / 360
-	currentDelta := jupiterSunLongitudeDelta(jde, degree, false)
+	currentDelta := jupiterSunLongitudeDelta(jde, degree, false, inst)
 	if next == 0 {
 		jde -= (360 - currentDelta) * daysPerDegree
 	} else {
@@ -109,8 +121,8 @@ func jupiterConjunction(jde, degree float64, next uint8) float64 {
 	converged := false
 	for i := 0; i < eventNewtonMaxIterations; i++ {
 		prevJDE := estimateJDE
-		longitudeDelta := jupiterSunLongitudeDeltaN(prevJDE, degree, true, jupiterEventSearchN)
-		longitudeSlope := (jupiterSunLongitudeDeltaN(prevJDE+0.000005, degree, true, jupiterEventSearchN) - jupiterSunLongitudeDeltaN(prevJDE-0.000005, degree, true, jupiterEventSearchN)) / 0.00001
+		longitudeDelta := jupiterSunLongitudeDeltaN(prevJDE, degree, true, jupiterEventSearchN, inst)
+		longitudeSlope := (jupiterSunLongitudeDeltaN(prevJDE+0.000005, degree, true, jupiterEventSearchN, inst) - jupiterSunLongitudeDeltaN(prevJDE-0.000005, degree, true, jupiterEventSearchN, inst)) / 0.00001
 		nextJD := prevJDE - longitudeDelta/longitudeSlope
 		estimateJDE = nextJD
 		if math.Abs(nextJD-prevJDE) <= jupiterPhaseCoarseTolerance {
@@ -124,8 +136,8 @@ func jupiterConjunction(jde, degree float64, next uint8) float64 {
 	converged = false
 	for i := 0; i < eventNewtonMaxIterations; i++ {
 		prevJDE := estimateJDE
-		longitudeDelta := jupiterSunLongitudeDelta(prevJDE, degree, true)
-		longitudeSlope := (jupiterSunLongitudeDelta(prevJDE+0.000005, degree, true) - jupiterSunLongitudeDelta(prevJDE-0.000005, degree, true)) / 0.00001
+		longitudeDelta := jupiterSunLongitudeDelta(prevJDE, degree, true, inst)
+		longitudeSlope := (jupiterSunLongitudeDelta(prevJDE+0.000005, degree, true, inst) - jupiterSunLongitudeDelta(prevJDE-0.000005, degree, true, inst)) / 0.00001
 		nextJD := prevJDE - longitudeDelta/longitudeSlope
 		estimateJDE = nextJD
 		if math.Abs(nextJD-prevJDE) <= 0.00001 {
@@ -139,39 +151,65 @@ func jupiterConjunction(jde, degree float64, next uint8) float64 {
 	return TT2UTC(estimateJDE)
 }
 
-func LastJupiterConjunction(jde float64) float64 {
-	return inclusiveLastPhaseEvent(jde, 0, jupiterConjunction)
+// LastJupiterConjunctionWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func LastJupiterConjunctionWithInstance(jde float64, inst *Instance) float64 {
+	return inclusiveLastPhaseEvent(jde, 0, func(jde, degree float64, next uint8) float64 {
+		return jupiterConjunction(jde, degree, next, inst)
+	})
 }
 
-func NextJupiterConjunction(jde float64) float64 {
-	return inclusiveNextPhaseEvent(jde, 0, jupiterConjunction)
+// NextJupiterConjunctionWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func NextJupiterConjunctionWithInstance(jde float64, inst *Instance) float64 {
+	return inclusiveNextPhaseEvent(jde, 0, func(jde, degree float64, next uint8) float64 {
+		return jupiterConjunction(jde, degree, next, inst)
+	})
 }
 
-func LastJupiterOpposition(jde float64) float64 {
-	return inclusiveLastPhaseEvent(jde, 180, jupiterConjunction)
+// LastJupiterOppositionWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func LastJupiterOppositionWithInstance(jde float64, inst *Instance) float64 {
+	return inclusiveLastPhaseEvent(jde, 180, func(jde, degree float64, next uint8) float64 {
+		return jupiterConjunction(jde, degree, next, inst)
+	})
 }
 
-func NextJupiterOpposition(jde float64) float64 {
-	return inclusiveNextPhaseEvent(jde, 180, jupiterConjunction)
+// NextJupiterOppositionWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func NextJupiterOppositionWithInstance(jde float64, inst *Instance) float64 {
+	return inclusiveNextPhaseEvent(jde, 180, func(jde, degree float64, next uint8) float64 {
+		return jupiterConjunction(jde, degree, next, inst)
+	})
 }
 
-func NextJupiterEasternQuadrature(jde float64) float64 {
-	return inclusiveNextPhaseEvent(jde, 90, jupiterConjunction)
+// NextJupiterEasternQuadratureWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func NextJupiterEasternQuadratureWithInstance(jde float64, inst *Instance) float64 {
+	return inclusiveNextPhaseEvent(jde, 90, func(jde, degree float64, next uint8) float64 {
+		return jupiterConjunction(jde, degree, next, inst)
+	})
 }
 
-func LastJupiterEasternQuadrature(jde float64) float64 {
-	return inclusiveLastPhaseEvent(jde, 90, jupiterConjunction)
+// LastJupiterEasternQuadratureWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func LastJupiterEasternQuadratureWithInstance(jde float64, inst *Instance) float64 {
+	return inclusiveLastPhaseEvent(jde, 90, func(jde, degree float64, next uint8) float64 {
+		return jupiterConjunction(jde, degree, next, inst)
+	})
 }
 
-func NextJupiterWesternQuadrature(jde float64) float64 {
-	return inclusiveNextPhaseEvent(jde, 270, jupiterConjunction)
+// NextJupiterWesternQuadratureWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func NextJupiterWesternQuadratureWithInstance(jde float64, inst *Instance) float64 {
+	return inclusiveNextPhaseEvent(jde, 270, func(jde, degree float64, next uint8) float64 {
+		return jupiterConjunction(jde, degree, next, inst)
+	})
 }
 
-func LastJupiterWesternQuadrature(jde float64) float64 {
-	return inclusiveLastPhaseEvent(jde, 270, jupiterConjunction)
+// LastJupiterWesternQuadratureWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func LastJupiterWesternQuadratureWithInstance(jde float64, inst *Instance) float64 {
+	return inclusiveLastPhaseEvent(jde, 270, func(jde, degree float64, next uint8) float64 {
+		return jupiterConjunction(jde, degree, next, inst)
+	})
 }
 
-func jupiterRetrogradeAroundOpposition(oppositionJD float64, searchBeforeOpposition bool) float64 {
+func jupiterRetrogradeAroundOpposition(oppositionJD float64, searchBeforeOpposition bool, instances ...*Instance) float64 {
+	inst := instanceValue(instances)
+
 	if !isFiniteFloat(oppositionJD) {
 		return math.NaN()
 	}
@@ -179,103 +217,107 @@ func jupiterRetrogradeAroundOpposition(oppositionJD float64, searchBeforeOpposit
 	startTT := oppositionTT
 	endTT := oppositionTT
 	if searchBeforeOpposition {
-		easternQuadratureUT := jupiterConjunction(oppositionTT, 90, 0)
+		easternQuadratureUT := jupiterConjunction(oppositionTT, 90, 0, inst)
 		startTT = UTC2TT(easternQuadratureUT)
 	} else {
-		westernQuadratureUT := jupiterConjunction(oppositionTT, 270, 1)
+		westernQuadratureUT := jupiterConjunction(oppositionTT, 270, 1, inst)
 		endTT = UTC2TT(westernQuadratureUT)
 	}
 	bestJDE := zeroEventInWindow(startTT, endTT, 2.0, 2.0, 30.0/86400.0, func(jd float64) float64 {
-		return jupiterRADerivativeN(jd, stationDerivativeStepDay, jupiterEventSearchN)
+		return jupiterRADerivativeN(jd, stationDerivativeStepDay, jupiterEventSearchN, inst)
 	}, func(jd float64) float64 {
-		return jupiterRADerivative(jd, stationDerivativeStepDay)
+		return jupiterRADerivative(jd, stationDerivativeStepDay, inst)
 	})
 	return TT2UTC(bestJDE)
 }
 
-func NextJupiterRetrogradeToPrograde(jde float64) float64 {
+// NextJupiterRetrogradeToProgradeWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func NextJupiterRetrogradeToProgradeWithInstance(jde float64, inst *Instance) float64 {
 	if !isFiniteFloat(jde) {
 		return math.NaN()
 	}
-	lastOppositionJD := jupiterConjunctionFull(jde, 180, 0)
-	date := jupiterRetrogradeAroundOpposition(lastOppositionJD, false)
+	lastOppositionJD := jupiterConjunctionFull(jde, 180, 0, inst)
+	date := jupiterRetrogradeAroundOpposition(lastOppositionJD, false, inst)
 	if isFiniteFloat(date) && stationUTQueryAfterOrEqual(date, jde) {
 		return date
 	}
-	nextOppositionJD := jupiterConjunctionFull(jde, 180, 1)
+	nextOppositionJD := jupiterConjunctionFull(jde, 180, 1, inst)
 	if !isFiniteFloat(nextOppositionJD) {
 		return math.NaN()
 	}
-	date = jupiterRetrogradeAroundOpposition(nextOppositionJD, false)
+	date = jupiterRetrogradeAroundOpposition(nextOppositionJD, false, inst)
 	if !isFiniteFloat(date) || !stationUTQueryAfterOrEqual(date, jde) {
 		return math.NaN()
 	}
 	return date
 }
 
-func LastJupiterRetrogradeToPrograde(jde float64) float64 {
+// LastJupiterRetrogradeToProgradeWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func LastJupiterRetrogradeToProgradeWithInstance(jde float64, inst *Instance) float64 {
 	if !isFiniteFloat(jde) {
 		return math.NaN()
 	}
-	lastOppositionJD := jupiterConjunctionFull(jde, 180, 0)
-	date := jupiterRetrogradeAroundOpposition(lastOppositionJD, false)
+	lastOppositionJD := jupiterConjunctionFull(jde, 180, 0, inst)
+	date := jupiterRetrogradeAroundOpposition(lastOppositionJD, false, inst)
 	if isFiniteFloat(date) && stationUTQueryBeforeOrEqual(date, jde) {
 		return date
 	}
 	if !isFiniteFloat(lastOppositionJD) {
 		return math.NaN()
 	}
-	previousOppositionJD := jupiterConjunctionFull(eventUTLastQueryTT(lastOppositionJD), 180, 0)
+	previousOppositionJD := jupiterConjunctionFull(eventUTLastQueryTT(lastOppositionJD), 180, 0, inst)
 	if !isFiniteFloat(previousOppositionJD) {
 		return math.NaN()
 	}
-	date = jupiterRetrogradeAroundOpposition(previousOppositionJD, false)
+	date = jupiterRetrogradeAroundOpposition(previousOppositionJD, false, inst)
 	if !isFiniteFloat(date) || !stationUTQueryBeforeOrEqual(date, jde) {
 		return math.NaN()
 	}
 	return date
 }
 
-func NextJupiterProgradeToRetrograde(jde float64) float64 {
+// NextJupiterProgradeToRetrogradeWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func NextJupiterProgradeToRetrogradeWithInstance(jde float64, inst *Instance) float64 {
 	if !isFiniteFloat(jde) {
 		return math.NaN()
 	}
-	nextOppositionJD := jupiterConjunctionFull(jde, 180, 1)
-	date := jupiterRetrogradeAroundOpposition(nextOppositionJD, true)
+	nextOppositionJD := jupiterConjunctionFull(jde, 180, 1, inst)
+	date := jupiterRetrogradeAroundOpposition(nextOppositionJD, true, inst)
 	if isFiniteFloat(date) && stationUTQueryAfterOrEqual(date, jde) {
 		return date
 	}
 	if !isFiniteFloat(nextOppositionJD) {
 		return math.NaN()
 	}
-	followingOppositionJD := jupiterConjunctionFull(eventUTNextQueryTT(nextOppositionJD), 180, 1)
+	followingOppositionJD := jupiterConjunctionFull(eventUTNextQueryTT(nextOppositionJD), 180, 1, inst)
 	if !isFiniteFloat(followingOppositionJD) {
 		return math.NaN()
 	}
-	date = jupiterRetrogradeAroundOpposition(followingOppositionJD, true)
+	date = jupiterRetrogradeAroundOpposition(followingOppositionJD, true, inst)
 	if !isFiniteFloat(date) || !stationUTQueryAfterOrEqual(date, jde) {
 		return math.NaN()
 	}
 	return date
 }
 
-func LastJupiterProgradeToRetrograde(jde float64) float64 {
+// LastJupiterProgradeToRetrogradeWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func LastJupiterProgradeToRetrogradeWithInstance(jde float64, inst *Instance) float64 {
 	if !isFiniteFloat(jde) {
 		return math.NaN()
 	}
-	nextOppositionJD := jupiterConjunctionFull(jde, 180, 1)
-	date := jupiterRetrogradeAroundOpposition(nextOppositionJD, true)
+	nextOppositionJD := jupiterConjunctionFull(jde, 180, 1, inst)
+	date := jupiterRetrogradeAroundOpposition(nextOppositionJD, true, inst)
 	if isFiniteFloat(date) && stationUTQueryBeforeOrEqual(date, jde) {
 		return date
 	}
 	if !isFiniteFloat(nextOppositionJD) {
 		return math.NaN()
 	}
-	lastOppositionJD := jupiterConjunctionFull(jde, 180, 0)
+	lastOppositionJD := jupiterConjunctionFull(jde, 180, 0, inst)
 	if !isFiniteFloat(lastOppositionJD) {
 		return math.NaN()
 	}
-	date = jupiterRetrogradeAroundOpposition(lastOppositionJD, true)
+	date = jupiterRetrogradeAroundOpposition(lastOppositionJD, true, inst)
 	if !isFiniteFloat(date) || !stationUTQueryBeforeOrEqual(date, jde) {
 		return math.NaN()
 	}

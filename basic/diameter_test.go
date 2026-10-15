@@ -14,7 +14,6 @@ type angularDiameterSample struct {
 }
 
 func TestAngularDiametersMatchHorizonsBaseline(t *testing.T) {
-	// Baseline is generated from JPL Horizons by scripts/generate_angular_diameter_baseline.sh.
 	data, err := os.ReadFile("testdata/angular_diameter_baseline.json")
 	if err != nil {
 		t.Fatalf("read baseline: %v", err)

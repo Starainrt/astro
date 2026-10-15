@@ -3,6 +3,7 @@
 package svg
 
 import (
+	"github.com/starainrt/astro/internal/limbnote"
 	"github.com/starainrt/astro/internal/timenote"
 	"errors"
 	"fmt"
@@ -253,7 +254,8 @@ func renderOccultationPathSVG(
 		}
 		writePlanetOccultationEventsPanel(&b, *planetPath, layout, options)
 	}
-	writeStarOccultationFooter(&b, layout, options, flags, occultationScaleInstant(path, planetPath))
+	writeStarOccultationFooter(&b, layout, options, flags, occultationScaleInstant(path, planetPath),
+		occultationLimbApplied(path, planetPath))
 	b.WriteString(`</svg>`)
 	return b.String(), nil
 }
@@ -757,16 +759,26 @@ func occultationScaleInstant(path moon.StarOccultationPath, planetPath *moon.Pla
 	return path.Greatest.Time
 }
 
+// occultationLimbApplied 报告图中界线是否按月缘剖面修正。
+func occultationLimbApplied(path moon.StarOccultationPath, planetPath *moon.PlanetOccultationPath) bool {
+	if planetPath != nil {
+		return planetPath.LunarLimbApplied
+	}
+	return path.LunarLimbApplied
+}
+
 func writeStarOccultationFooter(
 	b *strings.Builder,
 	layout starOccultationSVGLayout,
 	options StarOccultationSVGOptions,
 	flags occultationSVGTextFlags,
 	instant time.Time,
+	limbApplied bool,
 ) {
 	maxWidth := layout.width - 80
 	lineHeight := svgchart.FooterLineHeight(11)
-	scaleNote := timenote.Scale(options.TimeScale, instant, options.Location, options.Language)
+	scaleNote := limbnote.Join(timenote.Scale(options.TimeScale, instant, options.Location, options.Language),
+		limbnote.Limits(limbApplied, options.Language), options.Language)
 	// 页脚默认排在画布底边之内（与既有版面一致），说明行放得下时声明单独占最后一行；
 	// 自定义说明太长时改用按字号留白的行数上限：截断说明也要保住时标声明和底边留白。
 	lines := occultationWrappedTextLines(starOccultationSVGFooter(options), flags.footerNote, maxWidth, 11)

@@ -7,15 +7,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/starainrt/astro"
+	"github.com/starainrt/astro/basic"
 )
 
 const english = "en"
 
 // Scale 生成图内时标声明：UTC 口径写显示时区与 UTC 偏移，UT1 口径补 DUT1 差值 / builds the in-figure time-scale declaration.
-func Scale(scale astro.TimeScale, instant time.Time, location *time.Location, language string) string {
-	if scale == astro.TimeScaleUT1 {
-		dut1 := astro.DUT1(instant)
+func Scale(scale basic.TimeScale, instant time.Time, location *time.Location, language string) string {
+	if scale == basic.TimeScaleUT1 {
+		dut1 := basic.DUT1(instant)
 		if language == english {
 			return fmt.Sprintf("Times are UT1 (Universal Time 1); DUT1 = UT1−UTC = %+.2f s.", dut1)
 		}

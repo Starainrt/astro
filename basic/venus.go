@@ -115,59 +115,34 @@ func VenusMag(jde float64) float64 {
 	return FloatRound(mag, 2)
 }
 
-func VenusHeight(localJD, lon, lat, timezone float64) float64 {
-	// 转换为世界时
-	utcJD := localJD - timezone/24.0
-	// 计算视恒星时
-	ra, dec := VenusApparentRaDec(UTC2TT(utcJD))
-	st := Limit360(ApparentSiderealTime(UTC2UT1(utcJD))*15 + lon)
-	// 计算时角
-	hourAngle := Limit360(st - ra)
-	// 高度角、时角与天球座标三角转换公式
-	// sin(h)=sin(lat)*sin(dec)+cos(dec)*cos(lat)*cos(hourAngle)
-	sinHeight := Sin(lat)*Sin(dec) + Cos(dec)*Cos(lat)*Cos(hourAngle)
-	return ArcSin(sinHeight)
+// VenusHeightWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func VenusHeightWithInstance(localJD, lon, lat, timezone float64, inst *Instance) float64 {
+	return planetHeightN(2, localJD, lon, lat, timezone, -1, inst)
 }
 
-func VenusAzimuth(localJD, lon, lat, timezone float64) float64 {
-	// 转换为世界时
-	utcJD := localJD - timezone/24.0
-	// 计算视恒星时
-	ra, dec := VenusApparentRaDec(UTC2TT(utcJD))
-	st := Limit360(ApparentSiderealTime(UTC2UT1(utcJD))*15 + lon)
-	// 计算时角
-	hourAngle := Limit360(st - ra)
-	// 三角转换公式
-	tanAzimuth := Sin(hourAngle) / (Cos(hourAngle)*Sin(lat) - Tan(dec)*Cos(lat))
-	azimuth := ArcTan(tanAzimuth)
-	if azimuth < 0 {
-		if hourAngle/15 < 12 {
-			return azimuth + 360
-		}
-		return azimuth + 180
-	}
-	if hourAngle/15 < 12 {
-		return azimuth + 180
-	}
-	return azimuth
+// VenusAzimuthWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func VenusAzimuthWithInstance(localJD, lon, lat, timezone float64, inst *Instance) float64 {
+	return planetAzimuthN(2, localJD, lon, lat, timezone, -1, inst)
 }
 
-func VenusHourAngle(jd, lon, tz float64) float64 {
+// VenusHourAngleWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func VenusHourAngleWithInstance(jd, lon, tz float64, inst *Instance) float64 {
 	startime := Limit360(ApparentSiderealTime(UTC2UT1(jd-tz/24))*15 + lon)
-	timeangle := startime - VenusApparentRa(UTC2TT(jd-tz/24.0))
+	timeangle := startime - VenusApparentRaWithInstance(UTC2TT(jd-tz/24.0), inst)
 	if timeangle < 0 {
 		timeangle += 360
 	}
 	return timeangle
 }
 
-func VenusCulminationTime(localJD, lon, timezone float64) float64 {
+// VenusCulminationTimeWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func VenusCulminationTimeWithInstance(localJD, lon, timezone float64, inst *Instance) float64 {
 	// localJD 是本地民用日锚点（当地 0 时），不是力学时。
 	//ra,dec 瞬时天球座标，非J2000等时间天球坐标
 	localJD = math.Floor(localJD) + 0.5
-	estimateJD := localJD + Limit360(360-VenusHourAngle(localJD, lon, timezone))/15.0/24.0*0.99726851851851851851
+	estimateJD := localJD + Limit360(360-VenusHourAngleWithInstance(localJD, lon, timezone, inst))/15.0/24.0*0.99726851851851851851
 	limitHA := func(localJD, lon, timezone float64) float64 {
-		ha := VenusHourAngle(localJD, lon, timezone)
+		ha := VenusHourAngleWithInstance(localJD, lon, timezone, inst)
 		if ha < 180 {
 			ha += 360
 		}
@@ -185,14 +160,22 @@ func VenusCulminationTime(localJD, lon, timezone float64) float64 {
 	return estimateJD
 }
 
-func VenusRiseTime(jd, lon, lat, tz, aeroCorrection, observerHeight float64) (float64, error) {
-	return venusRiseDown(jd, lon, lat, tz, aeroCorrection, observerHeight, true)
+// VenusRiseTimeWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func VenusRiseTimeWithInstance(jd, lon, lat, tz, aeroCorrection, observerHeight float64, inst *Instance) (float64, error) {
+	return venusRiseDown(jd, lon, lat, tz, aeroCorrection, observerHeight, true, inst)
 }
 
-func VenusSetTime(jd, lon, lat, tz, aeroCorrection, observerHeight float64) (float64, error) {
-	return venusRiseDown(jd, lon, lat, tz, aeroCorrection, observerHeight, false)
+// VenusSetTimeWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func VenusSetTimeWithInstance(jd, lon, lat, tz, aeroCorrection, observerHeight float64, inst *Instance) (float64, error) {
+	return venusRiseDown(jd, lon, lat, tz, aeroCorrection, observerHeight, false, inst)
 }
 
-func venusRiseDown(jd, lon, lat, tz, aeroCorrection, observerHeight float64, isRise bool) (float64, error) {
-	return planetRiseDown(jd, lon, lat, tz, aeroCorrection, observerHeight, isRise, VenusCulminationTime, VenusHeight, VenusApparentDec)
+func venusRiseDown(jd, lon, lat, tz, aeroCorrection, observerHeight float64, isRise bool, instances ...*Instance) (float64, error) {
+	inst := instanceValue(instances)
+
+	return planetRiseDown(jd, lon, lat, tz, aeroCorrection, observerHeight, isRise, func(localJD, lon, timezone float64) float64 {
+		return VenusCulminationTimeWithInstance(localJD, lon, timezone, inst)
+	}, func(localJD, lon, lat, timezone float64) float64 {
+		return VenusHeightWithInstance(localJD, lon, lat, timezone, inst)
+	}, func(jde float64) float64 { return VenusApparentDecWithInstance(jde, inst) })
 }

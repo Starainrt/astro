@@ -87,7 +87,6 @@ func TestEarthApsisMatchesHorizonsBaseline(t *testing.T) {
 }
 
 func TestMoonApsisMatchesHorizonsBaseline(t *testing.T) {
-	// Baseline is generated from JPL Horizons by scripts/generate_moon_apsis_baseline.sh.
 	data, err := os.ReadFile("testdata/moon_apsis_baseline.json")
 	if err != nil {
 		t.Fatalf("read baseline: %v", err)

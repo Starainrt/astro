@@ -3,7 +3,6 @@ package basic
 import (
 	"encoding/json"
 	"math"
-	"os"
 	"testing"
 )
 
@@ -20,10 +19,11 @@ type marsEventBaseline struct {
 func loadMarsEventBaseline(t *testing.T) marsEventBaseline {
 	t.Helper()
 
-	data, err := os.ReadFile("testdata/mars_event_baseline.json")
-	if err != nil {
-		t.Fatal(err)
+	var named []namedEventFunc
+	for _, c := range marsEventCases() {
+		named = append(named, namedEventFunc{c.name, c.fn})
 	}
+	data := eventBaselineData(t, "testdata/mars_event_baseline.json", named)
 
 	var baseline marsEventBaseline
 	if err := json.Unmarshal(data, &baseline); err != nil {

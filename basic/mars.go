@@ -125,59 +125,34 @@ func MarsMag(jde float64) float64 {
 	return FloatRound(mag, 2)
 }
 
-func MarsHeight(localJD, lon, lat, timezone float64) float64 {
-	// 转换为世界时
-	utcJD := localJD - timezone/24.0
-	// 计算视恒星时
-	ra, dec := MarsApparentRaDec(UTC2TT(utcJD))
-	st := Limit360(ApparentSiderealTime(UTC2UT1(utcJD))*15 + lon)
-	// 计算时角
-	hourAngle := Limit360(st - ra)
-	// 高度角、时角与天球座标三角转换公式
-	// sin(h)=sin(lat)*sin(dec)+cos(dec)*cos(lat)*cos(hourAngle)
-	sinHeight := Sin(lat)*Sin(dec) + Cos(dec)*Cos(lat)*Cos(hourAngle)
-	return ArcSin(sinHeight)
+// MarsHeightWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func MarsHeightWithInstance(localJD, lon, lat, timezone float64, inst *Instance) float64 {
+	return planetHeightN(3, localJD, lon, lat, timezone, -1, inst)
 }
 
-func MarsAzimuth(localJD, lon, lat, timezone float64) float64 {
-	// 转换为世界时
-	utcJD := localJD - timezone/24.0
-	// 计算视恒星时
-	ra, dec := MarsApparentRaDec(UTC2TT(utcJD))
-	st := Limit360(ApparentSiderealTime(UTC2UT1(utcJD))*15 + lon)
-	// 计算时角
-	hourAngle := Limit360(st - ra)
-	// 三角转换公式
-	tanAzimuth := Sin(hourAngle) / (Cos(hourAngle)*Sin(lat) - Tan(dec)*Cos(lat))
-	azimuth := ArcTan(tanAzimuth)
-	if azimuth < 0 {
-		if hourAngle/15 < 12 {
-			return azimuth + 360
-		}
-		return azimuth + 180
-	}
-	if hourAngle/15 < 12 {
-		return azimuth + 180
-	}
-	return azimuth
+// MarsAzimuthWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func MarsAzimuthWithInstance(localJD, lon, lat, timezone float64, inst *Instance) float64 {
+	return planetAzimuthN(3, localJD, lon, lat, timezone, -1, inst)
 }
 
-func MarsHourAngle(jd, lon, timezone float64) float64 {
+// MarsHourAngleWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func MarsHourAngleWithInstance(jd, lon, timezone float64, inst *Instance) float64 {
 	siderealLongitude := Limit360(ApparentSiderealTime(UTC2UT1(jd-timezone/24))*15 + lon)
-	hourAngle := siderealLongitude - MarsApparentRa(UTC2TT(jd-timezone/24.0))
+	hourAngle := siderealLongitude - MarsApparentRaWithInstance(UTC2TT(jd-timezone/24.0), inst)
 	if hourAngle < 0 {
 		hourAngle += 360
 	}
 	return hourAngle
 }
 
-func MarsCulminationTime(localJD, lon, timezone float64) float64 {
+// MarsCulminationTimeWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func MarsCulminationTimeWithInstance(localJD, lon, timezone float64, inst *Instance) float64 {
 	// localJD 是本地民用日锚点（当地 0 时），不是力学时。
 	//ra,dec 瞬时天球座标，非J2000等时间天球坐标
 	localJD = math.Floor(localJD) + 0.5
-	estimateJD := localJD + Limit360(360-MarsHourAngle(localJD, lon, timezone))/15.0/24.0*0.99726851851851851851
+	estimateJD := localJD + Limit360(360-MarsHourAngleWithInstance(localJD, lon, timezone, inst))/15.0/24.0*0.99726851851851851851
 	normalizedHourAngle := func(localJD, lon, timezone float64) float64 {
-		currentHourAngle := MarsHourAngle(localJD, lon, timezone)
+		currentHourAngle := MarsHourAngleWithInstance(localJD, lon, timezone, inst)
 		if currentHourAngle < 180 {
 			currentHourAngle += 360
 		}
@@ -195,14 +170,22 @@ func MarsCulminationTime(localJD, lon, timezone float64) float64 {
 	return estimateJD
 }
 
-func MarsRiseTime(jd, lon, lat, timezone, aeroCorrection, observerHeight float64) (float64, error) {
-	return marsRiseDown(jd, lon, lat, timezone, aeroCorrection, observerHeight, true)
+// MarsRiseTimeWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func MarsRiseTimeWithInstance(jd, lon, lat, timezone, aeroCorrection, observerHeight float64, inst *Instance) (float64, error) {
+	return marsRiseDown(jd, lon, lat, timezone, aeroCorrection, observerHeight, true, inst)
 }
 
-func MarsSetTime(jd, lon, lat, timezone, aeroCorrection, observerHeight float64) (float64, error) {
-	return marsRiseDown(jd, lon, lat, timezone, aeroCorrection, observerHeight, false)
+// MarsSetTimeWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func MarsSetTimeWithInstance(jd, lon, lat, timezone, aeroCorrection, observerHeight float64, inst *Instance) (float64, error) {
+	return marsRiseDown(jd, lon, lat, timezone, aeroCorrection, observerHeight, false, inst)
 }
 
-func marsRiseDown(jd, lon, lat, timezone, aeroCorrection, observerHeight float64, isRise bool) (float64, error) {
-	return planetRiseDown(jd, lon, lat, timezone, aeroCorrection, observerHeight, isRise, MarsCulminationTime, MarsHeight, MarsApparentDec)
+func marsRiseDown(jd, lon, lat, timezone, aeroCorrection, observerHeight float64, isRise bool, instances ...*Instance) (float64, error) {
+	inst := instanceValue(instances)
+
+	return planetRiseDown(jd, lon, lat, timezone, aeroCorrection, observerHeight, isRise, func(localJD, lon, timezone float64) float64 {
+		return MarsCulminationTimeWithInstance(localJD, lon, timezone, inst)
+	}, func(localJD, lon, lat, timezone float64) float64 {
+		return MarsHeightWithInstance(localJD, lon, lat, timezone, inst)
+	}, func(jde float64) float64 { return MarsApparentDecWithInstance(jde, inst) })
 }

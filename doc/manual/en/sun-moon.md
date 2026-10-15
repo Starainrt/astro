@@ -4,13 +4,15 @@
 
 `sun` and `moon` are the main chains; `lite/sun` and `lite/moon` are independent approximation implementations.
 
+The numerical output blocks in this manual illustrate call shapes and come from runs with the default semianalytic model. The differences from Legacy are small: lunar event times by about `1-10 s`, lunar distance by about `5 km`, phase by about `1e-6`, solar and lunar angles by about `1e-5°` and rise/set instants by milliseconds, with `lite/*` unaffected. Use an explicit `Context` / `Instance` to reproduce a fixed model; see [Accuracy and performance](accuracy.md) for the quantified errors of both models.
+
 Unless stated otherwise, angles are in degrees, apparent diameters and semidiameters are in arcseconds, `sun.EarthDistance` is in AU and `moon.EarthDistance` is in kilometers. Observing APIs generally use civil instants.
 
 Apparent-solar-time results instead represent local solar readings; see [Time scales](timescale.md).
 
 This manual covers the Sun and the Moon themselves: position, rise/set and culmination, topocentric quantities, phases and syzygies, perigee/apogee and nodes, maximum declinations, libration, apparent size, and physical ephemeris.
 
-Eclipse geometry lives in [Solar and Lunar Eclipse Charts](eclipse.md#solar-and-lunar-eclipse-charts), occultations in [Lunar Occultation Charts](occultation.md#lunar-occultation-charts), and general topocentric and refraction conversions in [Coordinate Tools](coord.md).
+Eclipse geometry lives in [Eclipses and Transits](eclipse.md#solar-and-lunar-eclipse-charts), occultations in [Lunar Occultation Charts](occultation.md#lunar-occultation-charts), and general topocentric and refraction conversions in [Coordinate Tools](coord.md).
 
 ## Contents
 
@@ -20,7 +22,7 @@ Eclipse geometry lives in [Solar and Lunar Eclipse Charts](eclipse.md#solar-and-
   - [moon](#moon)
   - [lite/sun](#litesun)
   - [lite/moon](#litemoon)
-  - [Truncated ...N family](#truncated-n-family)
+  - [The `...N` family](#the-n-family)
 - [Usage examples](#usage-examples)
   - [Today's sunrise, sunset and twilight](#todays-sunrise-sunset-and-twilight)
   - [Moonrise, moonset and the Moon's altitude now](#moonrise-moonset-and-the-moons-altitude-now)
@@ -94,7 +96,7 @@ func main() {
 
 ## API Reference
 
-The tables below group the exported entry points of all four packages. Most evaluation entry points also have a `...N` truncated variant, described together under [Truncated ...N family](#truncated-n-family).
+The tables below group the exported entry points of all four packages. Most evaluation entry points also have a `...N` variant, described together under [the `...N` family](#the-n-family).
 
 Every `time.Time` parameter is an absolute instant, and `lon`/`lat` are east-positive and north-positive.
 
@@ -113,7 +115,7 @@ Every `time.Time` parameter is an absolute instant, and `lon`/`lat` are east-pos
 | `DownTime` | Sunset alias | deprecated; calls `SetTime` internally |
 | `CulminationTime` | Upper culmination | `time.Time` |
 | `MorningTwilight` / `EveningTwilight` | Morning / evening twilight | `(time.Time, error)`; the angle is usually -6 / -12 / -18 degrees |
-| `Altitude` / `Zenith` / `Azimuth` / `HourAngle` | Geometric altitude / zenith distance / azimuth / hour angle | degrees, topocentric |
+| `Altitude` / `Zenith` / `Azimuth` / `HourAngle` | Geometric altitude / zenith distance / azimuth / hour angle | degrees; `Altitude` / `Zenith` / `Azimuth` are topocentric, while `HourAngle` is geocentric apparent (without topocentric parallax) |
 | `ApparentAltitude` / `ApparentZenith` | Apparent altitude / apparent zenith distance | degrees; requires pressure in hPa and temperature in degrees Celsius |
 | `ParallacticAngle` | Parallactic angle (zenith direction angle) | degrees, signed |
 | `ApparentSolarTime` | Apparent solar time | `time.Time`, with the zone derived from longitude |
@@ -178,7 +180,7 @@ Planet targets use constants `OccultationMercury` through `OccultationNeptune`.
 | `TrueRa` / `TrueDec` / `TrueRaDec` | Lightweight true equatorial coordinates | degrees, geocentric |
 | `ApparentRa` / `ApparentDec` / `ApparentRaDec` | Lightweight apparent equatorial coordinates | degrees, geocentric |
 | `Distance` | Lightweight Earth-Sun distance | AU |
-| `HourAngle` / `Azimuth` / `Altitude` / `Zenith` | Lightweight hour angle / azimuth / altitude / zenith distance | degrees, topocentric |
+| `HourAngle` / `Azimuth` / `Altitude` / `Zenith` | Lightweight hour angle / azimuth / altitude / zenith distance | degrees; all use the geocentric apparent position, ignoring solar parallax of about 8.8 arcseconds |
 | `RiseTime` / `SetTime` | Lightweight sunrise / sunset | `(time.Time, error)` |
 | `ERR_SUN_NEVER_RISE` / `ERR_SUN_NEVER_SET` | Polar night / polar day | error values |
 
@@ -194,11 +196,11 @@ Planet targets use constants `OccultationMercury` through `OccultationNeptune`.
 | `RiseTime` / `SetTime` | Lightweight moonrise / moonset | `(time.Time, error)` |
 | `ERR_MOON_NEVER_RISE` / `ERR_MOON_NEVER_SET` / `ERR_NOT_TODAY` | Polar night / polar day / event not on the queried date | error values |
 
-### Truncated ...N family
+### The `...N` family
 
 Most evaluation entry points of `sun` and `moon` have a `...N` variant: the name is the base name plus `N`, one extra `n int` parameter is appended, and the return shape is unchanged.
 
-`n < 0` keeps every analytical term embedded in this repository and matches the non-`N` version; `n >= 0` truncates the series to `n` terms, which is useful for performance comparison, bulk coarse evaluation, and error-sensitivity experiments.
+`n < 0` selects the full series and matches the non-`N` version. Default builds use to the semianalytic model, where all `n >= 0` select one fixed fast table: increasing `n` does not add terms. Legacy shortens its series according to `n`. Neither changes units or time zones; measured errors are in [Accuracy and performance](accuracy.md).
 
 - sun: `TrueLoN`, `TrueBoN`, `AltitudeN`, `ZenithN`, `AzimuthN`, `HourAngleN`, `ParallacticAngleN`, `ApparentAltitudeN`, `ApparentZenithN`, `DiameterN`, `SemidiameterN`, `PhysicalN`, `RiseTimeN`, `SetTimeN`, `DownTimeN`, `CulminationTimeN`, `MorningTwilightN`, `EveningTwilightN`, `ApparentSolarTimeN`
 - moon: `TrueLoN`, `TrueBoN`, `AscendingNodeN`, `DescendingNodeN`, `DiameterN`, `SemidiameterN`, `PhysicalN`, `TopocentricPhysicalN`, `BrightLimbPositionAngleN`, `TopocentricBrightLimbPositionAngleN`
@@ -294,7 +296,7 @@ delta dRA=0.5021 dDec=-0.3978
 280.8950939694744 -23.05840775453492
 ```
 
-The Moon is close, so geocentric and topocentric positions differ by half a degree (here `0.50` degrees in right ascension and `0.40` in declination), together more than one lunar apparent diameter; anything an observer sees must go through `moon.ApparentRaDec`. The Sun, 1 AU away, has negligible parallax and is exposed geocentrically only (of course, you can also call the topocentric coordinate conversion entry points to get a topocentric position =-=). The conventions are in [Observing-angle semantics](#observing-angle-semantics).
+The Moon is close, so geocentric and topocentric positions differ by half a degree (here `0.50` degrees in right ascension and `0.40` in declination), together more than one lunar apparent diameter; anything an observer sees must go through `moon.ApparentRaDec`. The Sun, 1 AU away, has negligible parallax and is exposed geocentrically only; convert with `coord.TopocentricEquatorial` when a topocentric position is needed. The conventions are in [Observing-angle semantics](#observing-angle-semantics).
 
 ### Main chain vs lite
 
@@ -312,9 +314,9 @@ fmt.Println(litesun.RiseTime(date, lon, lat, height, true))                 // l
 2020-01-01 07:49:51.69717729 +0800 CST <nil>
 ```
 
-The lightweight chains mirror the main-chain shapes but not its accuracy: at this instant the altitude differs by about `0.0027` degrees and the phase by `0.0022`.
+The lightweight chains mirror the main-chain shapes but not its accuracy: in the output above the main chain and `lite/*` differ by about `0.0027` degrees in altitude and `0.0022` in phase.
 
-Over 2026 at 8 sites the mean absolute error of `lite/sun` sunrise is `0.02 min` (P95 `0.04 min`, max `0.31 min`), of `lite/moon` moonrise `0.28 min` (P95 `0.57 min`, max `1.44 min`), and `lite/moon` `Phase()` peaks at `0.00243`.
+Historical comparisons against Legacy over 2026 at 8 sites give a mean absolute difference of `0.02 min` for `lite/sun` sunrise (P95 `0.04 min`, max `0.31 min`) and `0.28 min` for `lite/moon` moonrise (P95 `0.57 min`, max `1.44 min`); the maximum `lite/moon` `Phase()` difference is `0.00243`. These are model-to-model differences, not differences against an independent ephemeris.
 
 The full comparison and the truncation errors are under [Differences from the main chain and error levels](#differences-from-the-main-chain-and-error-levels) and in [Lite chains](accuracy.md#lite-lightweight-chains).
 
@@ -384,14 +386,14 @@ func main() {
 Output:
 
 ```text
-2020-01-01 07:22:27.960488498 +0800 CST <nil>
-2020-01-01 07:49:52.413689196 +0800 CST <nil>
-2020-01-01 12:47:35.933117866 +0800 CST
-2020-01-01 17:45:09.188657999 +0800 CST <nil>
-2020-01-01 18:12:33.624035418 +0800 CST <nil>
-2020-01-01 11:52:49.860912859 +0800 CST <nil>
-2020-01-01 17:36:48.811488747 +0800 CST
-2020-01-01 23:26:49.313553571 +0800 CST <nil>
+2020-01-01 07:22:28.91963303 +0800 CST <nil>
+2020-01-01 07:49:53.401680886 +0800 CST <nil>
+2020-01-01 12:47:35.933721363 +0800 CST
+2020-01-01 17:45:08.557346463 +0800 CST <nil>
+2020-01-01 18:12:33.02157104 +0800 CST <nil>
+2020-01-01 11:52:50.013020932 +0800 CST <nil>
+2020-01-01 17:36:48.954946696 +0800 CST
+2020-01-01 23:26:49.448562562 +0800 CST <nil>
 ```
 
 ### Sun and Moon position
@@ -444,16 +446,16 @@ func main() {
 Output:
 
 ```text
-280.01526210031136
+280.0152652754265
 23.4362178391013
-RA: 18h43m34.82s Dec: -23°3′30.27″
+RA: 18h43m34.82s Dec: -23°3′30.20″
 Sagittarius
-Azimuth: 120.19477090015224 Altitude: 2.4014437419430097 Zenith: 87.59855625805699
-0.983292937163176
-RA: 23h18m56.24s Dec: -10°20′54.42″
+Azimuth: 120.19442333006145 Altitude: 2.398445319378493 Zenith: 87.6015546806215
+0.9832929289388871
+RA: 23h18m56.20s Dec: -10°20′54.64″
 Aquarius
-Azimuth: 67.63889332004852 Altitude: -45.34916937173283 Zenith: 135.34916937173284
-404238.6096080479
+Azimuth: 67.63846015645981 Altitude: -45.349642390635466 Zenith: 135.34964239063547
+404243.3922335782
 ```
 
 ## The Sun
@@ -486,10 +488,10 @@ RA: 281.6786097810291 Dec: -23.00369182413533
 23.438148552330773 280.83169623098 -0.08703499790144194
 ```
 
-Every entry point in this family also has a `...N` truncated variant. The comparison below truncates at `n = 8`; with `n < 0` the result matches the non-`N` version exactly:
+Every entry point in this family also has a `...N` variant. Here `n = 8` selects the semianalytic fast table (series truncation in Legacy); `n < 0` matches the non-`N` version exactly. The output below comes from the default semianalytic model:
 
 ```go
-// n<0 keeps every embedded VSOP term; n>=0 truncates the series.
+// n<0 selects the full series; n>=0 selects fast, or Legacy truncation.
 fmt.Println(sun.TrueLo(date), sun.TrueLoN(date, 8))
 fmt.Println(sun.Altitude(date, lon, lat), sun.AltitudeN(date, lon, lat, 8))
 fmt.Println(sun.Diameter(date), sun.DiameterN(date, 8))
@@ -721,12 +723,12 @@ func main() {
 Output:
 
 ```text
-0.30004130960877884 // about 30% of the lunar disk is illuminated
+0.3000398794307665 // about 30% of the lunar disk is illuminated
 上峨眉月 // Chinese phase description
-2020-01-25 05:41:58.271192908 +0800 CST // next new moon
-2020-01-03 12:45:23.229190707 +0800 CST // next first quarter
-2020-01-11 03:21:17.159625291 +0800 CST // next full moon
-2020-01-17 20:58:23.396406769 +0800 CST // next last quarter
+2020-01-25 05:41:59.860723614 +0800 CST // next new moon
+2020-01-03 12:45:24.51480031 +0800 CST // next first quarter
+2020-01-11 03:21:18.524373471 +0800 CST // next full moon
+2020-01-17 20:58:24.686442017 +0800 CST // next last quarter
 ```
 
 `Last*`, `Closest*`, and the decimal-year anchors `ShuoYue` / `FullMoon` return UTC. `ClosestConjunctionWithPlanet` finds the closest Moon-planet conjunction, with the target given by a `ConjunctionPlanet` constant:
@@ -907,7 +909,7 @@ Output:
 
 ## Lite chains
 
-`lite/sun` and `lite/moon` are independent approximation implementations: they do not depend on VSOP87 or the main chain's ELP2000/82 series, they target CPU- and memory-constrained environments, and their calling style matches the main chain.
+`lite/sun` and `lite/moon` are independent approximations: they use neither the semianalytic nor Legacy tables and do not follow global model switches. They target CPU- and memory-constrained environments, and their calling style matches the main chain.
 
 Rise/set search uses fixed-step scanning plus bisection, without the main chain's high-precision nutation iteration.
 
@@ -1000,11 +1002,11 @@ Output:
 
 The lite chains differ from the main chain in implementation and accuracy while keeping nearly the same interface shapes.
 
-Pure evaluation entry points such as position and phase run about `8.3-27.3x` faster than the main chain, and rise/set entry points about `1.0-3.7x`, with zero heap allocation in the computation path; the rise/set scan step is `30` minutes for `lite/sun` and `15` minutes for `lite/moon`.
+Performance depends on the main-chain model, epoch cache and whether a search is required; there is no universal speedup factor. Lite's listed benchmarks allocate zero times, and rise/set scan every 30/15 minutes. Current model-specific measurements are in [Accuracy and Performance](accuracy.md#performance).
 
-Errors against `sun` / `moon` (year 2026, 8 sites) are listed below, with data from [Lite lightweight chains](accuracy.md#lite-lightweight-chains):
+The following are historical comparisons against the old Legacy `sun` / `moon` chain (2026, 8 sites), not a new semianalytic validation; see [Lite lightweight chains](accuracy.md#lite-lightweight-chains):
 
-| Capability | Mean absolute error | P95 | Max absolute error |
+| Quantity | Mean absolute error | P95 | Max absolute error |
 | --- | --- | --- | --- |
 | `lite/sun` sunrise | `0.02 min` | `0.04 min` | `0.31 min` |
 | `lite/sun` sunset | `0.02 min` | `0.06 min` | `0.35 min` |
@@ -1015,7 +1017,7 @@ Errors against `sun` / `moon` (year 2026, 8 sites) are listed below, with data f
 | `lite/moon` geocentric longitude | `2.41'` | `6.82'` | `9.91'` |
 | `lite/moon` geocentric latitude | `0.87'` | `1.83'` | `2.92'` |
 
-Neither package provides a `...N` truncated family. On the solar side the polar-night / polar-day errors are `ERR_SUN_NEVER_RISE` / `ERR_SUN_NEVER_SET`; on the lunar side, besides `ERR_MOON_NEVER_RISE` / `ERR_MOON_NEVER_SET`, there is `ERR_NOT_TODAY`, with the same semantics as the main chain.
+Neither package provides a `...N` family. On the solar side the polar-night / polar-day errors are `ERR_SUN_NEVER_RISE` / `ERR_SUN_NEVER_SET`; on the lunar side, besides `ERR_MOON_NEVER_RISE` / `ERR_MOON_NEVER_SET`, there is `ERR_NOT_TODAY`, with the same semantics as the main chain.
 
 ## Parameter and result conventions
 
@@ -1038,6 +1040,8 @@ The full UT1 and chart-label declaration is in the [Time Scale Declaration](map-
 
 - The `height` of the rise/set entry points is the observer elevation interpreted as ellipsoidal (geodetic) height in meters, not orthometric height; see [Observer Height Convention](coord.md#observer-height)
 - `aero = true`: upper-limb crossing with dynamic standard refraction and the instantaneous semidiameter; `aero = false`: only the geometric center crossing
+- Rise/set refraction uses the standard atmosphere (1010 hPa, 10 °C) by default. For measured weather use `sun.RiseTimeWithAtmosphere` / `SetTimeWithAtmosphere` and `moon.RiseTimeWithAtmosphere` / `SetTimeWithAtmosphere`, passing pressure (hPa) and temperature (°C) on each call; refraction is always applied. Existing APIs are unchanged
+- Body-independent true/apparent altitude conversion lives in `formula`: `formula.ApparentAltitude`, `formula.TrueAltitude`, `formula.RefractionFromTrueAltitude`, `formula.RefractionFromApparentAltitude`
 - `pressureHPa` and `temperatureC` of `ApparentAltitude` / `ApparentZenith` are the observed pressure (hPa) and temperature (degrees Celsius)
 
 ### Zero values and out-of-range
@@ -1046,12 +1050,12 @@ The full UT1 and chart-label declaration is in the [Time Scale Declaration](map-
 - When no twilight exists, they return `ERR_TWILIGHT_NOT_EXISTS`
 - When a lunar rise/set event falls outside the queried date, they return `ERR_NOT_TODAY`, matching the "moonrise/moonset are computed for the queried civil date" semantics above
 - `DownTime` / `DownTimeN` are deprecated aliases of `SetTime`, and `ERR_SUN_NEVER_DOWN` / `ERR_MOON_NEVER_DOWN` are deprecated aliases of the polar-day errors; new code should not use them
-- In `...N`, `n < 0` uses every embedded term and `n >= 0` truncates; `n` only changes the series length, never the returned unit or time zone
+- In `...N`, `n < 0` selects the full series; all `n >= 0` select the same semianalytic fast table, while Legacy truncates according to `n`. Units and time zones never change
 
 ### Accuracy and scope
 
-The Sun and planets use embedded VSOP87 analytical terms and the Moon uses an embedded ELP2000/82-style truncated series, covering roughly 4000 years around J2000 with no external ephemeris files.
+Default builds use the embedded semianalytic model. The VSOP87 / ELP2000/82-style series remain as Legacy; neither requires external files. An available range is not the same as a measured range, and a measured error only holds for the measured samples.
 
-Truncation errors, the lunar chain's capability boundaries, and the lite chains' quantified errors are documented in [Scope And Accuracy](accuracy.md).
+Model-specific DE440 / DE441 Sun and Moon comparisons, fast-table errors and Lite limitations are documented in [Accuracy and performance](accuracy.md).
 
 The solar and lunar entry points in this manual suit calendars, observing aids, outreach, and amateur prediction; spacecraft navigation, precise occultation prediction, and rigorous dynamical integration require a professional ephemeris such as JPL DE.

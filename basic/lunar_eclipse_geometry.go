@@ -1,6 +1,10 @@
 package basic
 
-import "math"
+import (
+	"math"
+
+	"github.com/starainrt/astro/internal/geodata"
+)
 
 // LunarEclipseShadowGeometry 是食甚时刻的地影几何。
 // 注意单位口径：Gamma 用地球赤道半径，而两个影半径用度——后者是 NASA 月食图上 P./U. Radius 的口径，
@@ -50,11 +54,18 @@ func LunarEclipseShadowGeometryAtModel(maximumJDE float64, model LunarEclipseSha
 }
 
 func lunarEclipseShadowGeometryAt(maximumJDE float64, shadowModel lunarEclipseShadowModel) LunarEclipseShadowGeometry {
-	state := computeLunarShadowState(maximumJDE, shadowModel)
-	moonDistanceKM := HMoonAway(maximumJDE)
+	return lunarEclipseShadowGeometryAtWithInstance(maximumJDE, shadowModel, nil)
+}
+
+func lunarEclipseShadowGeometryAtWithInstance(maximumJDE float64, shadowModel lunarEclipseShadowModel, inst *Instance) LunarEclipseShadowGeometry {
+	evaluate := func(jde float64) lunarShadowState {
+		return computeLunarShadowStateWithInstance(jde, shadowModel, inst)
+	}
+	state := evaluate(maximumJDE)
+	moonDistanceKM := HMoonAwayWithInstance(maximumJDE, inst)
 	// 影半径是以地心为顶点的角量，除以月球处的地球视差就换成地球赤道半径。
-	earthParallax := lunarEarthEquatorialRadiusKM / moonDistanceKM
-	_, _, _, _, minimumDistance := refineLunarEclipseMaximum(maximumJDE, shadowModel)
+	earthParallax := geodata.EarthEquatorialRadiusKM / moonDistanceKM
+	_, _, _, _, minimumDistance := refineLunarEclipseMaximumWithEvaluator(maximumJDE, evaluate)
 	if earthParallax <= 0 {
 		return LunarEclipseShadowGeometry{}
 	}
@@ -62,7 +73,7 @@ func lunarEclipseShadowGeometryAt(maximumJDE float64, shadowModel lunarEclipseSh
 		Gamma:                  minimumDistance / earthParallax,
 		PenumbralRadiusDegrees: state.penumbraRadiusRad * 180 / math.Pi,
 		UmbralRadiusDegrees:    state.umbraRadiusRad * 180 / math.Pi,
-		MoonDistanceEarthRadii: moonDistanceKM / lunarEarthEquatorialRadiusKM,
+		MoonDistanceEarthRadii: moonDistanceKM / geodata.EarthEquatorialRadiusKM,
 		// 平面 x 向东（黄经差）、y 向北（黄纬和），方位角自北向东量。
 		AxisDegrees: minimumDistance * 180 / math.Pi,
 	}

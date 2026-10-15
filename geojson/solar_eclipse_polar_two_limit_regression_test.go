@@ -12,6 +12,9 @@ import (
 )
 
 func TestMarshalSolarEclipsePolarTwoLimitBandUsesSimpleFaces(t *testing.T) {
+	if testing.Short() {
+		t.Skip("slow regression")
+	}
 	for _, sample := range []struct {
 		date        time.Time
 		centralStep time.Duration

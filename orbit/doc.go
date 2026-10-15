@@ -8,9 +8,10 @@
 // All input angles are in degrees. EpochJD and TpJD are TT/TDB Julian days.
 // Returned geometric positions do not include perturbations beyond the supplied
 // elements. Astrometric results include down-leg light-time correction.
-// Apparent results follow this repository's existing planet semantics:
-// astrometric position plus nutation/of-date coordinate conversion, without a
-// full external aberration model. The package also provides observer-facing
+// Optional planetary perturbations are available through PropagationOptions and
+// StateWithOptions; a zero-value options value preserves the two-body path.
+// Apparent results add annual aberration, nutation, and of-date coordinate
+// conversion to the astrometric position. The package also provides observer-facing
 // altitude/azimuth/hour-angle and rise/transit/set helpers built on top of the
 // apparent topocentric coordinates. Rise/set helpers return package-local
 // sentinel errors ERR_ORBIT_NEVER_RISE / ERR_ORBIT_NEVER_SET, matching the

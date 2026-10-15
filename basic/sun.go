@@ -1,6 +1,7 @@
 package basic
 
 import (
+	"github.com/starainrt/astro/internal/ephem"
 	"github.com/starainrt/astro/planet"
 	. "github.com/starainrt/astro/tools"
 )
@@ -126,6 +127,9 @@ func HSunApparentLo(jde float64) float64 {
 }
 
 func HSunApparentLoN(jde float64, n int) float64 {
+	if lo, _, _, _, ok := vectorApparent(ephem.Sun, jde, n); ok {
+		return lo
+	}
 	lo := HSunTrueLoN(jde, n)
 	lo = lo + Nutation2000Bi(jde) + SunLoGXCN(jde, n)
 	return lo
@@ -157,13 +161,11 @@ func HSunApparentRaDecN(jde float64, n int) (float64, float64) {
 	return ra, dec
 }
 
-func hSunApparentRaDecDistanceN(jde float64, n int) (ra, dec, distanceAU float64) {
-	trueLongitude := HSunTrueLoN(jde, n)
-	trueLatitude := HSunTrueBoN(jde, n)
-	distanceAU = EarthAwayN(jde, n)
-	apparentLongitude := trueLongitude + Nutation2000Bi(jde) - 20.49552/distanceAU/3600
-	ra, dec = LoBoToRaDec(jde, apparentLongitude, trueLatitude)
-	return ra, dec, distanceAU
+func hSunApparentRaDecDistanceN(jde float64, n int, instances ...*Instance) (ra, dec, distanceAU float64) {
+	inst := instanceValue(instances)
+
+	ra, dec = sunApparentRaDecN(jde, n, inst)
+	return ra, dec, EarthAwayNWithInstance(jde, n, inst)
 }
 
 func HSunApparentRa(jde float64) float64 { // '太阳视赤经
@@ -171,7 +173,7 @@ func HSunApparentRa(jde float64) float64 { // '太阳视赤经
 }
 
 func HSunApparentRaN(jde float64, n int) float64 { // '太阳视赤经
-	return LoToRa(jde, HSunApparentLoN(jde, n), HSunTrueBoN(jde, n))
+	return sunApparentRaN(jde, n, nil)
 }
 
 func HSunTrueRa(jde float64) float64 {
@@ -193,7 +195,8 @@ func HSunApparentDec(jde float64) float64 { // '太阳视赤纬
 }
 
 func HSunApparentDecN(jde float64, n int) float64 { // '太阳视赤纬
-	return ArcSin(Sin(EclipticObliquity(jde, true)) * Sin(HSunApparentLoN(jde, n)))
+	_, dec := sunApparentRaDecN(jde, n, nil)
+	return dec
 }
 
 func HSunTrueDec(jde float64) float64 { // '太阳真赤纬

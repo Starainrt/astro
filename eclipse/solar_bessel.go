@@ -1,6 +1,8 @@
 package eclipse
 
-import "github.com/starainrt/astro/basic"
+import (
+	"github.com/starainrt/astro/basic"
+)
 
 // SolarEclipseBesselianPolynomial 是三次多项式系数，索引 n 对应 t 的 n 次幂，t 为自 T0 起算的 TT 小时数。
 // SolarEclipseBesselianPolynomial holds the cubic coefficients; index n multiplies t^n with t in TT hours from T0.
@@ -53,18 +55,17 @@ type SolarEclipseBesselianElementsResult struct {
 	DeltaTSeconds  float64
 }
 
-// SolarEclipseBesselianElements 计算给定近朔时刻附近一次日食的多项式贝塞尔根数，窗口内无日食时返回 false。
-// Polynomial Besselian elements for the solar eclipse near the given new-moon instant.
-func SolarEclipseBesselianElements(
+// SolarEclipseBesselianElements 计算给定近朔时刻附近一次日食的多项式贝塞尔根数，窗口内无日食时返回 false / polynomial Besselian elements near a new moon; false when no eclipse.
+func (module *Eclipse) SolarEclipseBesselianElements(
 	seedJDE float64, options SolarEclipseBesselianElementsOptions,
 ) (SolarEclipseBesselianElementsResult, bool) {
-	result, ok := basic.SolarEclipseBesselianElements(seedJDE, basic.SolarEclipseBesselianElementsOptions{
+	result, ok := basic.SolarEclipseBesselianElementsWithInstance(seedJDE, basic.SolarEclipseBesselianElementsOptions{
 		Model:          basic.SolarEclipseRadiusModel(options.Model),
 		SunRadiusModel: basic.SolarEclipseSunRadiusModel(options.SunRadiusModel),
 		DeltaTSeconds:  options.DeltaTSeconds,
 		ReferenceJDE:   options.ReferenceJDE,
 		ValidHours:     options.ValidHours,
-	})
+	}, module.inst)
 	if !ok {
 		return SolarEclipseBesselianElementsResult{}, false
 	}

@@ -51,26 +51,33 @@ type LunarEclipseGeocentricPanel struct {
 	Ephemeris string
 }
 
-// LunarEclipseGeocentricPanelAt 计算给定日期月食的地心量面板，使用 Danjon 影半径模型。
-// LunarEclipseGeocentricPanelAt computes the geocentric panel of one lunar eclipse with the Danjon shadow model.
-func LunarEclipseGeocentricPanelAt(date time.Time) (LunarEclipseGeocentricPanel, bool) {
-	return lunarEclipseGeocentricPanelAt(date, basic.LunarEclipseDanjon)
+// LunarEclipseGeocentricPanelAt 计算给定日期月食的地心量面板，使用 Danjon 影半径模型 / geocentric lunar eclipse panel with Danjon shadow radii.
+func (module *Eclipse) LunarEclipseGeocentricPanelAt(date time.Time) (LunarEclipseGeocentricPanel, bool) {
+	return lunarEclipseGeocentricPanelAt(date, func(seedJDE float64) basic.LunarEclipseResult {
+		return module.lunarResult(seedJDE, false)
+	}, module)
 }
 
-// LunarEclipseGeocentricPanelChauvenet 计算给定日期月食的地心量面板，使用 Chauvenet 影半径模型。
-// LunarEclipseGeocentricPanelChauvenet computes the geocentric panel with the Chauvenet shadow model.
-func LunarEclipseGeocentricPanelChauvenet(date time.Time) (LunarEclipseGeocentricPanel, bool) {
-	return lunarEclipseGeocentricPanelAt(date, basic.LunarEclipseChauvenet)
+// LunarEclipseGeocentricPanelChauvenet 计算给定日期月食的地心量面板，使用 Chauvenet 影半径模型 / geocentric lunar eclipse panel with Chauvenet shadow radii.
+func (module *Eclipse) LunarEclipseGeocentricPanelChauvenet(date time.Time) (LunarEclipseGeocentricPanel, bool) {
+	return lunarEclipseGeocentricPanelAt(date, func(seedJDE float64) basic.LunarEclipseResult {
+		return module.lunarResult(seedJDE, true)
+	}, module)
 }
 
-func lunarEclipseGeocentricPanelAt(date time.Time, calculator func(float64) basic.LunarEclipseResult) (LunarEclipseGeocentricPanel, bool) {
+func lunarEclipseGeocentricPanelAt(date time.Time, calculator func(float64) basic.LunarEclipseResult, modules ...*Eclipse) (LunarEclipseGeocentricPanel, bool) {
+	module := &defaultModule
+	if len(modules) > 0 {
+		module = modules[0]
+	}
+
 	seed := timeToTTJDE(date)
-	fullMoonJDE := basic.CalcMoonSHByJDE(seed, 1)
+	fullMoonJDE := basic.CalcMoonSHByJDEWithInstance(seed, 1, module.inst)
 	result := calculator(fullMoonJDE)
 	if result.Type == basic.LunarEclipseNone {
 		return LunarEclipseGeocentricPanel{}, false
 	}
-	geometry := basic.LunarEclipseShadowGeometryAtModel(result.Maximum, result.ShadowModel)
+	geometry := basic.LunarEclipseShadowGeometryAtModelWithInstance(result.Maximum, result.ShadowModel, module.inst)
 	ephemeris := "Danjon"
 	if result.ShadowModel == basic.LunarEclipseShadowModelChauvenet {
 		ephemeris = "Chauvenet"
@@ -89,10 +96,10 @@ func lunarEclipseGeocentricPanelAt(date time.Time, calculator func(float64) basi
 		UmbralMagnitude:        result.Magnitude,
 		Ephemeris:              ephemeris,
 	}
-	panel.SunRightAscensionDeg, panel.SunDeclinationDeg = basic.SunApparentRaDec(result.Maximum)
-	panel.MoonRightAscensionDeg, panel.MoonDeclinationDeg = basic.HMoonTrueRaDec(result.Maximum)
-	panel.SunSemidiameterArcsec = basic.SolarEclipseSunSemidiameter(result.Maximum, basic.SolarEclipseSunRadiusStandard)
-	panel.MoonSemidiameterArcsec = basic.MoonSemidiameter(result.Maximum)
+	panel.SunRightAscensionDeg, panel.SunDeclinationDeg = basic.SunApparentRaDecWithInstance(result.Maximum, module.inst)
+	panel.MoonRightAscensionDeg, panel.MoonDeclinationDeg = basic.HMoonTrueRaDecWithInstance(result.Maximum, module.inst)
+	panel.SunSemidiameterArcsec = basic.SolarEclipseSunSemidiameterWithInstance(result.Maximum, basic.SolarEclipseSunRadiusStandard, module.inst)
+	panel.MoonSemidiameterArcsec = basic.MoonSemidiameterWithInstance(result.Maximum, module.inst)
 	panel.SunParallaxArcsec = horizontalParallaxArcsec(panel.SunSemidiameterArcsec, horizontalParallaxSunRatio)
 	panel.MoonParallaxArcsec = horizontalParallaxArcsec(panel.MoonSemidiameterArcsec, horizontalParallaxMoonRatio)
 	return panel, true

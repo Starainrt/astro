@@ -3,6 +3,8 @@ package basic
 import (
 	"math"
 	"time"
+
+	"github.com/starainrt/astro/internal/geodata"
 )
 
 // 等时线（食甚/掩甚时刻等值线）的共享常量与工具。
@@ -15,8 +17,6 @@ const (
 	greatestTimeContourCoverToleranceKM = 10.0
 	// greatestTimeContourCorrectionBacktracking 是牛顿投影跳出定义域时按二分回退的次数。
 	greatestTimeContourCorrectionBacktracking = 6
-	// greatestTimeContourKMPerDegree 是地面大圆每度的近似长度，用于局部平面投影。
-	greatestTimeContourKMPerDegree = 111.195
 	// greatestTimeContourMaxLevels 是单个事件允许的等时线条数上限；超出部分按时间截断，
 	// 避免极长事件请求出上万条曲线。
 	greatestTimeContourMaxLevels = 64
@@ -107,9 +107,9 @@ func greatestTimeContourUTCToTT(value time.Time) float64 {
 func greatestTimeContourPointSegmentKM(longitude, latitude, startLongitude, startLatitude, endLongitude, endLatitude float64) float64 {
 	cosine := math.Cos(latitude * rad)
 	toX := func(value float64) float64 {
-		return normalizeLongitude(value-startLongitude) * rad * cosine * greatestTimeContourKMPerDegree
+		return geodata.NormalizeLongitude(value-startLongitude) * rad * cosine * geodata.EarthKMPerDegree
 	}
-	toY := func(value float64) float64 { return (value - startLatitude) * greatestTimeContourKMPerDegree }
+	toY := func(value float64) float64 { return (value - startLatitude) * geodata.EarthKMPerDegree }
 	pointX, pointY := toX(longitude), toY(latitude)
 	endX, endY := toX(endLongitude), toY(endLatitude)
 	lengthSquared := endX*endX + endY*endY

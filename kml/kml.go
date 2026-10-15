@@ -8,6 +8,7 @@
 // 默认只有高亮中心带与掩星带填充，其余面只描轮廓，跨半球且互相重叠的重图层可用 Options.SkipRoles 整层丢弃。
 // 时间：带 times 的 MultiLineString 拆成逐段 Placemark 并各带 TimeStamp，逐点的 time 属性同理；
 // 集合带 time_scale=UT1 时先把标签折回 UTC 再写 <when>（KML 时间轴必须是 UTC），原口径记进 ExtendedData。
+// 输入宽进：越界经度按 360° 回绕，真正跨反经线的面在 ±180 处切开；本库 geojson 的输出侧则严格拒绝越界经度。
 // Layers and colors are dispatched by each feature's role property, and times become KML TimeStamps.
 package kml
 
@@ -52,12 +53,24 @@ const (
 	penumbraMoonsetColor  = "ffb57fab"
 	penumbraMoonriseFill  = "4dcc8874"
 	penumbraMoonsetFill   = "4db57fab"
+	// 凌日分区与等时线沿用凌日 SVG 的配色。
+	transitEntireColor  = "ff6d845e"
+	transitEntireFill   = "576d845e"
+	transitSunriseColor = "ffa09d4e"
+	transitSunriseFill  = "57a09d4e"
+	transitSunsetColor  = "ff4baae2"
+	transitSunsetFill   = "574baae2"
+	transitC1Color      = "ff2f39a3"
+	transitC2Color      = "ff2a70c0"
+	transitC3Color      = "ffa04c7a"
+	transitC4Color      = "ffa35e2f"
 )
 
 const (
 	eventSolarEclipse     = "solar-eclipse"
 	eventLunarEclipse     = "lunar-eclipse"
 	eventLunarOccultation = "lunar-occultation"
+	eventPlanetTransit    = "planet-transit"
 )
 
 // Style 是一个 KML 样式；零值字段使用内置调色板。颜色为 KML 的 aabbggrr 十六进制（ff0000ff 是不透明红）。
@@ -423,7 +436,7 @@ func buildDocument(collection *rawCollection, options Options) (*document, error
 		built.ExtendedData = &extendedData{Data: sortedDataEntries(documentEntries)}
 	}
 	built.Name = documentName(options, kept, earliest)
-	built.Description = descriptionText(options, language, collection.TimeScale)
+	built.Description = descriptionText(options, language, collection.TimeScale, eventCount)
 	if !options.NoLookAt {
 		built.LookAt = lookAtFor(lookAtElements(lookAtGroups))
 	}
@@ -682,7 +695,11 @@ func decodeGeometry(raw rawGeometry) ([]element, error) {
 		if err := json.Unmarshal(raw.Coordinates, &rings); err != nil {
 			return nil, fmt.Errorf("Polygon coordinates: %w", err)
 		}
-		return []element{{kind: "Polygon", rings: rings}}, nil
+		elements := []element{}
+		for _, piece := range splitAntimeridianPolygon(rings) {
+			elements = append(elements, element{kind: "Polygon", rings: piece})
+		}
+		return elements, nil
 	case "MultiPolygon":
 		var polygons [][][][]float64
 		if err := json.Unmarshal(raw.Coordinates, &polygons); err != nil {
@@ -690,7 +707,9 @@ func decodeGeometry(raw rawGeometry) ([]element, error) {
 		}
 		elements := make([]element, 0, len(polygons))
 		for _, rings := range polygons {
-			elements = append(elements, element{kind: "Polygon", rings: rings})
+			for _, piece := range splitAntimeridianPolygon(rings) {
+				elements = append(elements, element{kind: "Polygon", rings: piece})
+			}
 		}
 		return elements, nil
 	case "GeometryCollection":
@@ -934,6 +953,157 @@ func seamCutLine(line [][]float64) ([][][]float64, error) {
 func isSeamSegment(from, to []float64) bool {
 	const tolerance = 1e-9
 	return math.Abs(math.Abs(from[0])-180) < tolerance && math.Abs(math.Abs(to[0])-180) < tolerance
+}
+
+// splitAntimeridianPolygon 把真正跨过反经线（相邻顶点经度差超过 180°）的面在 ±180 处切成东西两块；
+// 已按反经线拆好的面、包含极点的环和坐标非法的面原样返回，交给后续校验。
+func splitAntimeridianPolygon(rings [][][]float64) [][][][]float64 {
+	unchanged := [][][][]float64{rings}
+	if len(rings) == 0 {
+		return unchanged
+	}
+	unwrapped := make([][][]float64, 0, len(rings))
+	crosses := false
+	for _, ring := range rings {
+		values, jumped, ok := unwrapRing(ring)
+		if !ok {
+			return unchanged
+		}
+		crosses = crosses || jumped
+		unwrapped = append(unwrapped, values)
+	}
+	if !crosses {
+		return unchanged
+	}
+	outerMin, outerMax := longitudeRange(unwrapped[0])
+	cut := 180.0
+	if outerMax <= 180 {
+		if outerMin >= -180 {
+			return unchanged
+		}
+		cut = -180
+	}
+	center := (outerMin + outerMax) / 2
+	for index := 1; index < len(unwrapped); index++ {
+		low, high := longitudeRange(unwrapped[index])
+		shift := 360 * math.Round((center-(low+high)/2)/360)
+		for _, position := range unwrapped[index] {
+			position[0] += shift
+		}
+	}
+	// 落在 [-180,180] 之外的一侧平移 360° 回到合法区间。
+	offsets := map[bool]float64{true: 0, false: -360}
+	if cut == -180 {
+		offsets = map[bool]float64{true: 360, false: 0}
+	}
+	pieces := [][][][]float64{}
+	for _, keepWest := range []bool{true, false} {
+		offset := offsets[keepWest]
+		piece := [][][]float64{}
+		for index, ring := range unwrapped {
+			clipped := clipRingAtLongitude(ring, cut, keepWest, offset)
+			if len(clipped) < 4 {
+				if index == 0 {
+					piece = nil
+					break
+				}
+				continue
+			}
+			piece = append(piece, clipped)
+		}
+		if len(piece) > 0 {
+			pieces = append(pieces, piece)
+		}
+	}
+	if len(pieces) == 0 {
+		return unchanged
+	}
+	return pieces
+}
+
+// unwrapRing 把环的经度展开成连续序列；闭合后累计漂移不为零（环绕极点）时 ok=false。
+func unwrapRing(ring [][]float64) (values [][]float64, jumped, ok bool) {
+	if len(ring) < 2 {
+		return nil, false, false
+	}
+	values = make([][]float64, 0, len(ring))
+	for index, position := range ring {
+		if len(position) < 2 || math.IsNaN(position[0]) || math.IsInf(position[0], 0) ||
+			math.IsNaN(position[1]) || math.IsInf(position[1], 0) {
+			return nil, false, false
+		}
+		longitude := position[0]
+		if longitude > 180 || longitude < -180 {
+			longitude = math.Mod(longitude+180, 360)
+			if longitude < 0 {
+				longitude += 360
+			}
+			longitude -= 180
+		}
+		if index > 0 {
+			previous := values[index-1][0]
+			for longitude-previous > 180 {
+				longitude -= 360
+				jumped = true
+			}
+			for previous-longitude > 180 {
+				longitude += 360
+				jumped = true
+			}
+		}
+		values = append(values, []float64{longitude, position[1]})
+	}
+	// 闭合边展开后若回不到起点经度，说明环绕了极点，无法按经线切开。
+	first, last := values[0][0], values[len(values)-1][0]
+	closing := first
+	for closing-last > 180 {
+		closing -= 360
+	}
+	for last-closing > 180 {
+		closing += 360
+	}
+	if math.Abs(closing-first) > 1e-9 {
+		return nil, false, false
+	}
+	return values, jumped, true
+}
+
+func longitudeRange(ring [][]float64) (float64, float64) {
+	low, high := math.Inf(1), math.Inf(-1)
+	for _, position := range ring {
+		low = math.Min(low, position[0])
+		high = math.Max(high, position[0])
+	}
+	return low, high
+}
+
+// clipRingAtLongitude 用经线 cut 截取环的西侧或东侧（半平面裁剪），结果平移 offset 并闭合。
+func clipRingAtLongitude(ring [][]float64, cut float64, keepWest bool, offset float64) [][]float64 {
+	inside := func(position []float64) bool {
+		if keepWest {
+			return position[0] <= cut
+		}
+		return position[0] >= cut
+	}
+	points := ring
+	if len(points) > 1 && equalPosition(points[0], points[len(points)-1]) {
+		points = points[:len(points)-1]
+	}
+	clipped := [][]float64{}
+	for index, current := range points {
+		previous := points[(index+len(points)-1)%len(points)]
+		if inside(current) != inside(previous) {
+			fraction := (cut - previous[0]) / (current[0] - previous[0])
+			clipped = append(clipped, []float64{cut + offset, previous[1] + (current[1]-previous[1])*fraction})
+		}
+		if inside(current) {
+			clipped = append(clipped, []float64{current[0] + offset, current[1]})
+		}
+	}
+	if len(clipped) == 0 {
+		return nil
+	}
+	return append(clipped, append([]float64(nil), clipped[0]...))
 }
 
 func polygonFor(rings [][][]float64) (polygon, error) {
@@ -1214,6 +1384,22 @@ func paletteStyle(event, role string) Style {
 		"visible-at-p1", "visible-at-p4",
 		"visible-during-eclipse", "visible-throughout-eclipse":
 		return Style{LineColor: ColorOrange, LineWidth: 2}
+	case "c1-horizon", "c4-horizon", "visible-at-c1", "visible-at-c4":
+		return Style{LineColor: ColorOrange, LineWidth: 2}
+	case "transit-entire":
+		return Style{LineColor: transitEntireColor, FillColor: transitEntireFill, LineWidth: 1.5}
+	case "transit-at-sunrise":
+		return Style{LineColor: transitSunriseColor, FillColor: transitSunriseFill, LineWidth: 1.5}
+	case "transit-at-sunset":
+		return Style{LineColor: transitSunsetColor, FillColor: transitSunsetFill, LineWidth: 1.5}
+	case "c1-isochrone":
+		return Style{LineColor: transitC1Color, LineWidth: 1}
+	case "c2-isochrone":
+		return Style{LineColor: transitC2Color, LineWidth: 1}
+	case "c3-isochrone":
+		return Style{LineColor: transitC3Color, LineWidth: 1}
+	case "c4-isochrone":
+		return Style{LineColor: transitC4Color, LineWidth: 1}
 	case "penumbra-moonrise":
 		return Style{LineColor: penumbraMoonriseColor, FillColor: penumbraMoonriseFill, LineWidth: 2}
 	case "penumbra-moonset":
@@ -1374,15 +1560,27 @@ func documentName(options Options, features []preparedFeature, earliest time.Tim
 	return name
 }
 
-func descriptionText(options Options, language, timeScale string) string {
+func descriptionText(options Options, language, timeScale string, events map[string]bool) string {
+	transitOnly := len(events) == 1 && events[eventPlanetTransit]
+	transitMixed := events[eventPlanetTransit] && !transitOnly
 	if language == "en" {
 		text := "Converted from GeoJSON. Layers are grouped by role; red: solar central band; black: center line; green: solar greatest-time isochrone; yellow: magnitude contours and occultation total/partial bands; orange: rise/set phase lines."
+		if transitOnly {
+			text = "Converted from GeoJSON. Layers are grouped by role; transit regions, C1/C4 apparent horizons, C1-C4 topocentric isochrones and greatest transit are kept in separate layers."
+		} else if transitMixed {
+			text = "Converted from GeoJSON. Layers are grouped by event and role."
+		}
 		if timeScale != "" {
 			text += " Times were written in UTC (original scale: " + timeScale + ")."
 		}
 		return text
 	}
 	text := "由 GeoJSON 转换而来。图层按 role 分组；红：日食中心带；黑：中心线；绿：日食食甚等时线；黄：食分线与掩星全掩/半掩带；橙：日出日落阶段线（初亏/食甚/复圆）。"
+	if transitOnly {
+		text = "由 GeoJSON 转换而来。图层按 role 分组；凌日可见分区、一触/四触视地平线、C1–C4 站心等时线与凌甚点分别成层。"
+	} else if transitMixed {
+		text = "由 GeoJSON 转换而来。图层按事件和 role 分组。"
+	}
 	if timeScale != "" {
 		text += "时间已按 UTC 写入（原口径：" + timeScale + "）。"
 	}
@@ -1425,9 +1623,27 @@ var roleNames = map[string][2]string{
 	"time-marker":                 {"时间标记", "Time markers"},
 	"besselian-critical-envelope": {"贝塞尔临界包络", "Besselian critical envelope"},
 	"sublunar-track":              {"月下点轨迹", "Sublunar track"},
+	"subsolar-track":              {"太阳直射点轨迹", "Subsolar track"},
+	"c1-horizon":                  {"一触视地平线", "C1 apparent horizon"},
+	"c4-horizon":                  {"四触视地平线", "C4 apparent horizon"},
+	"visible-at-c1":               {"一触可见区", "Visible at C1"},
+	"visible-at-c4":               {"四触可见区", "Visible at C4"},
+	"transit-entire":              {"全程可见", "Entire transit visible"},
+	"transit-at-sunrise":          {"日出时已在凌日", "Transit in progress at sunrise"},
+	"transit-at-sunset":           {"日落时仍在凌日", "Transit in progress at sunset"},
+	"c1-isochrone":                {"一触等时线", "C1 isochrones"},
+	"c2-isochrone":                {"二触等时线", "C2 isochrones"},
+	"c3-isochrone":                {"三触等时线", "C3 isochrones"},
+	"c4-isochrone":                {"四触等时线", "C4 isochrones"},
 }
 
 func localizedRole(event, role, language string) string {
+	if role == "greatest" && event == eventPlanetTransit {
+		if language == "en" {
+			return "Greatest transit"
+		}
+		return "凌甚"
+	}
 	if language == "en" {
 		if name, ok := roleNames[role]; ok {
 			return name[1]
@@ -1466,6 +1682,11 @@ func localizedEvent(event, language string) string {
 			return "Lunar occultation"
 		}
 		return "月掩"
+	case eventPlanetTransit:
+		if language == "en" {
+			return "Planetary transit"
+		}
+		return "凌日"
 	}
 	if event == "" {
 		if language == "en" {

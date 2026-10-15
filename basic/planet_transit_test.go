@@ -143,3 +143,30 @@ func BenchmarkNextVenusTransitFrom2026(b *testing.B) {
 		}
 	}
 }
+
+// 查询时刻落在凌日当天、早于凌甚时，Next/Closest 必须给出当天这次；节点季略早于查询时刻不能把它跳过。
+func TestPlanetTransitSearchFromSameDay(t *testing.T) {
+	cases := []struct {
+		name  string
+		find  func(float64) PlanetTransitResult
+		query float64
+		year  int
+		month int
+		day   int
+	}{
+		{"mercury next 1999", NextMercuryTransit, JDCalc(1999, 11, 15), 1999, 11, 15},
+		{"mercury closest 1999", ClosestMercuryTransit, JDCalc(1999, 11, 15), 1999, 11, 15},
+		{"venus next 2012", NextVenusTransit, JDCalc(2012, 6, 5), 2012, 6, 6},
+		{"mercury last after 1999", LastMercuryTransit, JDCalc(1999, 11, 15.95), 1999, 11, 15},
+	}
+	for _, tc := range cases {
+		got := tc.find(tc.query)
+		if !got.Valid {
+			t.Fatalf("%s: no transit", tc.name)
+		}
+		date := JD2DateByZone(got.Greatest, time.UTC, false)
+		if date.Year() != tc.year || int(date.Month()) != tc.month || date.Day() != tc.day {
+			t.Fatalf("%s: greatest %s, want %04d-%02d-%02d", tc.name, date.Format("2006-01-02"), tc.year, tc.month, tc.day)
+		}
+	}
+}

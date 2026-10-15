@@ -30,9 +30,9 @@ func SunPhysical(jde float64) SunPhysicalInfo {
 	return SunPhysicalN(jde, -1)
 }
 
-// SunPhysicalN 太阳物理观测参数（截断版） / truncated physical observing parameters of the Sun.
-func SunPhysicalN(jde float64, n int) SunPhysicalInfo {
-	lambda := HSunApparentLoN(jde, n)
+// SunPhysicalNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func SunPhysicalNWithInstance(jde float64, n int, inst *Instance) SunPhysicalInfo {
+	lambda := HSunApparentLoNWithInstance(jde, n, inst)
 	epsilon := TrueObliquity(jde)
 	k := sunPhysicalKBaseDeg + sunPhysicalKRateDeg*(jde-sunPhysicalKEpochJD)/36525.0
 	theta := (jde - sunCarringtonStartJD) * 360.0 / sunCarringtonRotationDays

@@ -1,6 +1,11 @@
 package basic
 
-import "math"
+import (
+	"math"
+
+	"github.com/starainrt/astro/internal/ephem"
+	"github.com/starainrt/astro/internal/geodata"
+)
 
 // SolarEclipseRadiusModel 表示日食计算中月亮平均半径 k 的取法。
 type SolarEclipseRadiusModel string
@@ -28,6 +33,8 @@ type SolarEclipseOptions struct {
 	RadiusModel SolarEclipseRadiusModel
 	// SunRadiusModel 太阳半径口径，零值为标准档 / solar radius convention.
 	SunRadiusModel SolarEclipseSunRadiusModel
+	// LunarLimb 月缘剖面，nil 为圆月面；修正站心接触、食甚时的站心食分与遮蔽率，以及全球偏食始末与食甚点中心食时长 / lunar limb profile for local contacts, magnitude and obscuration, global P1/P4 and central duration.
+	LunarLimb LunarLimb
 }
 
 // SolarEclipseType 整场日食的全局食型。
@@ -67,8 +74,14 @@ type SolarEclipseResult struct {
 	// The fields below are the conventions that fix the numbers above.
 	Model          SolarEclipseRadiusModel
 	SunRadiusModel SolarEclipseSunRadiusModel
-	Type           SolarEclipseType
-	Centrality     SolarEclipseCentrality
+	// LunarLimbApplied 表示接触或食甚点中心食时长已按月缘剖面修正 / reports whether lunar-limb refinement changed the result.
+	LunarLimbApplied bool
+	// PartialBeginContact / PartialEndContact 是月缘修正后的偏食始末接触点位置，未修正时 Defined 为 false。
+	// The limb-corrected locations of the global partial contacts; Defined is false without a correction.
+	PartialBeginContact SolarEclipseLimbContact
+	PartialEndContact   SolarEclipseLimbContact
+	Type                SolarEclipseType
+	Centrality          SolarEclipseCentrality
 
 	// GreatestEclipse 是全局“影轴最接近地心”的时刻。
 	GreatestEclipse float64
@@ -116,6 +129,8 @@ type solarEclipseModelParameters struct {
 	penumbralK     float64
 	umbralK        float64
 	sunRadiusRatio float64
+	// lunarLimb 非 nil 时站心接触改用月缘剖面的方向半径。
+	lunarLimb LunarLimb
 }
 
 type solarEclipseShadowRadii struct {
@@ -132,6 +147,8 @@ type solarEclipseAxis struct {
 }
 
 type solarEclipseSolver struct {
+	inst *Instance
+
 	newMoonJDE     float64
 	model          SolarEclipseRadiusModel
 	sunRadiusModel SolarEclipseSunRadiusModel
@@ -139,6 +156,8 @@ type solarEclipseSolver struct {
 
 	localStateContextCache map[uint64]localSolarEclipseStateContext
 	localEphemeris         *solarEclipseLocalEphemeris
+	// limbAxes 与 localEphemeris 同网格的月球本体坐标架，仅在设置月缘时构造。
+	limbAxes *solarEclipseLimbAxes
 	// deltaTSeconds 是调用方显式给出的 ΔT（秒）；NaN 表示未覆盖，用进程级模型。
 	// 只影响地球自转相位（轴的 gst），不改变任何 TT 时刻。
 	deltaTSeconds        float64
@@ -194,7 +213,6 @@ type solarEclipseLineIntersection struct {
 }
 
 const (
-	solarEclipseEarthEquatorialRadiusKM = 6378.1366
 	// 赤道自转线速度，用于把 ΔT 误差换算成地面横移（见 DeltaTGroundShiftKM）。
 	// Equatorial rotation speed, used to convert a ΔT error into ground displacement.
 	solarEclipseEarthEquatorialRotationKMPerSecond = 0.4651
@@ -255,9 +273,9 @@ func solarEclipseSunRadiusRatio(model SolarEclipseSunRadiusModel) float64 {
 	return solarEclipseSunRadiusRatioStandard
 }
 
-// SolarEclipseSunSemidiameter 指定太阳半径口径下的视半径，单位角秒 / apparent solar semidiameter in arcseconds under a given eclipse sun radius convention.
-func SolarEclipseSunSemidiameter(jde float64, model SolarEclipseSunRadiusModel) float64 {
-	return angularSemidiameterFromAU(solarEclipseSunRadiusRatio(model)*solarEclipseEarthEquatorialRadiusKM, EarthAwayN(jde, -1))
+// SolarEclipseSunSemidiameterWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func SolarEclipseSunSemidiameterWithInstance(jde float64, model SolarEclipseSunRadiusModel, inst *Instance) float64 {
+	return angularSemidiameterFromAU(solarEclipseSunRadiusRatio(model)*geodata.EarthEquatorialRadiusKM, EarthAwayNWithInstance(jde, -1, inst))
 }
 
 // SolarEclipse 计算给定近朔时刻附近的一次全局日食，默认使用 NASABulletin Split-K 模型与标准太阳半径。
@@ -265,32 +283,42 @@ func SolarEclipse(seedJDE float64) SolarEclipseResult {
 	return SolarEclipseNASABulletinSplitK(seedJDE)
 }
 
-// SolarEclipseWithOptions 计算给定近朔时刻附近的一次全局日食，半径口径由 options 指定 / computes one global solar eclipse with the given radius conventions.
-func SolarEclipseWithOptions(seedJDE float64, options SolarEclipseOptions) SolarEclipseResult {
-	return solarEclipseWithDeltaT(seedJDE, options, 0)
+// SolarEclipseWithOptionsWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func SolarEclipseWithOptionsWithInstance(seedJDE float64, options SolarEclipseOptions, inst *Instance) SolarEclipseResult {
+	if options.LunarLimb == nil {
+		return solarEclipseWithDeltaT(seedJDE, options, 0, inst)
+	}
+	limb := options.LunarLimb
+	options.LunarLimb = nil
+	newMoonJDE := solarEclipseAnchorNewMoon(seedJDE, inst)
+	solver := newSolarEclipseSolverWithOptions(newMoonJDE, options, inst)
+	return solver.withLunarLimb(solver.eclipseResult(), limb)
 }
 
-// SolarEclipseIAUSingleK 计算给定近朔时刻附近的一次全局日食，使用 IAU Single-K 模型。
-func SolarEclipseIAUSingleK(seedJDE float64) SolarEclipseResult {
-	return solarEclipse(seedJDE, SolarEclipseModelIAUSingleK)
+// SolarEclipseIAUSingleKWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func SolarEclipseIAUSingleKWithInstance(seedJDE float64, inst *Instance) SolarEclipseResult {
+	return solarEclipse(seedJDE, SolarEclipseModelIAUSingleK, inst)
 }
 
-// SolarEclipseNASABulletinSplitK 计算给定近朔时刻附近的一次全局日食，使用 NASA bulletin Split-K 模型。
-func SolarEclipseNASABulletinSplitK(seedJDE float64) SolarEclipseResult {
-	return solarEclipse(seedJDE, SolarEclipseModelNASABulletinSplitK)
+// SolarEclipseNASABulletinSplitKWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func SolarEclipseNASABulletinSplitKWithInstance(seedJDE float64, inst *Instance) SolarEclipseResult {
+	return solarEclipse(seedJDE, SolarEclipseModelNASABulletinSplitK, inst)
 }
 
-func solarEclipse(seedJDE float64, model SolarEclipseRadiusModel) SolarEclipseResult {
-	return solarEclipseWithDeltaT(seedJDE, SolarEclipseOptions{RadiusModel: model}, 0)
+func solarEclipse(seedJDE float64, model SolarEclipseRadiusModel, instances ...*Instance) SolarEclipseResult {
+	inst := instanceValue(instances)
+
+	return solarEclipseWithDeltaT(seedJDE, SolarEclipseOptions{RadiusModel: model}, 0, inst)
 }
 
 func solarEclipseWithDeltaT(
 	seedJDE float64,
 	options SolarEclipseOptions,
-	deltaTSeconds float64,
-) SolarEclipseResult {
-	newMoonJDE := CalcMoonSHByJDE(seedJDE, 0)
-	solver := newSolarEclipseSolverWithOptions(newMoonJDE, options).withDeltaTSeconds(deltaTSeconds)
+	deltaTSeconds float64, instances ...*Instance) SolarEclipseResult {
+	inst := instanceValue(instances)
+
+	newMoonJDE := solarEclipseAnchorNewMoon(seedJDE, inst)
+	solver := newSolarEclipseSolverWithOptions(newMoonJDE, options, inst).withDeltaTSeconds(deltaTSeconds)
 	return solver.eclipseResult()
 }
 
@@ -372,19 +400,21 @@ func newSolarEclipseSolver(newMoonJDE float64, model SolarEclipseRadiusModel) so
 	return newSolarEclipseSolverWithOptions(newMoonJDE, SolarEclipseOptions{RadiusModel: model})
 }
 
-func newSolarEclipseSolverWithOptions(newMoonJDE float64, options SolarEclipseOptions) solarEclipseSolver {
+func newSolarEclipseSolverWithOptions(newMoonJDE float64, options SolarEclipseOptions, instances ...*Instance) solarEclipseSolver {
+	inst := instanceValue(instances)
+
 	options.RadiusModel = normalizeSolarEclipseRadiusModel(options.RadiusModel)
 	options.SunRadiusModel = normalizeSolarEclipseSunRadiusModel(options.SunRadiusModel)
 	params := solarEclipseModelParams(options.RadiusModel, options.SunRadiusModel)
 
 	firstNodeJDE := newMoonJDE + (0-float64(solarEclipseNodeCount)/2+0.5)*solarEclipseNodeStepDays
 	lastNodeJDE := newMoonJDE + (float64(solarEclipseNodeCount-1)-float64(solarEclipseNodeCount)/2+0.5)*solarEclipseNodeStepDays
-	firstSun, firstMoon := solarEclipseSunMoonEquatorial(firstNodeJDE)
-	lastSun, lastMoon := solarEclipseSunMoonEquatorial(lastNodeJDE)
+	firstSun, firstMoon := solarEclipseSunMoonEquatorial(firstNodeJDE, inst)
+	lastSun, lastMoon := solarEclipseSunMoonEquatorial(lastNodeJDE, inst)
 
-	meanSunMoonDistance := ((firstSun[2] + lastSun[2]) - (firstMoon[2] + lastMoon[2])) / 2 / solarEclipseEarthEquatorialRadiusKM
+	meanSunMoonDistance := ((firstSun[2] + lastSun[2]) - (firstMoon[2] + lastMoon[2])) / 2 / geodata.EarthEquatorialRadiusKM
 
-	return solarEclipseSolver{
+	return solarEclipseSolver{inst: inst,
 		newMoonJDE:             newMoonJDE,
 		model:                  options.RadiusModel,
 		sunRadiusModel:         options.SunRadiusModel,
@@ -436,7 +466,10 @@ func (solver solarEclipseSolver) siderealTimeAt(jde float64) float64 {
 // bounded window and is used by all contact and topology refinements.
 func (solver solarEclipseSolver) withLocalEphemeris() solarEclipseSolver {
 	if solver.localEphemeris == nil {
-		solver.localEphemeris = newSolarEclipseLocalEphemeris(solver.newMoonJDE)
+		solver.localEphemeris = newSolarEclipseLocalEphemeris(solver.newMoonJDE, solver.inst)
+	}
+	if solver.limbAxes == nil && solver.params.lunarLimb != nil {
+		solver.limbAxes = newSolarEclipseLimbAxes(solver.localEphemeris, solver.params.lunarLimb, solver.inst)
 	}
 	return solver
 }
@@ -561,9 +594,9 @@ func (solver solarEclipseSolver) feature() solarEclipseFeature {
 		// 单侧极限（A1/T1）只有一侧限界，非中心中心食（A0/T0）连限界都没有：解析式 2r/|sin h|
 		// 在 h→0 时发散，两类事件该栏都无定义，与中心线逐点宽度一起置 0。
 		if solarEclipseTwoLimitsTypeCode(typeCode) {
-			sunAltitude := solarEclipseSunAltitudeAtGreatest(greatestEclipseJDE, greatestLongitude, greatestLatitude, axis.gst)
+			sunAltitude := solarEclipseSunAltitudeAtGreatest(greatestEclipseJDE, greatestLongitude, greatestLatitude, axis.gst, solver.inst)
 			if math.Abs(math.Sin(sunAltitude)) > 1e-12 {
-				pathWidthKM = math.Abs(2*greatestRadii.umbraRadius*solarEclipseEarthEquatorialRadiusKM) / math.Abs(math.Sin(sunAltitude))
+				pathWidthKM = math.Abs(2*greatestRadii.umbraRadius*geodata.EarthEquatorialRadiusKM) / math.Abs(math.Sin(sunAltitude))
 			}
 		}
 	}
@@ -693,7 +726,7 @@ func (solver solarEclipseSolver) centralAxisContactPointAt(jde float64) (SolarEc
 		JDE:         jde,
 		Longitude:   longitude,
 		Latitude:    latitude,
-		SunAltitude: solarEclipseSunAltitudeAtGreatest(jde, longitude, latitude, axis.gst) / rad,
+		SunAltitude: solarEclipseSunAltitudeAtGreatest(jde, longitude, latitude, axis.gst, solver.inst) / rad,
 	}, true
 }
 
@@ -740,7 +773,7 @@ func (solver solarEclipseSolver) shadowRadiiAt(moonBesselZ float64) solarEclipse
 }
 
 func (solver solarEclipseSolver) besselAxisAt(jde float64) solarEclipseAxis {
-	sun, moon := solarEclipseSunMoonEquatorial(jde)
+	sun, moon := solarEclipseSunMoonEquatorial(jde, solver.inst)
 	return solarEclipseBesselAxisFromEquatorialWithDeltaT(
 		jde, sun, moon, solver.effectiveDeltaTSeconds(jde),
 	)
@@ -766,7 +799,7 @@ func solarEclipseBesselAxisFromEquatorialWithDeltaT(
 	return solarEclipseAxis{
 		rightAscension: solarEclipseNormalizeRadians(math.Pi/2 + axis[0]),
 		tilt:           math.Pi/2 - axis[1],
-		gst:            solarEclipseNormalizeSignedRadians(ApparentSiderealTime(utJDE) * 15 * rad),
+		gst:            normalizeSignedRadians(ApparentSiderealTime(utJDE) * 15 * rad),
 	}
 }
 
@@ -791,7 +824,7 @@ func (solver solarEclipseSolver) besselGeometryAt(jde float64) ([3]float64, sola
 	if entry, ok := solver.besselGeometryCache[key]; ok && entry.generation == deltaTGenerationValue() {
 		return entry.moon, entry.axis, entry.sun
 	}
-	sun, moon := solarEclipseSunMoonEquatorial(jde)
+	sun, moon := solarEclipseSunMoonEquatorial(jde, solver.inst)
 	axis := solarEclipseBesselAxisFromEquatorialWithDeltaT(
 		jde, sun, moon, solver.effectiveDeltaTSeconds(jde),
 	)
@@ -849,7 +882,7 @@ func storeSolarEclipseBesselGeometry(
 
 func solarEclipseBesselMoonFromEquatorial(moon [3]float64, axis solarEclipseAxis) [3]float64 {
 	rotated := solarEclipseRotateLLR(
-		solarEclipseNormalizeSignedRadians(moon[0]-axis.rightAscension),
+		normalizeSignedRadians(moon[0]-axis.rightAscension),
 		moon[1],
 		moon[2],
 		-axis.tilt,
@@ -857,26 +890,35 @@ func solarEclipseBesselMoonFromEquatorial(moon [3]float64, axis solarEclipseAxis
 	rectangular := solarEclipseLLRToXYZ(rotated[0], rotated[1], rotated[2])
 
 	return [3]float64{
-		rectangular[0] / solarEclipseEarthEquatorialRadiusKM,
-		rectangular[1] / solarEclipseEarthEquatorialRadiusKM,
-		rectangular[2] / solarEclipseEarthEquatorialRadiusKM,
+		rectangular[0] / geodata.EarthEquatorialRadiusKM,
+		rectangular[1] / geodata.EarthEquatorialRadiusKM,
+		rectangular[2] / geodata.EarthEquatorialRadiusKM,
 	}
 }
 
-func solarEclipseSunMoonEquatorial(jde float64) ([3]float64, [3]float64) {
+func solarEclipseSunMoonEquatorial(jde float64, instances ...*Instance) ([3]float64, [3]float64) {
+	inst := instanceValue(instances)
+
 	julianCentury := (jde - 2451545.0) / 36525.0
 	nutationLongitude, nutationObliquity := Nutation2000B(jde)
 	obliquity := (Obliquity1980(jde) + nutationObliquity) * rad
 
 	// Share the full-series distance and nutation for this single TT.
-	sunDistanceAU := EarthAway(jde)
-	sunLongitude := (HSunTrueLoN(jde, -1) + nutationLongitude - 20.49552/sunDistanceAU/3600) * rad
-	sunLatitude := HSunTrueBo(jde) * rad
+	sunDistanceAU := EarthAwayWithInstance(jde, inst)
+	// 新模型全精度时 HSunApparentLoN 已含光行差，避免重复计入常数项。
+	sunLongitude := HSunApparentLoNWithInstance(jde, -1, inst) * rad
+	sunLatitude := HSunTrueBoWithInstance(jde, inst) * rad
 	sunDistance := sunDistanceAU * solarEclipseAstronomicalUnitKM
 
-	moonLongitude := solarEclipseNormalizeRadians((HMoonTrueLoN(jde, -1)+nutationLongitude)*rad + solarEclipseMoonLonAberrRad)
-	moonLatitude := HMoonTrueBo(jde)*rad + moonLatitudeAberrationRad(julianCentury)
-	moonDistance := HMoonAway(jde)
+	// 新模型全精度时 HMoonApparentLoN 已含光行差，避免重复计入常数项。
+	moonLongitude := solarEclipseNormalizeRadians(HMoonApparentLoNWithInstance(jde, -1, inst) * rad)
+	moonLatitude := HMoonTrueBoWithInstance(jde, inst) * rad
+	if instanceModel(inst) == ephem.Legacy {
+		sunLongitude = (HSunTrueLoNWithInstance(jde, -1, inst) + nutationLongitude - 20.49552/sunDistanceAU/3600) * rad
+		moonLongitude = solarEclipseNormalizeRadians((HMoonTrueLoNWithInstance(jde, -1, inst)+nutationLongitude)*rad + solarEclipseMoonLonAberrRad)
+		moonLatitude += moonLatitudeAberrationRad(julianCentury)
+	}
+	moonDistance := HMoonAwayWithInstance(jde, inst)
 
 	sunEquatorial := solarEclipseRotateLLR(sunLongitude, sunLatitude, sunDistance, obliquity)
 	moonEquatorial := solarEclipseRotateLLR(moonLongitude, moonLatitude, moonDistance, obliquity)
@@ -885,8 +927,10 @@ func solarEclipseSunMoonEquatorial(jde float64) ([3]float64, [3]float64) {
 		[3]float64{moonEquatorial[0], moonEquatorial[1], moonEquatorial[2]}
 }
 
-func solarEclipseSunAltitudeAtGreatest(jde, lonDeg, latDeg, gst float64) float64 {
-	sun, _ := solarEclipseSunMoonEquatorial(jde)
+func solarEclipseSunAltitudeAtGreatest(jde, lonDeg, latDeg, gst float64, instances ...*Instance) float64 {
+	inst := instanceValue(instances)
+
+	sun, _ := solarEclipseSunMoonEquatorial(jde, inst)
 	return solarEclipseSunAltitudeFromEquatorial(sun, lonDeg, latDeg, gst)
 }
 
@@ -1001,7 +1045,7 @@ func axisIntersectionLatitude(intersection solarEclipseLineIntersection, axis so
 }
 
 func solarEclipseIntersectionGeodetic(intersection solarEclipseLineIntersection, axis solarEclipseAxis) (float64, float64) {
-	longitude := solarEclipseNormalizeSignedRadians(math.Atan2(intersection.y, intersection.x) + axis.rightAscension - axis.gst)
+	longitude := normalizeSignedRadians(math.Atan2(intersection.y, intersection.x) + axis.rightAscension - axis.gst)
 	latitude := math.Atan(intersection.z / solarEclipseEarthPolarRatioSquared / math.Sqrt(intersection.x*intersection.x+intersection.y*intersection.y))
 	return longitude * deg, latitude * deg
 }
@@ -1009,7 +1053,7 @@ func solarEclipseIntersectionGeodetic(intersection solarEclipseLineIntersection,
 func solarEclipseBesselPointToGeodetic(x, y, z float64, axis solarEclipseAxis, ellipsoidal bool) (float64, float64) {
 	point := solarEclipseXYZToLLR(x, y, z)
 	rotated := solarEclipseRotateLLR(point[0], point[1], point[2], axis.tilt)
-	longitude := solarEclipseNormalizeSignedRadians(rotated[0] + axis.rightAscension - axis.gst)
+	longitude := normalizeSignedRadians(rotated[0] + axis.rightAscension - axis.gst)
 	latitude := rotated[1]
 	if ellipsoidal {
 		latitude = math.Atan(math.Tan(latitude) / solarEclipseEarthPolarRatioSquared)
@@ -1038,7 +1082,7 @@ func solarEclipseNormalizeRadians(angle float64) float64 {
 	return angle
 }
 
-func solarEclipseNormalizeSignedRadians(angle float64) float64 {
+func normalizeSignedRadians(angle float64) float64 {
 	angle = math.Mod(angle, 2*math.Pi)
 	if angle <= -math.Pi {
 		angle += 2 * math.Pi

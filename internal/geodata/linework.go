@@ -103,7 +103,7 @@ func newVisibleLineworkArcIndex(lines [][]GeoPoint) visibleLineworkArcIndex {
 
 func (index visibleLineworkArcIndex) pointDistanceKM(point GeoPoint) float64 {
 	if source, ok := index.vertices[visibleLineworkIndexPointKey(point)]; ok {
-		return geoPointDistanceKM(point, source)
+		return EquatorialDistanceKM(point, source)
 	}
 	pointVector := geoPointVector(point)
 	minimum := math.Inf(1)
@@ -130,10 +130,10 @@ func (index visibleLineworkArcIndex) edgePointDistanceKM(
 	matched := false
 	for _, arcIndex := range arcIndices {
 		arc := index.arcs[arcIndex]
-		direct := geoPointDistanceKM(first, arc.start) <= 0.001 &&
-			geoPointDistanceKM(second, arc.end) <= 0.001
-		reverse := geoPointDistanceKM(first, arc.end) <= 0.001 &&
-			geoPointDistanceKM(second, arc.start) <= 0.001
+		direct := EquatorialDistanceKM(first, arc.start) <= 0.001 &&
+			EquatorialDistanceKM(second, arc.end) <= 0.001
+		reverse := EquatorialDistanceKM(first, arc.end) <= 0.001 &&
+			EquatorialDistanceKM(second, arc.start) <= 0.001
 		if !direct && !reverse {
 			continue
 		}
@@ -151,12 +151,12 @@ func (arc visibleLineworkArc) pointDistanceKM(point GeoPoint, pointVector geoVec
 			for _, candidate := range []geoVector3{projected, geoVectorScale(projected, -1)} {
 				if sphericalPointOnArcVectors(candidate, arc.startVector, arc.endVector, arc.arcRadians) {
 					angle := math.Acos(math.Max(-1, math.Min(1, geoVectorDot(pointVector, candidate))))
-					return angle * 6378.1366
+					return angle * EarthEquatorialRadiusKM
 				}
 			}
 		}
 	}
-	return math.Min(geoPointDistanceKM(point, arc.start), geoPointDistanceKM(point, arc.end))
+	return math.Min(EquatorialDistanceKM(point, arc.start), EquatorialDistanceKM(point, arc.end))
 }
 
 func visibleLineworkIndexPointKey(point GeoPoint) visibleLineworkPointKey {
@@ -278,7 +278,7 @@ func visibleLineworkPolygons(
 	// curves, but using that same radius for point-in-face tests makes adjacent
 	// polar faces overlap and selects the wrong side of a narrow band.
 	faceToleranceKM := math.Min(5, math.Max(0.5, snapDistanceKM/10))
-	projectedTolerance := faceToleranceKM / 111.195
+	projectedTolerance := faceToleranceKM / EarthKMPerDegree
 	cycleProbes := visibleLineworkFilledCycleProbes(cycles, projectedFill, projectedTolerance)
 	if len(cycleProbes) > 0 {
 		for _, probe := range cycleProbes {
@@ -403,7 +403,7 @@ func visibleLineworkProjectedEdgeDistanceKM(first, second GeoPoint) float64 {
 	latitude := (first.Latitude + second.Latitude) * math.Pi / 360
 	deltaLongitude := math.Remainder(second.Longitude-first.Longitude, 360) * math.Cos(latitude)
 	deltaLatitude := second.Latitude - first.Latitude
-	return math.Hypot(deltaLongitude, deltaLatitude) * 111.195
+	return math.Hypot(deltaLongitude, deltaLatitude) * EarthKMPerDegree
 }
 
 func visibleLineworkBoundarySourceMissDistanceKM(
@@ -516,7 +516,7 @@ func visibleLineworkBoundaryBridge(
 			if !visibleLineworkBridgeIsSimple(bridge, toleranceKM) {
 				continue
 			}
-			if geoPointDistanceKM(originalStart, bridge[0]) > geoPointDistanceKM(originalStart, bridge[len(bridge)-1]) {
+			if EquatorialDistanceKM(originalStart, bridge[0]) > EquatorialDistanceKM(originalStart, bridge[len(bridge)-1]) {
 				reverseGeoPoints(bridge)
 			}
 			length := visibleLineworkBridgeLength(bridge)
@@ -554,10 +554,10 @@ func visibleLineworkCrossLineBoundaryBridge(
 			continue
 		}
 		for pointIndex, point := range line {
-			if distance := geoPointDistanceKM(start, point); distance <= toleranceKM {
+			if distance := EquatorialDistanceKM(start, point); distance <= toleranceKM {
 				startLocations = append(startLocations, location{lineIndex, pointIndex, distance})
 			}
-			if distance := geoPointDistanceKM(end, point); distance <= toleranceKM {
+			if distance := EquatorialDistanceKM(end, point); distance <= toleranceKM {
 				endLocations = append(endLocations, location{lineIndex, pointIndex, distance})
 			}
 		}
@@ -574,7 +574,7 @@ func visibleLineworkCrossLineBoundaryBridge(
 			secondIndices := []int{0, len(secondLine) - 1}
 			for _, firstIndex := range firstIndices {
 				for _, secondIndex := range secondIndices {
-					if geoPointDistanceKM(firstLine[firstIndex], secondLine[secondIndex]) > toleranceKM {
+					if EquatorialDistanceKM(firstLine[firstIndex], secondLine[secondIndex]) > toleranceKM {
 						continue
 					}
 					firstPath := visibleLineworkLinePath(firstLine, first.pointIndex, firstIndex, start, firstLine[firstIndex])
@@ -609,8 +609,8 @@ func visibleLineworkBridgeIsSimple(points []GeoPoint, toleranceKM float64) bool 
 	}
 	endpointRepeatTolerance := math.Min(1, toleranceKM/10)
 	for index := 1; index+1 < len(points); index++ {
-		if geoPointDistanceKM(points[index], points[0]) <= endpointRepeatTolerance ||
-			geoPointDistanceKM(points[index], points[len(points)-1]) <= endpointRepeatTolerance {
+		if EquatorialDistanceKM(points[index], points[0]) <= endpointRepeatTolerance ||
+			EquatorialDistanceKM(points[index], points[len(points)-1]) <= endpointRepeatTolerance {
 			return false
 		}
 	}
@@ -633,7 +633,7 @@ func visibleLineworkLinePath(
 			path = append(path, line[index])
 		}
 	}
-	if len(path) == 0 || geoPointDistanceKM(path[len(path)-1], end) > 1e-9 {
+	if len(path) == 0 || EquatorialDistanceKM(path[len(path)-1], end) > 1e-9 {
 		path = append(path, end)
 	}
 	return path
@@ -642,7 +642,7 @@ func visibleLineworkLinePath(
 func visibleLineworkBridgeLength(points []GeoPoint) float64 {
 	length := 0.0
 	for index := 1; index < len(points); index++ {
-		length += geoPointDistanceKM(points[index-1], points[index])
+		length += EquatorialDistanceKM(points[index-1], points[index])
 	}
 	return length
 }
@@ -654,7 +654,7 @@ func visibleLineworkNearestVertex(
 	bestIndex := -1
 	bestDistance := math.Inf(1)
 	for index, candidate := range line {
-		distance := geoPointDistanceKM(point, candidate)
+		distance := EquatorialDistanceKM(point, candidate)
 		if distance < bestDistance {
 			bestIndex = index
 			bestDistance = distance
@@ -1805,7 +1805,7 @@ func buildVisibleLineworkGraph(
 				if index == otherIndex || len(other.outgoing) == 0 {
 					continue
 				}
-				if distance := geoPointDistanceKM(point, chart.unproject(other.point)); distance < minimum {
+				if distance := EquatorialDistanceKM(point, chart.unproject(other.point)); distance < minimum {
 					first, second, minimum = index, otherIndex, distance
 				}
 			}
@@ -1923,7 +1923,7 @@ func visibleLineworkNodeIndex(
 	bestIndex := -1
 	bestDistance := math.Inf(1)
 	for index, node := range nodes {
-		distance := geoPointDistanceKM(chart.unproject(node.point), target)
+		distance := EquatorialDistanceKM(chart.unproject(node.point), target)
 		if distance <= snapDistanceKM && distance < bestDistance {
 			bestIndex, bestDistance = index, distance
 		}

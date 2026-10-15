@@ -1,6 +1,7 @@
 package svg
 
 import (
+	"github.com/starainrt/astro/internal/limbnote"
 	"github.com/starainrt/astro/internal/timenote"
 	"errors"
 	"fmt"
@@ -254,7 +255,7 @@ func renderLocalStarOccultationSVG(
 	writeLocalStarOccultationOverview(&b, diagram, events, layout, options)
 	writeLocalStarOccultationContacts(&b, events, layout, options)
 	writeLocalStarOccultationStages(&b, events, layout, options)
-	writeLocalStarOccultationFooter(&b, layout, options, info.Greatest)
+	writeLocalStarOccultationFooter(&b, layout, options, info.Greatest, info.LunarLimbApplied)
 	b.WriteString(`</svg>`)
 	return b.String()
 }
@@ -374,6 +375,8 @@ func writeLocalStarOccultationTrack(
 		}
 		fmt.Fprintf(&path, "%s %.3f %.3f ", command, mapX(frame.StarXArcsec), mapY(frame.StarYArcsec))
 	}
+	// 白色衬底保证轨迹叠在暗月面与亮月面上都可见。
+	fmt.Fprintf(b, `<path class="local-star-track-halo" d="%s" fill="none" stroke="#ffffff" stroke-width="3.6" stroke-linecap="round" opacity="0.7"/>`, strings.TrimSpace(path.String()))
 	fmt.Fprintf(b, `<path class="local-star-track" d="%s" fill="none" stroke="#9b3f36" stroke-width="1.7" stroke-dasharray="5 4" opacity="0.82" marker-end="url(#local-occultation-arrow)"/>`, strings.TrimSpace(path.String()))
 }
 
@@ -469,12 +472,22 @@ func writeLocalStarOccultationAxes(b *strings.Builder, cx, cy, radius float64, l
 	}
 }
 
+// 被掩目标轮廓用浅金色，配暗色衬底，暗月面与亮月面上都能分辨。
+const localOccultationHiddenOutlineColor = "#f3d48e"
+
+func writeLocalOccultationHiddenOutlineHalo(b *strings.Builder, x, y, radius float64) {
+	fmt.Fprintf(b, `<circle class="hidden-outline-halo" cx="%.3f" cy="%.3f" r="%.3f" fill="none" stroke="#1a1c1e" stroke-width="3" opacity="0.55"/>`, x, y, radius)
+}
+
 func writeLocalStarOccultationStar(b *strings.Builder, x, y float64, hidden bool, class, label string) {
 	fill, stroke, dash := "#fff7d6", "#9b3028", ""
 	if hidden {
-		fill, stroke, dash = "none", "#7d3430", ` stroke-dasharray="2 2"`
+		fill, stroke, dash = "none", localOccultationHiddenOutlineColor, ` stroke-dasharray="3 2"`
 	}
 	fmt.Fprintf(b, `<g class="%s" data-label="%s">`, html.EscapeString(class), html.EscapeString(label))
+	if hidden {
+		writeLocalOccultationHiddenOutlineHalo(b, x, y, 4.2)
+	}
 	fmt.Fprintf(b, `<circle cx="%.3f" cy="%.3f" r="4.2" fill="%s" stroke="%s" stroke-width="1.4"%s/>`, x, y, fill, stroke, dash)
 	fmt.Fprintf(b, `<line x1="%.3f" y1="%.3f" x2="%.3f" y2="%.3f" stroke="%s" stroke-width="1"/>`, x-6, y, x+6, y, stroke)
 	fmt.Fprintf(b, `<line x1="%.3f" y1="%.3f" x2="%.3f" y2="%.3f" stroke="%s" stroke-width="1"/>`, x, y-6, x, y+6, stroke)
@@ -558,11 +571,13 @@ func writeLocalStarOccultationFooter(
 	layout localStarOccultationSVGLayout,
 	options LocalStarOccultationSVGOptions,
 	instant time.Time,
+	limbApplied bool,
 ) {
 	directionLines, footerLines := localOccultationFooterLines(
 		localStarOccultationSVGDirectionText(options),
 		localStarOccultationSVGFooterNote(options),
-		timenote.Scale(options.TimeScale, instant, options.Location, options.Language),
+		limbnote.Join(timenote.Scale(options.TimeScale, instant, options.Location, options.Language),
+			limbnote.Contacts(limbApplied, options.Language), options.Language),
 		layout.footerY, layout.width, layout.height)
 	for index, line := range directionLines {
 		fmt.Fprintf(b, `<text x="%.3f" y="%.3f" fill="#4f595b" font-family="Georgia, 'Times New Roman', serif" font-size="10">%s</text>`,

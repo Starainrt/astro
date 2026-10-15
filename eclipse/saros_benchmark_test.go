@@ -42,10 +42,10 @@ func BenchmarkSarosLookup(b *testing.B) {
 }
 
 func BenchmarkSolarEclipsePrecomputedSaros(b *testing.B) {
-	date := time.Date(3288, 11, 15, 12, 0, 0, 0, time.UTC)
+	date := time.Date(3306, 11, 28, 12, 0, 0, 0, time.UTC)
 	for i := 0; i < b.N; i++ {
 		info, ok := SolarEclipseOnDate(date)
-		if !ok || !info.HasSaros || info.Saros != (SarosInfo{Series: 202, Member: 1, Count: 71}) {
+		if !ok || !info.HasSaros || info.Saros.Series != 202 {
 			b.Fatal("missing precomputed Saros metadata")
 		}
 	}

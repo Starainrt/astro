@@ -3,7 +3,6 @@ package basic
 import (
 	"math"
 
-	"github.com/starainrt/astro/planet"
 	. "github.com/starainrt/astro/tools"
 )
 
@@ -105,13 +104,10 @@ func JupiterGalileanSatelliteObservation(jde float64, satellite int) JupiterGali
 	return context.observationForSatellite(satellite - 1)
 }
 
-// JupiterGalileanSatelliteObservations 四颗伽利略卫星视位置 / apparent geometry of the four Galilean satellites.
-//
-// 返回次序固定为 Io、Europa、Ganymede、Callisto。
-// The returned order is Io, Europa, Ganymede, Callisto.
-func JupiterGalileanSatelliteObservations(jde float64) [4]JupiterGalileanObservation {
+// JupiterGalileanSatelliteObservationsWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func JupiterGalileanSatelliteObservationsWithInstance(jde float64, inst *Instance) [4]JupiterGalileanObservation {
 	var observations [4]JupiterGalileanObservation
-	context := newJupiterGalileanObservationContext(jde)
+	context := newJupiterGalileanObservationContext(jde, inst)
 	for i := range observations {
 		observations[i] = context.observationForSatellite(i)
 	}
@@ -119,6 +115,8 @@ func JupiterGalileanSatelliteObservations(jde float64) [4]JupiterGalileanObserva
 }
 
 type jupiterGalileanObservationContext struct {
+	inst *Instance
+
 	jd               float64
 	targetJD         float64
 	earthHelioJ2000  Vector3
@@ -141,13 +139,15 @@ type jupiterGalileanObservationContext struct {
 	bodyZ            Vector3
 }
 
-func newJupiterGalileanObservationContext(jde float64) jupiterGalileanObservationContext {
-	context := jupiterGalileanObservationContext{jd: jde}
+func newJupiterGalileanObservationContext(jde float64, instances ...*Instance) jupiterGalileanObservationContext {
+	inst := instanceValue(instances)
+
+	context := jupiterGalileanObservationContext{inst: inst, jd: jde}
 	if !isFinite(jde) {
 		return context
 	}
-	context.earthHelioJ2000 = rotateEclipticToEquatorial(earthHeliocentricVectorJ2000(jde), orbitJ2000Obliquity)
-	context.jupiterGeoJ2000, context.jupiterLightTime = jupiterAstrometricGeocentricVectorJ2000(jde, context.earthHelioJ2000)
+	context.earthHelioJ2000 = rotateEclipticToEquatorial(earthHeliocentricVectorJ2000(jde, inst), orbitJ2000Obliquity)
+	context.jupiterGeoJ2000, context.jupiterLightTime = jupiterAstrometricGeocentricVectorJ2000(jde, context.earthHelioJ2000, inst)
 	context.targetJD = jde - context.jupiterLightTime
 	context.jupiterDistance = vectorMagnitude(context.jupiterGeoJ2000)
 	if context.jupiterDistance == 0 {
@@ -158,7 +158,7 @@ func newJupiterGalileanObservationContext(jde float64) jupiterGalileanObservatio
 	ra, dec := vectorToRaDec(context.lineOfSight)
 	context.east = Vector3{-Sin(ra), Cos(ra), 0}
 	context.north = Vector3{-Cos(ra) * Sin(dec), -Sin(ra) * Sin(dec), Cos(dec)}
-	jupiterHelio := rotateEclipticToEquatorial(jupiterHeliocentricVectorJ2000(context.targetJD), orbitJ2000Obliquity)
+	jupiterHelio := rotateEclipticToEquatorial(jupiterHeliocentricVectorJ2000(context.targetJD, inst), orbitJ2000Obliquity)
 	context.sunDistanceAU = vectorMagnitude(jupiterHelio)
 	context.sunDirection = normalizeVector(Vector3{-jupiterHelio[0], -jupiterHelio[1], -jupiterHelio[2]})
 	context.sunLineOfSight = Vector3{-context.sunDirection[0], -context.sunDirection[1], -context.sunDirection[2]}
@@ -178,7 +178,7 @@ func (context jupiterGalileanObservationContext) observationForSatellite(index i
 	if index < 0 || index >= 4 || context.jupiterDistance == 0 {
 		return invalidJupiterGalileanObservation()
 	}
-	state, geocentric := jupiterGalileanSatelliteAstrometricGeocentric(index, context.jd, context.jupiterLightTime, context.earthHelioJ2000)
+	state, geocentric := jupiterGalileanSatelliteAstrometricGeocentric(index, context.jd, context.jupiterLightTime, context.earthHelioJ2000, context.inst)
 	direction := normalizeVector(geocentric)
 	ra, dec := vectorToRaDec(direction)
 	distance := vectorMagnitude(geocentric)
@@ -214,14 +214,16 @@ func tangentPlaneOffsetAngles(target, center, east, north Vector3) (float64, flo
 	return math.Atan2(vectorDot(target, east), denominator), math.Atan2(vectorDot(target, north), denominator)
 }
 
-func jupiterGalileanSatelliteAstrometricGeocentric(index int, jd, initialLightTime float64, earthHelioJ2000 Vector3) (JupiterGalileanState, Vector3) {
+func jupiterGalileanSatelliteAstrometricGeocentric(index int, jd, initialLightTime float64, earthHelioJ2000 Vector3, instances ...*Instance) (JupiterGalileanState, Vector3) {
+	inst := instanceValue(instances)
+
 	lightTime := initialLightTime
 	state := JupiterGalileanState{}
 	result := Vector3{}
 	includeSolarLongPeriod := jupiterGalileanUseSolarLongPeriod(jd)
 	for i := 0; i < 8; i++ {
 		targetJDE := jd - lightTime
-		jupiterHelio := rotateEclipticToEquatorial(jupiterHeliocentricVectorJ2000(targetJDE), orbitJ2000Obliquity)
+		jupiterHelio := rotateEclipticToEquatorial(jupiterHeliocentricVectorJ2000(targetJDE, inst), orbitJ2000Obliquity)
 		state = jupiterGalileanSatelliteStateAtET(targetJDE-jupiterGalileanReferenceJD, index, includeSolarLongPeriod)
 		result = Vector3{
 			jupiterHelio[0] + state.X - earthHelioJ2000[0],
@@ -237,11 +239,13 @@ func jupiterGalileanSatelliteAstrometricGeocentric(index int, jd, initialLightTi
 	return state, result
 }
 
-func jupiterAstrometricGeocentricVectorJ2000(jd float64, earthHelioJ2000 Vector3) (Vector3, float64) {
+func jupiterAstrometricGeocentricVectorJ2000(jd float64, earthHelioJ2000 Vector3, instances ...*Instance) (Vector3, float64) {
+	inst := instanceValue(instances)
+
 	lightTime := 0.0
 	result := Vector3{}
 	for i := 0; i < 8; i++ {
-		jupiterHelio := rotateEclipticToEquatorial(jupiterHeliocentricVectorJ2000(jd-lightTime), orbitJ2000Obliquity)
+		jupiterHelio := rotateEclipticToEquatorial(jupiterHeliocentricVectorJ2000(jd-lightTime, inst), orbitJ2000Obliquity)
 		result = Vector3{
 			jupiterHelio[0] - earthHelioJ2000[0],
 			jupiterHelio[1] - earthHelioJ2000[1],
@@ -256,12 +260,14 @@ func jupiterAstrometricGeocentricVectorJ2000(jd float64, earthHelioJ2000 Vector3
 	return result, lightTime
 }
 
-func jupiterHeliocentricVectorJ2000(jde float64) Vector3 {
+func jupiterHeliocentricVectorJ2000(jde float64, instances ...*Instance) Vector3 {
+	inst := instanceValue(instances)
+
 	return eclipticVectorAtReferenceEpoch(
 		eclipticCartesian(
-			planet.WherePlanet(4, 0, jde),
-			planet.WherePlanet(4, 1, jde),
-			planet.WherePlanet(4, 2, jde),
+			PlanetCoordinateWithInstance(4, 0, jde, inst),
+			PlanetCoordinateWithInstance(4, 1, jde, inst),
+			PlanetCoordinateWithInstance(4, 2, jde, inst),
 		),
 		jde,
 		orbitReferenceJD,

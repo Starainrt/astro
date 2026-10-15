@@ -5,18 +5,18 @@ import (
 	"sync"
 )
 
-// TimeScaleFuturePolicy 民用时标换算政策，零值为闰秒情景外推 / civil-time conversion policy, defaulting to leap-second extrapolation.
+// TimeScaleFuturePolicy 民用时标换算政策，零值为闰时 / civil-time conversion policy, leap hour by default.
 type TimeScaleFuturePolicy int
 
 const (
-	// TimeScaleLeapSecond 默认按 ΔT 越限施加整数秒校正，不代表闰秒公告 / default integer-second corrections driven by extrapolated ΔT, not announcements.
-	TimeScaleLeapSecond TimeScaleFuturePolicy = iota
+	// TimeScaleLeapHour 按 ΔT 越限施加整小时校正（2027-05-20 起 CGPM 决议） / applies hour-sized corrections as adopted by CGPM from 2027.
+	TimeScaleLeapHour TimeScaleFuturePolicy = iota
+	// TimeScaleLeapSecond 按 ΔT 越限施加整数秒校正（1972–2026 确定值） / integer-second corrections (definitive 1972–2026).
+	TimeScaleLeapSecond
 	// TimeScaleAssumeUT1Tracking 窗口外固定末端 DUT1，平滑跟随 UT1 / holds the last observed DUT1 beyond the window.
 	TimeScaleAssumeUT1Tracking
 	// TimeScaleFreezeUTCOffset 窗口外固定末端 TT−UTC / holds the last TT−UTC offset beyond the window.
 	TimeScaleFreezeUTCOffset
-	// TimeScaleLeapHour 按 ΔT 越限施加整小时校正，仅作情景演算 / applies hour-sized corrections as a scenario assumption.
-	TimeScaleLeapHour
 	// TimeScaleUT1Civil 全时轴民用时标等同 UT1，TT−UTC 覆盖仍优先 / uses UT1 as civil time everywhere unless TT−UTC is overridden.
 	TimeScaleUT1Civil
 )
@@ -30,8 +30,8 @@ const utcDUT1ToleranceSeconds = 0.9
 // utcEraStartJDE 是 UTC 按 SI 秒运行的起点（1972-01-01），此前民用时标即 UT1。
 const utcEraStartJDE = 2441317.5
 
-// 实测窗口末端，必须与月度 ΔT 表末项同步。
-const timeScaleExactEndJDE = 2461284.5
+// 月度 ΔT 表覆盖窗口末端，必须与表末项同步。
+const timeScaleExactEndJDE = 2461314.5
 
 // 闰秒生效的儒略日按降序排列，与 utcLeapOffsets 一一对应。
 var utcLeapJDEs = [...]float64{
@@ -223,18 +223,21 @@ func utcToTTOffsetSeconds(jd float64) float64 {
 	if GetTimeScaleFuturePolicy() == TimeScaleUT1Civil {
 		return ut1ToTTOffsetSeconds(jd)
 	}
+	// 内置实测窗口（截至 2026-10-01）一律取确定闰秒表值，窗口外才按政策外推。
 	if jd <= timeScaleExactEndJDE {
 		return TTMinusUTCSeconds(jd)
 	}
 	switch GetTimeScaleFuturePolicy() {
+	case TimeScaleLeapHour:
+		return steppedUTCOffsetSeconds(jd, timeScaleLeapHourSeconds, timeScaleLeapHourSeconds)
+	case TimeScaleLeapSecond:
+		return steppedUTCOffsetSeconds(jd, 1, utcDUT1ToleranceSeconds)
 	case TimeScaleAssumeUT1Tracking:
 		return ut1ToTTOffsetSeconds(jd) + dut1AtTimeScaleExactEnd()
 	case TimeScaleFreezeUTCOffset:
 		return TTMinusUTCSeconds(timeScaleExactEndJDE)
-	case TimeScaleLeapHour:
-		return steppedUTCOffsetSeconds(jd, timeScaleLeapHourSeconds, timeScaleLeapHourSeconds)
 	}
-	return steppedUTCOffsetSeconds(jd, 1, utcDUT1ToleranceSeconds)
+	return steppedUTCOffsetSeconds(jd, timeScaleLeapHourSeconds, timeScaleLeapHourSeconds)
 }
 
 // 相对窗口末端偏移施加最少整数步校正，使 DUT1 落回容限内。

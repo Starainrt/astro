@@ -46,23 +46,23 @@ func solarEclipseCandidateIsCentral(value basic.SolarEclipseType) bool {
 }
 
 // SolarEclipseCandidates 枚举区间内的日食时刻表，按时间升序 / eclipses within a range, in time order.
-func SolarEclipseCandidates(
+func (module *Eclipse) SolarEclipseCandidates(
 	start, end time.Time, options SolarEclipseCandidateOptions,
 ) []SolarEclipseCandidate {
 	if !end.After(start) {
 		return nil
 	}
-	calculator := localSolarEclipseCalculatorForModel(options.Model)
+	calculator := localSolarEclipseCalculatorForModel(options.Model, module)
 	startTT := solarEclipseTimeToTTJDE(start)
 	endTT := solarEclipseTimeToTTJDE(end)
 	candidates := make([]SolarEclipseCandidate, 0, 8)
-	candidateTT := basic.CalcMoonSHByJDE(startTT, 0)
+	candidateTT := basic.CalcMoonSHByJDEWithInstance(startTT, 0, module.inst)
 	for iteration := 0; iteration < localSolarEclipseSearchIterationCap; iteration++ {
 		// 食甚可能略早于朔，上界要多留一点余量，否则窗口末尾那场会被漏掉。
 		if candidateTT > endTT+solarEclipseCandidateGreatestLeadDays {
 			break
 		}
-		if isPotentialLocalSolarEclipse(candidateTT) {
+		if isPotentialLocalSolarEclipse(candidateTT, module) {
 			globalResult := calculator.global(candidateTT)
 			if globalResult.Type != basic.SolarEclipseNone &&
 				(!options.CentralOnly || solarEclipseCandidateIsCentral(globalResult.Type)) {
@@ -78,13 +78,13 @@ func SolarEclipseCandidates(
 						Gamma:           globalResult.Gamma,
 					}
 					if options.IncludeSaros {
-						candidate.Saros, candidate.HasSaros = solarSarosInfo(globalResult.GreatestEclipse)
+						candidate.Saros, candidate.HasSaros = solarSarosInfo(globalResult.GreatestEclipse, module)
 					}
 					candidates = append(candidates, candidate)
 				}
 			}
 		}
-		candidateTT = nextEclipseSearchCandidateTT(candidateTT, 0, 1, localSolarEclipseSynodicMonthDays)
+		candidateTT = nextEclipseSearchCandidateTT(candidateTT, 0, 1, localSolarEclipseSynodicMonthDays, module)
 	}
 	return candidates
 }

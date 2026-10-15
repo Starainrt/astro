@@ -21,14 +21,14 @@ type PhysicalInfo struct {
 }
 
 // Physical 水星物理观测参数 / physical observing parameters of Mercury.
-func Physical(date time.Time) PhysicalInfo {
-	return PhysicalN(date, -1)
+func (module *Mercury) Physical(date time.Time) PhysicalInfo {
+	return module.PhysicalN(date, -1)
 }
 
-// PhysicalN 水星物理观测参数（截断版） / truncated physical observing parameters of Mercury.
-func PhysicalN(date time.Time, n int) PhysicalInfo {
+// PhysicalN 水星物理观测参数（n 变体） / n-parameterised physical observing parameters of Mercury.
+func (module *Mercury) PhysicalN(date time.Time, n int) PhysicalInfo {
 	jd := basic.Date2JD(date.UTC())
-	info := basic.MercuryPhysicalN(basic.UTC2TT(jd), n)
+	info := basic.MercuryPhysicalNWithInstance(basic.UTC2TT(jd), n, module.inst)
 	return PhysicalInfo{
 		SubEarthLongitude:      info.SubEarthLongitude,
 		SubEarthLatitude:       info.SubEarthLatitude,

@@ -17,6 +17,7 @@ func TestEclipseMapDataSourcesUseDocumentedVocabulary(t *testing.T) {
 		"besselian-critical-envelope", "paired-limit-chords", "sampled-open-sweep",
 		"central-path-limits", "penumbral-outlines", "central-shadow-outlines",
 		"p1-p4-visibility-regions", "p1-p4-horizon-boundaries",
+		"c1-c4-visibility-regions", "c1-c4-horizon-boundaries", "transit-contact-isochrones",
 	}
 	if len(documented) != len(eclipseMapDataSources) {
 		t.Fatalf("vocabulary has %d entries, want %d", len(eclipseMapDataSources), len(documented))
@@ -51,6 +52,13 @@ func TestEclipseMapDataSourcesUseDocumentedVocabulary(t *testing.T) {
 		t.Fatal("missing 2026-03-03 lunar map")
 	}
 
+	if rendered, ok := TransitMapSVG(TransitVenus, time.Date(2012, time.June, 6, 0, 0, 0, 0, time.UTC),
+		TransitMapSVGOptions{Location: time.UTC, Isochrones: TransitIsochroneExternal, IsochroneStep: 10 * time.Minute}); ok {
+		charts["2012-06-06 venus transit"] = rendered
+	} else {
+		t.Fatal("missing 2012-06-06 transit map")
+	}
+
 	seen := map[string]bool{}
 	for name, chart := range charts {
 		for _, match := range eclipseMapDataSourcePattern.FindAllStringSubmatch(chart, -1) {
@@ -73,6 +81,9 @@ func TestEclipseMapDataSourcesUseDocumentedVocabulary(t *testing.T) {
 		eclipseMapSourceCentralShadowOutlines,
 		eclipseMapSourceLunarVisibilityRegions,
 		eclipseMapSourceLunarHorizonBoundaries,
+		eclipseMapSourceTransitVisibilityRegions,
+		eclipseMapSourceTransitHorizonBoundaries,
+		eclipseMapSourceTransitContactIsochrones,
 	} {
 		if !seen[source] {
 			t.Fatalf("main layer source %q carries no data-source marker", source)

@@ -6,8 +6,6 @@
 package solarclosure
 
 import (
-	"math"
-
 	"github.com/starainrt/astro/internal/geodata"
 )
 
@@ -35,8 +33,8 @@ func HorizonEnds(footprint Footprint) []geodata.GeoPoint {
 		return nil
 	}
 	points := []geodata.GeoPoint{footprint.HorizonEnds[0], footprint.HorizonEnds[1]}
-	if pointDistanceKM(points[0], footprint.Boundaries[0][0]) >
-		pointDistanceKM(points[1], footprint.Boundaries[0][0]) {
+	if geodata.MeanDistanceKM(points[0], footprint.Boundaries[0][0]) >
+		geodata.MeanDistanceKM(points[1], footprint.Boundaries[0][0]) {
 		points[0], points[1] = points[1], points[0]
 	}
 	return points
@@ -118,7 +116,7 @@ func BandPolygons(
 	for polygonIndex := range polygons {
 		for pointIndex := range polygons[polygonIndex] {
 			polygons[polygonIndex][pointIndex].Longitude =
-				normalizeLongitude(polygons[polygonIndex][pointIndex].Longitude)
+				geodata.NormalizeLongitude(polygons[polygonIndex][pointIndex].Longitude)
 		}
 	}
 	return polygons, true
@@ -160,20 +158,4 @@ func openRing(points []geodata.GeoPoint) []geodata.GeoPoint {
 		return points[:len(points)-1]
 	}
 	return points
-}
-
-func normalizeLongitude(value float64) float64 {
-	value = math.Mod(value+180, 360)
-	if value < 0 {
-		value += 360
-	}
-	return value - 180
-}
-
-func pointDistanceKM(first, second geodata.GeoPoint) float64 {
-	lat1, lat2 := first.Latitude*math.Pi/180, second.Latitude*math.Pi/180
-	dlat := lat2 - lat1
-	dlon := math.Remainder((second.Longitude-first.Longitude)*math.Pi/180, 2*math.Pi)
-	h := math.Sin(dlat/2)*math.Sin(dlat/2) + math.Cos(lat1)*math.Cos(lat2)*math.Sin(dlon/2)*math.Sin(dlon/2)
-	return 6371.0088 * 2 * math.Asin(math.Sqrt(math.Max(0, math.Min(1, h))))
 }

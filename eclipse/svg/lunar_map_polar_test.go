@@ -12,13 +12,7 @@ import (
 // TestLunarEclipseMapSVGPolarWitnessStaysOutsideEquirectangularVisibility 固定全球月食地图在
 // 极区的可见性契约。等距圆柱投影在高纬把经度拉伸：1° 的球面地平弧在极点附近可以横跨近
 // 180° 经度，只连端点就会把地平线以外画进可见区。1904-09-24 的 P1 在南极点附近有一个
-// 月心高度约 −0.05° 的见证点，曾经被画进 visible-at-p1 多边形。
-// TestLunarEclipseMapSVGPolarWitnessStaysOutsideEquirectangularVisibility pins the polar
-// visibility contract of the global lunar-eclipse map. Equirectangular projection stretches
-// longitude near a pole: a 1-degree spherical horizon arc can span almost 180 degrees there, so
-// joining endpoints alone paints sky below the horizon as visible. At P1 of 1904-09-24 a witness
-// near the south pole sits about 0.05 degrees below the Moon's horizon and used to be painted
-// inside the visible-at-p1 polygon.
+// 月心高度约 −0.05° 的见证点，不得落入 visible-at-p1 多边形。
 func TestLunarEclipseMapSVGPolarWitnessStaysOutsideEquirectangularVisibility(t *testing.T) {
 	date := time.Date(1904, 9, 24, 0, 0, 0, 0, time.UTC)
 	info, ok := eclipsecore.LunarEclipseOnDate(date)

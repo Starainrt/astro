@@ -4,6 +4,8 @@ import (
 	"math"
 	"sort"
 	"time"
+
+	"github.com/starainrt/astro/internal/geodata"
 )
 
 func appendOccultationRiseSetSamples(
@@ -485,7 +487,7 @@ func occultationRiseSetRecoverNarrowPhaseJunction(
 		if !middleOK || !occultationRiseSetDirectionMatches(evaluation, middle, direction) {
 			outside = OccultationPathPoint{
 				Time: occultationTTToLocation(middleTT, location),
-				Longitude: normalizeLongitude(
+				Longitude: geodata.NormalizeLongitude(
 					inside.Longitude + math.Remainder(outside.Longitude-inside.Longitude, 360)/2,
 				),
 				Latitude: (inside.Latitude + outside.Latitude) / 2,
@@ -505,6 +507,24 @@ func occultationRiseSetRecoverNarrowPhaseJunction(
 	secondary := inside
 	if math.Abs(outsideContact) < math.Abs(insideContact) {
 		secondary = outside
+	}
+	// 时间区间收缩后两地平根仍差求根精度，沿短弦插值接触零点而不是取较优端点。
+	if denominator := insideContact - outsideContact; denominator != 0 {
+		weight := insideContact / denominator
+		insideTT := occultationTimeToTT(inside.Time)
+		interpolatedTT := insideTT + (occultationTimeToTT(outside.Time)-insideTT)*weight
+		interpolated := OccultationPathPoint{
+			Time: occultationTTToLocation(interpolatedTT, location),
+			Longitude: geodata.NormalizeLongitude(
+				inside.Longitude + math.Remainder(outside.Longitude-inside.Longitude, 360)*weight,
+			),
+			Latitude: inside.Latitude + (outside.Latitude-inside.Latitude)*weight,
+		}
+		state := cache.evaluation(interpolatedTT).center.stateAt(interpolated.Longitude, interpolated.Latitude)
+		if state.valid && finite(state.contactMetric) &&
+			math.Abs(state.contactMetric) < math.Min(math.Abs(insideContact), math.Abs(outsideContact)) {
+			secondary = interpolated
+		}
 	}
 	secondaryTT := occultationTimeToTT(secondary.Time)
 	secondaryEvaluation := cache.evaluation(secondaryTT)
@@ -624,7 +644,7 @@ func occultationRiseSetMidpoint(first, second OccultationPathPoint) OccultationP
 	secondTT := occultationTimeToTT(second.Time)
 	return OccultationPathPoint{
 		Time: occultationTTToLocation((firstTT+secondTT)/2, first.Time.Location()),
-		Longitude: normalizeLongitude(
+		Longitude: geodata.NormalizeLongitude(
 			first.Longitude + math.Remainder(second.Longitude-first.Longitude, 360)/2,
 		),
 		Latitude:     (first.Latitude + second.Latitude) / 2,
@@ -672,7 +692,7 @@ func completeOccultationRiseSetDirectionJunctions(
 					riseEndpoint.point, setEndpoint.point, phase == RiseSetPhaseGreatest, location, cache,
 				)
 				if !ok {
-					longitude := normalizeLongitude(riseEndpoint.point.Longitude + math.Remainder(setEndpoint.point.Longitude-riseEndpoint.point.Longitude, 360)/2)
+					longitude := geodata.NormalizeLongitude(riseEndpoint.point.Longitude + math.Remainder(setEndpoint.point.Longitude-riseEndpoint.point.Longitude, 360)/2)
 					latitude := (riseEndpoint.point.Latitude + setEndpoint.point.Latitude) / 2
 					junction, ok = refineOccultationRiseSetDirectionJunction(
 						(occultationTimeToTT(riseEndpoint.point.Time)+occultationTimeToTT(setEndpoint.point.Time))/2,
@@ -919,7 +939,7 @@ func refineOccultationRiseSetPhaseJunction(
 			return OccultationPathPoint{}, false
 		}
 		occultationRiseSetLimitJunctionDelta(&delta)
-		coordinates[0] = normalizeLongitude(coordinates[0] + delta[0])
+		coordinates[0] = geodata.NormalizeLongitude(coordinates[0] + delta[0])
 		coordinates[1] += delta[1]
 		coordinates[2] += delta[2]
 		if coordinates[1] <= -89.999999 || coordinates[1] >= 89.999999 {
@@ -1031,7 +1051,7 @@ func refineOccultationRiseSetDirectionJunction(
 			return OccultationPathPoint{}, false
 		}
 		occultationRiseSetLimitJunctionDelta(&delta)
-		coordinates[0] = normalizeLongitude(coordinates[0] + delta[0])
+		coordinates[0] = geodata.NormalizeLongitude(coordinates[0] + delta[0])
 		coordinates[1] += delta[1]
 		coordinates[2] += delta[2]
 		if coordinates[1] <= -89.999999 || coordinates[1] >= 89.999999 {

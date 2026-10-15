@@ -50,6 +50,7 @@ func localSolarEclipseInfoFieldsFromBasic(
 	visibleThreshold := localSolarEclipseVisibilityThreshold(height, lat)
 	return LocalSolarEclipseInfo{
 		Model:             mapBasicSolarEclipseModel(result.Model),
+		LunarLimbApplied:  result.LunarLimbApplied,
 		Type:              mapBasicSolarEclipseType(result.Type),
 		Longitude:         lon,
 		Latitude:          lat,

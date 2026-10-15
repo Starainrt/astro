@@ -4,11 +4,7 @@
 
 `coord` provides celestial coordinate conversion and observing helper calculations. Unless noted otherwise, angles are degrees, sidereal time is in hours, and `time.Time` is treated as an absolute instant and internally converted to UTC.
 
-Altitude, zenith distance, and horizon-visibility semantics follow [Observing-angle semantics](sun-moon.md#observing-angle-semantics); full topocentric usage appears in [Occultation · Local event chart](occultation.md#fixed-site-charts) and [Sun and Moon positions](sun-moon.md#sun-and-moon-position);
-
-topocentric solar-eclipse contacts appear in [Solar eclipses](eclipse.md#solar-eclipse).
-
-Time scales, observer height, and overall accuracy are documented in [Time scale conventions](timescale.md), [Observer height conventions](coord.md#observer-height), and [Applicability and accuracy](accuracy.md).
+Related conventions: observing-angle semantics in [Observing-angle semantics](sun-moon.md#observing-angle-semantics); topocentric geometry in [Fixed-site charts](occultation.md#fixed-site-charts) and [Sun and Moon positions](sun-moon.md#sun-and-moon-position); time scales and observer height in [Time scale conventions](timescale.md) and [Observer height conventions](coord.md#observer-height); overall accuracy in [Applicability and accuracy](accuracy.md).
 
 ## Contents
 
@@ -158,6 +154,7 @@ fmt.Printf("HA=%.6f deg\n", coord.HourAngle(date, eq.RA, 115))
 | `EclipticObliquity` | ecliptic obliquity | degrees; `nutation=false` gives the IAU 1980 mean obliquity, `true` adds the IAU 2000B obliquity nutation |
 | `Nutation2000B` | IAU 2000B nutation | returns `(longitude nutation, obliquity nutation)` in degrees |
 | `Nutation1980` | IAU 1980 nutation | returns `(longitude nutation, obliquity nutation)` in degrees |
+| `Nutation2000A` / `MeanObliquity2006` | IAU 2000A nutation, IAU 2006 mean obliquity | degrees; opt-in only, the default chain is unchanged; the full IAU 2006/2000A rotation is `basic.BiasPrecessionNutation2006` |
 
 ```go
 // Precess J2000 equatorial coordinates to date and list both nutation series for comparison.
@@ -404,11 +401,11 @@ The same observing helpers are also exposed in `sun`, `moon`, `star`, and the se
 ### Accuracy and Applicability
 
 - Ecliptic obliquity: the mean term uses the IAU 1980 model, and `EclipticObliquity(date, true)` adds the IAU 2000B obliquity nutation on top; both `Nutation1980` and `Nutation2000B` are available and can be called explicitly for term-by-term comparison.
-- Sidereal time: the IAU 2006 ERA route, with apparent sidereal time adding the IAU 2000B longitude nutation; apparent sidereal time for the same Julian date is memoized in a bounded table, and an injected ΔT override invalidates the memo by generation.
+- Sidereal time: the IAU 2006 ERA route, with apparent sidereal time adding the IAU 2000B longitude nutation; apparent sidereal time is cached per Julian day, and calling a ΔT override invalidates the cache immediately so results follow.
 - Precession: `Precess` applies a long-term precession rotation to equatorial coordinates (its equatorial/ecliptic pole vectors include periodic terms), without proper motion, nutation, or aberration; it moves mean coordinates from one epoch to another and cannot replace a full "J2000 to apparent-of-date" chain.
 - Galactic: a fixed ICRS ↔ Galactic rotation matrix, equivalent to SOFA `iauIcrs2g`/`iauG2icrs`, valid only for ICRS-convention input.
 - Topocentric correction: the diurnal parallax scales inversely with `distanceAU` and is largest for the Moon (about 1°), and whether it can be neglected for a more distant body depends on the required accuracy; `height` only scales the parallax term, with meter-level elevation producing arcsecond-level differences.
-- Topocentric ecliptic coordinates come from the topocentric equatorial position (`basic.TopocentricLoBo` returns both from a single evaluation): `TopocentricEcliptic.Lat` is guaranteed to land in `[−90,90]` and agrees with the independent `EquatorialToEcliptic(TopocentricEquatorial(...))` route.
+- Topocentric ecliptic coordinates come from the topocentric equatorial position: `TopocentricEcliptic.Lat` is guaranteed to land in `[−90,90]`.
 - Refraction: the Saemundsson formula, valid for true altitudes in `(−5°, 90°)`, with no correction outside that window; refraction changes rapidly at low altitude (< 5°), where ±1 hPa or ±1 °C already produces a visible error.
 - Airmass: the three empirical models agree at moderate altitude and differ most near the horizon; the plane-parallel model is a purely geometric approximation that diverges near the horizon, so use Kasten-Young or Pickering for careful low-altitude estimates, with the raw formulas in `formula` under [airmass models](formula.md#airmass-models).
 - Parallactic angle: `ParallacticAngle` uses apparent RA/Dec and the site longitude/latitude, while `ParallacticAngleByHourAngle` uses the hour-angle form of the same geometry; both must agree for the same geometry.

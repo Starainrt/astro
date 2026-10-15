@@ -4,6 +4,8 @@ import (
 	"math"
 	"sort"
 	"time"
+
+	"github.com/starainrt/astro/internal/geodata"
 )
 
 const (
@@ -30,6 +32,8 @@ type planetOccultationFrameCacheEntry struct {
 }
 
 type planetOccultationEventCache struct {
+	inst *Instance
+
 	config            planetOccultationConfig
 	states            map[uint64]planetOccultationEphemerisState
 	outerFrames       map[uint64]planetOccultationFrameCacheEntry
@@ -39,8 +43,10 @@ type planetOccultationEventCache struct {
 	local             *planetOccultationLocalEphemeris
 }
 
-func newPlanetOccultationEventCache(config planetOccultationConfig) *planetOccultationEventCache {
-	cache := &planetOccultationEventCache{
+func newPlanetOccultationEventCache(config planetOccultationConfig, instances ...*Instance) *planetOccultationEventCache {
+	inst := instanceValue(instances)
+
+	cache := &planetOccultationEventCache{inst: inst,
 		config:      config,
 		states:      make(map[uint64]planetOccultationEphemerisState),
 		outerFrames: make(map[uint64]planetOccultationFrameCacheEntry),
@@ -57,12 +63,9 @@ func newPlanetOccultationEventCache(config planetOccultationConfig) *planetOccul
 	return cache
 }
 
-// FindPlanetOccultationPaths 搜索有限盘面行星月掩的全球外接触和内接触掩带。
-// 查询窗口按全球几何掩甚点选择事件；端点容差 10 ms 与数值根精度一致。求解成功时，每条路径扩展到完整全球起止点。
-// FindPlanetOccultationPaths searches the global outer- and inner-contact footprints of one finite-disk planet.
-// The query window selects events by global geometric greatest, with a 10 ms endpoint tolerance matching the numerical root precision. Each returned path expands to its complete global start and end when solved.
-func FindPlanetOccultationPaths(start, end time.Time, planet OccultationPlanet,
-	options OccultationPathOptions) ([]PlanetOccultationPath, error) {
+// FindPlanetOccultationPathsWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func FindPlanetOccultationPathsWithInstance(start, end time.Time, planet OccultationPlanet,
+	options OccultationPathOptions, inst *Instance) ([]PlanetOccultationPath, error) {
 	if err := validateOccultationTimeRange(start, end); err != nil {
 		return nil, err
 	}
@@ -73,18 +76,18 @@ func FindPlanetOccultationPaths(start, end time.Time, planet OccultationPlanet,
 		return nil, err
 	}
 
-	config, _ := planetOccultationConfigFor(planet)
+	config, _ := planetOccultationConfigFor(planet, inst)
 	options = normalizeOccultationPathOptions(options)
 	startTT := occultationTimeToTT(start)
 	endTT := occultationTimeToTT(end)
 	candidateStartTT := startTT - occultationPathSearchSpanDays
 	candidateEndTT := endTT + occultationPathSearchSpanDays
 	candidates := planetOccultationCandidateGreatestTimes(
-		candidateStartTT, candidateEndTT, planetOccultationDefaultStepDays, config, nil, 0,
+		candidateStartTT, candidateEndTT, planetOccultationDefaultStepDays, config, nil, 0, inst,
 	)
 	paths := make([]PlanetOccultationPath, 0, len(candidates))
 	for _, seedTT := range candidates {
-		path, ok, err := planetOccultationPathAtSeed(seedTT, config, options, start, end)
+		path, ok, err := planetOccultationPathAtSeed(seedTT, config, options, start, end, inst)
 		if err != nil {
 			return nil, err
 		}
@@ -106,10 +109,11 @@ func planetOccultationPathAtSeed(
 	seedTT float64,
 	config planetOccultationConfig,
 	options OccultationPathOptions,
-	selectionStart, selectionEnd time.Time,
-) (PlanetOccultationPath, bool, error) {
+	selectionStart, selectionEnd time.Time, instances ...*Instance) (PlanetOccultationPath, bool, error) {
+	inst := instanceValue(instances)
+
 	location := selectionStart.Location()
-	cache := newPlanetOccultationEventCache(config)
+	cache := newPlanetOccultationEventCache(config, inst)
 	cache.prepareLocalEphemeris(seedTT)
 	frameAt := cache.outerFrameAt
 	totalFrameAt := cache.totalFrameAt
@@ -182,14 +186,14 @@ func planetOccultationPathAtSeed(
 		return PlanetOccultationPath{}, false, ErrOccultationPathSamplingLimit
 	}
 
-	start := occultationPathBoundaryEndpointForFrame(outerStart, frameAt, location, 1)
-	end := occultationPathBoundaryEndpointForFrame(outerEnd, frameAt, location, -1)
+	start := occultationPathBoundaryEndpointForFrame(outerStart, frameAt, location, 1, inst)
+	end := occultationPathBoundaryEndpointForFrame(outerEnd, frameAt, location, -1, inst)
 	if !start.valid || !end.valid {
 		return PlanetOccultationPath{}, false, nil
 	}
 	exactFrameAt, exactTotalFrameAt := frameAt, totalFrameAt
 	if options.Algorithm != OccultationPathAlgorithmExact {
-		optimized := newPlanetOccultationEventCache(config)
+		optimized := newPlanetOccultationEventCache(config, inst)
 		optimized.preparePathEphemeris(seedTT, options.Algorithm)
 		if optimized.local.dense {
 			cache = optimized
@@ -197,7 +201,7 @@ func planetOccultationPathAtSeed(
 		}
 	}
 	centerLine, northern, southern, err := planetOccultationPathSamples(
-		outerStart, outerEnd, centerStart, centerEnd, hasCenter, greatestTT, frameAt, options, location,
+		outerStart, outerEnd, centerStart, centerEnd, hasCenter, greatestTT, frameAt, exactFrameAt, options, location,
 	)
 	if err != nil {
 		return PlanetOccultationPath{}, false, err
@@ -228,6 +232,10 @@ func planetOccultationPathAtSeed(
 	path.SouthernLimit = occultationStationCorrectLimitSeries(
 		path.SouthernLimit, frameAt, cache.riseSetContextAt, false, location,
 	)
+	var northApplied, southApplied bool
+	path.NorthernLimit, northApplied = occultationLimbCorrectLimitSeries(path.NorthernLimit, cache.riseSetContextAt, options.LunarLimb, location, inst)
+	path.SouthernLimit, southApplied = occultationLimbCorrectLimitSeries(path.SouthernLimit, cache.riseSetContextAt, options.LunarLimb, location, inst)
+	path.LunarLimbApplied = northApplied || southApplied
 	path.GreatestLimitSeparationKM, _ = occultationPathLimitSeparations(
 		path.NorthernLimit, path.SouthernLimit, greatestTT,
 	)
@@ -282,8 +290,8 @@ func planetOccultationPathAtSeed(
 	if !hasTotal {
 		return path, true, nil
 	}
-	totalStart := occultationPathBoundaryEndpointForFrame(totalStartTT, exactTotalFrameAt, location, 1)
-	totalEnd := occultationPathBoundaryEndpointForFrame(totalEndTT, exactTotalFrameAt, location, -1)
+	totalStart := occultationPathBoundaryEndpointForFrame(totalStartTT, exactTotalFrameAt, location, 1, inst)
+	totalEnd := occultationPathBoundaryEndpointForFrame(totalEndTT, exactTotalFrameAt, location, -1, inst)
 	_, _, totalWidth, totalWidthOK := occultationPathLimitsAndWidthForFrame(greatestTT, exactTotalFrameAt)
 	if !totalStart.valid || !totalEnd.valid || !totalWidthOK || totalWidth <= 0 {
 		return path, true, nil
@@ -464,14 +472,14 @@ func planetOccultationPathSamples(
 	centerStartTT, centerEndTT float64,
 	hasCenter bool,
 	greatestTT float64,
-	frameAt occultationPathFrameFunc,
+	frameAt, exactFrameAt occultationPathFrameFunc,
 	options OccultationPathOptions,
 	location *time.Location,
 ) ([]OccultationPathPoint, []OccultationPathPoint, []OccultationPathPoint, error) {
 	var centerLine []OccultationPathPoint
 	if hasCenter {
 		var err error
-		centerLine, err = occultationPathCenterSamplesForFrame(centerStartTT, centerEndTT, greatestTT, frameAt, options, location)
+		centerLine, err = occultationPathCenterSamplesForFrame(centerStartTT, centerEndTT, greatestTT, frameAt, exactFrameAt, options, location)
 		if err != nil {
 			return nil, nil, nil, err
 		}
@@ -613,11 +621,6 @@ func appendOccultationPathBoundaryPairSegment(
 	)
 }
 
-const (
-	occultationPathWebMercatorRadiusKM = 6378.1366
-	occultationPathWebMercatorMaxLat   = 85.05112878
-)
-
 func occultationPathBoundaryPairWebMercatorSpacing(
 	first, second occultationPathBoundaryPairSample,
 ) float64 {
@@ -656,13 +659,10 @@ func occultationPathWebMercatorPointSpacing(
 ) float64 {
 	firstLongitude, firstLatitude := occultationPathGeodetic(firstTT, firstVector)
 	secondLongitude, secondLatitude := occultationPathGeodetic(secondTT, secondVector)
-	firstLatitude = math.Max(-occultationPathWebMercatorMaxLat, math.Min(occultationPathWebMercatorMaxLat, firstLatitude))
-	secondLatitude = math.Max(-occultationPathWebMercatorMaxLat, math.Min(occultationPathWebMercatorMaxLat, secondLatitude))
-	longitudeDelta := math.Remainder(secondLongitude-firstLongitude, 360) * math.Pi / 180
-	firstY := math.Log(math.Tan(math.Pi/4 + firstLatitude*math.Pi/360))
-	secondY := math.Log(math.Tan(math.Pi/4 + secondLatitude*math.Pi/360))
-	latitudeDelta := secondY - firstY
-	return occultationPathWebMercatorRadiusKM * math.Hypot(longitudeDelta, latitudeDelta)
+	return geodata.WebMercatorDistanceKM(
+		geodata.GeoPoint{Longitude: firstLongitude, Latitude: firstLatitude},
+		geodata.GeoPoint{Longitude: secondLongitude, Latitude: secondLatitude},
+	)
 }
 
 func occultationPathContourBoundaryPairAt(
@@ -1074,7 +1074,7 @@ func occultationPathOrientBoundarySamples(
 
 func occultationPathCenterSamplesForFrame(
 	startTT, endTT, greatestTT float64,
-	frameAt occultationPathFrameFunc,
+	frameAt, exactFrameAt occultationPathFrameFunc,
 	options OccultationPathOptions,
 	location *time.Location,
 ) ([]OccultationPathPoint, error) {
@@ -1083,6 +1083,10 @@ func occultationPathCenterSamplesForFrame(
 	points := make([]OccultationPathPoint, 0, len(times))
 	for _, tt := range times {
 		point, ok := occultationPathCenterPointForFrame(tt, frameAt, location)
+		// 中心窗口端点由精确帧求得，插值帧在端点附近可能判无交点，此时回退精确帧。
+		if !ok && exactFrameAt != nil {
+			point, ok = occultationPathCenterPointForFrame(tt, exactFrameAt, location)
+		}
 		if ok && (len(points) == 0 || point.Time.After(points[len(points)-1].Time)) {
 			points = append(points, point)
 		}
@@ -1156,23 +1160,29 @@ func appendOccultationPathSegmentForFrame(
 	return appendOccultationPathSegmentForFrame(points, mid, end, frameAt, targetSpacingKM, location, depth+1)
 }
 
-func planetOccultationPathFrameAt(tt float64, config planetOccultationConfig) (occultationPathFrame, bool) {
-	return planetOccultationContactPathFrameAt(tt, config, false)
+func planetOccultationPathFrameAt(tt float64, config planetOccultationConfig, instances ...*Instance) (occultationPathFrame, bool) {
+	inst := instanceValue(instances)
+
+	return planetOccultationContactPathFrameAt(tt, config, false, inst)
 }
 
 func planetOccultationTotalPathFrameAt(tt float64, config planetOccultationConfig) (occultationPathFrame, bool) {
 	return planetOccultationContactPathFrameAt(tt, config, true)
 }
 
-func planetOccultationContactPathFrameAt(tt float64, config planetOccultationConfig, total bool) (occultationPathFrame, bool) {
-	state := planetOccultationEphemerisStateAt(tt, config)
+func planetOccultationContactPathFrameAt(tt float64, config planetOccultationConfig, total bool, instances ...*Instance) (occultationPathFrame, bool) {
+	inst := instanceValue(instances)
+
+	state := planetOccultationEphemerisStateAt(tt, config, inst)
 	return planetOccultationContactPathFrameFromState(state, config, total)
 }
 
-func planetOccultationEphemerisStateAt(tt float64, config planetOccultationConfig) planetOccultationEphemerisState {
-	moonRA, moonDec := HMoonGeocentricApparentRaDecN(tt, -1)
-	moonDistance := HMoonAwayN(tt, -1)
-	planetRA, planetDec, planetDistanceAU := planetOccultationApparentPositionAndDistanceN(tt, config, -1)
+func planetOccultationEphemerisStateAt(tt float64, config planetOccultationConfig, instances ...*Instance) planetOccultationEphemerisState {
+	inst := instanceValue(instances)
+
+	moonRA, moonDec := HMoonGeocentricApparentRaDecNWithInstance(tt, -1, inst)
+	moonDistance := HMoonAwayNWithInstance(tt, -1, inst)
+	planetRA, planetDec, planetDistanceAU := planetOccultationApparentPositionAndDistanceN(tt, config, -1, inst)
 	planetDistance := planetDistanceAU * occultationPathAstronomicalUnitKM
 	return planetOccultationEphemerisState{
 		moonRA: moonRA, moonDec: moonDec, moonDistanceKM: moonDistance,
@@ -1185,9 +1195,10 @@ func planetOccultationEphemerisStateAt(tt float64, config planetOccultationConfi
 func planetOccultationApparentPositionAndDistanceN(
 	tt float64,
 	config planetOccultationConfig,
-	n int,
-) (float64, float64, float64) {
-	position, _, distanceAU := planetApparentGeocentricPositionAndDistanceN(config.planetIndex, tt, n)
+	n int, instances ...*Instance) (float64, float64, float64) {
+	inst := instanceValue(instances)
+
+	position, _, distanceAU := planetApparentGeocentricPositionAndDistanceN(config.planetIndex, tt, n, inst)
 	ra, dec := planetApparentRaDecFromLoBo(tt, position.lo, position.bo)
 	return ra, dec, distanceAU
 }
@@ -1253,7 +1264,7 @@ func (cache *planetOccultationEventCache) stateAt(tt float64) planetOccultationE
 		state, interpolated = cache.local.stateAt(tt)
 	}
 	if !interpolated {
-		state = planetOccultationEphemerisStateAt(tt, cache.config)
+		state = planetOccultationEphemerisStateAt(tt, cache.config, cache.inst)
 	}
 	cache.states[key] = state
 	return state
@@ -1261,7 +1272,7 @@ func (cache *planetOccultationEventCache) stateAt(tt float64) planetOccultationE
 
 func (cache *planetOccultationEventCache) prepareLocalEphemeris(center float64) {
 	if cache.local == nil {
-		cache.local = newPlanetOccultationLocalEphemeris(center, cache.config)
+		cache.local = newPlanetOccultationLocalEphemeris(center, cache.config, cache.inst)
 	}
 }
 
@@ -1353,8 +1364,9 @@ func occultationPathBoundaryEndpointForFrame(
 	tt float64,
 	frameAt occultationPathFrameFunc,
 	location *time.Location,
-	direction int,
-) occultationPathEndpoint {
+	direction int, instances ...*Instance) occultationPathEndpoint {
+	inst := instanceValue(instances)
+
 	if _, ok := frameAt(tt); !ok {
 		return occultationPathEndpoint{}
 	}
@@ -1366,7 +1378,7 @@ func occultationPathBoundaryEndpointForFrame(
 		}
 		vector, _, valid := occultationPathBoundaryTangent(frame)
 		if valid {
-			return occultationPathEndpoint{point: occultationPathPointFromVector(candidateTT, vector, 0, location), valid: true}
+			return occultationPathEndpoint{point: occultationPathPointFromVector(candidateTT, vector, 0, location, inst), valid: true}
 		}
 	}
 	return occultationPathEndpoint{}
@@ -1411,8 +1423,9 @@ func occultationPathCenterPointForFrameWithoutWidth(
 func occultationPathBoundaryPointForFrame(
 	tt float64,
 	frameAt occultationPathFrameFunc,
-	location *time.Location,
-) (OccultationPathPoint, bool) {
+	location *time.Location, instances ...*Instance) (OccultationPathPoint, bool) {
+	inst := instanceValue(instances)
+
 	frame, ok := frameAt(tt)
 	if !ok {
 		return OccultationPathPoint{}, false
@@ -1422,7 +1435,7 @@ func occultationPathBoundaryPointForFrame(
 		return OccultationPathPoint{}, false
 	}
 	north, south, limitsOK := occultationPathScannedLimitsAtFrame(tt, frame)
-	return occultationPathPointFromVector(tt, point, occultationPathBoundaryWidth(north, south, limitsOK), location), true
+	return occultationPathPointFromVector(tt, point, occultationPathBoundaryWidth(north, south, limitsOK), location, inst), true
 }
 
 func occultationPathTrackPointForFrame(

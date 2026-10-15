@@ -859,7 +859,7 @@ func TestRapidLunarAndLunar(t *testing.T) {
 				t.Fatal(year, month, 24, a1, a2, a3, a4, b1, b2, b3, b4)
 			}
 			sol := JD2Date(basic.GetSolar(b1, b2, b3, b4, 8.0/24))
-			if sol.Year() != year && int(sol.Month()) != month && sol.Day() != 24 {
+			if sol.Year() != year || int(sol.Month()) != month || sol.Day() != 24 {
 				t.Fatal(year, month, sol, b1, b2, b3, b4)
 			}
 		}

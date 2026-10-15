@@ -118,7 +118,7 @@ p := dial.ShadowPointByHourAngleDeclination(-45, 23.44)
 fmt.Println(p.X, p.Y, p.Illuminated)
 ```
 
-The four `PlanarDial` fields are latitude, plate-normal azimuth, normal zenith distance and stylus length. `Geometry` returns the dial centre (where the polar stylus is fixed), the polar-stylus length and its angle to the plate; `ShadowPointByHourAngleDeclination` takes a signed hour angle and the solar declination, while `ShadowPointAt` takes the instant and longitude instead.
+The four `PlanarDial` fields are latitude, plate-normal azimuth, normal zenith distance and stylus length. `Geometry` returns the dial center (where the polar stylus is fixed), the polar-stylus length and its angle to the plate; `ShadowPointByHourAngleDeclination` takes a signed hour angle and the solar declination, while `ShadowPointAt` takes the instant and longitude instead.
 
 ### Plate illumination intervals
 
@@ -145,7 +145,7 @@ segsAt := dial.DeclinationCurveAt(date, 1.0)
 fmt.Println(len(segs), len(segsAt))
 ```
 
-A time line projects the equal-instant points of a mean-solar-time line straight onto the dial as `TimeLineSample` values; a declination curve samples the plate for a fixed declination or for the declination of the day, and each segment's `Interval` is the usable hour-angle interval described above.
+A time line projects the equal-instant points of a mean-solar-time line straight onto the dial as `TimeLineSample` values; a declination curve samples the plate for a fixed declination or for the declination of the day, and each segment's `Interval` is the usable hour-angle interval for that declination.
 
 ### Equatorial, horizontal and vertical dials
 
@@ -165,7 +165,7 @@ Each constructor sets the plate normal differently; when drawing, read it from t
 | `HorizontalDial` | `180°` | `0°` (normal points at the zenith; x east, y north) |
 | `EquatorialNorthDial` | `0°` | `90° - latitude` |
 | `EquatorialSouthDial` | `180°` | `90° + latitude` |
-| `VerticalDial` | argument normalised to `[0°, 360°)` | `90°` |
+| `VerticalDial` | argument normalized to `[0°, 360°)` | `90°` |
 
 In the northern hemisphere the north-face equatorial dial serves the spring/summer half-year (positive solar declination) and the south face the autumn/winter half-year.
 
@@ -178,9 +178,9 @@ For `VerticalDial` the normal azimuth runs from north toward east, so a south-fa
 | `PlanarShadowPoint` | `X` / `Y` | Shadow-point coordinates in the stylus-length unit |
 | | `DenominatorQ` | Projection denominator; approaching zero means the shadow runs to infinity |
 | | `SunAboveHorizon` / `PlaneIlluminated` / `Illuminated` | Sun above the horizon, plate lit, and the final combined test |
-| `PlanarGeometry` | `CenterX` / `CenterY` | Dial centre (where the polar stylus is fixed) |
+| `PlanarGeometry` | `CenterX` / `CenterY` | Dial center (where the polar stylus is fixed) |
 | | `PolarStylusLength` / `PolarStylusPlaneAngle` | Polar-stylus length and its angle to the plate |
-| | `HasFiniteCenter` | False when the centre degenerates to infinity; the related quantities are `NaN` |
+| | `HasFiniteCenter` | False when the center degenerates to infinity; the related quantities are `NaN` |
 | `HourAngleInterval` | `Start` / `End` | Signed hour-angle interval in degrees, `Start <= End` |
 | `TimeLineSample` | `Date` / `Declination` / `HourAngle` / `Point` | Instant, solar declination, apparent hour angle and the shadow point |
 | `DeclinationCurveSegment` | `Declination` / `Interval` / `Samples` | Segment declination, usable hour-angle interval and sample chain |
@@ -214,8 +214,8 @@ func main() {
 Output:
 
 ```text
-2026-06-21 09:34:10.438158222 +0805 LTZ
-hour angle=-36.456508 line@9am=-27.405871 line@now=-20.959182
+2026-06-21 09:34:10.404156224 +0805 LTZ
+hour angle=-36.456649 line@9am=-27.405871 line@now=-20.959281
 ```
 
 The zone in the first line is a synthetic local apparent solar time zone (`+08:05`, `LTZ`, for longitude `121.4737`), so the printed value already shows how far local apparent solar time is from clock time.
@@ -239,7 +239,7 @@ decl=23.44 usable=-105.24..105.24 samples=211
 2 -37.92998436772365
 ```
 
-The first line says that with the solar declination at `23.44` degrees, a horizontal dial at latitude `31.2304` is usable over hour angles `[-105.24, +105.24]` (about 14 hours) sampled at 211 points; the second gives the two samples of the "local mean solar time 9:30" time line and the first hour angle. Together the two quantities are enough to draw a horizontal dial with its usable range marked.
+The first line says that with the solar declination at `23.44` degrees, a horizontal dial at latitude `31.2304` is usable over hour angles `[-105.24, +105.24]` (about 14 hours) sampled at 211 points; the second gives the two samples of the "local mean solar time 9:30" time line and the first hour angle. The usable interval can be used directly as the drawing clip range for the time lines.
 
 ### Common pitfalls
 
@@ -323,7 +323,7 @@ fmt.Println(v.PlaneNormalAzimuth, v.PlaneNormalZenithDistance)
 180 90
 ```
 
-- **Degenerate case**: when the plate normal is perpendicular to the polar axis (equivalently the polar stylus is parallel to the plate), `Geometry().HasFiniteCenter` is `false`, `CenterX`/`CenterY`/`PolarStylusLength` are `NaN` and `PolarStylusPlaneAngle` is 0 - latitude `45`, normal azimuth `180` and normal zenith distance `45` is exactly such a point, and nothing drawn relative to the centre is usable.
+- **Degenerate case**: when the plate normal is perpendicular to the polar axis (equivalently the polar stylus is parallel to the plate), `Geometry().HasFiniteCenter` is `false`, `CenterX`/`CenterY`/`PolarStylusLength` are `NaN` and `PolarStylusPlaneAngle` is 0 - latitude `45`, normal azimuth `180` and normal zenith distance `45` is exactly such a point, and nothing drawn relative to the center is usable.
 - **Per-face conventions**: a horizontal plate's normal points at the zenith (zenith distance `0`); a vertical plate has zenith distance `90` and its `planeNormalAzimuth` is the **normal** direction (south-facing wall `180`, east-facing wall `90`); the equatorial north and south faces use `90 - latitude` and `90 + latitude`.
 
   The full table of the four constructors is under [Equatorial, horizontal and vertical dials](#equatorial-horizontal-and-vertical-dials).
@@ -339,9 +339,7 @@ fmt.Println(v.PlaneNormalAzimuth, v.PlaneNormalZenithDistance)
 
   `ZoneTimePoint` / `ZoneTimeLine` ignore the hour, minute and second of `date`, keep only its date and zone, and substitute the `zoneTimeHours` argument for the clock reading. Passing the wrong convention shifts the whole time line.
 - **Three booleans gate a valid shadow**: `SunAboveHorizon` says the Sun is up, `PlaneIlluminated` says the plate faces the Sun, and `Illuminated` is the final test requiring both; draw a shadow only when `Illuminated` is true.
-- **Degenerate case**: when the plate normal is perpendicular to the polar axis (equivalently, when the polar stylus is parallel to the plate), `PlanarGeometry.HasFiniteCenter` is `false`, `CenterX`/`CenterY`/`PolarStylusLength` are `NaN` and `PolarStylusPlaneAngle` is `0` - the centre is at infinity and nothing drawn relative to it is usable.
-
-  Latitude `45`, normal azimuth `180` and normal zenith distance `45` is exactly such a point.
+- **Degenerate case**: when the plate normal is perpendicular to the polar axis, `HasFiniteCenter` is `false`, `CenterX`/`CenterY`/`PolarStylusLength` are `NaN`, the center is at infinity and nothing drawn relative to the center is usable; see [Degenerate geometry and per-face dial conventions](#degenerate-geometry-and-per-face-dial-conventions).
 - **`PlaneIlluminated` versus `Illuminated`**: the former is geometric only, the latter also requires the Sun above the horizon; use the latter when answering "how long is this dial usable in a day".
 
 ## Related manuals

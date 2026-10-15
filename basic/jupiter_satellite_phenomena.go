@@ -1,6 +1,8 @@
 package basic
 
-import "math"
+import (
+	"math"
+)
 
 const solarRadiusAU = 695700.0 / astronomicalUnitKM
 
@@ -30,10 +32,10 @@ func JupiterGalileanSatellitePhenomenon(jde float64, satellite int) JupiterGalil
 	return context.phenomenonForSatellite(satellite - 1)
 }
 
-// JupiterGalileanSatellitePhenomena 四颗伽利略卫星瞬时现象 / instantaneous phenomena of the four Galilean satellites.
-func JupiterGalileanSatellitePhenomena(jde float64) [4]JupiterGalileanPhenomenon {
+// JupiterGalileanSatellitePhenomenaWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func JupiterGalileanSatellitePhenomenaWithInstance(jde float64, inst *Instance) [4]JupiterGalileanPhenomenon {
 	var phenomena [4]JupiterGalileanPhenomenon
-	context := newJupiterGalileanObservationContext(jde)
+	context := newJupiterGalileanObservationContext(jde, inst)
 	for i := range phenomena {
 		phenomena[i] = context.phenomenonForSatellite(i)
 	}

@@ -1,11 +1,11 @@
 package uranus
 
 import (
-	"github.com/starainrt/astro/basic"
-	"github.com/starainrt/astro/calendar"
-	"github.com/starainrt/astro/planet"
 	"errors"
 	"time"
+
+	"github.com/starainrt/astro/basic"
+	"github.com/starainrt/astro/calendar"
 )
 
 var (
@@ -31,136 +31,94 @@ func riseSetResult(date time.Time, jd float64, err error) (time.Time, error) {
 }
 
 // ApparentLo 视黄经 / apparent ecliptic longitude.
-//
-// 返回天王星在 date 对应绝对时刻的瞬时视黄经，单位度。
-// Returns the apparent ecliptic longitude of Uranus at the instant represented by date, in degrees.
-func ApparentLo(date time.Time) float64 {
+func (module *Uranus) ApparentLo(date time.Time) float64 {
 	jd := calendar.Date2JD(date.UTC())
-	return basic.UranusApparentLo(basic.UTC2TT(jd))
+	return basic.UranusApparentLoWithInstance(basic.UTC2TT(jd), module.inst)
 }
 
 // ApparentBo 视黄纬 / apparent ecliptic latitude.
-//
-// 返回天王星在 date 对应绝对时刻的瞬时视黄纬，单位度。
-// Returns the apparent ecliptic latitude of Uranus at the instant represented by date, in degrees.
-func ApparentBo(date time.Time) float64 {
+func (module *Uranus) ApparentBo(date time.Time) float64 {
 	jd := calendar.Date2JD(date.UTC())
-	return basic.UranusApparentBo(basic.UTC2TT(jd))
+	return basic.UranusApparentBoWithInstance(basic.UTC2TT(jd), module.inst)
 }
 
 // ApparentRa 视赤经 / apparent right ascension.
-//
-// 返回天王星在 date 对应绝对时刻的瞬时视赤经，单位度。
-// Returns the apparent right ascension of Uranus at the instant represented by date, in degrees.
-func ApparentRa(date time.Time) float64 {
+func (module *Uranus) ApparentRa(date time.Time) float64 {
 	jd := calendar.Date2JD(date.UTC())
-	return basic.UranusApparentRa(basic.UTC2TT(jd))
+	return basic.UranusApparentRaWithInstance(basic.UTC2TT(jd), module.inst)
 }
 
 // ApparentDec 视赤纬 / apparent declination.
-//
-// 返回天王星在 date 对应绝对时刻的瞬时视赤纬，单位度。
-// Returns the apparent declination of Uranus at the instant represented by date, in degrees.
-func ApparentDec(date time.Time) float64 {
+func (module *Uranus) ApparentDec(date time.Time) float64 {
 	jd := calendar.Date2JD(date.UTC())
-	return basic.UranusApparentDec(basic.UTC2TT(jd))
+	return basic.UranusApparentDecWithInstance(basic.UTC2TT(jd), module.inst)
 }
 
 // ApparentRaDec 视赤经、视赤纬 / apparent right ascension and declination.
-//
-// 返回天王星在 date 对应绝对时刻的瞬时视赤经与视赤纬，单位度。
-// Returns the apparent right ascension and declination of Uranus at the instant represented by date, in degrees.
-func ApparentRaDec(date time.Time) (float64, float64) {
+func (module *Uranus) ApparentRaDec(date time.Time) (float64, float64) {
 	jd := calendar.Date2JD(date.UTC())
-	return basic.UranusApparentRaDec(basic.UTC2TT(jd))
+	return basic.UranusApparentRaDecWithInstance(basic.UTC2TT(jd), module.inst)
 }
 
 // ApparentMagnitude 视星等 / apparent magnitude.
-//
-// 返回天王星在 date 对应绝对时刻的视星等。
-// Returns the apparent visual magnitude of Uranus at the instant represented by date.
-func ApparentMagnitude(date time.Time) float64 {
+func (module *Uranus) ApparentMagnitude(date time.Time) float64 {
 	jd := calendar.Date2JD(date.UTC())
-	return basic.UranusMag(basic.UTC2TT(jd))
+	return basic.UranusMagWithInstance(basic.UTC2TT(jd), module.inst)
 }
 
 // EarthDistance 地心距离 / Earth distance.
-//
-// 返回天王星在 date 对应绝对时刻到地球的距离，单位 AU。
-// Returns the distance from Uranus to Earth at the instant represented by date, in astronomical units.
-func EarthDistance(date time.Time) float64 {
+func (module *Uranus) EarthDistance(date time.Time) float64 {
 	jd := calendar.Date2JD(date.UTC())
-	return basic.EarthUranusAway(basic.UTC2TT(jd))
+	return basic.EarthUranusAwayWithInstance(basic.UTC2TT(jd), module.inst)
 }
 
 // SunDistance 日心距离 / Sun distance.
-//
-// 返回天王星在 date 对应绝对时刻到太阳的距离，单位 AU。
-// Returns the distance from Uranus to the Sun at the instant represented by date, in astronomical units.
-func SunDistance(date time.Time) float64 {
+func (module *Uranus) SunDistance(date time.Time) float64 {
 	jd := calendar.Date2JD(date.UTC())
-	return planet.WherePlanet(6, 2, basic.UTC2TT(jd))
+	return basic.PlanetCoordinateWithInstance(6, 2, basic.UTC2TT(jd), module.inst)
 }
 
-// Altitude 高度角 / altitude.
-//
-// date 表示观测时刻，会读取其时区参与地方时计算；lon 为观测者经度，东正西负；lat 为观测者纬度，北正南负。返回值单位度。
-// date is the observing instant and its zone offset participates in local-time calculations. lon is east-positive longitude, lat is north-positive latitude, and the result is in degrees.
-func Altitude(date time.Time, lon, lat float64) float64 {
+// Altitude 站心视高度角，不含大气折射 / topocentric apparent altitude without refraction.
+func (module *Uranus) Altitude(date time.Time, lon, lat float64) float64 {
 	localJD := basic.Date2JD(date)
 	_, loc := date.Zone()
 	timezone := float64(loc) / 3600.0
-	return basic.UranusHeight(localJD, lon, lat, timezone)
+	return basic.UranusHeightWithInstance(localJD, lon, lat, timezone, module.inst)
 }
 
 // Zenith 天顶距 / zenith distance.
-//
-// 参数与 Altitude 相同，返回值为对应时刻的天顶距，单位度。
-// Uses the same inputs as Altitude and returns the zenith distance in degrees.
-func Zenith(date time.Time, lon, lat float64) float64 {
-	return 90 - Altitude(date, lon, lat)
+func (module *Uranus) Zenith(date time.Time, lon, lat float64) float64 {
+	return 90 - module.Altitude(date, lon, lat)
 }
 
-// Azimuth 方位角 / azimuth.
-//
-// date 表示观测时刻，会读取其时区参与地方时计算；lon 为观测者经度，东正西负；lat 为观测者纬度，北正南负。返回值按正北为 0°、向东增加。
-// date is the observing instant and its zone offset participates in local-time calculations. lon is east-positive longitude, lat is north-positive latitude, and azimuth is measured from north toward east.
-func Azimuth(date time.Time, lon, lat float64) float64 {
+// Azimuth 站心方位角 / topocentric azimuth.
+func (module *Uranus) Azimuth(date time.Time, lon, lat float64) float64 {
 	localJD := basic.Date2JD(date)
 	_, loc := date.Zone()
 	timezone := float64(loc) / 3600.0
-	return basic.UranusAzimuth(localJD, lon, lat, timezone)
+	return basic.UranusAzimuthWithInstance(localJD, lon, lat, timezone, module.inst)
 }
 
-// HourAngle 时角 / hour angle.
-//
-// date 表示观测时刻，会读取其时区参与地方时计算；lon 为观测者经度，东正西负。返回值单位度。
-// date is the observing instant and its zone offset participates in local-time calculations. lon is east-positive longitude and the returned hour angle is in degrees.
-func HourAngle(date time.Time, lon float64) float64 {
+// HourAngle 地心视时角，不含站心视差 / geocentric apparent hour angle without topocentric parallax.
+func (module *Uranus) HourAngle(date time.Time, lon float64) float64 {
 	localJD := basic.Date2JD(date)
 	_, loc := date.Zone()
 	timezone := float64(loc) / 3600.0
-	return basic.UranusHourAngle(localJD, lon, timezone)
+	return basic.UranusHourAngleWithInstance(localJD, lon, timezone, module.inst)
 }
 
 // CulminationTime 中天时刻 / culmination time.
-//
-// date 取其所在时区的当地日期，返回值保持相同时区；lon 为观测者经度，东正西负。
-// date is interpreted on its local civil day and the result keeps the same time zone. lon is east-positive longitude.
-func CulminationTime(date time.Time, lon float64) time.Time {
+func (module *Uranus) CulminationTime(date time.Time, lon float64) time.Time {
 	date = time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, date.Location())
 	localJD := basic.Date2JD(date)
 	_, loc := date.Zone()
 	timezone := float64(loc) / 3600.0
-	calcJD := basic.UranusCulminationTime(localJD, lon, timezone) - timezone/24.00
+	calcJD := basic.UranusCulminationTimeWithInstance(localJD, lon, timezone, module.inst) - timezone/24.00
 	return basic.JD2DateByZone(calcJD, date.Location(), false)
 }
 
 // RiseTime 升起时间 / rise time.
-//
-// date 取其所在时区的当地日期，返回值保持相同时区；lon 为东正西负经度，lat 为北正南负纬度；height 为观测点椭球高（大地高，米）；aero 为 true 时加入标准大气折射。
-// date is interpreted on its local civil day and the result keeps the same time zone. lon is east-positive longitude, lat is north-positive latitude, height is observer elevation in meters, and aero enables standard atmospheric refraction.
-func RiseTime(date time.Time, lon, lat, height float64, aero bool) (time.Time, error) {
+func (module *Uranus) RiseTime(date time.Time, lon, lat, height float64, aero bool) (time.Time, error) {
 	var aeroFloat float64
 	if aero {
 		aeroFloat = 1
@@ -169,25 +127,17 @@ func RiseTime(date time.Time, lon, lat, height float64, aero bool) (time.Time, e
 	localJD := basic.Date2JD(date)
 	_, loc := date.Zone()
 	timezone := float64(loc) / 3600.0
-	riseJD, err := basic.UranusRiseTime(localJD, lon, lat, timezone, aeroFloat, height)
+	riseJD, err := basic.UranusRiseTimeWithInstance(localJD, lon, lat, timezone, aeroFloat, height, module.inst)
 	return riseSetResult(date, riseJD, err)
 }
 
 // DownTime 落下时间别名 / deprecated set-time alias.
-//
-// Deprecated: use SetTime instead.
-//
-// 参数与 SetTime 相同，仅为兼容旧接口保留。
-// Same as SetTime and kept only for backward compatibility.
-func DownTime(date time.Time, lon, lat, height float64, aero bool) (time.Time, error) {
-	return SetTime(date, lon, lat, height, aero)
+func (module *Uranus) DownTime(date time.Time, lon, lat, height float64, aero bool) (time.Time, error) {
+	return module.SetTime(date, lon, lat, height, aero)
 }
 
 // SetTime 落下时间 / set time.
-//
-// 参数与 RiseTime 相同，返回给定当地日期内的落下时刻。
-// Uses the same inputs as RiseTime and returns the set time on the corresponding local civil day.
-func SetTime(date time.Time, lon, lat, height float64, aero bool) (time.Time, error) {
+func (module *Uranus) SetTime(date time.Time, lon, lat, height float64, aero bool) (time.Time, error) {
 	var aeroFloat float64
 	if aero {
 		aeroFloat = 1
@@ -196,114 +146,84 @@ func SetTime(date time.Time, lon, lat, height float64, aero bool) (time.Time, er
 	localJD := basic.Date2JD(date)
 	_, loc := date.Zone()
 	timezone := float64(loc) / 3600.0
-	riseJD, err := basic.UranusSetTime(localJD, lon, lat, timezone, aeroFloat, height)
+	riseJD, err := basic.UranusSetTimeWithInstance(localJD, lon, lat, timezone, aeroFloat, height, module.inst)
 	return riseSetResult(date, riseJD, err)
 }
 
 // LastConjunction 上一次合日 / previous conjunction with the Sun.
-//
-// 返回 date 当前或之前最近一次与太阳的合日时刻，结果保持 date 的时区。
-// Returns the nearest conjunction with the Sun at or before date, keeping date's time zone.
-func LastConjunction(date time.Time) time.Time {
+func (module *Uranus) LastConjunction(date time.Time) time.Time {
 	jde := basic.UTC2TT(basic.Date2JD(date.UTC()))
-	return basic.JD2DateByZone(basic.LastUranusConjunction(jde), date.Location(), false)
+	return basic.JD2DateByZone(basic.LastUranusConjunctionWithInstance(jde, module.inst), date.Location(), false)
 }
 
 // NextConjunction 下一次合日 / next conjunction with the Sun.
-//
-// 返回 date 当前或之后最近一次与太阳的合日时刻，结果保持 date 的时区。
-// Returns the nearest conjunction with the Sun at or after date, keeping date's time zone.
-func NextConjunction(date time.Time) time.Time {
+func (module *Uranus) NextConjunction(date time.Time) time.Time {
 	jde := basic.UTC2TT(basic.Date2JD(date.UTC()))
-	return basic.JD2DateByZone(basic.NextUranusConjunction(jde), date.Location(), false)
+	return basic.JD2DateByZone(basic.NextUranusConjunctionWithInstance(jde, module.inst), date.Location(), false)
 }
 
 // LastOpposition 上一次冲日 / previous opposition.
-//
-// 返回 date 当前或之前最近一次冲日时刻，结果保持 date 的时区。
-// Returns the nearest opposition at or before date, keeping date's time zone.
-func LastOpposition(date time.Time) time.Time {
+func (module *Uranus) LastOpposition(date time.Time) time.Time {
 	jde := basic.UTC2TT(basic.Date2JD(date.UTC()))
-	return basic.JD2DateByZone(basic.LastUranusOpposition(jde), date.Location(), false)
+	return basic.JD2DateByZone(basic.LastUranusOppositionWithInstance(jde, module.inst), date.Location(), false)
 }
 
 // NextOpposition 下一次冲日 / next opposition.
-//
-// 返回 date 当前或之后最近一次冲日时刻，结果保持 date 的时区。
-// Returns the nearest opposition at or after date, keeping date's time zone.
-func NextOpposition(date time.Time) time.Time {
+func (module *Uranus) NextOpposition(date time.Time) time.Time {
 	jde := basic.UTC2TT(basic.Date2JD(date.UTC()))
-	return basic.JD2DateByZone(basic.NextUranusOpposition(jde), date.Location(), false)
+	return basic.JD2DateByZone(basic.NextUranusOppositionWithInstance(jde, module.inst), date.Location(), false)
 }
 
 // LastProgradeToRetrograde 上一次顺行转逆行留 / previous station from prograde to retrograde.
-//
-// 返回 date 当前或之前最近一次由顺行转为逆行的留时刻，结果保持 date 的时区。
-// Returns the nearest station at or before date where motion changes from prograde to retrograde, keeping date's time zone.
-func LastProgradeToRetrograde(date time.Time) time.Time {
+func (module *Uranus) LastProgradeToRetrograde(date time.Time) time.Time {
 	jde := basic.UTC2TT(basic.Date2JD(date.UTC()))
-	return basic.JD2DateByZone(basic.LastUranusProgradeToRetrograde(jde), date.Location(), false)
+	return basic.JD2DateByZone(basic.LastUranusProgradeToRetrogradeWithInstance(jde, module.inst), date.Location(), false)
 }
 
 // NextProgradeToRetrograde 下一次顺行转逆行留 / next station from prograde to retrograde.
-//
-// 返回 date 当前或之后最近一次由顺行转为逆行的留时刻，结果保持 date 的时区。
-// Returns the nearest station at or after date where motion changes from prograde to retrograde, keeping date's time zone.
-func NextProgradeToRetrograde(date time.Time) time.Time {
+func (module *Uranus) NextProgradeToRetrograde(date time.Time) time.Time {
 	jde := basic.UTC2TT(basic.Date2JD(date.UTC()))
-	return basic.JD2DateByZone(basic.NextUranusProgradeToRetrograde(jde), date.Location(), false)
+	return basic.JD2DateByZone(basic.NextUranusProgradeToRetrogradeWithInstance(jde, module.inst), date.Location(), false)
 }
 
 // LastRetrogradeToPrograde 上一次逆行转顺行留 / previous station from retrograde to prograde.
-//
-// 返回 date 当前或之前最近一次由逆行转为顺行的留时刻，结果保持 date 的时区。
-// Returns the nearest station at or before date where motion changes from retrograde to prograde, keeping date's time zone.
-func LastRetrogradeToPrograde(date time.Time) time.Time {
+func (module *Uranus) LastRetrogradeToPrograde(date time.Time) time.Time {
 	jde := basic.UTC2TT(basic.Date2JD(date.UTC()))
-	return basic.JD2DateByZone(basic.LastUranusRetrogradeToPrograde(jde), date.Location(), false)
+	return basic.JD2DateByZone(basic.LastUranusRetrogradeToProgradeWithInstance(jde, module.inst), date.Location(), false)
 }
 
 // NextRetrogradeToPrograde 下一次逆行转顺行留 / next station from retrograde to prograde.
-//
-// 返回 date 当前或之后最近一次由逆行转为顺行的留时刻，结果保持 date 的时区。
-// Returns the nearest station at or after date where motion changes from retrograde to prograde, keeping date's time zone.
-func NextRetrogradeToPrograde(date time.Time) time.Time {
+func (module *Uranus) NextRetrogradeToPrograde(date time.Time) time.Time {
 	jde := basic.UTC2TT(basic.Date2JD(date.UTC()))
-	return basic.JD2DateByZone(basic.NextUranusRetrogradeToPrograde(jde), date.Location(), false)
+	return basic.JD2DateByZone(basic.NextUranusRetrogradeToProgradeWithInstance(jde, module.inst), date.Location(), false)
 }
 
 // LastEasternQuadrature 上一次东方照 / previous eastern quadrature.
-//
-// 返回 date 当前或之前最近一次东方照时刻，结果保持 date 的时区。
-// Returns the nearest eastern quadrature at or before date, keeping date's time zone.
-func LastEasternQuadrature(date time.Time) time.Time {
+func (module *Uranus) LastEasternQuadrature(date time.Time) time.Time {
 	jde := basic.UTC2TT(basic.Date2JD(date.UTC()))
-	return basic.JD2DateByZone(basic.LastUranusEasternQuadrature(jde), date.Location(), false)
+	return basic.JD2DateByZone(basic.LastUranusEasternQuadratureWithInstance(jde, module.inst), date.Location(), false)
 }
 
 // NextEasternQuadrature 下一次东方照 / next eastern quadrature.
-//
-// 返回 date 当前或之后最近一次东方照时刻，结果保持 date 的时区。
-// Returns the nearest eastern quadrature at or after date, keeping date's time zone.
-func NextEasternQuadrature(date time.Time) time.Time {
+func (module *Uranus) NextEasternQuadrature(date time.Time) time.Time {
 	jde := basic.UTC2TT(basic.Date2JD(date.UTC()))
-	return basic.JD2DateByZone(basic.NextUranusEasternQuadrature(jde), date.Location(), false)
+	return basic.JD2DateByZone(basic.NextUranusEasternQuadratureWithInstance(jde, module.inst), date.Location(), false)
 }
 
 // LastWesternQuadrature 上一次西方照 / previous western quadrature.
-//
-// 返回 date 当前或之前最近一次西方照时刻，结果保持 date 的时区。
-// Returns the nearest western quadrature at or before date, keeping date's time zone.
-func LastWesternQuadrature(date time.Time) time.Time {
+func (module *Uranus) LastWesternQuadrature(date time.Time) time.Time {
 	jde := basic.UTC2TT(basic.Date2JD(date.UTC()))
-	return basic.JD2DateByZone(basic.LastUranusWesternQuadrature(jde), date.Location(), false)
+	return basic.JD2DateByZone(basic.LastUranusWesternQuadratureWithInstance(jde, module.inst), date.Location(), false)
 }
 
 // NextWesternQuadrature 下一次西方照 / next western quadrature.
-//
-// 返回 date 当前或之后最近一次西方照时刻，结果保持 date 的时区。
-// Returns the nearest western quadrature at or after date, keeping date's time zone.
-func NextWesternQuadrature(date time.Time) time.Time {
+func (module *Uranus) NextWesternQuadrature(date time.Time) time.Time {
 	jde := basic.UTC2TT(basic.Date2JD(date.UTC()))
-	return basic.JD2DateByZone(basic.NextUranusWesternQuadrature(jde), date.Location(), false)
+	return basic.JD2DateByZone(basic.NextUranusWesternQuadratureWithInstance(jde, module.inst), date.Location(), false)
+}
+
+// ApparentMagnitude2018 视星等（Mallama & Hilton 2018 模型）/ apparent magnitude, Mallama & Hilton 2018 model.
+func (module *Uranus) ApparentMagnitude2018(date time.Time) float64 {
+	jd := calendar.Date2JD(date.UTC())
+	return basic.UranusMag2018WithInstance(basic.UTC2TT(jd), module.inst)
 }

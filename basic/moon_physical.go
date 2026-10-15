@@ -27,14 +27,15 @@ type MoonPhysicalInfo struct {
 	PositionAngle float64
 }
 
-// MoonPhysical 月球物理观测参数 / physical observing parameters of the Moon.
-func MoonPhysical(jde float64) MoonPhysicalInfo {
-	return MoonPhysicalN(jde, -1)
+// MoonPhysicalWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func MoonPhysicalWithInstance(jde float64, inst *Instance) MoonPhysicalInfo {
+	return MoonPhysicalNWithInstance(jde, -1, inst)
 }
 
-// MoonPhysicalN 月球物理观测参数（截断版） / truncated physical observing parameters of the Moon.
-func MoonPhysicalN(jde float64, n int) MoonPhysicalInfo {
-	return moonPhysicalNFromCoordinates(jde, n, HMoonApparentLoN(jde, n), HMoonTrueBoN(jde, n), HMoonTrueRaN(jde, n))
+// MoonPhysicalNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func MoonPhysicalNWithInstance(jde float64, n int, inst *Instance) MoonPhysicalInfo {
+	lo, bo := moonApparentLoBoN(jde, n, inst)
+	return moonPhysicalNFromCoordinates(jde, n, lo, bo, HMoonTrueRaNWithInstance(jde, n, inst))
 }
 
 // MoonTopocentricPhysical 月球站心物理观测参数 / topocentric physical observing parameters of the Moon.
@@ -42,9 +43,9 @@ func MoonTopocentricPhysical(jde, observerLon, observerLat, height float64) Moon
 	return MoonTopocentricPhysicalN(jde, observerLon, observerLat, height, -1)
 }
 
-// MoonTopocentricPhysicalN 月球站心物理观测参数（截断版） / truncated topocentric physical observing parameters of the Moon.
-func MoonTopocentricPhysicalN(jde, observerLon, observerLat, height float64, n int) MoonPhysicalInfo {
-	lambda, beta, alpha := moonTopocentricPhysicalCoordinatesN(jde, observerLon, observerLat, height, n)
+// MoonTopocentricPhysicalNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func MoonTopocentricPhysicalNWithInstance(jde, observerLon, observerLat, height float64, n int, inst *Instance) MoonPhysicalInfo {
+	lambda, beta, alpha := moonTopocentricPhysicalCoordinatesN(jde, observerLon, observerLat, height, n, inst)
 	return moonPhysicalNFromCoordinates(jde, n, lambda, beta, alpha)
 }
 
@@ -91,10 +92,12 @@ func moonPhysicalNFromCoordinates(jde float64, n int, lambda, beta, alpha float6
 	}
 }
 
-func moonTopocentricPhysicalCoordinatesN(jde, observerLon, observerLat, height float64, n int) (lambda, beta, alpha float64) {
-	geocentricRA := HMoonTrueRaN(jde, n)
-	geocentricDec := HMoonTrueDecN(jde, n)
-	distanceAU := HMoonAwayN(jde, n) / moonPhysicalAstronomicalUnitKM
+func moonTopocentricPhysicalCoordinatesN(jde, observerLon, observerLat, height float64, n int, instances ...*Instance) (lambda, beta, alpha float64) {
+	inst := instanceValue(instances)
+
+	geocentricRA := HMoonTrueRaNWithInstance(jde, n, inst)
+	geocentricDec := HMoonTrueDecNWithInstance(jde, n, inst)
+	distanceAU := HMoonAwayNWithInstance(jde, n, inst) / moonPhysicalAstronomicalUnitKM
 	utcJD := TT2UTC(jde)
 
 	var topocentricDec float64

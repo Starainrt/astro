@@ -6,9 +6,7 @@ const (
 	eventNewtonMaxIterations         = 24
 	eventDirectionalSearchIterations = 128
 	eventRiseSetScanStep             = 1.0 / 1440
-	// stationDerivativeStepDay 「留」精修用的中心差分步长（天）。
-	// 0.5 秒级的步长会被浮点相消噪声支配（实测外行星留误差可达 42 s）；
-	// 0.01 天（14.4 分钟）实测误差 <0.05 s，且求值次数不变。
+	// stationDerivativeStepDay 「留」精修用的中心差分步长（天）：更细的步长会被浮点相消噪声支配。
 	stationDerivativeStepDay = 0.01
 )
 

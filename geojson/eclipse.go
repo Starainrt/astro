@@ -6,7 +6,6 @@ import (
 	"sort"
 	"time"
 
-	"github.com/starainrt/astro"
 	"github.com/starainrt/astro/basic"
 	eclipsecore "github.com/starainrt/astro/eclipse"
 	"github.com/starainrt/astro/internal/geodata"
@@ -447,13 +446,12 @@ const (
 	maximumLunarBoundaryPoints = 1440
 )
 
-// MarshalSolarEclipse 将日食半影足迹和可选中心食带编码为 GeoJSON。
-// MarshalSolarEclipse encodes penumbral footprints and an optional central path as GeoJSON.
-func MarshalSolarEclipse(
+// MarshalSolarEclipse 将日食半影足迹和可选中心食带编码为 GeoJSON / encode solar eclipse footprints and the central band as GeoJSON.
+func (module *Generator) MarshalSolarEclipse(
 	partial eclipsecore.SolarEclipsePartialFootprintsInfo,
 	central *eclipsecore.SolarEclipsePath,
 ) ([]byte, error) {
-	return marshalSolarEclipse(partial, central, SolarEclipseOptions{})
+	return marshalSolarEclipse(partial, central, SolarEclipseOptions{}, module)
 }
 
 // SolarEclipseOptions 控制日食 GeoJSON 的输出内容。
@@ -473,29 +471,32 @@ type SolarEclipseOptions struct {
 }
 
 // MarshalSolarEclipseWithOptions 编码日食，输出内容由 options 选择 / encodes a solar eclipse with the content selected by options.
-func MarshalSolarEclipseWithOptions(
+func (module *Generator) MarshalSolarEclipseWithOptions(
 	partial eclipsecore.SolarEclipsePartialFootprintsInfo,
 	central *eclipsecore.SolarEclipsePath,
 	options SolarEclipseOptions,
 ) ([]byte, error) {
-	return marshalSolarEclipse(partial, central, options)
+	return marshalSolarEclipse(partial, central, options, module)
 }
 
-// MarshalSolarEclipseWithTimeMarkers 编码日食，并沿中心线按固定间隔追加 Point 要素；已有要素不变，标记标签使用 options.Location，时间值保持 UTC。
-// MarshalSolarEclipseWithTimeMarkers encodes a solar eclipse and adds Point Features at regular intervals along the central line. Existing features are unchanged; marker labels use options.Location while time values stay UTC.
-func MarshalSolarEclipseWithTimeMarkers(
+// MarshalSolarEclipseWithTimeMarkers 编码日食，并沿中心线按固定间隔追加 Point 要素；已有要素不变，标记标签使用 options.Location，时间值保持 UTC / encode a solar eclipse with time markers along the centre line.
+func (module *Generator) MarshalSolarEclipseWithTimeMarkers(
 	partial eclipsecore.SolarEclipsePartialFootprintsInfo,
 	central *eclipsecore.SolarEclipsePath,
 	options TimeMarkerOptions,
 ) ([]byte, error) {
-	return marshalSolarEclipse(partial, central, SolarEclipseOptions{TimeMarkers: &options})
+	return marshalSolarEclipse(partial, central, SolarEclipseOptions{TimeMarkers: &options}, module)
 }
 
 func marshalSolarEclipse(
 	partial eclipsecore.SolarEclipsePartialFootprintsInfo,
 	central *eclipsecore.SolarEclipsePath,
-	options SolarEclipseOptions,
-) ([]byte, error) {
+	options SolarEclipseOptions, modules ...*Generator) ([]byte, error) {
+	module := &defaultModule
+	if len(modules) > 0 {
+		module = modules[0]
+	}
+
 	markerOptions := options.TimeMarkers
 	if markerOptions != nil {
 		if err := validateTimeMarkerOptions(*markerOptions); err != nil {
@@ -515,7 +516,7 @@ func marshalSolarEclipse(
 	// 几何（月下点、地平闭合弧、带宽限界）必须用民用时刻算：只有写进属性的时刻换时标。
 	geometryPartial := partial
 	civilCentral := central
-	if timeScale == astro.TimeScaleUT1 {
+	if timeScale == basic.TimeScaleUT1 {
 		partial = eclipsecore.SolarEclipsePartialFootprintsInUT1(partial)
 		if central != nil {
 			converted := eclipsecore.SolarEclipsePathInUT1(*central)
@@ -530,7 +531,7 @@ func marshalSolarEclipse(
 	features := make([]feature, 0, len(partial.Footprints)+9)
 	for footprintIndex, footprint := range partial.Footprints {
 		// 闭合弧由月下点决定，必须用未换时标的同一足迹算几何。
-		polygon, err := solarPartialFootprintPolygon(geometryPartial.Footprints[footprintIndex], true)
+		polygon, err := solarPartialFootprintPolygon(geometryPartial.Footprints[footprintIndex], true, module)
 		if err != nil {
 			return nil, err
 		}
@@ -552,7 +553,7 @@ func marshalSolarEclipse(
 			footprintProperties["geometry_role"] = "horizon-closed-region"
 			footprintProperties["closure"] = solarHorizonClosureProperties(
 				geometryPartial.Footprints[footprintIndex].Time, footprint.Time,
-				solarHorizonClosureExact(footprint.Boundaries, footprint.HorizonEnds),
+				solarHorizonClosureExact(footprint.Boundaries, footprint.HorizonEnds), module,
 			)
 		}
 		if len(polygon) == 1 {
@@ -574,7 +575,7 @@ func marshalSolarEclipse(
 		))
 	}
 
-	if value, source, ok, err := solarPartialBandGeometry(geometryPartial); err != nil {
+	if value, source, ok, err := solarPartialBandGeometry(geometryPartial, module); err != nil {
 		return nil, fmt.Errorf("geojson: solar partial band: %w", err)
 	} else if ok {
 		bandProperties := cloneProperties(properties)
@@ -590,7 +591,7 @@ func marshalSolarEclipse(
 		return nil, err
 	}
 	features, err = appendSolarFootprintFeatures(
-		features, "central-shadow-footprint", partial.CentralShadowFootprints, properties,
+		features, "central-shadow-footprint", partial.CentralShadowFootprints, properties, module,
 	)
 	if err != nil {
 		return nil, err
@@ -675,7 +676,7 @@ func marshalSolarEclipse(
 		// ends of the real annular/total region.
 		// 带宽与限界几何按民用时刻构造；写出的时刻仍取换过时标的 central。
 		geometryCentral := central
-		if timeScale == astro.TimeScaleUT1 && civilCentral != nil {
+		if timeScale == basic.TimeScaleUT1 && civilCentral != nil {
 			geometryCentral = civilCentral
 		}
 		bandFootprints = solarCentralBandFootprintsForPath(geometryPartial, geometryCentral)
@@ -1061,7 +1062,7 @@ type solarBandSideRun struct {
 	north    bool
 }
 
-// solarCentralBandLimitSidesFromRings 由食带边界派生南北限：逐点投影定侧，同侧最长连通段按路径序拼接。
+// solarCentralBandLimitSidesFromRings 由食带边界派生南北限：环顶点按自身投影侧别切段，同侧最长连通组按路径序拼接。
 func solarCentralBandLimitSidesFromRings(
 	rings [][]eclipsecore.SolarEclipsePathPoint,
 	centerLine []eclipsecore.SolarEclipsePathPoint,
@@ -1081,9 +1082,7 @@ func solarCentralBandLimitSidesFromRings(
 	return northern, southern, true
 }
 
-// solarBandSideRuns cuts every ring into runs that keep one side of the center
-// line. A run ends where the boundary crosses the center line, jumps across the
-// seam, or stalls against the projection.
+// solarBandSideRuns 把每个环按逐点投影侧别切成同侧段；投影沿环连续追踪，中心线回折处不跳支。
 func solarBandSideRuns(
 	rings [][]eclipsecore.SolarEclipsePathPoint,
 	centerLine []eclipsecore.SolarEclipsePathPoint,
@@ -1091,20 +1090,23 @@ func solarBandSideRuns(
 	var runs []solarBandSideRun
 	for _, ring := range rings {
 		points := openSolarPathRing(ring)
-		if len(points) < 3 {
+		count := len(points)
+		if count < 3 {
 			continue
 		}
-		progress := make([]float64, len(points))
-		times := make([]time.Time, len(points))
-		north := make([]bool, len(points))
-		for index, point := range points {
-			value, stamp, isNorth, ok := solarBandProjectOnCenterLine(point, centerLine)
-			if !ok {
-				return nil, false
+		projections, start, ok := solarBandTrackRingProjections(points, centerLine)
+		if !ok {
+			return nil, false
+		}
+		// 从起点之后第一个侧别翻转处开环，使首段不在环的接缝处被截断。
+
+		origin := start
+		for offset := 1; offset < count; offset++ {
+			index := (start + offset) % count
+			if projections[index].side != projections[(index+count-1)%count].side {
+				origin = index
+				break
 			}
-			progress[index] = value
-			times[index] = stamp
-			north[index] = isNorth
 		}
 		current := solarBandSideRun{}
 		flush := func() {
@@ -1113,21 +1115,159 @@ func solarBandSideRuns(
 			}
 			current = solarBandSideRun{}
 		}
-		for index := range points {
-			next := (index + 1) % len(points)
+		for offset := 0; offset < count; offset++ {
+			index := (origin + offset) % count
+			next := (index + 1) % count
+			projection := projections[index]
 			current.points = append(current.points, points[index])
-			current.times = append(current.times, times[index])
-			current.progress = append(current.progress, progress[index])
-			current.north = north[index]
+			current.progress = append(current.progress, projection.progress)
+			current.times = append(current.times, solarBandCenterLineTime(centerLine, projection.progress))
+			current.north = projection.side > 0
 			seamJump := math.Abs(math.Remainder(points[next].Longitude-points[index].Longitude, 360)) > 180
-			stalled := math.Abs(progress[next]-progress[index]) > 3
-			if north[index] != north[next] || seamJump || stalled {
+			if projection.side != projections[next].side || seamJump {
 				flush()
 			}
 		}
 		flush()
 	}
 	return runs, true
+}
+
+// solarBandTrackRingProjections 为环上每个顶点在中心线的局部最近点中选一个，使"距离 + 沿线跳变超额"之和最小（Viterbi），回折与端点处不跳支。
+func solarBandTrackRingProjections(
+	points []eclipsecore.SolarEclipsePathPoint,
+	centerLine []eclipsecore.SolarEclipsePathPoint,
+) ([]solarBandSideProjection, int, bool) {
+	count := len(points)
+	if len(centerLine) < 2 {
+		return nil, 0, false
+	}
+	middle := float64(len(centerLine)-1) / 2
+	along := solarBandCenterLineAlongKM(centerLine)
+	ringCandidates := make([][]solarBandTrackCandidate, count)
+	start, startGap := 0, math.Inf(1)
+	for index, point := range points {
+		ringCandidates[index] = solarBandTrackCandidates(point, centerLine, along)
+		// 全局最近点就是距离最小的局部极小。
+		nearest := ringCandidates[index][0]
+		for _, candidate := range ringCandidates[index][1:] {
+			if candidate.distanceKM < nearest.distanceKM {
+				nearest = candidate
+			}
+		}
+		if gap := math.Abs(nearest.projection.progress - middle); gap < startGap {
+			start, startGap = index, gap
+		}
+	}
+	candidates := make([][]solarBandTrackCandidate, count)
+	for offset := range candidates {
+		candidates[offset] = ringCandidates[(start+offset)%count]
+	}
+	cost := make([][]float64, count)
+	from := make([][]int, count)
+	cost[0] = make([]float64, len(candidates[0]))
+	for state, candidate := range candidates[0] {
+		cost[0][state] = candidate.distanceKM
+	}
+	for offset := 1; offset < count; offset++ {
+		step := solarCentralBandPointDistanceKM(points[(start+offset-1)%count], points[(start+offset)%count])
+		cost[offset] = make([]float64, len(candidates[offset]))
+		from[offset] = make([]int, len(candidates[offset]))
+		for state, candidate := range candidates[offset] {
+			best, bestFrom := math.Inf(1), 0
+			for previousState, previous := range candidates[offset-1] {
+				// 沿中心线的移动超过环上步长两倍的部分才计罚。
+				jump := math.Max(0, math.Abs(candidate.alongKM-previous.alongKM)-2*step)
+				if value := cost[offset-1][previousState] + jump; value < best {
+					best, bestFrom = value, previousState
+				}
+			}
+			cost[offset][state] = best + candidate.distanceKM
+			from[offset][state] = bestFrom
+		}
+	}
+	state := 0
+	for candidate := range cost[count-1] {
+		if cost[count-1][candidate] < cost[count-1][state] {
+			state = candidate
+		}
+	}
+	projections := make([]solarBandSideProjection, count)
+	for offset := count - 1; offset >= 0; offset-- {
+		projections[(start+offset)%count] = candidates[offset][state].projection
+		if offset > 0 {
+			state = from[offset][state]
+		}
+	}
+	return projections, start, true
+}
+
+type solarBandTrackCandidate struct {
+	projection solarBandSideProjection
+	distanceKM float64
+	alongKM    float64
+}
+
+// solarBandTrackCandidates 返回顶点到中心线距离沿线的全部局部极小（含平台与两端）。
+func solarBandTrackCandidates(
+	point eclipsecore.SolarEclipsePathPoint,
+	centerLine []eclipsecore.SolarEclipsePathPoint,
+	along []float64,
+) []solarBandTrackCandidate {
+	segments := len(centerLine) - 1
+	projections := make([]solarBandSideProjection, segments)
+	distances := make([]float64, segments)
+	for position := range projections {
+		projections[position], distances[position] = solarBandProjectOnSegment(point, centerLine, position)
+	}
+	var candidates []solarBandTrackCandidate
+	for position := range projections {
+		if position > 0 && distances[position-1] < distances[position] ||
+			position+1 < segments && distances[position+1] < distances[position] {
+			continue
+		}
+		// 平台只取首段，避免同一极小重复入选。
+		if position > 0 && distances[position-1] == distances[position] {
+			continue
+		}
+		progress := projections[position].progress
+		segment := solarBandProgressSegment(progress, len(centerLine))
+		fraction := progress - float64(segment)
+		candidates = append(candidates, solarBandTrackCandidate{
+			projection: projections[position],
+			distanceKM: 111.32 * distances[position],
+			alongKM:    along[segment] + fraction*(along[segment+1]-along[segment]),
+		})
+	}
+	return candidates
+}
+
+// solarBandCenterLineAlongKM 是中心线各顶点的累计沿线距离。
+func solarBandCenterLineAlongKM(centerLine []eclipsecore.SolarEclipsePathPoint) []float64 {
+	along := make([]float64, len(centerLine))
+	for index := 1; index < len(centerLine); index++ {
+		along[index] = along[index-1] + solarCentralBandPointDistanceKM(centerLine[index-1], centerLine[index])
+	}
+	return along
+}
+
+func solarBandProgressSegment(progress float64, size int) int {
+	segment := int(math.Floor(progress))
+	if segment > size-2 {
+		segment = size - 2
+	}
+	if segment < 0 {
+		segment = 0
+	}
+	return segment
+}
+
+// solarBandCenterLineTime is the center-line time at one fractional position.
+func solarBandCenterLineTime(centerLine []eclipsecore.SolarEclipsePathPoint, progress float64) time.Time {
+	position := solarBandProgressSegment(progress, len(centerLine))
+	fraction := math.Max(0, math.Min(1, progress-float64(position)))
+	first, second := centerLine[position], centerLine[position+1]
+	return first.Time.Add(time.Duration(float64(second.Time.Sub(first.Time)) * fraction))
 }
 
 // solarBandSidePoints concatenates the runs of one side in path order and
@@ -1230,43 +1370,41 @@ func meanProgress(values []float64) float64 {
 	return total / float64(len(values))
 }
 
-// solarBandProjectOnCenterLine projects one band point onto the center line and
-// reports its position along the path, the matching time, and whether it falls
-// north of the center line at that position.
-func solarBandProjectOnCenterLine(
+// solarBandSideProjection is the nearest center-line position of one band vertex.
+type solarBandSideProjection struct {
+	// progress is the segment index plus the fraction along that segment.
+	progress float64
+	// side is +1 when the vertex lies at or north of the center line there, -1 south.
+	side int
+}
+
+// solarBandProjectOnSegment 返回顶点在中心线第 position 段上的投影与局部平面距离（度）。
+func solarBandProjectOnSegment(
 	point eclipsecore.SolarEclipsePathPoint,
 	centerLine []eclipsecore.SolarEclipsePathPoint,
-) (float64, time.Time, bool, bool) {
-	bestDistance := math.Inf(1)
-	bestProgress := 0.0
-	bestTime := centerLine[0].Time
-	bestLatitude := centerLine[0].Latitude
+	position int,
+) (solarBandSideProjection, float64) {
 	scale := math.Cos(point.Latitude * math.Pi / 180)
-	for position := 0; position+1 < len(centerLine); position++ {
-		first, second := centerLine[position], centerLine[position+1]
-		ax := math.Remainder(first.Longitude-point.Longitude, 360) * scale
-		ay := first.Latitude - point.Latitude
-		bx := math.Remainder(second.Longitude-point.Longitude, 360) * scale
-		by := second.Latitude - point.Latitude
-		dx, dy := bx-ax, by-ay
-		length := dx*dx + dy*dy
-		fraction := 0.0
-		if length > 0 {
-			fraction = math.Max(0, math.Min(1, -(ax*dx+ay*dy)/length))
-		}
-		distance := math.Hypot(ax+fraction*dx, ay+fraction*dy)
-		if distance >= bestDistance {
-			continue
-		}
-		bestDistance = distance
-		bestProgress = float64(position) + fraction
-		bestTime = first.Time.Add(time.Duration(float64(second.Time.Sub(first.Time)) * fraction))
-		bestLatitude = first.Latitude + fraction*(second.Latitude-first.Latitude)
+	first, second := centerLine[position], centerLine[position+1]
+	ax := math.Remainder(first.Longitude-point.Longitude, 360) * scale
+	ay := first.Latitude - point.Latitude
+	bx := math.Remainder(second.Longitude-point.Longitude, 360) * scale
+	by := second.Latitude - point.Latitude
+	dx, dy := bx-ax, by-ay
+	length := dx*dx + dy*dy
+	fraction := 0.0
+	if length > 0 {
+		fraction = math.Max(0, math.Min(1, -(ax*dx+ay*dy)/length))
 	}
-	if math.IsInf(bestDistance, 1) {
-		return 0, time.Time{}, false, false
+	offset := point.Latitude - (first.Latitude + fraction*(second.Latitude-first.Latitude))
+	side := -1
+	if offset >= 0 {
+		side = 1
 	}
-	return bestProgress, bestTime, point.Latitude >= bestLatitude, true
+	return solarBandSideProjection{
+		progress: float64(position) + fraction,
+		side:     side,
+	}, math.Hypot(ax+fraction*dx, ay+fraction*dy)
 }
 
 // solarCentralLimitSeparationKM returns the greatest distance from one exported
@@ -1802,34 +1940,27 @@ type LunarEclipseOptions struct {
 	EnvelopeLongitudePoints int
 }
 
-// MarshalLunarEclipseWithOptions 编码月食，输出内容与采样精度由 options 选择。
-// MarshalLunarEclipseWithOptions encodes a lunar eclipse with the content and sampling selected by options.
-func MarshalLunarEclipseWithOptions(
+// MarshalLunarEclipseWithOptions 编码月食，输出内容与采样精度由 options 选择 / encode a lunar eclipse with selectable content and sampling.
+func (module *Generator) MarshalLunarEclipseWithOptions(
 	info eclipsecore.LunarEclipseInfo,
 	boundaryPoints int,
 	options LunarEclipseOptions,
 ) ([]byte, error) {
-	return marshalLunarEclipse(info, boundaryPoints, options)
+	return marshalLunarEclipse(info, boundaryPoints, options, module)
 }
 
-// MarshalLunarEclipse 将月食 P1/P4 站心月心可见区、几何地平线以及 P1-P4 的时间包络编码为 GeoJSON，不含折射。
-// MarshalLunarEclipse encodes the P1/P4 topocentric Moon-center visibility regions, their geometric horizons and the P1-P4 time envelopes, without refraction.
-// boundaryPoints 小于等于零时使用 360；其他值限制在 [12, 1440]。
-// boundaryPoints values <= 0 use 360; other values are clamped to [12, 1440].
-func MarshalLunarEclipse(info eclipsecore.LunarEclipseInfo, boundaryPoints int) ([]byte, error) {
-	return marshalLunarEclipse(info, boundaryPoints, LunarEclipseOptions{})
+// MarshalLunarEclipse 将月食 P1/P4 站心月心可见区、几何地平线以及 P1-P4 的时间包络编码为 GeoJSON，不含折射 / encode lunar eclipse visibility regions and contact envelopes as GeoJSON.
+func (module *Generator) MarshalLunarEclipse(info eclipsecore.LunarEclipseInfo, boundaryPoints int) ([]byte, error) {
+	return marshalLunarEclipse(info, boundaryPoints, LunarEclipseOptions{}, module)
 }
 
-// MarshalLunarEclipseWithTimeMarkers 编码月食，并沿半影开始到结束的月下点轨迹追加 Point 要素。
-// MarshalLunarEclipseWithTimeMarkers encodes a lunar eclipse and adds Point Features along the sublunar track from penumbral start through end.
-// 已有要素保持不变；标记标签使用 options.Location，时间值保持 UTC。
-// Existing features are unchanged; marker labels use options.Location while time values stay UTC.
-func MarshalLunarEclipseWithTimeMarkers(
+// MarshalLunarEclipseWithTimeMarkers 编码月食，并沿半影开始到结束的月下点轨迹追加 Point 要素 / encode a lunar eclipse with time markers along the sublunar track.
+func (module *Generator) MarshalLunarEclipseWithTimeMarkers(
 	info eclipsecore.LunarEclipseInfo,
 	boundaryPoints int,
 	options TimeMarkerOptions,
 ) ([]byte, error) {
-	return marshalLunarEclipse(info, boundaryPoints, LunarEclipseOptions{TimeMarkers: &options})
+	return marshalLunarEclipse(info, boundaryPoints, LunarEclipseOptions{TimeMarkers: &options}, module)
 }
 
 type lunarLatitudeInterval struct {
@@ -1946,15 +2077,20 @@ type lunarHorizonColumns struct {
 	roots [][]float64
 }
 
-func lunarHorizonColumnsAt(at time.Time, longitudePoints int, longitudes []float64) (lunarHorizonColumns, error) {
-	state := basic.MoonStateAt(basic.Date2JD(at.UTC()))
+func lunarHorizonColumnsAt(at time.Time, longitudePoints int, longitudes []float64, modules ...*Generator) (lunarHorizonColumns, error) {
+	module := &defaultModule
+	if len(modules) > 0 {
+		module = modules[0]
+	}
+
+	state := basic.MoonStateAtWithInstance(basic.Date2JD(at.UTC()), module.inst)
 	points := state.MoonHorizon(longitudePoints)
 	if len(points) < 3 {
 		return lunarHorizonColumns{}, fmt.Errorf("geojson: lunar visibility horizon is unavailable")
 	}
 	return lunarHorizonColumns{
 		state: state,
-		roots: lunarHorizonSeriesFor(lunarHorizonRefinedPoints(points, at)).rootsByLongitude(longitudes),
+		roots: lunarHorizonSeriesFor(lunarHorizonRefinedPoints(points, at, module)).rootsByLongitude(longitudes),
 	}, nil
 }
 
@@ -1979,15 +2115,19 @@ func lunarBandColumn(primary lunarHorizonColumns, longitude float64, index int, 
 // lunarVisibilityUnionColumns 逐经度取 [start, end] 上"月亮在地平上"可见区的并集：
 // 只比区间端点会漏掉极区掠射时两刻之间短暂露出的窗口，必须按与包络同一档位采样后求并。
 func lunarVisibilityUnionColumns(
-	start, end time.Time, samples, longitudePoints int, longitudes []float64,
-) ([][]lunarLatitudeInterval, error) {
+	start, end time.Time, samples, longitudePoints int, longitudes []float64, modules ...*Generator) ([][]lunarLatitudeInterval, error) {
+	module := &defaultModule
+	if len(modules) > 0 {
+		module = modules[0]
+	}
+
 	columns := make([][]lunarLatitudeInterval, len(longitudes))
 	if samples < 1 {
 		samples = 1
 	}
 	for index := 0; index <= samples; index++ {
 		at := start.Add(end.Sub(start) * time.Duration(index) / time.Duration(samples))
-		instant, err := lunarHorizonColumnsAt(at, longitudePoints, longitudes)
+		instant, err := lunarHorizonColumnsAt(at, longitudePoints, longitudes, module)
 		if err != nil {
 			return nil, err
 		}
@@ -2022,21 +2162,25 @@ func lunarPenumbraBandGeometries(
 	info eclipsecore.LunarEclipseInfo,
 	boundaryPoints int,
 	options LunarEclipseOptions,
-	wantMoonset, wantMoonrise bool,
-) ([2]geometry, error) {
+	wantMoonset, wantMoonrise bool, modules ...*Generator) ([2]geometry, error) {
+	module := &defaultModule
+	if len(modules) > 0 {
+		module = modules[0]
+	}
+
 	var result [2]geometry
 	longitudes := lunarVisibilityLongitudes(boundaryPoints, options)
 	longitudePoints := len(longitudes) - 1
 	columns := make([]lunarHorizonColumns, 2)
 	for index, at := range []time.Time{info.PenumbralStart, info.PenumbralEnd} {
-		value, err := lunarHorizonColumnsAt(at, longitudePoints, longitudes)
+		value, err := lunarHorizonColumnsAt(at, longitudePoints, longitudes, module)
 		if err != nil {
 			return result, err
 		}
 		columns[index] = value
 	}
 	umbralColumns, err := lunarVisibilityUnionColumns(
-		info.PartialStart, info.PartialEnd, lunarUmbralBandSamples(info, options), longitudePoints, longitudes,
+		info.PartialStart, info.PartialEnd, lunarUmbralBandSamples(info, options), longitudePoints, longitudes, module,
 	)
 	if err != nil {
 		return result, err
@@ -2083,8 +2227,12 @@ func lunarVisibilityEnvelopeGeometries(
 	info eclipsecore.LunarEclipseInfo,
 	boundaryPoints int,
 	options LunarEclipseOptions,
-	wantUnion, wantIntersection bool,
-) (geometry, geometry, error) {
+	wantUnion, wantIntersection bool, modules ...*Generator) (geometry, geometry, error) {
+	module := &defaultModule
+	if len(modules) > 0 {
+		module = modules[0]
+	}
+
 	start, end := info.PenumbralStart, info.PenumbralEnd
 	if !start.Before(end) {
 		return geometry{}, geometry{}, fmt.Errorf("geojson: lunar eclipse penumbral interval is invalid")
@@ -2099,7 +2247,7 @@ func lunarVisibilityEnvelopeGeometries(
 	states := make([]basic.MoonState, len(times))
 	roots := make([][][]float64, len(times))
 	for index, at := range times {
-		columns, err := lunarHorizonColumnsAt(at, longitudePoints, longitudes)
+		columns, err := lunarHorizonColumnsAt(at, longitudePoints, longitudes, module)
 		if err != nil {
 			return geometry{}, geometry{}, err
 		}
@@ -2149,12 +2297,17 @@ func lunarVisibilityEnvelopeGeometries(
 	return unionGeometry, intersectionGeometry, nil
 }
 
-func lunarHorizonRefinedPoints(points [][2]float64, at time.Time) [][2]float64 {
+func lunarHorizonRefinedPoints(points [][2]float64, at time.Time, modules ...*Generator) [][2]float64 {
+	module := &defaultModule
+	if len(modules) > 0 {
+		module = modules[0]
+	}
+
 	horizon := make([]geodata.GeoPoint, len(points))
 	for index, point := range points {
 		horizon[index] = geodata.GeoPoint{Longitude: point[0], Latitude: point[1]}
 	}
-	horizon = lunarhorizon.RefineWithin(horizon, at, lunarVisibilityHorizonToleranceDegrees)
+	horizon = lunarhorizon.RefineWithinWithInstance(horizon, at, lunarVisibilityHorizonToleranceDegrees, module.inst)
 	refined := make([][2]float64, len(horizon))
 	for index, point := range horizon {
 		refined[index] = [2]float64{point.Longitude, point.Latitude}
@@ -2397,8 +2550,12 @@ func lunarVisibilityEnvelopeGeometry(longitudes []float64, columns [][]lunarLati
 func marshalLunarEclipse(
 	info eclipsecore.LunarEclipseInfo,
 	boundaryPoints int,
-	options LunarEclipseOptions,
-) ([]byte, error) {
+	options LunarEclipseOptions, modules ...*Generator) ([]byte, error) {
+	module := &defaultModule
+	if len(modules) > 0 {
+		module = modules[0]
+	}
+
 	markerOptions := options.TimeMarkers
 	if markerOptions != nil {
 		if err := validateTimeMarkerOptions(*markerOptions); err != nil {
@@ -2414,7 +2571,7 @@ func marshalLunarEclipse(
 	}
 	// 几何一律用民用时刻，只有写进属性的时刻换时标，否则把 UT1 读数当民用时刻会平移月下点。
 	geometry := info
-	if timeScale == astro.TimeScaleUT1 {
+	if timeScale == basic.TimeScaleUT1 {
 		info = eclipsecore.LunarEclipseInfoInUT1(info)
 	}
 	boundaryPoints = normalizeLunarBoundaryPoints(boundaryPoints)
@@ -2434,22 +2591,22 @@ func marshalLunarEclipse(
 		{role: "visible-at-p4", horizonRole: "p4-horizon", geometryTime: geometry.PenumbralEnd, labelTime: info.PenumbralEnd},
 	}
 	for _, contact := range contacts {
-		points := basic.MoonHorizon(basic.Date2JD(contact.geometryTime.UTC()), boundaryPoints)
+		points := basic.MoonHorizonWithInstance(basic.Date2JD(contact.geometryTime.UTC()), boundaryPoints, module.inst)
 		horizon := make([]geodata.GeoPoint, len(points))
 		for index, point := range points {
 			horizon[index] = geodata.GeoPoint{Longitude: point[0], Latitude: point[1]}
 		}
-		horizon = lunarhorizon.Refine(horizon, contact.geometryTime)
+		horizon = lunarhorizon.RefineWithInstance(horizon, contact.geometryTime, module.inst)
 		value, err := multiPolygonGeometry([][]geodata.GeoPoint{horizon})
 		if err != nil {
 			return nil, fmt.Errorf("geojson: %s: %w", contact.role, err)
 		}
 		// 日界线剪裁会在相邻世界各输出一次零宽薄片：顶点全落在同一条子午线上、平面面积只剩
-		// 浮点噪声（实测 1.8e-12 deg²，刚好越过共享剪裁器 1e-12 的零面积阈值）。只在本月食
+		// 浮点噪声（可能越过共享剪裁器 1e-12 的零面积阈值）。只在本月食
 		// 可见区导出里丢弃它——共享剪裁器的输出被掩星拓扑依赖，不能在那里过滤。
 		// The antimeridian split can emit one zero-width sliver per adjacent world: every vertex
-		// on one meridian and a planar area of pure floating-point noise (measured 1.8e-12 deg^2,
-		// just past the shared splitter's 1e-12 zero-area floor). Drop it here, in the lunar
+		// on one meridian and a planar area of pure floating-point noise (possibly past the
+		// shared splitter's 1e-12 zero-area floor). Drop it here, in the lunar
 		// visibility export only; the shared splitter's output feeds occultation topology and must
 		// not be filtered.
 		value = dropDegenerateMultiPolygonRings(value)
@@ -2478,7 +2635,7 @@ func marshalLunarEclipse(
 	wantPenumbraMoonrise := !skippedLunarRole(options.SkipRoles, "penumbra-moonrise")
 	if info.HasPartial && (wantPenumbraMoonset || wantPenumbraMoonrise) {
 		bandGeometries, bandErr := lunarPenumbraBandGeometries(
-			geometry, boundaryPoints, options, wantPenumbraMoonset, wantPenumbraMoonrise,
+			geometry, boundaryPoints, options, wantPenumbraMoonset, wantPenumbraMoonrise, module,
 		)
 		if bandErr != nil {
 			return nil, bandErr
@@ -2497,7 +2654,7 @@ func marshalLunarEclipse(
 	wantThroughout := !skippedLunarRole(options.SkipRoles, "visible-throughout-eclipse")
 	if wantDuring || wantThroughout {
 		unionGeometry, intersectionGeometry, envelopeErr := lunarVisibilityEnvelopeGeometries(
-			geometry, boundaryPoints, options, wantDuring, wantThroughout,
+			geometry, boundaryPoints, options, wantDuring, wantThroughout, module,
 		)
 		if envelopeErr != nil {
 			return nil, envelopeErr
@@ -2513,7 +2670,7 @@ func marshalLunarEclipse(
 		}
 	}
 
-	maximum := lunarSubpoint(geometry.Maximum)
+	maximum := lunarSubpoint(geometry.Maximum, module)
 	features, err := appendPointFeature(
 		features,
 		lunarEclipseEvent,
@@ -2525,7 +2682,7 @@ func marshalLunarEclipse(
 		return nil, err
 	}
 	if markerOptions != nil {
-		markers, markerErr := lunarEclipseTimeMarkerSamples(geometry, timeScale, *markerOptions)
+		markers, markerErr := lunarEclipseTimeMarkerSamples(geometry, timeScale, *markerOptions, module)
 		if markerErr != nil {
 			return nil, markerErr
 		}
@@ -2547,12 +2704,16 @@ func marshalLunarEclipse(
 // 因为掩带的面选择依赖这些填充提示，端点外扩会改变极区边缘的面归属。
 func solarPartialFootprintPolygon(
 	footprint eclipsecore.SolarEclipsePartialFootprint,
-	horizonExact bool,
-) ([]geodata.GeoPoint, error) {
+	horizonExact bool, modules ...*Generator) ([]geodata.GeoPoint, error) {
+	module := &defaultModule
+	if len(modules) > 0 {
+		module = modules[0]
+	}
+
 	if footprint.Time.IsZero() {
 		return nil, fmt.Errorf("geojson: solar partial footprint time is required")
 	}
-	input, err := solarClosureFootprint(footprint)
+	input, err := solarClosureFootprint(footprint, module)
 	if err != nil {
 		return nil, err
 	}
@@ -2568,8 +2729,12 @@ func solarPartialFootprintPolygon(
 // Instantaneous footprints remain available for selecting the current shadow,
 // but are not part of this time-independent outline.
 func solarPartialBandGeometry(
-	partial eclipsecore.SolarEclipsePartialFootprintsInfo,
-) (geometry, string, bool, error) {
+	partial eclipsecore.SolarEclipsePartialFootprintsInfo, modules ...*Generator) (geometry, string, bool, error) {
+	module := &defaultModule
+	if len(modules) > 0 {
+		module = modules[0]
+	}
+
 	if len(partial.PartialBandContours) == 0 || len(partial.RiseSetCurves) == 0 {
 		return solarPartialBandOverlayGeometry(partial.Footprints, partial.RiseSetCurves)
 	}
@@ -2585,7 +2750,7 @@ func solarPartialBandGeometry(
 	}
 	footprints := make([]solarclosure.Footprint, 0, len(partial.Footprints))
 	for _, footprint := range partial.Footprints {
-		input, err := solarClosureFootprint(footprint)
+		input, err := solarClosureFootprint(footprint, module)
 		if err != nil {
 			return geometry{}, "", false, err
 		}
@@ -2613,7 +2778,7 @@ func solarPartialBandGeometry(
 	}
 	for polygonIndex, polygon := range polygons {
 		for pointIndex, point := range polygon {
-			polygons[polygonIndex][pointIndex].Longitude = normalizeLongitude(point.Longitude)
+			polygons[polygonIndex][pointIndex].Longitude = geodata.NormalizeLongitude(point.Longitude)
 		}
 	}
 	value, err := multiPolygonGeometry(polygons)
@@ -2655,7 +2820,7 @@ func solarPartialBandOverlayGeometry(
 	}
 	for polygonIndex, polygon := range polygons {
 		for pointIndex, point := range polygon {
-			polygons[polygonIndex][pointIndex].Longitude = normalizeLongitude(point.Longitude)
+			polygons[polygonIndex][pointIndex].Longitude = geodata.NormalizeLongitude(point.Longitude)
 		}
 	}
 	value, err := multiPolygonGeometry(polygons)
@@ -2743,7 +2908,7 @@ func solarPartialBandGeoPointDistanceToRing(
 ) float64 {
 	minimum := math.Inf(1)
 	for index := range ring {
-		minimum = math.Min(minimum, solarCentralBandGeoPointDistanceKM(point, ring[index]))
+		minimum = math.Min(minimum, geodata.MeanDistanceKM(point, ring[index]))
 	}
 	return minimum
 }
@@ -2760,9 +2925,9 @@ func solarPartialBandBridgeLineToRing(
 	}
 	nearest := func(point geodata.GeoPoint) (int, float64) {
 		bestIndex := 0
-		bestDistance := solarCentralBandGeoPointDistanceKM(point, open[0])
+		bestDistance := geodata.MeanDistanceKM(point, open[0])
 		for index := 1; index < len(open); index++ {
-			if distance := solarCentralBandGeoPointDistanceKM(point, open[index]); distance < bestDistance {
+			if distance := geodata.MeanDistanceKM(point, open[index]); distance < bestDistance {
 				bestIndex, bestDistance = index, distance
 			}
 		}
@@ -2783,7 +2948,7 @@ func solarPartialBandBridgeLineToRing(
 	pathLength := func(points []geodata.GeoPoint) float64 {
 		length := 0.0
 		for index := 1; index < len(points); index++ {
-			length += solarCentralBandGeoPointDistanceKM(points[index-1], points[index])
+			length += geodata.MeanDistanceKM(points[index-1], points[index])
 		}
 		return length
 	}
@@ -2800,18 +2965,22 @@ func appendSolarFootprintFeatures(
 	features []feature,
 	role string,
 	footprints []eclipsecore.SolarEclipsePartialFootprint,
-	properties map[string]interface{},
-) ([]feature, error) {
+	properties map[string]interface{}, modules ...*Generator) ([]feature, error) {
+	module := &defaultModule
+	if len(modules) > 0 {
+		module = modules[0]
+	}
+
 	for _, footprint := range footprints {
 		if role == solarCentralShadowFootprintRole && !footprint.Closed {
-			appended, err := appendSolarHorizonClosedShadowFootprint(features, footprint, properties)
+			appended, err := appendSolarHorizonClosedShadowFootprint(features, footprint, properties, module)
 			if err != nil {
 				return nil, err
 			}
 			features = appended
 			continue
 		}
-		polygon, err := solarPartialFootprintPolygon(footprint, false)
+		polygon, err := solarPartialFootprintPolygon(footprint, false, module)
 		if err != nil {
 			return nil, fmt.Errorf("geojson: solar %s at %s: %w", role, formatTime(footprint.Time), err)
 		}
@@ -2964,7 +3133,7 @@ type solarCentralBandVertexGrid map[int][]geodata.GeoPoint
 
 func solarCentralBandVertexGridKey(latitude, longitude float64) int {
 	latitudeCell := int(math.Floor(latitude/solarCentralBandVertexGridDegrees)) + 90
-	longitudeCell := int(math.Floor(normalizeLongitude(longitude)/solarCentralBandVertexGridDegrees)) + 180
+	longitudeCell := int(math.Floor(geodata.NormalizeLongitude(longitude)/solarCentralBandVertexGridDegrees)) + 180
 	return latitudeCell*360 + longitudeCell
 }
 
@@ -2997,7 +3166,7 @@ func (grid solarCentralBandVertexGrid) vertexWithinKM(
 	for latitudeCell := minimumLatitudeCell; latitudeCell <= maximumLatitudeCell; latitudeCell++ {
 		for longitudeCell := minimumLongitudeCell; longitudeCell <= maximumLongitudeCell; longitudeCell++ {
 			for _, vertex := range grid[latitudeCell*360+longitudeCell] {
-				if solarCentralBandGeoPointDistanceKM(point, vertex) <= toleranceKM {
+				if geodata.MeanDistanceKM(point, vertex) <= toleranceKM {
 					return true
 				}
 			}
@@ -3108,7 +3277,7 @@ func solarCentralBandCenterlineProbes(
 			return nil
 		}
 		probes = append(probes, geodata.GeoPoint{
-			Longitude: normalizeLongitude(
+			Longitude: geodata.NormalizeLongitude(
 				point.Longitude + math.Remainder(next.Longitude-point.Longitude, 360)/2,
 			),
 			Latitude: (point.Latitude + next.Latitude) / 2,
@@ -3363,7 +3532,7 @@ func solarCentralMagnitudeOneOrientedClosure(
 func solarCentralBandPathDistanceKM(
 	first, second eclipsecore.SolarEclipsePathPoint,
 ) float64 {
-	return solarCentralBandGeoPointDistanceKM(
+	return geodata.MeanDistanceKM(
 		geodata.GeoPoint{Longitude: first.Longitude, Latitude: first.Latitude},
 		geodata.GeoPoint{Longitude: second.Longitude, Latitude: second.Latitude},
 	)
@@ -3622,7 +3791,7 @@ func snapSolarCentralSweepContacts(polygons [][]geodata.GeoPoint, contacts []geo
 				if used[[2]int{polygonIndex, pointIndex}] {
 					continue
 				}
-				distance := solarCentralBandGeoPointDistanceKM(point, contact)
+				distance := geodata.MeanDistanceKM(point, contact)
 				if distance < bestDistance {
 					bestDistance = distance
 					bestPolygon, bestPoint = polygonIndex, pointIndex
@@ -3670,8 +3839,8 @@ func solarCentralTwoLimitRibbonPieces(
 			{centerPrevious, centerCurrent, southCurrent},
 			{centerPrevious, southCurrent, southPrevious},
 		} {
-			if solarCentralBandGeoPointDistanceKM(piece[0], piece[1]) == 0 &&
-				solarCentralBandGeoPointDistanceKM(piece[1], piece[2]) == 0 {
+			if geodata.MeanDistanceKM(piece[0], piece[1]) == 0 &&
+				geodata.MeanDistanceKM(piece[1], piece[2]) == 0 {
 				continue
 			}
 			pieces = append(pieces, piece)
@@ -3934,7 +4103,7 @@ func solarCentralLocalChartUnion(inputs [][]geodata.GeoPoint) ([][]geodata.GeoPo
 			return geodata.GeoPoint{}
 		}
 		return geodata.GeoPoint{
-			Longitude: normalizeLongitude(math.Atan2(vector[1]/length, vector[0]/length) * 180 / math.Pi),
+			Longitude: geodata.NormalizeLongitude(math.Atan2(vector[1]/length, vector[0]/length) * 180 / math.Pi),
 			Latitude:  math.Asin(math.Max(-1, math.Min(1, vector[2]/length))) * 180 / math.Pi,
 		}
 	}
@@ -3980,7 +4149,7 @@ func solarCentralBandRefineRingSpacing(points []geodata.GeoPoint, targetSpacingK
 	for index, start := range points {
 		end := points[(index+1)%len(points)]
 		result = append(result, start)
-		steps := int(math.Ceil(solarCentralBandGeoPointDistanceKM(start, end) / targetSpacingKM))
+		steps := int(math.Ceil(geodata.MeanDistanceKM(start, end) / targetSpacingKM))
 		for step := 1; step < steps; step++ {
 			result = append(result, solarCentralBandSphericalInterpolate(
 				start, end, float64(step)/float64(steps),
@@ -4018,7 +4187,7 @@ func solarCentralBandSphericalInterpolate(
 	y := firstWeight*firstVector[1] + secondWeight*secondVector[1]
 	z := firstWeight*firstVector[2] + secondWeight*secondVector[2]
 	return geodata.GeoPoint{
-		Longitude: normalizeLongitude(math.Atan2(y, x) * 180 / math.Pi),
+		Longitude: geodata.NormalizeLongitude(math.Atan2(y, x) * 180 / math.Pi),
 		Latitude:  math.Atan2(z, math.Hypot(x, y)) * 180 / math.Pi,
 	}
 }
@@ -4056,8 +4225,8 @@ func solarCentralBandContactCaps(
 			return
 		}
 		contactPoint := geodata.GeoPoint{Longitude: contact.Longitude, Latitude: contact.Latitude}
-		if solarCentralBandGeoPointDistanceKM(contactPoint, boundary[0]) > 2000 ||
-			solarCentralBandGeoPointDistanceKM(contactPoint, boundary[len(boundary)-1]) > 2000 {
+		if geodata.MeanDistanceKM(contactPoint, boundary[0]) > 2000 ||
+			geodata.MeanDistanceKM(contactPoint, boundary[len(boundary)-1]) > 2000 {
 			return
 		}
 		caps = append(caps, []geodata.GeoPoint{contactPoint, boundary[0], boundary[len(boundary)-1]})
@@ -4065,14 +4234,6 @@ func solarCentralBandContactCaps(
 	appendCap(startContact, footprints[0])
 	appendCap(endContact, footprints[len(footprints)-1])
 	return caps
-}
-
-func solarCentralBandGeoPointDistanceKM(first, second geodata.GeoPoint) float64 {
-	lat1, lat2 := first.Latitude*math.Pi/180, second.Latitude*math.Pi/180
-	dlat := lat2 - lat1
-	dlon := math.Remainder((second.Longitude-first.Longitude)*math.Pi/180, 2*math.Pi)
-	h := math.Sin(dlat/2)*math.Sin(dlat/2) + math.Cos(lat1)*math.Cos(lat2)*math.Sin(dlon/2)*math.Sin(dlon/2)
-	return 6371.0088 * 2 * math.Asin(math.Sqrt(math.Max(0, math.Min(1, h))))
 }
 
 func solarCentralTwoLimitAxisCappedPolygon(
@@ -4217,11 +4378,10 @@ func solarCentralBandEndpointCaps(
 }
 
 func solarCentralBandPointDistanceKM(first, second eclipsecore.SolarEclipsePathPoint) float64 {
-	lat1, lat2 := first.Latitude*math.Pi/180, second.Latitude*math.Pi/180
-	dlat := lat2 - lat1
-	dlon := math.Mod((second.Longitude-first.Longitude)*math.Pi/180+math.Pi, 2*math.Pi) - math.Pi
-	h := math.Sin(dlat/2)*math.Sin(dlat/2) + math.Cos(lat1)*math.Cos(lat2)*math.Sin(dlon/2)*math.Sin(dlon/2)
-	return 6371.0088 * 2 * math.Asin(math.Sqrt(math.Max(0, math.Min(1, h))))
+	return geodata.MeanDistanceKM(
+		geodata.GeoPoint{Longitude: first.Longitude, Latitude: first.Latitude},
+		geodata.GeoPoint{Longitude: second.Longitude, Latitude: second.Latitude},
+	)
 }
 
 // Near a high-latitude apex a traced limit curve runs through a cusp: its time
@@ -4464,7 +4624,7 @@ func degenerateGeoJSONRing(ring [][]float64) bool {
 		minimumLongitude = math.Min(minimumLongitude, ring[index][0])
 		maximumLongitude = math.Max(maximumLongitude, ring[index][0])
 	}
-	// 顶点全落在同一条子午线上时面积只剩求和噪声，量级随顶点数增长（实测 9e-12，越过 1e-12 阈值），
+	// 顶点全落在同一条子午线上时面积只剩求和噪声，量级随顶点数增长，可能越过 1e-12 阈值；
 	// 必须先按经度跨度判死，不能只靠面积。
 	if maximumLongitude-minimumLongitude < 1e-9 {
 		return true
@@ -4496,27 +4656,41 @@ func lunarEclipseMetadata(info eclipsecore.LunarEclipseInfo) map[string]interfac
 	}
 }
 
-func solarSubsolarPoint(value time.Time) geodata.GeoPoint {
+func solarSubsolarPoint(value time.Time, modules ...*Generator) geodata.GeoPoint {
+	module := &defaultModule
+	if len(modules) > 0 {
+		module = modules[0]
+	}
+
 	ttJDE := basic.UTC2TT(basic.Date2JD(value.UTC()))
-	ra, dec := basic.HSunApparentRaDec(ttJDE)
+	ra, dec := basic.HSunApparentRaDecWithInstance(ttJDE, module.inst)
 	ut1JDE := basic.TT2UT1(ttJDE)
-	longitude := normalizeLongitude(ra - basic.ApparentSiderealTime(ut1JDE)*15)
+	longitude := geodata.NormalizeLongitude(ra - basic.ApparentSiderealTime(ut1JDE)*15)
 	return geodata.GeoPoint{Longitude: longitude, Latitude: dec}
 }
 
-func lunarSubpoint(value time.Time) geodata.GeoPoint {
+func lunarSubpoint(value time.Time, modules ...*Generator) geodata.GeoPoint {
+	module := &defaultModule
+	if len(modules) > 0 {
+		module = modules[0]
+	}
+
 	ttJDE := basic.UTC2TT(basic.Date2JD(value.UTC()))
-	ra, dec := basic.HMoonTrueRaDec(ttJDE)
+	ra, dec := basic.HMoonTrueRaDecWithInstance(ttJDE, module.inst)
 	ut1JDE := basic.TT2UT1(ttJDE)
-	longitude := normalizeLongitude(ra - basic.ApparentSiderealTime(ut1JDE)*15)
+	longitude := geodata.NormalizeLongitude(ra - basic.ApparentSiderealTime(ut1JDE)*15)
 	return geodata.GeoPoint{Longitude: longitude, Latitude: dec}
 }
 
 func lunarEclipseTimeMarkerSamples(
 	info eclipsecore.LunarEclipseInfo,
-	scale astro.TimeScale,
-	options TimeMarkerOptions,
-) ([]pathSample, error) {
+	scale basic.TimeScale,
+	options TimeMarkerOptions, modules ...*Generator) ([]pathSample, error) {
+	module := &defaultModule
+	if len(modules) > 0 {
+		module = modules[0]
+	}
+
 	step, err := normalizeTimeMarkerStep(options.Step)
 	if err != nil {
 		return nil, fmt.Errorf("geojson: lunar eclipse time markers: %w", err)
@@ -4530,10 +4704,10 @@ func lunarEclipseTimeMarkerSamples(
 	current := firstTimeMarkerAfter(start, step, location)
 	markers := make([]pathSample, 0, capacity)
 	for current.Before(end) {
-		point := lunarSubpoint(current)
+		point := lunarSubpoint(current, module)
 		label := current
-		if scale == astro.TimeScaleUT1 {
-			label = astro.LabelIn(astro.TimeScaleUT1, current)
+		if scale == basic.TimeScaleUT1 {
+			label = basic.LabelIn(basic.TimeScaleUT1, current)
 		}
 		markers = append(markers, pathSample{
 			Time:      label,
@@ -4559,12 +4733,12 @@ func normalizeLunarBoundaryPoints(value int) int {
 }
 
 // timeScaleForMarkers 校验导出时标选项：UT1 时刻没有时区语义，配非 UTC 时区时明确失败。
-func timeScaleForMarkers(options *TimeMarkerOptions) (astro.TimeScale, error) {
-	if options == nil || options.TimeScale != astro.TimeScaleUT1 {
-		return astro.TimeScaleUTC, nil
+func timeScaleForMarkers(options *TimeMarkerOptions) (basic.TimeScale, error) {
+	if options == nil || options.TimeScale != basic.TimeScaleUT1 {
+		return basic.TimeScaleUTC, nil
 	}
 	if options.Location != nil && options.Location != time.UTC {
-		return astro.TimeScaleUTC, fmt.Errorf("geojson: UT1 time properties do not take a non-UTC location")
+		return basic.TimeScaleUTC, fmt.Errorf("geojson: UT1 time properties do not take a non-UTC location")
 	}
-	return astro.TimeScaleUT1, nil
+	return basic.TimeScaleUT1, nil
 }

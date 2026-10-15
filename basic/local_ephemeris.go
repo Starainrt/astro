@@ -1,6 +1,8 @@
 package basic
 
-import "math"
+import (
+	"math"
+)
 
 // localEphemerisVectorNode is a pair of Cartesian ephemeris samples at one
 // TT. Cartesian interpolation avoids right-ascension wraparound at 0/360.
@@ -82,12 +84,14 @@ type solarEclipseLocalEphemeris struct {
 	nodes []localEphemerisVectorNode
 }
 
-func newSolarEclipseLocalEphemeris(center float64) *solarEclipseLocalEphemeris {
+func newSolarEclipseLocalEphemeris(center float64, instances ...*Instance) *solarEclipseLocalEphemeris {
+	inst := instanceValue(instances)
+
 	half := solarLocalEphemerisNodeCount / 2
 	nodes := make([]localEphemerisVectorNode, solarLocalEphemerisNodeCount)
 	for index := range nodes {
 		tt := center + float64(index-half)*solarLocalEphemerisStepDays
-		sun, moon := solarEclipseSunMoonEquatorial(tt)
+		sun, moon := solarEclipseSunMoonEquatorial(tt, inst)
 		nodes[index] = localEphemerisVectorNode{
 			tt:    tt,
 			first: solarEclipseLLRToXYZ(sun[0], sun[1], sun[2]),
@@ -95,6 +99,50 @@ func newSolarEclipseLocalEphemeris(center float64) *solarEclipseLocalEphemeris {
 		}
 	}
 	return &solarEclipseLocalEphemeris{nodes: nodes}
+}
+
+// solarEclipseLimbAxes 与日月局部星历同一时间网格的月球本体坐标架插值节点。
+type solarEclipseLimbAxes struct {
+	base  lunarLimbFrame
+	nodes []localEphemerisVectorNode
+}
+
+func newSolarEclipseLimbAxes(ephemeris *solarEclipseLocalEphemeris, limb LunarLimb, inst *Instance) *solarEclipseLimbAxes {
+	if ephemeris == nil || limb == nil {
+		return nil
+	}
+	axes := &solarEclipseLimbAxes{nodes: make([]localEphemerisVectorNode, len(ephemeris.nodes))}
+	for index, node := range ephemeris.nodes {
+		frame := newLunarLimbFrame(limb, node.tt, node.next, inst)
+		if !frame.valid {
+			return nil
+		}
+		if index == len(ephemeris.nodes)/2 {
+			axes.base = frame
+		}
+		axes.nodes[index] = localEphemerisVectorNode{tt: node.tt, first: frame.axisX, next: frame.axisZ}
+	}
+	return axes
+}
+
+func (axes *solarEclipseLimbAxes) frameAt(tt float64) (lunarLimbFrame, bool) {
+	if axes == nil {
+		return lunarLimbFrame{}, false
+	}
+	axisX, axisZ, ok := interpolateLocalEphemerisVectors(axes.nodes, tt)
+	if !ok {
+		return lunarLimbFrame{}, false
+	}
+	frame := axes.base
+	if frame.axisZ, ok = lunarLimbNormalize(axisZ); !ok {
+		return lunarLimbFrame{}, false
+	}
+	// 两轴分别插值后不再严格正交，按 z 轴重新正交化 x 轴。
+	if frame.axisX, ok = lunarLimbNormalize(lunarLimbReject(axisX, frame.axisZ)); !ok {
+		return lunarLimbFrame{}, false
+	}
+	frame.axisY = lunarLimbCross(frame.axisZ, frame.axisX)
+	return frame, true
 }
 
 func (ephemeris *solarEclipseLocalEphemeris) equatorialAt(tt float64) ([3]float64, [3]float64, bool) {
@@ -119,12 +167,14 @@ type starOccultationLocalEphemeris struct {
 	hasDistance bool
 }
 
-func newStarOccultationLocalEphemeris(center float64, star StarCoordinate) *starOccultationLocalEphemeris {
+func newStarOccultationLocalEphemeris(center float64, star StarCoordinate, instances ...*Instance) *starOccultationLocalEphemeris {
+	inst := instanceValue(instances)
+
 	half := occultationLocalEphemerisNodeCount / 2
 	nodes := make([]localEphemerisVectorNode, occultationLocalEphemerisNodeCount)
 	for index := range nodes {
 		tt := center + float64(index-half)*occultationLocalEphemerisStepDays
-		state := starOccultationEphemerisStateAt(tt, star)
+		state := starOccultationEphemerisStateAt(tt, star, inst)
 		moon := occultationPathRaDecVector(state.moonRA, state.moonDec, state.moonDistanceKM)
 		targetDistance := state.starDistanceKM
 		if targetDistance <= 0 {
@@ -138,12 +188,14 @@ func newStarOccultationLocalEphemeris(center float64, star StarCoordinate) *star
 			next:  [3]float64{target.x, target.y, target.z},
 		}
 	}
-	return newStarOccultationLocalEphemerisFromNodes(center, star, nodes, false)
+	return newStarOccultationLocalEphemerisFromNodes(center, star, nodes, false, inst)
 }
 
 // newStarOccultationLocalEphemerisFromNodes 装配局部星历：距离必须与节点同源，密集分支同样要带上。
-func newStarOccultationLocalEphemerisFromNodes(center float64, star StarCoordinate, nodes []localEphemerisVectorNode, dense bool) *starOccultationLocalEphemeris {
-	_, _, distanceAU := starApparentRaDecDistanceGeocentric(center, star)
+func newStarOccultationLocalEphemerisFromNodes(center float64, star StarCoordinate, nodes []localEphemerisVectorNode, dense bool, instances ...*Instance) *starOccultationLocalEphemeris {
+	inst := instanceValue(instances)
+
+	_, _, distanceAU := starApparentRaDecDistanceGeocentric(center, star, inst)
 	return &starOccultationLocalEphemeris{
 		star: star, nodes: nodes, dense: dense,
 		distanceKM: distanceAU * occultationPathAstronomicalUnitKM, hasDistance: distanceAU > 0,
@@ -195,12 +247,14 @@ type planetOccultationLocalEphemeris struct {
 	dense bool
 }
 
-func newPlanetOccultationLocalEphemeris(center float64, config planetOccultationConfig) *planetOccultationLocalEphemeris {
+func newPlanetOccultationLocalEphemeris(center float64, config planetOccultationConfig, instances ...*Instance) *planetOccultationLocalEphemeris {
+	inst := instanceValue(instances)
+
 	half := occultationLocalEphemerisNodeCount / 2
 	nodes := make([]localEphemerisVectorNode, occultationLocalEphemerisNodeCount)
 	for index := range nodes {
 		tt := center + float64(index-half)*occultationLocalEphemerisStepDays
-		state := planetOccultationEphemerisStateAt(tt, config)
+		state := planetOccultationEphemerisStateAt(tt, config, inst)
 		moon := occultationPathRaDecVector(state.moonRA, state.moonDec, state.moonDistanceKM)
 		target := occultationPathRaDecVector(state.planetRA, state.planetDec, state.planetDistanceKM)
 		nodes[index] = localEphemerisVectorNode{

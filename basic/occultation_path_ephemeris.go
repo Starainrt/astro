@@ -1,11 +1,13 @@
 package basic
 
-import "math"
+import (
+	"math"
+)
 
 const (
 	occultationDenseEphemerisNodeCount = 193
 	occultationDenseEphemerisStepDays  = 30.0 / 1440.0
-	occultationDenseEphemerisTolerance = 5e-11
+	occultationDenseEphemerisTolerance = 1e-8 // relaxed for vector-based apparent positions
 )
 
 // Width extrema near a limb can change branches under tiny frame differences.
@@ -23,7 +25,7 @@ func correctOccultationCenterWidths(points []OccultationPathPoint, frameAt occul
 func (cache *starOccultationEventCache) preparePathEphemeris(center float64, algorithm OccultationPathAlgorithm) {
 	if algorithm != OccultationPathAlgorithmExact {
 		nodes := newDenseOccultationEphemerisNodes(center, func(tt float64) ([3]float64, [3]float64) {
-			state := starOccultationEphemerisStateAt(tt, cache.star)
+			state := starOccultationEphemerisStateAt(tt, cache.star, cache.inst)
 			moon := occultationPathRaDecVector(state.moonRA, state.moonDec, state.moonDistanceKM)
 			distance := state.starDistanceKM
 			if distance <= 0 {
@@ -33,7 +35,7 @@ func (cache *starOccultationEventCache) preparePathEphemeris(center float64, alg
 			return [3]float64{moon.x, moon.y, moon.z}, [3]float64{target.x, target.y, target.z}
 		})
 		if len(nodes) > 0 {
-			cache.local = newStarOccultationLocalEphemerisFromNodes(center, cache.star, nodes, true)
+			cache.local = newStarOccultationLocalEphemerisFromNodes(center, cache.star, nodes, true, cache.inst)
 		}
 	}
 	cache.prepareLocalEphemeris(center)
@@ -42,7 +44,7 @@ func (cache *starOccultationEventCache) preparePathEphemeris(center float64, alg
 func (cache *planetOccultationEventCache) preparePathEphemeris(center float64, algorithm OccultationPathAlgorithm) {
 	if algorithm != OccultationPathAlgorithmExact {
 		nodes := newDenseOccultationEphemerisNodes(center, func(tt float64) ([3]float64, [3]float64) {
-			state := planetOccultationEphemerisStateAt(tt, cache.config)
+			state := planetOccultationEphemerisStateAt(tt, cache.config, cache.inst)
 			moon := occultationPathRaDecVector(state.moonRA, state.moonDec, state.moonDistanceKM)
 			target := occultationPathRaDecVector(state.planetRA, state.planetDec, state.planetDistanceKM)
 			return [3]float64{moon.x, moon.y, moon.z}, [3]float64{target.x, target.y, target.z}

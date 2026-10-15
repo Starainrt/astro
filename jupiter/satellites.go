@@ -42,12 +42,9 @@ type GalileanSatellitesInfo struct {
 }
 
 // Satellites 木星四颗伽利略卫星视位置 / apparent positions of Jupiter's four Galilean satellites.
-//
-// date 表示观测绝对时刻（UTC），内部换算为该时刻对应的 TT/TDB 历元做 L1 星历求值。
-// date is the observing instant in UTC; it is converted to the corresponding TT/TDB epoch for the L1 ephemeris evaluation.
-func Satellites(date time.Time) GalileanSatellitesInfo {
+func (module *Jupiter) Satellites(date time.Time) GalileanSatellitesInfo {
 	jde := basic.UTC2TT(basic.Date2JD(date.UTC()))
-	observations := basic.JupiterGalileanSatelliteObservations(jde)
+	observations := basic.JupiterGalileanSatelliteObservationsWithInstance(jde, module.inst)
 	return GalileanSatellitesInfo{
 		Io:       galileanSatellitePositionFromBasic(observations[0]),
 		Europa:   galileanSatellitePositionFromBasic(observations[1]),

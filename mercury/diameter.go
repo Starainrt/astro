@@ -8,23 +8,23 @@ import (
 )
 
 // Semidiameter 水星视半径，单位角秒 / apparent Mercury semidiameter in arcseconds.
-func Semidiameter(date time.Time) float64 {
-	return SemidiameterN(date, -1)
+func (module *Mercury) Semidiameter(date time.Time) float64 {
+	return module.SemidiameterN(date, -1)
 }
 
-// SemidiameterN 水星视半径（截断版），单位角秒 / truncated apparent Mercury semidiameter in arcseconds.
-func SemidiameterN(date time.Time, n int) float64 {
+// SemidiameterN 水星视半径（n 变体），单位角秒 / n-parameterised apparent Mercury semidiameter in arcseconds.
+func (module *Mercury) SemidiameterN(date time.Time, n int) float64 {
 	jd := calendar.Date2JD(date.UTC())
-	return basic.MercurySemidiameterN(basic.UTC2TT(jd), n)
+	return basic.MercurySemidiameterNWithInstance(basic.UTC2TT(jd), n, module.inst)
 }
 
 // Diameter 水星视直径，单位角秒 / apparent Mercury diameter in arcseconds.
-func Diameter(date time.Time) float64 {
-	return DiameterN(date, -1)
+func (module *Mercury) Diameter(date time.Time) float64 {
+	return module.DiameterN(date, -1)
 }
 
-// DiameterN 水星视直径（截断版），单位角秒 / truncated apparent Mercury diameter in arcseconds.
-func DiameterN(date time.Time, n int) float64 {
+// DiameterN 水星视直径（n 变体），单位角秒 / n-parameterised apparent Mercury diameter in arcseconds.
+func (module *Mercury) DiameterN(date time.Time, n int) float64 {
 	jd := calendar.Date2JD(date.UTC())
-	return basic.MercuryDiameterN(basic.UTC2TT(jd), n)
+	return basic.MercuryDiameterNWithInstance(basic.UTC2TT(jd), n, module.inst)
 }

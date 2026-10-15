@@ -91,15 +91,8 @@ func densifyRiseSetSegment(
 }
 
 func projectedGeoPointDistanceKM(first, second basic.OccultationPathPoint) float64 {
-	const maxLatitude = 85.05112878
-	const radiusKM = 6378.1366
-	clampLatitude := func(value float64) float64 {
-		return math.Max(-maxLatitude, math.Min(maxLatitude, value))
-	}
-	longitude := math.Remainder(second.Longitude-first.Longitude, 360) * math.Pi / 180
-	firstLatitude := clampLatitude(first.Latitude) * math.Pi / 180
-	secondLatitude := clampLatitude(second.Latitude) * math.Pi / 180
-	firstY := math.Log(math.Tan(math.Pi/4 + firstLatitude/2))
-	secondY := math.Log(math.Tan(math.Pi/4 + secondLatitude/2))
-	return radiusKM * math.Hypot(longitude, secondY-firstY)
+	return geodata.WebMercatorDistanceKM(
+		geodata.GeoPoint{Longitude: first.Longitude, Latitude: first.Latitude},
+		geodata.GeoPoint{Longitude: second.Longitude, Latitude: second.Latitude},
+	)
 }

@@ -32,18 +32,18 @@ type TransitInfo struct {
 }
 
 // NextTransit 下一次地心水星凌日 / next geocentric Mercury transit.
-func NextTransit(date time.Time) TransitInfo {
-	return transitInfoFromBasic(basic.NextMercuryTransit(basic.Date2JD(date.UTC())), date.Location())
+func (module *Mercury) NextTransit(date time.Time) TransitInfo {
+	return transitInfoFromBasic(basic.NextMercuryTransitWithInstance(basic.Date2JD(date.UTC()), module.inst), date.Location())
 }
 
 // LastTransit 上一次地心水星凌日 / previous geocentric Mercury transit.
-func LastTransit(date time.Time) TransitInfo {
-	return transitInfoFromBasic(basic.LastMercuryTransit(basic.Date2JD(date.UTC())), date.Location())
+func (module *Mercury) LastTransit(date time.Time) TransitInfo {
+	return transitInfoFromBasic(basic.LastMercuryTransitWithInstance(basic.Date2JD(date.UTC()), module.inst), date.Location())
 }
 
 // ClosestTransit 最近一次地心水星凌日 / closest geocentric Mercury transit.
-func ClosestTransit(date time.Time) TransitInfo {
-	return transitInfoFromBasic(basic.ClosestMercuryTransit(basic.Date2JD(date.UTC())), date.Location())
+func (module *Mercury) ClosestTransit(date time.Time) TransitInfo {
+	return transitInfoFromBasic(basic.ClosestMercuryTransitWithInstance(basic.Date2JD(date.UTC()), module.inst), date.Location())
 }
 
 func transitInfoFromBasic(result basic.PlanetTransitResult, loc *time.Location) TransitInfo {
@@ -70,4 +70,27 @@ func transitInfoFromBasic(result basic.PlanetTransitResult, loc *time.Location) 
 		info.InternalDuration = info.InternalEnd.Sub(info.InternalStart)
 	}
 	return info
+}
+
+// LocalTransitInfo 站心水星凌日信息 / topocentric Mercury transit information.
+//
+// 时刻保持调用者传入的 TransitInfo 的时区；太阳高度为几何中心高度，不含折射。
+// Times keep the timezone of the supplied TransitInfo; Sun altitudes are geometric centre altitudes without refraction.
+type LocalTransitInfo = basic.PlanetTransitLocalInfo
+
+// LocalTransitContact 站心凌日接触 / topocentric transit contact.
+type LocalTransitContact = basic.PlanetTransitLocalContactInfo
+
+// LocalTransit 地心凌日 transit 在观测地的站心接触与凌甚 / topocentric contacts of transit seen from the site.
+//
+// lon、lat 为度，东经、北纬为正；height 为海拔米。
+// lon and lat are in degrees, east and north positive; height is in meters.
+func (module *Mercury) LocalTransit(transit TransitInfo, lon, lat, height float64) LocalTransitInfo {
+	if !transit.Valid {
+		return LocalTransitInfo{}
+	}
+	result := basic.PlanetTransitResultFromTimes(1,
+		transit.Start, transit.InternalStart, transit.Greatest, transit.InternalEnd, transit.End)
+	local := basic.PlanetTransitLocalWithInstance(result, basic.Observer{Longitude: lon, Latitude: lat, Height: height}, module.inst)
+	return basic.PlanetTransitLocalInfoFromResult(local, transit.Greatest.Location())
 }

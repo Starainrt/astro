@@ -1,6 +1,7 @@
 package svg
 
 import (
+	"github.com/starainrt/astro/internal/limbnote"
 	"github.com/starainrt/astro/internal/timenote"
 	"fmt"
 	"html"
@@ -11,6 +12,7 @@ import (
 	"github.com/starainrt/astro"
 	"github.com/starainrt/astro/basic"
 	eclipsecore "github.com/starainrt/astro/eclipse"
+	"github.com/starainrt/astro/internal/geodata"
 	"github.com/starainrt/astro/internal/svgasset"
 	"github.com/starainrt/astro/internal/svgchart"
 	"github.com/starainrt/astro/internal/svgmap"
@@ -40,6 +42,8 @@ type LunarEclipseDetailedSVGOptions struct {
 	// TimeScale selects the label scale: the zero value is UTC; TimeScaleUT1 uses UT1 labels and requires
 	// Location to be nil or UTC (otherwise the renderer returns false).
 	TimeScale astro.TimeScale
+	// LunarLimb 月缘剖面，nil 为圆月面；只精修接触时刻，月盘仍按圆面绘制 / lunar limb profile, nil for circular; refines contacts only.
+	LunarLimb basic.LunarLimb
 	// Step 是月心路径采样步长；<=0 时使用 5 分钟。
 	// Step is the Moon-center path sampling step; values <= 0 use five minutes.
 	Step time.Duration
@@ -118,7 +122,8 @@ func lunarEclipseDetailedSVG(
 	}
 	options = normalizeLunarEclipseDetailedSVGOptions(options)
 	diagram := calculator(timeToTTJDE(date), basic.LunarEclipseDiagramOptions{
-		StepDays: durationToDays(options.Step),
+		StepDays:  durationToDays(options.Step),
+		LunarLimb: options.LunarLimb,
 	})
 	if diagram.Eclipse.Type == basic.LunarEclipseNone || len(diagram.Points) == 0 {
 		return "", false
@@ -457,7 +462,8 @@ func writeLunarEclipseDetailedSummary(
 		fmt.Fprintf(b, `<text x="%.3f" y="%.3f" fill="#293235" font-family="Arial, sans-serif" font-size="12.5" text-anchor="middle">%s</text>`,
 			view.width/2, view.metaY+float64(index)*22, html.EscapeString(line))
 	}
-	zoneNote := timenote.Scale(options.TimeScale, info.Maximum, options.Location, options.Language)
+	zoneNote := limbnote.Join(timenote.Scale(options.TimeScale, info.Maximum, options.Location, options.Language),
+		limbnote.Contacts(info.LunarLimbApplied, options.Language), options.Language)
 	labels.ReserveText(view.width/2, view.metaY+4*22, 11, zoneNote, "middle")
 	fmt.Fprintf(b, `<text x="%.3f" y="%.3f" fill="#7b8794" font-family="Arial, sans-serif" font-size="11" text-anchor="middle">%s</text>`,
 		view.width/2, view.metaY+4*22, html.EscapeString(zoneNote))
@@ -499,13 +505,13 @@ func writeLunarEclipseDetailedGeocentricBlocks(
 			{Label: "赤经 R.A.", Value: formatSolarEclipseRA(sunRa)},
 			{Label: "赤纬 Dec.", Value: formatSolarEclipseDec(sunDec)},
 			{Label: "视半径 S.D.", Value: formatSolarEclipseArcsec(sunSd)},
-			{Label: "地平视差 H.P.", Value: formatSolarEclipseArcsec(horizontalParallaxArcsecRatio(sunSd, 6378.137/696000.0))},
+			{Label: "地平视差 H.P.", Value: formatSolarEclipseArcsec(horizontalParallaxArcsecRatio(sunSd, geodata.EarthWGS84RadiusKM/696000.0))},
 		},
 		{
 			{Label: "赤经 R.A.", Value: formatSolarEclipseRA(moonRa)},
 			{Label: "赤纬 Dec.", Value: formatSolarEclipseDec(moonDec)},
 			{Label: "视半径 S.D.", Value: formatSolarEclipseArcsec(moonSd)},
-			{Label: "地平视差 H.P.", Value: formatSolarEclipseArcsec(horizontalParallaxArcsecRatio(moonSd, 6378.137/1737.4))},
+			{Label: "地平视差 H.P.", Value: formatSolarEclipseArcsec(horizontalParallaxArcsecRatio(moonSd, geodata.EarthWGS84RadiusKM/1737.4))},
 		},
 	}
 	if english {
@@ -578,7 +584,7 @@ func writeLunarEclipseArcMinuteScaleBar(
 		return
 	}
 	// 示意图以"月球半径"为单位，一个月球半径对应的真实角径是 asin(R月 / 月距)，不是地球视差。
-	moonSemidiameterArcmin := math.Asin((lunarMoonRadiusKM/lunarEarthRadiusKM)/shadow.MoonDistanceEarthRadii) * 180 / math.Pi * 60
+	moonSemidiameterArcmin := math.Asin((lunarMoonRadiusKM/geodata.EarthWGS84RadiusKM)/shadow.MoonDistanceEarthRadii) * 180 / math.Pi * 60
 	if moonSemidiameterArcmin <= 0 {
 		return
 	}
@@ -650,7 +656,6 @@ func writeLunarEclipseDetailedFooter(
 }
 
 const (
-	// lunarMoonRadiusKM 与 lunarEarthRadiusKM 只用于把示意图的"月球半径"刻度换算成角分比例尺。
-	lunarMoonRadiusKM  = 1737.4
-	lunarEarthRadiusKM = 6378.137
+	// lunarMoonRadiusKM 与 geodata.EarthWGS84RadiusKM 只用于把示意图的"月球半径"刻度换算成角分比例尺。
+	lunarMoonRadiusKM = 1737.4
 )

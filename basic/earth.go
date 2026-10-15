@@ -11,7 +11,7 @@ import (
 const (
 	EARTH_EQUATORIAL_RADIUS float64 = 6378137.0
 	EARTH_POLAR_RADIUS      float64 = 6356752.3
-	EARTH_AVERAGE_RADIUS    float64 = 6371393.0
+	EARTH_AVERAGE_RADIUS    float64 = 6371008.8
 )
 
 // HeightDistance 高度与地平线距离的关系（单位：米）

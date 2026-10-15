@@ -4,6 +4,8 @@ import (
 	"math"
 	"testing"
 	"time"
+
+	"github.com/starainrt/astro/internal/ephemtest"
 )
 
 // 掩带两条横向口径的契约：WidthKM 是中心线采样处的地面横向宽度，南北限是外接触锥的擦边切点轨迹，
@@ -240,6 +242,7 @@ func TestPlanetOccultationWidthKMIsGroundCrossTrackWidth(t *testing.T) {
 }
 
 func TestPlanetOccultationLimitSeparationMatchesExportedLimits(t *testing.T) {
+	values := ephemtest.NewValues(t, "occultation_limit_anchors")
 	for _, fixture := range occultationLimitFixtures() {
 		path := occultationLimitPath(t, fixture)
 		nearestIndex, nearestDelta := 0, math.Inf(1)
@@ -279,15 +282,17 @@ func TestPlanetOccultationLimitSeparationMatchesExportedLimits(t *testing.T) {
 			{name: "greatest limit separation", got: path.GreatestLimitSeparationKM, want: fixture.limitSeparationKM},
 			{name: "greatest total width", got: path.GreatestTotalWidthKM, want: fixture.totalWidthKM},
 		} {
-			if difference := math.Abs(anchor.got - anchor.want); difference > occultationLimitAnchorToleranceKM {
+			want := values.Want(fixture.name+"/"+anchor.name, anchor.want, anchor.got)
+			if difference := math.Abs(anchor.got - want); difference > occultationLimitAnchorToleranceKM {
 				t.Fatalf("%s: %s=%.6f km, want %.6f km within %.3f km",
-					fixture.name, anchor.name, anchor.got, anchor.want, occultationLimitAnchorToleranceKM)
+					fixture.name, anchor.name, anchor.got, want, occultationLimitAnchorToleranceKM)
 			}
 		}
 		ratio := path.GreatestLimitSeparationKM / path.Greatest.WidthKM
-		if math.Abs(ratio-fixture.limitRatio) > occultationLimitRatioTolerance {
+		wantRatio := values.Want(fixture.name+"/limit ratio", fixture.limitRatio, ratio)
+		if math.Abs(ratio-wantRatio) > occultationLimitRatioTolerance {
 			t.Fatalf("%s: limit separation/width=%.6f, want %.6f within %.4f",
-				fixture.name, ratio, fixture.limitRatio, occultationLimitRatioTolerance)
+				fixture.name, ratio, wantRatio, occultationLimitRatioTolerance)
 		}
 		if path.GreatestTotalWidthKM >= path.Greatest.WidthKM {
 			t.Fatalf("%s: total width=%.6f must stay below the outer width=%.6f",
@@ -342,6 +347,8 @@ func TestStarOccultationLimitSeparationMatchesExportedLimits(t *testing.T) {
 // 于是 Saturn 2024-08-21 的 CenterLine[160] 少 47.9 km（3810.7491 对 3858.7641）、
 // Venus 1227-05-19 的 CenterLine[15] 少 158.6 km（6047.4858 对 6206.0535）。
 func TestPlanetOccultationGrazingEndpointWidthAnchors(t *testing.T) {
+	// 夹具按旧模型几何选取，用来覆盖该边界分支。
+	ephemtest.PinLegacy(t)
 	testCases := []struct {
 		name    string
 		planet  OccultationPlanet

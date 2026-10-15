@@ -24,14 +24,14 @@ type RingInfo struct {
 }
 
 // Ring 土星环观测参数 / Saturn ring observing parameters.
-func Ring(date time.Time) RingInfo {
-	return RingN(date, -1)
+func (module *Saturn) Ring(date time.Time) RingInfo {
+	return module.RingN(date, -1)
 }
 
-// RingN 土星环观测参数（截断版） / truncated Saturn ring observing parameters.
-func RingN(date time.Time, n int) RingInfo {
+// RingN 土星环观测参数（n 变体） / n-parameterised Saturn ring observing parameters.
+func (module *Saturn) RingN(date time.Time, n int) RingInfo {
 	jd := calendar.Date2JD(date.UTC())
-	earthLatitude, sunLatitude, positionAngle, deltaU, majorAxis, minorAxis := basic.SaturnRingParametersN(basic.UTC2TT(jd), n)
+	earthLatitude, sunLatitude, positionAngle, deltaU, majorAxis, minorAxis := basic.SaturnRingParametersNWithInstance(basic.UTC2TT(jd), n, module.inst)
 	return RingInfo{
 		EarthLatitude: earthLatitude,
 		SunLatitude:   sunLatitude,

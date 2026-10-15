@@ -1,6 +1,8 @@
 package basic
 
-import "math"
+import (
+	"math"
+)
 
 const (
 	jupiterGalileanContactBracketStepDays = 2.0 / 1440.0
@@ -59,28 +61,30 @@ type jupiterGalileanContactGeometry struct {
 	effectiveRadius float64
 }
 
-// LastJupiterGalileanPhenomenonContactEvent 上一次 IMCCE 风格接触事件 / previous IMCCE-style contact event.
-func LastJupiterGalileanPhenomenonContactEvent(jd float64, satellite int, phenomenonType JupiterGalileanPhenomenonType) JupiterGalileanPhenomenonContactEvent {
+// LastJupiterGalileanPhenomenonContactEventWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func LastJupiterGalileanPhenomenonContactEventWithInstance(jd float64, satellite int, phenomenonType JupiterGalileanPhenomenonType, inst *Instance) JupiterGalileanPhenomenonContactEvent {
 	return jupiterGalileanPhenomenonContactEventFromEvent(
-		LastJupiterGalileanPhenomenonEvent(jd, satellite, phenomenonType),
+		LastJupiterGalileanPhenomenonEventWithInstance(jd, satellite, phenomenonType, inst), inst,
 	)
 }
 
-// NextJupiterGalileanPhenomenonContactEvent 下一次 IMCCE 风格接触事件 / next IMCCE-style contact event.
-func NextJupiterGalileanPhenomenonContactEvent(jd float64, satellite int, phenomenonType JupiterGalileanPhenomenonType) JupiterGalileanPhenomenonContactEvent {
+// NextJupiterGalileanPhenomenonContactEventWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func NextJupiterGalileanPhenomenonContactEventWithInstance(jd float64, satellite int, phenomenonType JupiterGalileanPhenomenonType, inst *Instance) JupiterGalileanPhenomenonContactEvent {
 	return jupiterGalileanPhenomenonContactEventFromEvent(
-		NextJupiterGalileanPhenomenonEvent(jd, satellite, phenomenonType),
+		NextJupiterGalileanPhenomenonEventWithInstance(jd, satellite, phenomenonType, inst), inst,
 	)
 }
 
-// ClosestJupiterGalileanPhenomenonContactEvent 最近一次 IMCCE 风格接触事件 / closest IMCCE-style contact event.
-func ClosestJupiterGalileanPhenomenonContactEvent(jd float64, satellite int, phenomenonType JupiterGalileanPhenomenonType) JupiterGalileanPhenomenonContactEvent {
+// ClosestJupiterGalileanPhenomenonContactEventWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func ClosestJupiterGalileanPhenomenonContactEventWithInstance(jd float64, satellite int, phenomenonType JupiterGalileanPhenomenonType, inst *Instance) JupiterGalileanPhenomenonContactEvent {
 	return jupiterGalileanPhenomenonContactEventFromEvent(
-		ClosestJupiterGalileanPhenomenonEvent(jd, satellite, phenomenonType),
+		ClosestJupiterGalileanPhenomenonEventWithInstance(jd, satellite, phenomenonType, inst), inst,
 	)
 }
 
-func jupiterGalileanPhenomenonContactEventFromEvent(event JupiterGalileanPhenomenonEvent) JupiterGalileanPhenomenonContactEvent {
+func jupiterGalileanPhenomenonContactEventFromEvent(event JupiterGalileanPhenomenonEvent, instances ...*Instance) JupiterGalileanPhenomenonContactEvent {
+	inst := instanceValue(instances)
+
 	if !event.Valid {
 		return invalidJupiterGalileanPhenomenonContactEvent()
 	}
@@ -90,11 +94,11 @@ func jupiterGalileanPhenomenonContactEventFromEvent(event JupiterGalileanPhenome
 		ok            bool
 	)
 	if event.Type == JupiterGalileanShadowTransit {
-		disappearance, reappearance, ok = refineJupiterGalileanShadowContactPair(event)
+		disappearance, reappearance, ok = refineJupiterGalileanShadowContactPair(event, inst)
 	} else if event.Type == JupiterGalileanEclipse {
-		disappearance, reappearance, ok = refineJupiterGalileanEclipseContactPair(event)
+		disappearance, reappearance, ok = refineJupiterGalileanEclipseContactPair(event, inst)
 	} else {
-		disappearance, reappearance, ok = refineJupiterGalileanContactPair(event.Greatest, event.Satellite, event.Type)
+		disappearance, reappearance, ok = refineJupiterGalileanContactPair(event.Greatest, event.Satellite, event.Type, inst)
 	}
 	if !ok {
 		return invalidJupiterGalileanPhenomenonContactEvent()
@@ -113,24 +117,25 @@ func jupiterGalileanPhenomenonContactEventFromEvent(event JupiterGalileanPhenome
 func refineJupiterGalileanContactPair(
 	greatestJD float64,
 	satellite int,
-	phenomenonType JupiterGalileanPhenomenonType,
-) (JupiterGalileanPhenomenonContact, JupiterGalileanPhenomenonContact, bool) {
+	phenomenonType JupiterGalileanPhenomenonType, instances ...*Instance) (JupiterGalileanPhenomenonContact, JupiterGalileanPhenomenonContact, bool) {
+	inst := instanceValue(instances)
+
 	signedDistance := func(jd float64) float64 {
-		geometry, ok := jupiterGalileanContactGeometryAt(jd, satellite, phenomenonType)
+		geometry, ok := jupiterGalileanContactGeometryAt(jd, satellite, phenomenonType, inst)
 		if !ok {
 			return math.NaN()
 		}
 		return geometry.signedDistance
 	}
 	disappearanceStartTarget := func(jd float64) float64 {
-		geometry, ok := jupiterGalileanContactGeometryAt(jd, satellite, phenomenonType)
+		geometry, ok := jupiterGalileanContactGeometryAt(jd, satellite, phenomenonType, inst)
 		if !ok {
 			return math.NaN()
 		}
 		return geometry.signedDistance - geometry.effectiveRadius
 	}
 	insideTarget := func(jd float64) float64 {
-		geometry, ok := jupiterGalileanContactGeometryAt(jd, satellite, phenomenonType)
+		geometry, ok := jupiterGalileanContactGeometryAt(jd, satellite, phenomenonType, inst)
 		if !ok {
 			return math.NaN()
 		}
@@ -179,8 +184,9 @@ func refineJupiterGalileanContactPair(
 }
 
 func refineJupiterGalileanEclipseContactPair(
-	event JupiterGalileanPhenomenonEvent,
-) (JupiterGalileanPhenomenonContact, JupiterGalileanPhenomenonContact, bool) {
+	event JupiterGalileanPhenomenonEvent, instances ...*Instance) (JupiterGalileanPhenomenonContact, JupiterGalileanPhenomenonContact, bool) {
+	inst := instanceValue(instances)
+
 	satelliteRadius := jupiterGalileanSatelliteRadiusJupiterRadii(event.Satellite)
 	if !isFinite(satelliteRadius) || satelliteRadius <= 0 {
 		return JupiterGalileanPhenomenonContact{}, JupiterGalileanPhenomenonContact{}, false
@@ -188,28 +194,28 @@ func refineJupiterGalileanEclipseContactPair(
 	// IMCCE 的 EC.D/EC.F 更接近“目视消失/重现”而不是纯几何接触：
 	// D 相用半影入段近似，F 相用本影/半影出段的中点近似。
 	penumbraOuterTarget := func(jd float64) float64 {
-		signedDistance, ok := jupiterGalileanEclipseSignedDistanceAt(jd, event.Satellite, true)
+		signedDistance, ok := jupiterGalileanEclipseSignedDistanceAt(jd, event.Satellite, true, inst)
 		if !ok {
 			return math.NaN()
 		}
 		return signedDistance - satelliteRadius
 	}
 	penumbraInnerTarget := func(jd float64) float64 {
-		signedDistance, ok := jupiterGalileanEclipseSignedDistanceAt(jd, event.Satellite, true)
+		signedDistance, ok := jupiterGalileanEclipseSignedDistanceAt(jd, event.Satellite, true, inst)
 		if !ok {
 			return math.NaN()
 		}
 		return signedDistance + satelliteRadius
 	}
 	umbraInnerTarget := func(jd float64) float64 {
-		signedDistance, ok := jupiterGalileanEclipseSignedDistanceAt(jd, event.Satellite, false)
+		signedDistance, ok := jupiterGalileanEclipseSignedDistanceAt(jd, event.Satellite, false, inst)
 		if !ok {
 			return math.NaN()
 		}
 		return signedDistance + satelliteRadius
 	}
 	umbraOuterTarget := func(jd float64) float64 {
-		signedDistance, ok := jupiterGalileanEclipseSignedDistanceAt(jd, event.Satellite, false)
+		signedDistance, ok := jupiterGalileanEclipseSignedDistanceAt(jd, event.Satellite, false, inst)
 		if !ok {
 			return math.NaN()
 		}
@@ -262,17 +268,18 @@ func refineJupiterGalileanEclipseContactPair(
 }
 
 func refineJupiterGalileanShadowContactPair(
-	event JupiterGalileanPhenomenonEvent,
-) (JupiterGalileanPhenomenonContact, JupiterGalileanPhenomenonContact, bool) {
+	event JupiterGalileanPhenomenonEvent, instances ...*Instance) (JupiterGalileanPhenomenonContact, JupiterGalileanPhenomenonContact, bool) {
+	inst := instanceValue(instances)
+
 	penumbraMetric := func(jd float64) float64 {
-		value, ok := jupiterGalileanShadowLimbMetricAt(jd, event.Satellite, true)
+		value, ok := jupiterGalileanShadowLimbMetricAt(jd, event.Satellite, true, inst)
 		if !ok {
 			return math.NaN()
 		}
 		return value
 	}
 	umbraMetric := func(jd float64) float64 {
-		value, ok := jupiterGalileanShadowLimbMetricAt(jd, event.Satellite, false)
+		value, ok := jupiterGalileanShadowLimbMetricAt(jd, event.Satellite, false, inst)
 		if !ok {
 			return math.NaN()
 		}
@@ -459,13 +466,14 @@ func bisectJupiterGalileanContactRoot(
 func jupiterGalileanContactGeometryAt(
 	jd float64,
 	satellite int,
-	phenomenonType JupiterGalileanPhenomenonType,
-) (jupiterGalileanContactGeometry, bool) {
+	phenomenonType JupiterGalileanPhenomenonType, instances ...*Instance) (jupiterGalileanContactGeometry, bool) {
+	inst := instanceValue(instances)
+
 	if !isFinite(jd) || satellite < 1 || satellite > 4 || !isValidJupiterGalileanPhenomenonType(phenomenonType) {
 		return jupiterGalileanContactGeometry{}, false
 	}
 	evaluationJDE := UTC2TT(jd)
-	context := newJupiterGalileanObservationContext(evaluationJDE)
+	context := newJupiterGalileanObservationContext(evaluationJDE, inst)
 	if context.jupiterDistance == 0 {
 		return jupiterGalileanContactGeometry{}, false
 	}
@@ -523,12 +531,14 @@ func jupiterGalileanContactGeometryAt(
 	}
 }
 
-func jupiterGalileanEclipseSignedDistanceAt(jd float64, satellite int, penumbra bool) (float64, bool) {
+func jupiterGalileanEclipseSignedDistanceAt(jd float64, satellite int, penumbra bool, instances ...*Instance) (float64, bool) {
+	inst := instanceValue(instances)
+
 	if !isFinite(jd) || satellite < 1 || satellite > 4 {
 		return math.NaN(), false
 	}
 	evaluationJDE := UTC2TT(jd)
-	context := newJupiterGalileanObservationContext(evaluationJDE)
+	context := newJupiterGalileanObservationContext(evaluationJDE, inst)
 	if context.jupiterDistance == 0 {
 		return math.NaN(), false
 	}
@@ -586,12 +596,14 @@ func jupiterGalileanPenumbraRadiusJupiterRadii(satellite int, pathLengthAU, sunD
 	return penumbraRadiusAU / (jupiterGalileanEquatorialRadiusKM / astronomicalUnitKM)
 }
 
-func jupiterGalileanShadowLimbMetricAt(jd float64, satellite int, penumbra bool) (float64, bool) {
+func jupiterGalileanShadowLimbMetricAt(jd float64, satellite int, penumbra bool, instances ...*Instance) (float64, bool) {
+	inst := instanceValue(instances)
+
 	if !isFinite(jd) || satellite < 1 || satellite > 4 {
 		return math.NaN(), false
 	}
 	evaluationJDE := UTC2TT(jd)
-	context := newJupiterGalileanObservationContext(evaluationJDE)
+	context := newJupiterGalileanObservationContext(evaluationJDE, inst)
 	if context.jupiterDistance == 0 {
 		return math.NaN(), false
 	}

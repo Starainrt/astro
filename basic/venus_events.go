@@ -9,16 +9,16 @@ import (
 const (
 	VENUS_S_PERIOD    = 1 / ((1 / 224.701) - (1 / 365.256363004))
 	venusEventSearchN = 16
-	// venusConjunctionSameInstantDegrees 「同刻」快速路径的视黄经差触发阈值（度）。
-	// 实测截断级数（n=16）与全项级数的视黄经差最大 0.0031 度：若阈值小于它，
-	// 「查询落在合前几秒~几分钟」时截断级数在起点处符号相反，方向扫描会直接跨过这次合，
-	// 返回下一个会合周期的合（实测 1950–2055 年有 17~29 个查询点命中）。
-	// 0.05 度约合 38 分钟，留有 16 倍余量；侧向判定仍用 0.1 秒口径，语义不变。
+	// venusConjunctionSameInstantDegrees 「同刻」快速路径的视黄经差触发阈值（度）：必须明显大于
+	// 截断级数与全项级数的最大视黄经差，否则「查询落在合前几秒」时起点符号相反，方向扫描会跨过这次合。
+	// 0.05 度约合 38 分钟；侧向判定仍用 0.1 秒口径，语义不变。
 	venusConjunctionSameInstantDegrees = 5.0e-2
 )
 
-func venusSunLongitudeDelta(jde float64) float64 {
-	sub := Limit360(VenusApparentLo(jde) - HSunApparentLo(jde))
+func venusSunLongitudeDelta(jde float64, instances ...*Instance) float64 {
+	inst := instanceValue(instances)
+
+	sub := Limit360(VenusApparentLoWithInstance(jde, inst) - HSunApparentLoWithInstance(jde, inst))
 	if sub > 180 {
 		sub -= 360
 	}
@@ -28,8 +28,10 @@ func venusSunLongitudeDelta(jde float64) float64 {
 	return sub
 }
 
-func venusSunLongitudeDeltaN(jde float64, n int) float64 {
-	sub := Limit360(VenusApparentLoN(jde, n) - HSunApparentLoN(jde, n))
+func venusSunLongitudeDeltaN(jde float64, n int, instances ...*Instance) float64 {
+	inst := instanceValue(instances)
+
+	sub := Limit360(VenusApparentLoNWithInstance(jde, n, inst) - HSunApparentLoNWithInstance(jde, n, inst))
 	if sub > 180 {
 		sub -= 360
 	}
@@ -39,8 +41,10 @@ func venusSunLongitudeDeltaN(jde float64, n int) float64 {
 	return sub
 }
 
-func venusRADerivative(jde, val float64) float64 {
-	sub := VenusApparentRa(jde+val) - VenusApparentRa(jde-val)
+func venusRADerivative(jde, val float64, instances ...*Instance) float64 {
+	inst := instanceValue(instances)
+
+	sub := VenusApparentRaWithInstance(jde+val, inst) - VenusApparentRaWithInstance(jde-val, inst)
 	if sub > 180 {
 		sub -= 360
 	}
@@ -50,32 +54,40 @@ func venusRADerivative(jde, val float64) float64 {
 	return sub / (2 * val)
 }
 
-func venusRAContinuousForMax(jde float64) float64 {
-	ra := VenusApparentRa(jde)
+func venusRAContinuousForMax(jde float64, instances ...*Instance) float64 {
+	inst := instanceValue(instances)
+
+	ra := VenusApparentRaWithInstance(jde, inst)
 	if ra < 180 {
 		return ra + 360
 	}
 	return ra
 }
 
-func venusRAContinuousForMaxN(jde float64, n int) float64 {
-	ra := VenusApparentRaN(jde, n)
+func venusRAContinuousForMaxN(jde float64, n int, instances ...*Instance) float64 {
+	inst := instanceValue(instances)
+
+	ra := VenusApparentRaNWithInstance(jde, n, inst)
 	if ra < 180 {
 		return ra + 360
 	}
 	return ra
 }
 
-func venusRAContinuousForMin(jde float64) float64 {
-	ra := VenusApparentRa(jde)
+func venusRAContinuousForMin(jde float64, instances ...*Instance) float64 {
+	inst := instanceValue(instances)
+
+	ra := VenusApparentRaWithInstance(jde, inst)
 	if ra > 180 {
 		return ra - 360
 	}
 	return ra
 }
 
-func venusRAContinuousForMinN(jde float64, n int) float64 {
-	ra := VenusApparentRaN(jde, n)
+func venusRAContinuousForMinN(jde float64, n int, instances ...*Instance) float64 {
+	inst := instanceValue(instances)
+
+	ra := VenusApparentRaNWithInstance(jde, n, inst)
 	if ra > 180 {
 		return ra - 360
 	}
@@ -124,14 +136,18 @@ func venusRAExtremumRefine(seed, start, end, step float64, fn func(float64) floa
 	return bestJD
 }
 
-func venusSunElongationN(jde float64, n int) float64 {
-	lo1, bo1 := VenusApparentLoBoN(jde, n)
-	lo2 := HSunApparentLoN(jde, n)
-	bo2 := HSunTrueBoN(jde, n)
+func venusSunElongationN(jde float64, n int, instances ...*Instance) float64 {
+	inst := instanceValue(instances)
+
+	lo1, bo1 := VenusApparentLoBoNWithInstance(jde, n, inst)
+	lo2 := HSunApparentLoNWithInstance(jde, n, inst)
+	bo2 := HSunTrueBoNWithInstance(jde, n, inst)
 	return StarAngularSeparation(lo1, bo1, lo2, bo2)
 }
 
-func venusConjunction(jde float64, next uint8) float64 {
+func venusConjunction(jde float64, next uint8, instances ...*Instance) float64 {
+	inst := instanceValue(instances)
+
 	if !isFiniteFloat(jde) {
 		return math.NaN()
 	}
@@ -141,9 +157,9 @@ func venusConjunction(jde float64, next uint8) float64 {
 		direction = 1
 	}
 	left := queryTT
-	leftVal := venusSunLongitudeDeltaN(left, venusEventSearchN)
-	if math.Abs(venusSunLongitudeDelta(queryTT)) <= venusConjunctionSameInstantDegrees {
-		if exact, ok := venusConjunctionRefine(left, 1.0); ok {
+	leftVal := venusSunLongitudeDeltaN(left, venusEventSearchN, inst)
+	if math.Abs(venusSunLongitudeDelta(queryTT, inst)) <= venusConjunctionSameInstantDegrees {
+		if exact, ok := venusConjunctionRefine(left, 1.0, inst); ok {
 			eventUT := TT2UTC(exact)
 			if next == 0 && eventUTQueryBeforeOrEqual(eventUT, queryTT) {
 				return eventUT
@@ -156,16 +172,16 @@ func venusConjunction(jde float64, next uint8) float64 {
 	const step = 8.0
 	for i := 0; i < 80; i++ {
 		right := queryTT + direction*step*float64(i+1)
-		rightVal := venusSunLongitudeDeltaN(right, venusEventSearchN)
+		rightVal := venusSunLongitudeDeltaN(right, venusEventSearchN, inst)
 		if leftVal == 0 || rightVal == 0 || leftVal*rightVal <= 0 {
 			center := (left + right) / 2.0
 			halfWindow := math.Abs(right-left) / 2.0
-			if exact, ok := venusConjunctionRefine(center, halfWindow); ok {
+			if exact, ok := venusConjunctionRefine(center, halfWindow, inst); ok {
 				return TT2UTC(exact)
 			}
 			// 截断级数在根附近的符号可能与全项不一致（查询几乎正好落在合上），
 			// 此时改用全项级数做方向扫描兜底，而不是直接有界失败。
-			return venusConjunctionFullDirectionalScan(queryTT, direction)
+			return venusConjunctionFullDirectionalScan(queryTT, direction, inst)
 		}
 		left = right
 		leftVal = rightVal
@@ -179,25 +195,27 @@ func venusConjunction(jde float64, next uint8) float64 {
 }
 
 // venusConjunctionFullDirectionalScan 全项级数的方向扫描（截断括号未被确认时的兜底）。
-func venusConjunctionFullDirectionalScan(queryTT, direction float64) float64 {
+func venusConjunctionFullDirectionalScan(queryTT, direction float64, instances ...*Instance) float64 {
+	inst := instanceValue(instances)
+
 	const (
 		step     = 8.0
 		maxSteps = 80
 	)
 	left := queryTT
-	leftVal := venusSunLongitudeDelta(left)
+	leftVal := venusSunLongitudeDelta(left, inst)
 	if !isFiniteFloat(leftVal) {
 		return math.NaN()
 	}
 	for i := 0; i < maxSteps; i++ {
 		right := queryTT + direction*step*float64(i+1)
-		rightVal := venusSunLongitudeDelta(right)
+		rightVal := venusSunLongitudeDelta(right, inst)
 		if !isFiniteFloat(rightVal) {
 			return math.NaN()
 		}
 		if leftVal == 0 || rightVal == 0 || leftVal*rightVal < 0 {
 			center := (left + right) / 2.0
-			if exact, ok := venusConjunctionRefine(center, math.Abs(right-left)/2.0); ok {
+			if exact, ok := venusConjunctionRefine(center, math.Abs(right-left)/2.0, inst); ok {
 				return TT2UTC(exact)
 			}
 			return math.NaN()
@@ -208,121 +226,145 @@ func venusConjunctionFullDirectionalScan(queryTT, direction float64) float64 {
 	return math.NaN()
 }
 
-func venusConjunctionRefine(seed, halfWindow float64) (float64, bool) {
+func venusConjunctionRefine(seed, halfWindow float64, instances ...*Instance) (float64, bool) {
+	inst := instanceValue(instances)
+
 	leftJDE := seed - halfWindow
 	centerJDE := seed
 	rightJDE := seed + halfWindow
-	leftVal := venusSunLongitudeDelta(leftJDE)
-	centerVal := venusSunLongitudeDelta(centerJDE)
-	rightVal := venusSunLongitudeDelta(rightJDE)
+	leftVal := venusSunLongitudeDelta(leftJDE, inst)
+	centerVal := venusSunLongitudeDelta(centerJDE, inst)
+	rightVal := venusSunLongitudeDelta(rightJDE, inst)
 	if !isFiniteFloat(leftVal) || !isFiniteFloat(centerVal) || !isFiniteFloat(rightVal) {
 		return math.NaN(), false
 	}
 	if _, _, _, _, ok := eventZeroBracket(leftJDE, leftVal, centerJDE, centerVal, rightJDE, rightVal); !ok {
 		return math.NaN(), false
 	}
-	return eventZeroRefine(seed, halfWindow, 0.000005, venusSunLongitudeDelta), true
+	return eventZeroRefine(seed, halfWindow, 0.000005, func(jde float64) float64 { return venusSunLongitudeDelta(jde, inst) }), true
 }
 
-func venusConjunctionTypeAt(eventUT float64) bool {
-	return EarthVenusAway(eventUT) <= EarthAway(eventUT)
+func venusConjunctionTypeAt(eventUT float64, instances ...*Instance) bool {
+	inst := instanceValue(instances)
+
+	return EarthVenusAwayWithInstance(eventUT, inst) <= EarthAwayWithInstance(eventUT, inst)
 }
 
-func nextVenusTypedConjunctionFromEvent(jde float64, inferior bool) float64 {
-	date := NextVenusConjunctionStrict(jde)
-	if venusConjunctionTypeAt(date) == inferior {
+func nextVenusTypedConjunctionFromEvent(jde float64, inferior bool, instances ...*Instance) float64 {
+	inst := instanceValue(instances)
+
+	date := NextVenusConjunctionStrictWithInstance(jde, inst)
+	if venusConjunctionTypeAt(date, inst) == inferior {
 		return date
 	}
-	return NextVenusConjunctionStrict(eventUTNextQueryTT(date))
+	return NextVenusConjunctionStrictWithInstance(eventUTNextQueryTT(date), inst)
 }
 
-func lastVenusTypedConjunctionFromEvent(jde float64, inferior bool) float64 {
-	date := LastVenusConjunctionStrict(jde)
-	if venusConjunctionTypeAt(date) == inferior {
+func lastVenusTypedConjunctionFromEvent(jde float64, inferior bool, instances ...*Instance) float64 {
+	inst := instanceValue(instances)
+
+	date := LastVenusConjunctionStrictWithInstance(jde, inst)
+	if venusConjunctionTypeAt(date, inst) == inferior {
 		return date
 	}
-	return LastVenusConjunctionStrict(eventUTLastQueryTT(date))
+	return LastVenusConjunctionStrictWithInstance(eventUTLastQueryTT(date), inst)
 }
 
-func LastVenusConjunction(jde float64) float64 {
-	return inclusiveLastSimpleEvent(jde, LastVenusConjunctionStrict, NextVenusConjunctionStrict)
+// LastVenusConjunctionWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func LastVenusConjunctionWithInstance(jde float64, inst *Instance) float64 {
+	return inclusiveLastSimpleEvent(jde, func(jde float64) float64 { return LastVenusConjunctionStrictWithInstance(jde, inst) }, func(jde float64) float64 { return NextVenusConjunctionStrictWithInstance(jde, inst) })
 }
 
-func NextVenusConjunction(jde float64) float64 {
-	return inclusiveNextSimpleEvent(jde, LastVenusConjunctionStrict, NextVenusConjunctionStrict)
+// NextVenusConjunctionWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func NextVenusConjunctionWithInstance(jde float64, inst *Instance) float64 {
+	return inclusiveNextSimpleEvent(jde, func(jde float64) float64 { return LastVenusConjunctionStrictWithInstance(jde, inst) }, func(jde float64) float64 { return NextVenusConjunctionStrictWithInstance(jde, inst) })
 }
 
-func LastVenusConjunctionStrict(jde float64) float64 {
-	return venusConjunction(jde, 0)
+// LastVenusConjunctionStrictWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func LastVenusConjunctionStrictWithInstance(jde float64, inst *Instance) float64 {
+	return venusConjunction(jde, 0, inst)
 }
 
-func NextVenusConjunctionStrict(jde float64) float64 {
-	return venusConjunction(jde, 1)
+// NextVenusConjunctionStrictWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func NextVenusConjunctionStrictWithInstance(jde float64, inst *Instance) float64 {
+	return venusConjunction(jde, 1, inst)
 }
 
-func nextVenusTypedConjunction(jde float64, inferior bool) float64 {
-	return nextVenusTypedConjunctionFromEvent(jde, inferior)
+func nextVenusTypedConjunction(jde float64, inferior bool, instances ...*Instance) float64 {
+	inst := instanceValue(instances)
+
+	return nextVenusTypedConjunctionFromEvent(jde, inferior, inst)
 }
 
-func lastVenusTypedConjunction(jde float64, inferior bool) float64 {
-	return lastVenusTypedConjunctionFromEvent(jde, inferior)
+func lastVenusTypedConjunction(jde float64, inferior bool, instances ...*Instance) float64 {
+	inst := instanceValue(instances)
+
+	return lastVenusTypedConjunctionFromEvent(jde, inferior, inst)
 }
 
-func NextVenusInferiorConjunction(jde float64) float64 {
-	return nextVenusTypedConjunction(jde, true)
+// NextVenusInferiorConjunctionWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func NextVenusInferiorConjunctionWithInstance(jde float64, inst *Instance) float64 {
+	return nextVenusTypedConjunction(jde, true, inst)
 }
 
-func NextVenusSuperiorConjunction(jde float64) float64 {
-	return nextVenusTypedConjunction(jde, false)
+// NextVenusSuperiorConjunctionWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func NextVenusSuperiorConjunctionWithInstance(jde float64, inst *Instance) float64 {
+	return nextVenusTypedConjunction(jde, false, inst)
 }
 
-func LastVenusInferiorConjunction(jde float64) float64 {
-	return lastVenusTypedConjunction(jde, true)
+// LastVenusInferiorConjunctionWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func LastVenusInferiorConjunctionWithInstance(jde float64, inst *Instance) float64 {
+	return lastVenusTypedConjunction(jde, true, inst)
 }
 
-func LastVenusSuperiorConjunction(jde float64) float64 {
-	return lastVenusTypedConjunction(jde, false)
+// LastVenusSuperiorConjunctionWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func LastVenusSuperiorConjunctionWithInstance(jde float64, inst *Instance) float64 {
+	return lastVenusTypedConjunction(jde, false, inst)
 }
 
-func NextVenusRetrograde(jde float64) float64 {
-	p2r := NextVenusProgradeToRetrograde(jde)
-	r2p := NextVenusRetrogradeToPrograde(jde)
+// NextVenusRetrogradeWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func NextVenusRetrogradeWithInstance(jde float64, inst *Instance) float64 {
+	p2r := NextVenusProgradeToRetrogradeWithInstance(jde, inst)
+	r2p := NextVenusRetrogradeToProgradeWithInstance(jde, inst)
 	if sameEventJD(p2r, r2p) {
 		return p2r
 	}
 	return earliestFiniteEventUT(p2r, r2p)
 }
 
-func LastVenusRetrograde(jde float64) float64 {
-	p2r := LastVenusProgradeToRetrograde(jde)
-	r2p := LastVenusRetrogradeToPrograde(jde)
+// LastVenusRetrogradeWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func LastVenusRetrogradeWithInstance(jde float64, inst *Instance) float64 {
+	p2r := LastVenusProgradeToRetrogradeWithInstance(jde, inst)
+	r2p := LastVenusRetrogradeToProgradeWithInstance(jde, inst)
 	if sameEventJD(p2r, r2p) {
 		return p2r
 	}
 	return latestFiniteEventUT(p2r, r2p)
 }
 
-func venusStationInWindow(start, end float64, progradeToRetrograde bool) float64 {
+func venusStationInWindow(start, end float64, progradeToRetrograde bool, instances ...*Instance) float64 {
+	inst := instanceValue(instances)
+
 	var best float64
 	if progradeToRetrograde {
 		guess := scanWindowForMax(start, end, 2.0, func(jd float64) float64 {
-			return venusRAContinuousForMaxN(jd, venusEventSearchN)
+			return venusRAContinuousForMaxN(jd, venusEventSearchN, inst)
 		})
 		best = venusRAExtremumRefine(guess, start, end, 1.0, func(jd float64) float64 {
-			return venusRAContinuousForMax(jd)
+			return venusRAContinuousForMax(jd, inst)
 		})
 	} else {
 		guess := scanWindowForMax(start, end, 2.0, func(jd float64) float64 {
-			return -venusRAContinuousForMinN(jd, venusEventSearchN)
+			return -venusRAContinuousForMinN(jd, venusEventSearchN, inst)
 		})
 		best = venusRAExtremumRefine(guess, start, end, 1.0, func(jd float64) float64 {
-			return -venusRAContinuousForMin(jd)
+			return -venusRAContinuousForMin(jd, inst)
 		})
 	}
-	// 抛物顶点法 8 次迭代后仍有秒级残差（实测最差 2.4 s），会让「查询落在站前 1 秒」
-	// 这类边界查询跳到下一个会合周期。这里再用 RA 变化率的零点做一次割线抛光，
-	// 把站时刻精度压到亚秒级；抛光失败（括号内无异号）时保留顶点法结果。
-	if polished, ok := venusStationPolish(best, progradeToRetrograde); ok {
+	// 抛物顶点法仍有秒级残差，会让「查询落在站前 1 秒」这类边界查询跳到下一个会合周期；
+	// 这里再用 RA 变化率的零点做一次割线抛光，把站时刻精度压到亚秒级，
+	// 抛光失败（括号内无异号）时保留顶点法结果。
+	if polished, ok := venusStationPolish(best, progradeToRetrograde, inst); ok {
 		best = polished
 	}
 	return TT2UTC(best)
@@ -330,8 +372,10 @@ func venusStationInWindow(start, end float64, progradeToRetrograde bool) float64
 
 // venusStationPolish 在抛物顶点结果附近求 RA 变化率的零点。
 // progradeToRetrograde=true 时 RA 变化率由正转负（极大值），否则由负转正（极小值）。
-func venusStationPolish(seed float64, progradeToRetrograde bool) (float64, bool) {
-	rate := func(jd float64) float64 { return venusRADerivative(jd, stationDerivativeStepDay) }
+func venusStationPolish(seed float64, progradeToRetrograde bool, instances ...*Instance) (float64, bool) {
+	inst := instanceValue(instances)
+
+	rate := func(jd float64) float64 { return venusRADerivative(jd, stationDerivativeStepDay, inst) }
 	for _, halfWindow := range []float64{120.0 / 86400.0, 600.0 / 86400.0} {
 		leftJD := seed - halfWindow
 		rightJD := seed + halfWindow
@@ -361,319 +405,365 @@ func venusStationPolish(seed float64, progradeToRetrograde bool) (float64, bool)
 	return math.NaN(), false
 }
 
-func venusProgradeToRetrogradeAroundInferior(inferior float64) float64 {
-	return venusStationInWindow(inferior-30.0, inferior-14.0, true)
+func venusProgradeToRetrogradeAroundInferior(inferior float64, instances ...*Instance) float64 {
+	inst := instanceValue(instances)
+
+	return venusStationInWindow(inferior-30.0, inferior-14.0, true, inst)
 }
 
-func venusRetrogradeToProgradeAroundInferior(inferior float64) float64 {
-	return venusStationInWindow(inferior+14.0, inferior+24.0, false)
+func venusRetrogradeToProgradeAroundInferior(inferior float64, instances ...*Instance) float64 {
+	inst := instanceValue(instances)
+
+	return venusStationInWindow(inferior+14.0, inferior+24.0, false, inst)
 }
 
-func NextVenusProgradeToRetrograde(jde float64) float64 {
-	inferior := NextVenusInferiorConjunction(jde)
+// NextVenusProgradeToRetrogradeWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func NextVenusProgradeToRetrogradeWithInstance(jde float64, inst *Instance) float64 {
+	inferior := NextVenusInferiorConjunctionWithInstance(jde, inst)
 	for i := 0; i < eventDirectionalSearchIterations; i++ {
-		date := venusProgradeToRetrogradeAroundInferior(inferior)
+		date := venusProgradeToRetrogradeAroundInferior(inferior, inst)
 		if !isFiniteFloat(date) {
 			return math.NaN()
 		}
 		if stationUTQueryAfterOrEqual(date, jde) {
 			return date
 		}
-		inferior = NextVenusInferiorConjunction(eventUTNextQueryTT(inferior))
+		inferior = NextVenusInferiorConjunctionWithInstance(eventUTNextQueryTT(inferior), inst)
 	}
 	return math.NaN()
 }
 
-func NextVenusRetrogradeToPrograde(jde float64) float64 {
-	inferior := LastVenusInferiorConjunction(jde)
+// NextVenusRetrogradeToProgradeWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func NextVenusRetrogradeToProgradeWithInstance(jde float64, inst *Instance) float64 {
+	inferior := LastVenusInferiorConjunctionWithInstance(jde, inst)
 	for i := 0; i < eventDirectionalSearchIterations; i++ {
-		date := venusRetrogradeToProgradeAroundInferior(inferior)
+		date := venusRetrogradeToProgradeAroundInferior(inferior, inst)
 		if !isFiniteFloat(date) {
 			return math.NaN()
 		}
 		if stationUTQueryAfterOrEqual(date, jde) {
 			return date
 		}
-		inferior = NextVenusInferiorConjunction(eventUTNextQueryTT(inferior))
+		inferior = NextVenusInferiorConjunctionWithInstance(eventUTNextQueryTT(inferior), inst)
 	}
 	return math.NaN()
 }
 
-func LastVenusProgradeToRetrograde(jde float64) float64 {
-	inferior := NextVenusInferiorConjunction(jde)
+// LastVenusProgradeToRetrogradeWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func LastVenusProgradeToRetrogradeWithInstance(jde float64, inst *Instance) float64 {
+	inferior := NextVenusInferiorConjunctionWithInstance(jde, inst)
 	for i := 0; i < eventDirectionalSearchIterations; i++ {
-		date := venusProgradeToRetrogradeAroundInferior(inferior)
+		date := venusProgradeToRetrogradeAroundInferior(inferior, inst)
 		if !isFiniteFloat(date) {
 			return math.NaN()
 		}
 		if stationUTQueryBeforeOrEqual(date, jde) {
 			return date
 		}
-		inferior = LastVenusInferiorConjunction(eventUTLastQueryTT(inferior))
+		inferior = LastVenusInferiorConjunctionWithInstance(eventUTLastQueryTT(inferior), inst)
 	}
 	return math.NaN()
 }
 
-func LastVenusRetrogradeToPrograde(jde float64) float64 {
-	inferior := LastVenusInferiorConjunction(jde)
+// LastVenusRetrogradeToProgradeWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func LastVenusRetrogradeToProgradeWithInstance(jde float64, inst *Instance) float64 {
+	inferior := LastVenusInferiorConjunctionWithInstance(jde, inst)
 	for i := 0; i < eventDirectionalSearchIterations; i++ {
-		date := venusRetrogradeToProgradeAroundInferior(inferior)
+		date := venusRetrogradeToProgradeAroundInferior(inferior, inst)
 		if !isFiniteFloat(date) {
 			return math.NaN()
 		}
 		if stationUTQueryBeforeOrEqual(date, jde) {
 			return date
 		}
-		inferior = LastVenusInferiorConjunction(eventUTLastQueryTT(inferior))
+		inferior = LastVenusInferiorConjunctionWithInstance(eventUTLastQueryTT(inferior), inst)
 	}
 	return math.NaN()
 }
 
-func VenusSunElongation(jde float64) float64 {
-	lo1, bo1 := VenusApparentLoBo(jde)
-	lo2 := HSunApparentLo(jde)
-	bo2 := HSunTrueBo(jde)
+// VenusSunElongationWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func VenusSunElongationWithInstance(jde float64, inst *Instance) float64 {
+	lo1, bo1 := VenusApparentLoBoWithInstance(jde, inst)
+	lo2 := HSunApparentLoWithInstance(jde, inst)
+	bo2 := HSunTrueBoWithInstance(jde, inst)
 	return StarAngularSeparation(lo1, bo1, lo2, bo2)
 }
 
 // venusGreatestElongationInWindow 求窗口内大距：目标是公开 VenusSunElongation 的极大（视距角），
 // 而不是忽略光行差/视位置修正的真距角，否则返回的时刻不是调用方能量到的那个极值。
 // 窗口两端是世界时，目标函数收力学时，因此逐次换算。
-func venusGreatestElongationInWindow(start, end float64) float64 {
+func venusGreatestElongationInWindow(start, end float64, instances ...*Instance) float64 {
+	inst := instanceValue(instances)
+
 	return maximizeInWindow(start, end, 5.0, func(utJD float64) float64 {
-		return venusSunElongationN(UTC2TT(utJD), venusEventSearchN)
+		return venusSunElongationN(UTC2TT(utJD), venusEventSearchN, inst)
 	}, func(utJD float64) float64 {
-		return VenusSunElongation(UTC2TT(utJD))
+		return VenusSunElongationWithInstance(UTC2TT(utJD), inst)
 	})
 }
 
-func venusEastElongationWindowEndingAt(inferior float64) (float64, float64) {
-	lastSuperior := LastVenusSuperiorConjunction(eventUTLastQueryTT(inferior))
+func venusEastElongationWindowEndingAt(inferior float64, instances ...*Instance) (float64, float64) {
+	inst := instanceValue(instances)
+
+	lastSuperior := LastVenusSuperiorConjunctionWithInstance(eventUTLastQueryTT(inferior), inst)
 	return lastSuperior + innerEventWindowPadding, inferior - innerEventWindowPadding
 }
 
-func venusWestElongationWindowEndingAt(superior float64) (float64, float64) {
-	lastInferior := LastVenusInferiorConjunction(eventUTLastQueryTT(superior))
+func venusWestElongationWindowEndingAt(superior float64, instances ...*Instance) (float64, float64) {
+	inst := instanceValue(instances)
+
+	lastInferior := LastVenusInferiorConjunctionWithInstance(eventUTLastQueryTT(superior), inst)
 	return lastInferior + innerEventWindowPadding, superior - innerEventWindowPadding
 }
 
-func venusEastElongationWindowContaining(jde float64) (float64, float64) {
-	nextInferior := NextVenusInferiorConjunction(jde)
-	start, end := venusEastElongationWindowEndingAt(nextInferior)
+func venusEastElongationWindowContaining(jde float64, instances ...*Instance) (float64, float64) {
+	inst := instanceValue(instances)
+
+	nextInferior := NextVenusInferiorConjunctionWithInstance(jde, inst)
+	start, end := venusEastElongationWindowEndingAt(nextInferior, inst)
 	if eventUTQueryBeforeOrEqual(start, jde) && eventUTQueryAfterOrEqual(end, jde) {
 		return start, end
 	}
-	currentInferior := LastVenusInferiorConjunction(jde)
-	return venusEastElongationWindowEndingAt(currentInferior)
+	currentInferior := LastVenusInferiorConjunctionWithInstance(jde, inst)
+	return venusEastElongationWindowEndingAt(currentInferior, inst)
 }
 
-func venusWestElongationWindowContaining(jde float64) (float64, float64) {
-	nextSuperior := NextVenusSuperiorConjunction(jde)
-	start, end := venusWestElongationWindowEndingAt(nextSuperior)
+func venusWestElongationWindowContaining(jde float64, instances ...*Instance) (float64, float64) {
+	inst := instanceValue(instances)
+
+	nextSuperior := NextVenusSuperiorConjunctionWithInstance(jde, inst)
+	start, end := venusWestElongationWindowEndingAt(nextSuperior, inst)
 	if eventUTQueryBeforeOrEqual(start, jde) && eventUTQueryAfterOrEqual(end, jde) {
 		return start, end
 	}
-	currentSuperior := LastVenusSuperiorConjunction(jde)
-	return venusWestElongationWindowEndingAt(currentSuperior)
+	currentSuperior := LastVenusSuperiorConjunctionWithInstance(jde, inst)
+	return venusWestElongationWindowEndingAt(currentSuperior, inst)
 }
 
-func nextVenusGreatestElongationTyped(jde float64, east bool) float64 {
+func nextVenusGreatestElongationTyped(jde float64, east bool, instances ...*Instance) float64 {
+	inst := instanceValue(instances)
+
 	if !isFiniteFloat(jde) {
 		return math.NaN()
 	}
 	if east {
-		start, windowEnd := venusEastElongationWindowContaining(jde)
+		start, windowEnd := venusEastElongationWindowContaining(jde, inst)
 		for i := 0; i < eventDirectionalSearchIterations; i++ {
-			date := venusGreatestElongationInWindow(start, windowEnd)
+			date := venusGreatestElongationInWindow(start, windowEnd, inst)
 			if !isFiniteFloat(date) {
 				return math.NaN()
 			}
 			if eventUTQueryAfterOrEqual(date, jde) {
 				return date
 			}
-			nextInferior := NextVenusInferiorConjunction(eventUTNextQueryTT(windowEnd))
-			start, windowEnd = venusEastElongationWindowEndingAt(nextInferior)
+			nextInferior := NextVenusInferiorConjunctionWithInstance(eventUTNextQueryTT(windowEnd), inst)
+			start, windowEnd = venusEastElongationWindowEndingAt(nextInferior, inst)
 		}
 		return math.NaN()
 	}
-	start, windowEnd := venusWestElongationWindowContaining(jde)
+	start, windowEnd := venusWestElongationWindowContaining(jde, inst)
 	for i := 0; i < eventDirectionalSearchIterations; i++ {
-		date := venusGreatestElongationInWindow(start, windowEnd)
+		date := venusGreatestElongationInWindow(start, windowEnd, inst)
 		if !isFiniteFloat(date) {
 			return math.NaN()
 		}
 		if eventUTQueryAfterOrEqual(date, jde) {
 			return date
 		}
-		nextSuperior := NextVenusSuperiorConjunction(eventUTNextQueryTT(windowEnd))
-		start, windowEnd = venusWestElongationWindowEndingAt(nextSuperior)
+		nextSuperior := NextVenusSuperiorConjunctionWithInstance(eventUTNextQueryTT(windowEnd), inst)
+		start, windowEnd = venusWestElongationWindowEndingAt(nextSuperior, inst)
 	}
 	return math.NaN()
 }
 
-func lastVenusGreatestElongationTyped(jde float64, east bool) float64 {
+func lastVenusGreatestElongationTyped(jde float64, east bool, instances ...*Instance) float64 {
+	inst := instanceValue(instances)
+
 	if !isFiniteFloat(jde) {
 		return math.NaN()
 	}
 	if east {
-		start, windowEnd := venusEastElongationWindowContaining(jde)
+		start, windowEnd := venusEastElongationWindowContaining(jde, inst)
 		for i := 0; i < eventDirectionalSearchIterations; i++ {
-			date := venusGreatestElongationInWindow(start, windowEnd)
+			date := venusGreatestElongationInWindow(start, windowEnd, inst)
 			if !isFiniteFloat(date) {
 				return math.NaN()
 			}
 			if eventUTQueryBeforeOrEqual(date, jde) {
 				return date
 			}
-			prevInferior := LastVenusInferiorConjunction(eventUTLastQueryTT(start))
-			start, windowEnd = venusEastElongationWindowEndingAt(prevInferior)
+			prevInferior := LastVenusInferiorConjunctionWithInstance(eventUTLastQueryTT(start), inst)
+			start, windowEnd = venusEastElongationWindowEndingAt(prevInferior, inst)
 		}
 		return math.NaN()
 	}
-	start, windowEnd := venusWestElongationWindowContaining(jde)
+	start, windowEnd := venusWestElongationWindowContaining(jde, inst)
 	for i := 0; i < eventDirectionalSearchIterations; i++ {
-		date := venusGreatestElongationInWindow(start, windowEnd)
+		date := venusGreatestElongationInWindow(start, windowEnd, inst)
 		if !isFiniteFloat(date) {
 			return math.NaN()
 		}
 		if eventUTQueryBeforeOrEqual(date, jde) {
 			return date
 		}
-		prevSuperior := LastVenusSuperiorConjunction(eventUTLastQueryTT(start))
-		start, windowEnd = venusWestElongationWindowEndingAt(prevSuperior)
+		prevSuperior := LastVenusSuperiorConjunctionWithInstance(eventUTLastQueryTT(start), inst)
+		start, windowEnd = venusWestElongationWindowEndingAt(prevSuperior, inst)
 	}
 	return math.NaN()
 }
 
 // venusElongationWindowAt 返回包含 jde 的该侧大距窗口；查询落在合的 4 秒内边距里时两侧都不包含。
-func venusElongationWindowAt(jde float64, east bool) (float64, float64, bool) {
+func venusElongationWindowAt(jde float64, east bool, instances ...*Instance) (float64, float64, bool) {
+	inst := instanceValue(instances)
+
 	if east {
-		start, end := venusEastElongationWindowEndingAt(NextVenusInferiorConjunction(jde))
+		start, end := venusEastElongationWindowEndingAt(NextVenusInferiorConjunctionWithInstance(jde, inst), inst)
 		return start, end, eventUTQueryBeforeOrEqual(start, jde) && eventUTQueryAfterOrEqual(end, jde)
 	}
-	start, end := venusWestElongationWindowEndingAt(NextVenusSuperiorConjunction(jde))
+	start, end := venusWestElongationWindowEndingAt(NextVenusSuperiorConjunctionWithInstance(jde, inst), inst)
 	return start, end, eventUTQueryBeforeOrEqual(start, jde) && eventUTQueryAfterOrEqual(end, jde)
 }
 
-// 无东西侧参数的 Next/Last 先只看查询所在窗口那一侧：该侧大距未过就是答案，已过则另一侧紧接着的
-// 下一个才是答案，因此只有在查询贴住合（两侧窗口都不含）时才退化为两侧都算。赤经差在合附近会提前
-// 变号，不能用它定窗口。
-func NextVenusGreatestElongation(jde float64) float64 {
+// NextVenusGreatestElongationWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func NextVenusGreatestElongationWithInstance(jde float64, inst *Instance) float64 {
 	if !isFiniteFloat(jde) {
 		return math.NaN()
 	}
+	// 先只看查询所在一侧的窗口，未过即答案，已过则取另一侧的下一个；赤经差在合附近会提前变号，不能用来定窗口。
 	for _, east := range [2]bool{true, false} {
-		start, end, ok := venusElongationWindowAt(jde, east)
+		start, end, ok := venusElongationWindowAt(jde, east, inst)
 		if !ok {
 			continue
 		}
-		if date := venusGreatestElongationInWindow(start, end); isFiniteFloat(date) && eventUTQueryAfterOrEqual(date, jde) {
+		if date := venusGreatestElongationInWindow(start, end, inst); isFiniteFloat(date) && eventUTQueryAfterOrEqual(date, jde) {
 			return date
 		}
-		if date := nextVenusGreatestElongationTyped(jde, !east); isFiniteFloat(date) && eventUTQueryAfterOrEqual(date, jde) {
+		if date := nextVenusGreatestElongationTyped(jde, !east, inst); isFiniteFloat(date) && eventUTQueryAfterOrEqual(date, jde) {
 			return date
 		}
 		break
 	}
-	return earliestFiniteEventUT(nextVenusGreatestElongationTyped(jde, true), nextVenusGreatestElongationTyped(jde, false))
+	return earliestFiniteEventUT(nextVenusGreatestElongationTyped(jde, true, inst), nextVenusGreatestElongationTyped(jde, false, inst))
 }
 
-func LastVenusGreatestElongation(jde float64) float64 {
+// LastVenusGreatestElongationWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func LastVenusGreatestElongationWithInstance(jde float64, inst *Instance) float64 {
 	if !isFiniteFloat(jde) {
 		return math.NaN()
 	}
+	// 先只看查询所在一侧的窗口，未过即答案，已过则取另一侧的下一个；赤经差在合附近会提前变号，不能用来定窗口。
 	for _, east := range [2]bool{true, false} {
-		start, end, ok := venusElongationWindowAt(jde, east)
+		start, end, ok := venusElongationWindowAt(jde, east, inst)
 		if !ok {
 			continue
 		}
-		if date := venusGreatestElongationInWindow(start, end); isFiniteFloat(date) && eventUTQueryBeforeOrEqual(date, jde) {
+		if date := venusGreatestElongationInWindow(start, end, inst); isFiniteFloat(date) && eventUTQueryBeforeOrEqual(date, jde) {
 			return date
 		}
-		if date := lastVenusGreatestElongationTyped(jde, !east); isFiniteFloat(date) && eventUTQueryBeforeOrEqual(date, jde) {
+		if date := lastVenusGreatestElongationTyped(jde, !east, inst); isFiniteFloat(date) && eventUTQueryBeforeOrEqual(date, jde) {
 			return date
 		}
 		break
 	}
-	return latestFiniteEventUT(lastVenusGreatestElongationTyped(jde, true), lastVenusGreatestElongationTyped(jde, false))
+	return latestFiniteEventUT(lastVenusGreatestElongationTyped(jde, true, inst), lastVenusGreatestElongationTyped(jde, false, inst))
 }
 
-func LastVenusInferiorConjunctionInclusive(jde float64) float64 {
-	return inclusiveLastSimpleEvent(jde, LastVenusInferiorConjunction, NextVenusInferiorConjunction)
+// LastVenusInferiorConjunctionInclusiveWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func LastVenusInferiorConjunctionInclusiveWithInstance(jde float64, inst *Instance) float64 {
+	return inclusiveLastSimpleEvent(jde, func(jde float64) float64 { return LastVenusInferiorConjunctionWithInstance(jde, inst) }, func(jde float64) float64 { return NextVenusInferiorConjunctionWithInstance(jde, inst) })
 }
 
-func NextVenusInferiorConjunctionInclusive(jde float64) float64 {
-	return inclusiveNextSimpleEvent(jde, LastVenusInferiorConjunction, NextVenusInferiorConjunction)
+// NextVenusInferiorConjunctionInclusiveWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func NextVenusInferiorConjunctionInclusiveWithInstance(jde float64, inst *Instance) float64 {
+	return inclusiveNextSimpleEvent(jde, func(jde float64) float64 { return LastVenusInferiorConjunctionWithInstance(jde, inst) }, func(jde float64) float64 { return NextVenusInferiorConjunctionWithInstance(jde, inst) })
 }
 
-func LastVenusSuperiorConjunctionInclusive(jde float64) float64 {
-	return inclusiveLastSimpleEvent(jde, LastVenusSuperiorConjunction, NextVenusSuperiorConjunction)
+// LastVenusSuperiorConjunctionInclusiveWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func LastVenusSuperiorConjunctionInclusiveWithInstance(jde float64, inst *Instance) float64 {
+	return inclusiveLastSimpleEvent(jde, func(jde float64) float64 { return LastVenusSuperiorConjunctionWithInstance(jde, inst) }, func(jde float64) float64 { return NextVenusSuperiorConjunctionWithInstance(jde, inst) })
 }
 
-func NextVenusSuperiorConjunctionInclusive(jde float64) float64 {
-	return inclusiveNextSimpleEvent(jde, LastVenusSuperiorConjunction, NextVenusSuperiorConjunction)
+// NextVenusSuperiorConjunctionInclusiveWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func NextVenusSuperiorConjunctionInclusiveWithInstance(jde float64, inst *Instance) float64 {
+	return inclusiveNextSimpleEvent(jde, func(jde float64) float64 { return LastVenusSuperiorConjunctionWithInstance(jde, inst) }, func(jde float64) float64 { return NextVenusSuperiorConjunctionWithInstance(jde, inst) })
 }
 
-func LastVenusRetrogradeInclusive(jde float64) float64 {
-	return inclusiveLastSimpleEvent(jde, LastVenusRetrograde, NextVenusRetrograde)
+// LastVenusRetrogradeInclusiveWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func LastVenusRetrogradeInclusiveWithInstance(jde float64, inst *Instance) float64 {
+	return inclusiveLastSimpleEvent(jde, func(jde float64) float64 { return LastVenusRetrogradeWithInstance(jde, inst) }, func(jde float64) float64 { return NextVenusRetrogradeWithInstance(jde, inst) })
 }
 
-func NextVenusRetrogradeInclusive(jde float64) float64 {
-	return inclusiveNextSimpleEvent(jde, LastVenusRetrograde, NextVenusRetrograde)
+// NextVenusRetrogradeInclusiveWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func NextVenusRetrogradeInclusiveWithInstance(jde float64, inst *Instance) float64 {
+	return inclusiveNextSimpleEvent(jde, func(jde float64) float64 { return LastVenusRetrogradeWithInstance(jde, inst) }, func(jde float64) float64 { return NextVenusRetrogradeWithInstance(jde, inst) })
 }
 
-func LastVenusProgradeToRetrogradeInclusive(jde float64) float64 {
-	return inclusiveLastSimpleEvent(jde, LastVenusProgradeToRetrograde, NextVenusProgradeToRetrograde)
+// LastVenusProgradeToRetrogradeInclusiveWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func LastVenusProgradeToRetrogradeInclusiveWithInstance(jde float64, inst *Instance) float64 {
+	return inclusiveLastSimpleEvent(jde, func(jde float64) float64 { return LastVenusProgradeToRetrogradeWithInstance(jde, inst) }, func(jde float64) float64 { return NextVenusProgradeToRetrogradeWithInstance(jde, inst) })
 }
 
-func NextVenusProgradeToRetrogradeInclusive(jde float64) float64 {
-	return inclusiveNextSimpleEvent(jde, LastVenusProgradeToRetrograde, NextVenusProgradeToRetrograde)
+// NextVenusProgradeToRetrogradeInclusiveWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func NextVenusProgradeToRetrogradeInclusiveWithInstance(jde float64, inst *Instance) float64 {
+	return inclusiveNextSimpleEvent(jde, func(jde float64) float64 { return LastVenusProgradeToRetrogradeWithInstance(jde, inst) }, func(jde float64) float64 { return NextVenusProgradeToRetrogradeWithInstance(jde, inst) })
 }
 
-func LastVenusRetrogradeToProgradeInclusive(jde float64) float64 {
-	return inclusiveLastSimpleEvent(jde, LastVenusRetrogradeToPrograde, NextVenusRetrogradeToPrograde)
+// LastVenusRetrogradeToProgradeInclusiveWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func LastVenusRetrogradeToProgradeInclusiveWithInstance(jde float64, inst *Instance) float64 {
+	return inclusiveLastSimpleEvent(jde, func(jde float64) float64 { return LastVenusRetrogradeToProgradeWithInstance(jde, inst) }, func(jde float64) float64 { return NextVenusRetrogradeToProgradeWithInstance(jde, inst) })
 }
 
-func NextVenusRetrogradeToProgradeInclusive(jde float64) float64 {
-	return inclusiveNextSimpleEvent(jde, LastVenusRetrogradeToPrograde, NextVenusRetrogradeToPrograde)
+// NextVenusRetrogradeToProgradeInclusiveWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func NextVenusRetrogradeToProgradeInclusiveWithInstance(jde float64, inst *Instance) float64 {
+	return inclusiveNextSimpleEvent(jde, func(jde float64) float64 { return LastVenusRetrogradeToProgradeWithInstance(jde, inst) }, func(jde float64) float64 { return NextVenusRetrogradeToProgradeWithInstance(jde, inst) })
 }
 
-func LastVenusGreatestElongationInclusive(jde float64) float64 {
-	return inclusiveLastSimpleEvent(jde, LastVenusGreatestElongation, NextVenusGreatestElongation)
+// LastVenusGreatestElongationInclusiveWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func LastVenusGreatestElongationInclusiveWithInstance(jde float64, inst *Instance) float64 {
+	return inclusiveLastSimpleEvent(jde, func(jde float64) float64 { return LastVenusGreatestElongationWithInstance(jde, inst) }, func(jde float64) float64 { return NextVenusGreatestElongationWithInstance(jde, inst) })
 }
 
-func NextVenusGreatestElongationInclusive(jde float64) float64 {
-	return inclusiveNextSimpleEvent(jde, LastVenusGreatestElongation, NextVenusGreatestElongation)
+// NextVenusGreatestElongationInclusiveWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func NextVenusGreatestElongationInclusiveWithInstance(jde float64, inst *Instance) float64 {
+	return inclusiveNextSimpleEvent(jde, func(jde float64) float64 { return LastVenusGreatestElongationWithInstance(jde, inst) }, func(jde float64) float64 { return NextVenusGreatestElongationWithInstance(jde, inst) })
 }
 
-func LastVenusGreatestElongationEastInclusive(jde float64) float64 {
-	return inclusiveLastSimpleEvent(jde, LastVenusGreatestElongationEast, NextVenusGreatestElongationEast)
+// LastVenusGreatestElongationEastInclusiveWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func LastVenusGreatestElongationEastInclusiveWithInstance(jde float64, inst *Instance) float64 {
+	return inclusiveLastSimpleEvent(jde, func(jde float64) float64 { return LastVenusGreatestElongationEastWithInstance(jde, inst) }, func(jde float64) float64 { return NextVenusGreatestElongationEastWithInstance(jde, inst) })
 }
 
-func NextVenusGreatestElongationEastInclusive(jde float64) float64 {
-	return inclusiveNextSimpleEvent(jde, LastVenusGreatestElongationEast, NextVenusGreatestElongationEast)
+// NextVenusGreatestElongationEastInclusiveWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func NextVenusGreatestElongationEastInclusiveWithInstance(jde float64, inst *Instance) float64 {
+	return inclusiveNextSimpleEvent(jde, func(jde float64) float64 { return LastVenusGreatestElongationEastWithInstance(jde, inst) }, func(jde float64) float64 { return NextVenusGreatestElongationEastWithInstance(jde, inst) })
 }
 
-func LastVenusGreatestElongationWestInclusive(jde float64) float64 {
-	return inclusiveLastSimpleEvent(jde, LastVenusGreatestElongationWest, NextVenusGreatestElongationWest)
+// LastVenusGreatestElongationWestInclusiveWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func LastVenusGreatestElongationWestInclusiveWithInstance(jde float64, inst *Instance) float64 {
+	return inclusiveLastSimpleEvent(jde, func(jde float64) float64 { return LastVenusGreatestElongationWestWithInstance(jde, inst) }, func(jde float64) float64 { return NextVenusGreatestElongationWestWithInstance(jde, inst) })
 }
 
-func NextVenusGreatestElongationWestInclusive(jde float64) float64 {
-	return inclusiveNextSimpleEvent(jde, LastVenusGreatestElongationWest, NextVenusGreatestElongationWest)
+// NextVenusGreatestElongationWestInclusiveWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func NextVenusGreatestElongationWestInclusiveWithInstance(jde float64, inst *Instance) float64 {
+	return inclusiveNextSimpleEvent(jde, func(jde float64) float64 { return LastVenusGreatestElongationWestWithInstance(jde, inst) }, func(jde float64) float64 { return NextVenusGreatestElongationWestWithInstance(jde, inst) })
 }
 
-func NextVenusGreatestElongationEast(jde float64) float64 {
-	return nextVenusGreatestElongationTyped(jde, true)
+// NextVenusGreatestElongationEastWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func NextVenusGreatestElongationEastWithInstance(jde float64, inst *Instance) float64 {
+	return nextVenusGreatestElongationTyped(jde, true, inst)
 }
 
-func NextVenusGreatestElongationWest(jde float64) float64 {
-	return nextVenusGreatestElongationTyped(jde, false)
+// NextVenusGreatestElongationWestWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func NextVenusGreatestElongationWestWithInstance(jde float64, inst *Instance) float64 {
+	return nextVenusGreatestElongationTyped(jde, false, inst)
 }
 
-func LastVenusGreatestElongationEast(jde float64) float64 {
-	return lastVenusGreatestElongationTyped(jde, true)
+// LastVenusGreatestElongationEastWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func LastVenusGreatestElongationEastWithInstance(jde float64, inst *Instance) float64 {
+	return lastVenusGreatestElongationTyped(jde, true, inst)
 }
 
-func LastVenusGreatestElongationWest(jde float64) float64 {
-	return lastVenusGreatestElongationTyped(jde, false)
+// LastVenusGreatestElongationWestWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func LastVenusGreatestElongationWestWithInstance(jde float64, inst *Instance) float64 {
+	return lastVenusGreatestElongationTyped(jde, false, inst)
 }

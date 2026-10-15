@@ -75,7 +75,9 @@ type planetTransitState struct {
 	internalContactMetric float64
 }
 
-func mercuryTransitConfig() planetTransitConfig {
+func mercuryTransitConfig(instances ...*Instance) planetTransitConfig {
+	inst := instanceValue(instances)
+
 	return planetTransitConfig{
 		planetIndex:        1,
 		synodicPeriodDays:  MERCURY_S_PERIOD,
@@ -83,16 +85,18 @@ func mercuryTransitConfig() planetTransitConfig {
 		seasonWindowDays:   12,
 		latitudePrefilter:  1.0,
 		conjunctionStepDay: 0.00001,
-		apparentLoN:        MercuryApparentLoN,
-		apparentBoN:        MercuryApparentBoN,
-		apparentRaDecN:     MercuryApparentRaDecN,
-		semidiameterN:      MercurySemidiameterN,
-		earthDistanceN:     EarthMercuryAwayN,
-		nodeN:              MercuryAscendingNodeN,
+		apparentLoN:        func(jd float64, n int) float64 { return MercuryApparentLoNWithInstance(jd, n, inst) },
+		apparentBoN:        func(jd float64, n int) float64 { return MercuryApparentBoNWithInstance(jd, n, inst) },
+		apparentRaDecN:     func(jde float64, n int) (float64, float64) { return MercuryApparentRaDecNWithInstance(jde, n, inst) },
+		semidiameterN:      func(jde float64, n int) float64 { return MercurySemidiameterNWithInstance(jde, n, inst) },
+		earthDistanceN:     func(jd float64, n int) float64 { return EarthMercuryAwayNWithInstance(jd, n, inst) },
+		nodeN:              func(jd float64, n int) float64 { return MercuryAscendingNodeNWithInstance(jd, n, inst) },
 	}
 }
 
-func venusTransitConfig() planetTransitConfig {
+func venusTransitConfig(instances ...*Instance) planetTransitConfig {
+	inst := instanceValue(instances)
+
 	return planetTransitConfig{
 		planetIndex:        2,
 		synodicPeriodDays:  VENUS_S_PERIOD,
@@ -100,52 +104,54 @@ func venusTransitConfig() planetTransitConfig {
 		seasonWindowDays:   8,
 		latitudePrefilter:  0.8,
 		conjunctionStepDay: 0.00001,
-		apparentLoN:        VenusApparentLoN,
-		apparentBoN:        VenusApparentBoN,
-		apparentRaDecN:     VenusApparentRaDecN,
-		semidiameterN:      VenusSemidiameterN,
-		earthDistanceN:     EarthVenusAwayN,
-		nodeN:              VenusAscendingNodeN,
+		apparentLoN:        func(jd float64, n int) float64 { return VenusApparentLoNWithInstance(jd, n, inst) },
+		apparentBoN:        func(jd float64, n int) float64 { return VenusApparentBoNWithInstance(jd, n, inst) },
+		apparentRaDecN:     func(jd float64, n int) (float64, float64) { return VenusApparentRaDecNWithInstance(jd, n, inst) },
+		semidiameterN:      func(jde float64, n int) float64 { return VenusSemidiameterNWithInstance(jde, n, inst) },
+		earthDistanceN:     func(jd float64, n int) float64 { return EarthVenusAwayNWithInstance(jd, n, inst) },
+		nodeN:              func(jd float64, n int) float64 { return VenusAscendingNodeNWithInstance(jd, n, inst) },
 	}
 }
 
-// NextMercuryTransit 返回给定时刻之后的下一次地心水星凌日。
-func NextMercuryTransit(jde float64) PlanetTransitResult {
-	result, _ := searchPlanetTransit(jde, mercuryTransitConfig(), 1, false)
+// NextMercuryTransitWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func NextMercuryTransitWithInstance(jde float64, inst *Instance) PlanetTransitResult {
+	result, _ := searchPlanetTransit(jde, mercuryTransitConfig(inst), 1, false, inst)
 	return result
 }
 
-// LastMercuryTransit 返回给定时刻之前的上一次地心水星凌日。
-func LastMercuryTransit(jde float64) PlanetTransitResult {
-	result, _ := searchPlanetTransit(jde, mercuryTransitConfig(), -1, true)
+// LastMercuryTransitWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func LastMercuryTransitWithInstance(jde float64, inst *Instance) PlanetTransitResult {
+	result, _ := searchPlanetTransit(jde, mercuryTransitConfig(inst), -1, true, inst)
 	return result
 }
 
-// ClosestMercuryTransit 返回距给定时刻最近的一次地心水星凌日。
-func ClosestMercuryTransit(jde float64) PlanetTransitResult {
-	return closestPlanetTransit(jde, mercuryTransitConfig())
+// ClosestMercuryTransitWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func ClosestMercuryTransitWithInstance(jde float64, inst *Instance) PlanetTransitResult {
+	return closestPlanetTransit(jde, mercuryTransitConfig(inst), inst)
 }
 
-// NextVenusTransit 返回给定时刻之后的下一次地心金星凌日。
-func NextVenusTransit(jde float64) PlanetTransitResult {
-	result, _ := searchPlanetTransit(jde, venusTransitConfig(), 1, false)
+// NextVenusTransitWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func NextVenusTransitWithInstance(jde float64, inst *Instance) PlanetTransitResult {
+	result, _ := searchPlanetTransit(jde, venusTransitConfig(inst), 1, false, inst)
 	return result
 }
 
-// LastVenusTransit 返回给定时刻之前的上一次地心金星凌日。
-func LastVenusTransit(jde float64) PlanetTransitResult {
-	result, _ := searchPlanetTransit(jde, venusTransitConfig(), -1, true)
+// LastVenusTransitWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func LastVenusTransitWithInstance(jde float64, inst *Instance) PlanetTransitResult {
+	result, _ := searchPlanetTransit(jde, venusTransitConfig(inst), -1, true, inst)
 	return result
 }
 
-// ClosestVenusTransit 返回距给定时刻最近的一次地心金星凌日。
-func ClosestVenusTransit(jde float64) PlanetTransitResult {
-	return closestPlanetTransit(jde, venusTransitConfig())
+// ClosestVenusTransitWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func ClosestVenusTransitWithInstance(jde float64, inst *Instance) PlanetTransitResult {
+	return closestPlanetTransit(jde, venusTransitConfig(inst), inst)
 }
 
-func closestPlanetTransit(jde float64, cfg planetTransitConfig) PlanetTransitResult {
-	last, hasLast := searchPlanetTransit(jde, cfg, -1, true)
-	next, hasNext := searchPlanetTransit(jde, cfg, 1, false)
+func closestPlanetTransit(jde float64, cfg planetTransitConfig, instances ...*Instance) PlanetTransitResult {
+	inst := instanceValue(instances)
+
+	last, hasLast := searchPlanetTransit(jde, cfg, -1, true, inst)
+	next, hasNext := searchPlanetTransit(jde, cfg, 1, false, inst)
 	switch {
 	case hasLast && !hasNext:
 		return last
@@ -160,24 +166,27 @@ func closestPlanetTransit(jde float64, cfg planetTransitConfig) PlanetTransitRes
 	return next
 }
 
-func searchPlanetTransit(jd float64, cfg planetTransitConfig, direction int, includeCurrent bool) (PlanetTransitResult, bool) {
+func searchPlanetTransit(jd float64, cfg planetTransitConfig, direction int, includeCurrent bool, instances ...*Instance) (PlanetTransitResult, bool) {
+	inst := instanceValue(instances)
+
 	if !isFiniteFloat(jd) || direction == 0 {
 		return PlanetTransitResult{}, false
 	}
 
 	targetTT := UTC2TT(jd)
-	probeTT := targetTT
+	// 节点季可能略早于查询时刻而凌甚仍在其后，从一个季窗之前起探，方向由凌甚时刻再判。
+	probeTT := targetTT - float64(direction)*cfg.seasonWindowDays
 	for i := 0; i < planetTransitSearchLimit; i++ {
-		seasonTT, ok := nextPlanetTransitSeasonTT(probeTT, cfg, direction)
+		seasonTT, ok := nextPlanetTransitSeasonTT(probeTT, cfg, direction, inst)
 		if !ok {
 			return PlanetTransitResult{}, false
 		}
 
 		seedTT := nearestPlanetTransitInferiorSeedTT(seasonTT, cfg)
 		if math.Abs(seedTT-seasonTT) <= cfg.seasonWindowDays {
-			conjunctionTT := refinePlanetTransitInferiorConjunctionTT(seedTT, cfg)
-			if math.Abs(conjunctionTT-seasonTT) <= cfg.seasonWindowDays+1 && isPotentialPlanetTransit(conjunctionTT, cfg) {
-				resultTT, ok := planetTransitAtInferiorConjunctionTT(conjunctionTT, cfg)
+			conjunctionTT := refinePlanetTransitInferiorConjunctionTT(seedTT, cfg, inst)
+			if math.Abs(conjunctionTT-seasonTT) <= cfg.seasonWindowDays+1 && isPotentialPlanetTransit(conjunctionTT, cfg, inst) {
+				resultTT, ok := planetTransitAtInferiorConjunctionTT(conjunctionTT, cfg, inst)
 				if ok && planetTransitMatchesDirection(resultTT.Greatest, targetTT, direction, includeCurrent) {
 					return planetTransitResultTTToUT(resultTT), true
 				}
@@ -190,11 +199,13 @@ func searchPlanetTransit(jd float64, cfg planetTransitConfig, direction int, inc
 	return PlanetTransitResult{}, false
 }
 
-func nextPlanetTransitSeasonTT(jdTT float64, cfg planetTransitConfig, direction int) (float64, bool) {
+func nextPlanetTransitSeasonTT(jdTT float64, cfg planetTransitConfig, direction int, instances ...*Instance) (float64, bool) {
+	inst := instanceValue(instances)
+
 	best := math.NaN()
 	for nodeOffset := 0; nodeOffset <= 1; nodeOffset++ {
-		candidate := estimatePlanetTransitSeasonTT(jdTT, cfg, nodeOffset, direction)
-		candidate = refinePlanetTransitSeasonTT(candidate, cfg, nodeOffset)
+		candidate := estimatePlanetTransitSeasonTT(jdTT, cfg, nodeOffset, direction, inst)
+		candidate = refinePlanetTransitSeasonTT(candidate, cfg, nodeOffset, inst)
 		if !isFiniteFloat(candidate) {
 			continue
 		}
@@ -205,7 +216,7 @@ func nextPlanetTransitSeasonTT(jdTT float64, cfg planetTransitConfig, direction 
 				break
 			}
 			candidate += float64(direction) * planetTransitTropicalYearDays
-			candidate = refinePlanetTransitSeasonTT(candidate, cfg, nodeOffset)
+			candidate = refinePlanetTransitSeasonTT(candidate, cfg, nodeOffset, inst)
 			if !isFiniteFloat(candidate) {
 				break
 			}
@@ -223,8 +234,10 @@ func nextPlanetTransitSeasonTT(jdTT float64, cfg planetTransitConfig, direction 
 	return best, true
 }
 
-func estimatePlanetTransitSeasonTT(jdTT float64, cfg planetTransitConfig, nodeOffset int, direction int) float64 {
-	sunLongitude := HSunApparentLoN(jdTT, planetTransitCoarseN)
+func estimatePlanetTransitSeasonTT(jdTT float64, cfg planetTransitConfig, nodeOffset int, direction int, instances ...*Instance) float64 {
+	inst := instanceValue(instances)
+
+	sunLongitude := HSunApparentLoNWithInstance(jdTT, planetTransitCoarseN, inst)
 	nodeLongitude := planetTransitNodeLongitude(jdTT, cfg, nodeOffset, planetTransitCoarseN)
 	if direction > 0 {
 		delta := Limit360(nodeLongitude - sunLongitude)
@@ -240,13 +253,15 @@ func estimatePlanetTransitSeasonTT(jdTT float64, cfg planetTransitConfig, nodeOf
 	return jdTT - delta/planetTransitMeanSolarMotionDegPerDay
 }
 
-func refinePlanetTransitSeasonTT(seedTT float64, cfg planetTransitConfig, nodeOffset int) float64 {
+func refinePlanetTransitSeasonTT(seedTT float64, cfg planetTransitConfig, nodeOffset int, instances ...*Instance) float64 {
+	inst := instanceValue(instances)
+
 	current := seedTT
 	for i := 0; i < 8; i++ {
 		prev := current
-		value := planetTransitSunNodeLongitudeDelta(prev, cfg, nodeOffset)
-		slope := (planetTransitSunNodeLongitudeDelta(prev+0.5, cfg, nodeOffset) -
-			planetTransitSunNodeLongitudeDelta(prev-0.5, cfg, nodeOffset)) / 1.0
+		value := planetTransitSunNodeLongitudeDelta(prev, cfg, nodeOffset, inst)
+		slope := (planetTransitSunNodeLongitudeDelta(prev+0.5, cfg, nodeOffset, inst) -
+			planetTransitSunNodeLongitudeDelta(prev-0.5, cfg, nodeOffset, inst)) / 1.0
 		if slope == 0 || !isFiniteFloat(slope) {
 			break
 		}
@@ -258,8 +273,10 @@ func refinePlanetTransitSeasonTT(seedTT float64, cfg planetTransitConfig, nodeOf
 	return current
 }
 
-func planetTransitSunNodeLongitudeDelta(jdTT float64, cfg planetTransitConfig, nodeOffset int) float64 {
-	return planetTransitAngleDelta(HSunApparentLoN(jdTT, planetTransitCoarseN) -
+func planetTransitSunNodeLongitudeDelta(jdTT float64, cfg planetTransitConfig, nodeOffset int, instances ...*Instance) float64 {
+	inst := instanceValue(instances)
+
+	return planetTransitAngleDelta(HSunApparentLoNWithInstance(jdTT, planetTransitCoarseN, inst) -
 		planetTransitNodeLongitude(jdTT, cfg, nodeOffset, planetTransitCoarseN))
 }
 
@@ -272,13 +289,15 @@ func nearestPlanetTransitInferiorSeedTT(seasonTT float64, cfg planetTransitConfi
 	return cfg.anchorInferiorTT + k*cfg.synodicPeriodDays
 }
 
-func refinePlanetTransitInferiorConjunctionTT(seedTT float64, cfg planetTransitConfig) float64 {
+func refinePlanetTransitInferiorConjunctionTT(seedTT float64, cfg planetTransitConfig, instances ...*Instance) float64 {
+	inst := instanceValue(instances)
+
 	current := seedTT
 	for i := 0; i < 4; i++ {
 		prev := current
-		value := planetTransitLongitudeDeltaN(prev, cfg, planetTransitCoarseN)
-		slope := (planetTransitLongitudeDeltaN(prev+cfg.conjunctionStepDay, cfg, planetTransitCoarseN) -
-			planetTransitLongitudeDeltaN(prev-cfg.conjunctionStepDay, cfg, planetTransitCoarseN)) / (2 * cfg.conjunctionStepDay)
+		value := planetTransitLongitudeDeltaN(prev, cfg, planetTransitCoarseN, inst)
+		slope := (planetTransitLongitudeDeltaN(prev+cfg.conjunctionStepDay, cfg, planetTransitCoarseN, inst) -
+			planetTransitLongitudeDeltaN(prev-cfg.conjunctionStepDay, cfg, planetTransitCoarseN, inst)) / (2 * cfg.conjunctionStepDay)
 		if slope == 0 || !isFiniteFloat(slope) {
 			break
 		}
@@ -289,9 +308,9 @@ func refinePlanetTransitInferiorConjunctionTT(seedTT float64, cfg planetTransitC
 	}
 	for i := 0; i < 8; i++ {
 		prev := current
-		value := planetTransitLongitudeDeltaN(prev, cfg, -1)
-		slope := (planetTransitLongitudeDeltaN(prev+cfg.conjunctionStepDay, cfg, -1) -
-			planetTransitLongitudeDeltaN(prev-cfg.conjunctionStepDay, cfg, -1)) / (2 * cfg.conjunctionStepDay)
+		value := planetTransitLongitudeDeltaN(prev, cfg, -1, inst)
+		slope := (planetTransitLongitudeDeltaN(prev+cfg.conjunctionStepDay, cfg, -1, inst) -
+			planetTransitLongitudeDeltaN(prev-cfg.conjunctionStepDay, cfg, -1, inst)) / (2 * cfg.conjunctionStepDay)
 		if slope == 0 || !isFiniteFloat(slope) {
 			break
 		}
@@ -303,20 +322,26 @@ func refinePlanetTransitInferiorConjunctionTT(seedTT float64, cfg planetTransitC
 	return current
 }
 
-func planetTransitLongitudeDeltaN(jdTT float64, cfg planetTransitConfig, n int) float64 {
-	return planetTransitAngleDelta(cfg.apparentLoN(jdTT, n) - HSunApparentLoN(jdTT, n))
+func planetTransitLongitudeDeltaN(jdTT float64, cfg planetTransitConfig, n int, instances ...*Instance) float64 {
+	inst := instanceValue(instances)
+
+	return planetTransitAngleDelta(cfg.apparentLoN(jdTT, n) - HSunApparentLoNWithInstance(jdTT, n, inst))
 }
 
-func isPotentialPlanetTransit(conjunctionTT float64, cfg planetTransitConfig) bool {
-	if cfg.earthDistanceN(conjunctionTT, planetTransitCoarseN) > EarthAwayN(conjunctionTT, planetTransitCoarseN) {
+func isPotentialPlanetTransit(conjunctionTT float64, cfg planetTransitConfig, instances ...*Instance) bool {
+	inst := instanceValue(instances)
+
+	if cfg.earthDistanceN(conjunctionTT, planetTransitCoarseN) > EarthAwayNWithInstance(conjunctionTT, planetTransitCoarseN, inst) {
 		return false
 	}
 	return math.Abs(cfg.apparentBoN(conjunctionTT, planetTransitCoarseN)) <= cfg.latitudePrefilter
 }
 
-func planetTransitAtInferiorConjunctionTT(conjunctionTT float64, cfg planetTransitConfig) (PlanetTransitResult, bool) {
-	greatestTT := greatestPlanetTransitTT(conjunctionTT, cfg)
-	greatestState := planetTransitStateAt(greatestTT, cfg, -1)
+func planetTransitAtInferiorConjunctionTT(conjunctionTT float64, cfg planetTransitConfig, instances ...*Instance) (PlanetTransitResult, bool) {
+	inst := instanceValue(instances)
+
+	greatestTT := greatestPlanetTransitTT(conjunctionTT, cfg, inst)
+	greatestState := planetTransitStateAt(greatestTT, cfg, -1, inst)
 	if !isFiniteFloat(greatestState.externalContactMetric) || greatestState.externalContactMetric > 0 {
 		return PlanetTransitResult{}, false
 	}
@@ -332,11 +357,11 @@ func planetTransitAtInferiorConjunctionTT(conjunctionTT float64, cfg planetTrans
 		HasInternal:              greatestState.internalContactMetric <= 0,
 	}
 
-	externalIngress, ok := refinePlanetTransitContactTT(greatestTT, cfg, -1, false)
+	externalIngress, ok := refinePlanetTransitContactTT(greatestTT, cfg, -1, false, inst)
 	if !ok {
 		return PlanetTransitResult{}, false
 	}
-	externalEgress, ok := refinePlanetTransitContactTT(greatestTT, cfg, 1, false)
+	externalEgress, ok := refinePlanetTransitContactTT(greatestTT, cfg, 1, false, inst)
 	if !ok || externalEgress <= externalIngress {
 		return PlanetTransitResult{}, false
 	}
@@ -344,11 +369,11 @@ func planetTransitAtInferiorConjunctionTT(conjunctionTT float64, cfg planetTrans
 	result.ExternalEgress = externalEgress
 
 	if result.HasInternal {
-		internalIngress, ok := refinePlanetTransitContactTT(greatestTT, cfg, -1, true)
+		internalIngress, ok := refinePlanetTransitContactTT(greatestTT, cfg, -1, true, inst)
 		if ok {
 			result.InternalIngress = internalIngress
 		}
-		internalEgress, ok := refinePlanetTransitContactTT(greatestTT, cfg, 1, true)
+		internalEgress, ok := refinePlanetTransitContactTT(greatestTT, cfg, 1, true, inst)
 		if ok && internalEgress > internalIngress {
 			result.InternalEgress = internalEgress
 		}
@@ -358,15 +383,17 @@ func planetTransitAtInferiorConjunctionTT(conjunctionTT float64, cfg planetTrans
 	return result, true
 }
 
-func greatestPlanetTransitTT(seedTT float64, cfg planetTransitConfig) float64 {
+func greatestPlanetTransitTT(seedTT float64, cfg planetTransitConfig, instances ...*Instance) float64 {
+	inst := instanceValue(instances)
+
 	left := seedTT - planetTransitGreatestWindowDays
 	right := seedTT + planetTransitGreatestWindowDays
 	goldenRatio := (math.Sqrt(5) - 1) / 2
 
 	x1 := right - goldenRatio*(right-left)
 	x2 := left + goldenRatio*(right-left)
-	f1 := planetTransitStateAt(x1, cfg, planetTransitCoarseN).separationSquared
-	f2 := planetTransitStateAt(x2, cfg, planetTransitCoarseN).separationSquared
+	f1 := planetTransitStateAt(x1, cfg, planetTransitCoarseN, inst).separationSquared
+	f2 := planetTransitStateAt(x2, cfg, planetTransitCoarseN, inst).separationSquared
 
 	for i := 0; i < 80 && right-left > planetTransitGreatestToleranceDays; i++ {
 		if f1 <= f2 {
@@ -374,14 +401,14 @@ func greatestPlanetTransitTT(seedTT float64, cfg planetTransitConfig) float64 {
 			x2 = x1
 			f2 = f1
 			x1 = right - goldenRatio*(right-left)
-			f1 = planetTransitStateAt(x1, cfg, planetTransitCoarseN).separationSquared
+			f1 = planetTransitStateAt(x1, cfg, planetTransitCoarseN, inst).separationSquared
 			continue
 		}
 		left = x1
 		x1 = x2
 		f1 = f2
 		x2 = left + goldenRatio*(right-left)
-		f2 = planetTransitStateAt(x2, cfg, planetTransitCoarseN).separationSquared
+		f2 = planetTransitStateAt(x2, cfg, planetTransitCoarseN, inst).separationSquared
 	}
 
 	center := (left + right) / 2
@@ -389,31 +416,33 @@ func greatestPlanetTransitTT(seedTT float64, cfg planetTransitConfig) float64 {
 	right = center + 2.0/24.0
 	x1 = right - goldenRatio*(right-left)
 	x2 = left + goldenRatio*(right-left)
-	f1 = planetTransitStateAt(x1, cfg, -1).separationSquared
-	f2 = planetTransitStateAt(x2, cfg, -1).separationSquared
+	f1 = planetTransitStateAt(x1, cfg, -1, inst).separationSquared
+	f2 = planetTransitStateAt(x2, cfg, -1, inst).separationSquared
 	for i := 0; i < 80 && right-left > planetTransitGreatestToleranceDays; i++ {
 		if f1 <= f2 {
 			right = x2
 			x2 = x1
 			f2 = f1
 			x1 = right - goldenRatio*(right-left)
-			f1 = planetTransitStateAt(x1, cfg, -1).separationSquared
+			f1 = planetTransitStateAt(x1, cfg, -1, inst).separationSquared
 			continue
 		}
 		left = x1
 		x1 = x2
 		f1 = f2
 		x2 = left + goldenRatio*(right-left)
-		f2 = planetTransitStateAt(x2, cfg, -1).separationSquared
+		f2 = planetTransitStateAt(x2, cfg, -1, inst).separationSquared
 	}
 	return (left + right) / 2
 }
 
-func planetTransitStateAt(jdTT float64, cfg planetTransitConfig, n int) planetTransitState {
+func planetTransitStateAt(jdTT float64, cfg planetTransitConfig, n int, instances ...*Instance) planetTransitState {
+	inst := instanceValue(instances)
+
 	planetRA, planetDec := cfg.apparentRaDecN(jdTT, n)
-	sunRA, sunDec := HSunApparentRaDecN(jdTT, n)
+	sunRA, sunDec := HSunApparentRaDecNWithInstance(jdTT, n, inst)
 	separationArcsec := StarAngularSeparation(planetRA, planetDec, sunRA, sunDec) * 3600
-	sunSemidiameter := SunSemidiameterN(jdTT, n)
+	sunSemidiameter := SunSemidiameterNWithInstance(jdTT, n, inst)
 	planetSemidiameter := cfg.semidiameterN(jdTT, n)
 	return planetTransitState{
 		jdTT:                  jdTT,
@@ -426,12 +455,14 @@ func planetTransitStateAt(jdTT float64, cfg planetTransitConfig, n int) planetTr
 	}
 }
 
-func refinePlanetTransitContactTT(greatestTT float64, cfg planetTransitConfig, direction int, internal bool) (float64, bool) {
+func refinePlanetTransitContactTT(greatestTT float64, cfg planetTransitConfig, direction int, internal bool, instances ...*Instance) (float64, bool) {
+	inst := instanceValue(instances)
+
 	if direction != -1 && direction != 1 {
 		return 0, false
 	}
 	metric := func(jdTT float64) float64 {
-		state := planetTransitStateAt(jdTT, cfg, -1)
+		state := planetTransitStateAt(jdTT, cfg, -1, inst)
 		if internal {
 			return state.internalContactMetric
 		}

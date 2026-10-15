@@ -1,6 +1,10 @@
 package basic
 
-import "math"
+import (
+	"math"
+
+	"github.com/starainrt/astro/internal/geodata"
+)
 
 const (
 	moonPlanetConjunctionEstimateN         = 8
@@ -42,36 +46,30 @@ const (
 	MoonPlanetConjunctionNeptune
 )
 
-func moonPlanetConjunctionWrappedDelta(diff float64) float64 {
-	diff = math.Mod(diff+180, 360)
-	if diff < 0 {
-		diff += 360
-	}
-	return diff - 180
-}
+func moonPlanetConjunctionDeltaAt(jdTT float64, planet MoonPlanetConjunctionPlanet, n int, instances ...*Instance) float64 {
+	inst := instanceValue(instances)
 
-func moonPlanetConjunctionDeltaAt(jdTT float64, planet MoonPlanetConjunctionPlanet, n int) float64 {
-	moonRA := HMoonGeocentricApparentRaN(jdTT, n)
+	moonRA := HMoonGeocentricApparentRaNWithInstance(jdTT, n, inst)
 	var planetRA float64
 	switch planet {
 	case MoonPlanetConjunctionMercury:
-		planetRA = MercuryApparentRaN(jdTT, n)
+		planetRA = MercuryApparentRaNWithInstance(jdTT, n, inst)
 	case MoonPlanetConjunctionVenus:
-		planetRA = VenusApparentRaN(jdTT, n)
+		planetRA = VenusApparentRaNWithInstance(jdTT, n, inst)
 	case MoonPlanetConjunctionMars:
-		planetRA = MarsApparentRaN(jdTT, n)
+		planetRA = MarsApparentRaNWithInstance(jdTT, n, inst)
 	case MoonPlanetConjunctionJupiter:
-		planetRA = JupiterApparentRaN(jdTT, n)
+		planetRA = JupiterApparentRaNWithInstance(jdTT, n, inst)
 	case MoonPlanetConjunctionSaturn:
-		planetRA = SaturnApparentRaN(jdTT, n)
+		planetRA = SaturnApparentRaNWithInstance(jdTT, n, inst)
 	case MoonPlanetConjunctionUranus:
-		planetRA = UranusApparentRaN(jdTT, n)
+		planetRA = UranusApparentRaNWithInstance(jdTT, n, inst)
 	case MoonPlanetConjunctionNeptune:
-		planetRA = NeptuneApparentRaN(jdTT, n)
+		planetRA = NeptuneApparentRaNWithInstance(jdTT, n, inst)
 	default:
 		return math.NaN()
 	}
-	return moonPlanetConjunctionWrappedDelta(moonRA - planetRA)
+	return geodata.NormalizeLongitude(moonRA - planetRA)
 }
 
 func moonPlanetConjunctionPeriodDays(planet MoonPlanetConjunctionPlanet) float64 {
@@ -114,7 +112,9 @@ func moonPlanetConjunctionInDirection(eventUT, queryTT float64, direction int) b
 	}
 }
 
-func moonPlanetConjunctionFindBracket(centerTT, halfSpan, step float64, planet MoonPlanetConjunctionPlanet) (float64, float64, bool) {
+func moonPlanetConjunctionFindBracket(centerTT, halfSpan, step float64, planet MoonPlanetConjunctionPlanet, instances ...*Instance) (float64, float64, bool) {
+	inst := instanceValue(instances)
+
 	if math.IsNaN(centerTT) || math.IsNaN(halfSpan) || math.IsNaN(step) || halfSpan <= 0 || step <= 0 {
 		return 0, 0, false
 	}
@@ -122,7 +122,7 @@ func moonPlanetConjunctionFindBracket(centerTT, halfSpan, step float64, planet M
 	end := centerTT + halfSpan
 	samples := int(math.Ceil((end-start)/step)) + 1
 	prevTT := start
-	prevVal := moonPlanetConjunctionDeltaAt(prevTT, planet, -1)
+	prevVal := moonPlanetConjunctionDeltaAt(prevTT, planet, -1, inst)
 	if math.IsNaN(prevVal) {
 		return 0, 0, false
 	}
@@ -137,7 +137,7 @@ func moonPlanetConjunctionFindBracket(centerTT, halfSpan, step float64, planet M
 		if tt > end {
 			tt = end
 		}
-		val := moonPlanetConjunctionDeltaAt(tt, planet, -1)
+		val := moonPlanetConjunctionDeltaAt(tt, planet, -1, inst)
 		if math.IsNaN(val) {
 			return 0, 0, false
 		}
@@ -165,7 +165,9 @@ func moonPlanetConjunctionFindBracket(centerTT, halfSpan, step float64, planet M
 	return bestLeft, bestRight, true
 }
 
-func moonPlanetConjunctionRefineBracket(leftTT, rightTT float64, planet MoonPlanetConjunctionPlanet) float64 {
+func moonPlanetConjunctionRefineBracket(leftTT, rightTT float64, planet MoonPlanetConjunctionPlanet, instances ...*Instance) float64 {
+	inst := instanceValue(instances)
+
 	if leftTT > rightTT {
 		leftTT, rightTT = rightTT, leftTT
 	}
@@ -175,13 +177,15 @@ func moonPlanetConjunctionRefineBracket(leftTT, rightTT float64, planet MoonPlan
 	center := (leftTT + rightTT) / 2.0
 	halfWindow := (rightTT - leftTT) / 2.0
 	return eventZeroRefine(center, halfWindow, moonPlanetConjunctionRefineStepDays, func(sampleTT float64) float64 {
-		return moonPlanetConjunctionDeltaAt(sampleTT, planet, -1)
+		return moonPlanetConjunctionDeltaAt(sampleTT, planet, -1, inst)
 	})
 }
 
-func moonPlanetConjunctionEventUT(leftTT, rightTT float64, planet MoonPlanetConjunctionPlanet) float64 {
-	eventTT := moonPlanetConjunctionRefineBracket(leftTT, rightTT, planet)
-	if math.Abs(moonPlanetConjunctionDeltaAt(eventTT, planet, -1)) > moonPlanetConjunctionEventTolerance {
+func moonPlanetConjunctionEventUT(leftTT, rightTT float64, planet MoonPlanetConjunctionPlanet, instances ...*Instance) float64 {
+	inst := instanceValue(instances)
+
+	eventTT := moonPlanetConjunctionRefineBracket(leftTT, rightTT, planet, inst)
+	if math.Abs(moonPlanetConjunctionDeltaAt(eventTT, planet, -1, inst)) > moonPlanetConjunctionEventTolerance {
 		return math.NaN()
 	}
 	return TT2UTC(eventTT)
@@ -203,21 +207,25 @@ func moonPlanetConjunctionCollectLocalEvent(result *moonPlanetConjunctionLocalRe
 	}
 }
 
-func moonPlanetConjunctionShouldCheckLocal(queryTT float64, planet MoonPlanetConjunctionPlanet) bool {
-	delta := moonPlanetConjunctionDeltaAt(queryTT, planet, moonPlanetConjunctionEstimateN)
+func moonPlanetConjunctionShouldCheckLocal(queryTT float64, planet MoonPlanetConjunctionPlanet, instances ...*Instance) bool {
+	inst := instanceValue(instances)
+
+	delta := moonPlanetConjunctionDeltaAt(queryTT, planet, moonPlanetConjunctionEstimateN, inst)
 	if math.IsNaN(delta) {
 		return false
 	}
 	return math.Abs(delta) <= moonPlanetConjunctionNearQueryDeltaDeg
 }
 
-func moonPlanetConjunctionLocalEvents(queryTT float64, planet MoonPlanetConjunctionPlanet) moonPlanetConjunctionLocalResult {
+func moonPlanetConjunctionLocalEvents(queryTT float64, planet MoonPlanetConjunctionPlanet, instances ...*Instance) moonPlanetConjunctionLocalResult {
+	inst := instanceValue(instances)
+
 	result := emptyMoonPlanetConjunctionLocalResult()
 	start := queryTT - moonPlanetConjunctionNearQueryHalfSpan
 	end := queryTT + moonPlanetConjunctionNearQueryHalfSpan
 	step := moonPlanetConjunctionNearQueryStepDays
 	prevTT := start
-	prevVal := moonPlanetConjunctionDeltaAt(prevTT, planet, -1)
+	prevVal := moonPlanetConjunctionDeltaAt(prevTT, planet, -1, inst)
 	if math.IsNaN(prevVal) {
 		return result
 	}
@@ -227,12 +235,12 @@ func moonPlanetConjunctionLocalEvents(queryTT float64, planet MoonPlanetConjunct
 		if tt > end {
 			tt = end
 		}
-		val := moonPlanetConjunctionDeltaAt(tt, planet, -1)
+		val := moonPlanetConjunctionDeltaAt(tt, planet, -1, inst)
 		if math.IsNaN(val) {
 			return emptyMoonPlanetConjunctionLocalResult()
 		}
 		if prevVal == 0 || val == 0 || prevVal*val < 0 {
-			moonPlanetConjunctionCollectLocalEvent(&result, queryTT, moonPlanetConjunctionEventUT(prevTT, tt, planet))
+			moonPlanetConjunctionCollectLocalEvent(&result, queryTT, moonPlanetConjunctionEventUT(prevTT, tt, planet, inst))
 		}
 		if tt == end {
 			break
@@ -243,15 +251,19 @@ func moonPlanetConjunctionLocalEvents(queryTT float64, planet MoonPlanetConjunct
 	return result
 }
 
-func moonPlanetConjunctionMaybeLocalEvents(queryTT float64, planet MoonPlanetConjunctionPlanet) moonPlanetConjunctionLocalResult {
-	if !moonPlanetConjunctionShouldCheckLocal(queryTT, planet) {
+func moonPlanetConjunctionMaybeLocalEvents(queryTT float64, planet MoonPlanetConjunctionPlanet, instances ...*Instance) moonPlanetConjunctionLocalResult {
+	inst := instanceValue(instances)
+
+	if !moonPlanetConjunctionShouldCheckLocal(queryTT, planet, inst) {
 		return emptyMoonPlanetConjunctionLocalResult()
 	}
-	return moonPlanetConjunctionLocalEvents(queryTT, planet)
+	return moonPlanetConjunctionLocalEvents(queryTT, planet, inst)
 }
 
-func moonPlanetConjunctionGuessTT(queryTT float64, planet MoonPlanetConjunctionPlanet, direction int) float64 {
-	delta := moonPlanetConjunctionDeltaAt(queryTT, planet, moonPlanetConjunctionEstimateN)
+func moonPlanetConjunctionGuessTT(queryTT float64, planet MoonPlanetConjunctionPlanet, direction int, instances ...*Instance) float64 {
+	inst := instanceValue(instances)
+
+	delta := moonPlanetConjunctionDeltaAt(queryTT, planet, moonPlanetConjunctionEstimateN, inst)
 	if math.IsNaN(delta) {
 		return math.NaN()
 	}
@@ -269,7 +281,9 @@ func moonPlanetConjunctionGuessTT(queryTT float64, planet MoonPlanetConjunctionP
 	}
 }
 
-func moonPlanetConjunctionDirectionalFallback(queryTT float64, planet MoonPlanetConjunctionPlanet, direction int) float64 {
+func moonPlanetConjunctionDirectionalFallback(queryTT float64, planet MoonPlanetConjunctionPlanet, direction int, instances ...*Instance) float64 {
+	inst := instanceValue(instances)
+
 	period := moonPlanetConjunctionPeriodDays(planet)
 	if math.IsNaN(period) {
 		return math.NaN()
@@ -291,7 +305,7 @@ func moonPlanetConjunctionDirectionalFallback(queryTT float64, planet MoonPlanet
 	}
 
 	prevTT := start
-	prevVal := moonPlanetConjunctionDeltaAt(prevTT, planet, -1)
+	prevVal := moonPlanetConjunctionDeltaAt(prevTT, planet, -1, inst)
 	if math.IsNaN(prevVal) {
 		return math.NaN()
 	}
@@ -301,12 +315,12 @@ func moonPlanetConjunctionDirectionalFallback(queryTT float64, planet MoonPlanet
 		if tt > end {
 			tt = end
 		}
-		val := moonPlanetConjunctionDeltaAt(tt, planet, -1)
+		val := moonPlanetConjunctionDeltaAt(tt, planet, -1, inst)
 		if math.IsNaN(val) {
 			return math.NaN()
 		}
 		if prevVal == 0 || val == 0 || prevVal*val < 0 {
-			eventUT := moonPlanetConjunctionEventUT(prevTT, tt, planet)
+			eventUT := moonPlanetConjunctionEventUT(prevTT, tt, planet, inst)
 			if !math.IsNaN(eventUT) && moonPlanetConjunctionInDirection(eventUT, queryTT, direction) {
 				if direction == 1 {
 					return eventUT
@@ -323,7 +337,9 @@ func moonPlanetConjunctionDirectionalFallback(queryTT float64, planet MoonPlanet
 	return bestEventUT
 }
 
-func moonPlanetConjunctionDirectionalEventWithLocal(queryTT float64, planet MoonPlanetConjunctionPlanet, direction int, local moonPlanetConjunctionLocalResult) float64 {
+func moonPlanetConjunctionDirectionalEventWithLocal(queryTT float64, planet MoonPlanetConjunctionPlanet, direction int, local moonPlanetConjunctionLocalResult, instances ...*Instance) float64 {
+	inst := instanceValue(instances)
+
 	switch direction {
 	case -1:
 		if !math.IsNaN(local.lastUT) {
@@ -334,15 +350,15 @@ func moonPlanetConjunctionDirectionalEventWithLocal(queryTT float64, planet Moon
 			return local.nextUT
 		}
 	}
-	guessTT := moonPlanetConjunctionGuessTT(queryTT, planet, direction)
+	guessTT := moonPlanetConjunctionGuessTT(queryTT, planet, direction, inst)
 	if math.IsNaN(guessTT) {
 		return math.NaN()
 	}
 	halfSpan := moonPlanetConjunctionBracketHalfSpan
 	for attempt := 0; attempt < moonPlanetConjunctionBracketAttempts; attempt++ {
-		left, right, ok := moonPlanetConjunctionFindBracket(guessTT, halfSpan, moonPlanetConjunctionBracketStepDays, planet)
+		left, right, ok := moonPlanetConjunctionFindBracket(guessTT, halfSpan, moonPlanetConjunctionBracketStepDays, planet, inst)
 		if ok {
-			eventUT := moonPlanetConjunctionEventUT(left, right, planet)
+			eventUT := moonPlanetConjunctionEventUT(left, right, planet, inst)
 			if math.IsNaN(eventUT) {
 				halfSpan *= moonPlanetConjunctionBracketGrowth
 				continue
@@ -353,26 +369,28 @@ func moonPlanetConjunctionDirectionalEventWithLocal(queryTT float64, planet Moon
 		}
 		halfSpan *= moonPlanetConjunctionBracketGrowth
 	}
-	return moonPlanetConjunctionDirectionalFallback(queryTT, planet, direction)
+	return moonPlanetConjunctionDirectionalFallback(queryTT, planet, direction, inst)
 }
 
-func moonPlanetConjunctionDirectionalEvent(queryTT float64, planet MoonPlanetConjunctionPlanet, direction int) float64 {
-	return moonPlanetConjunctionDirectionalEventWithLocal(queryTT, planet, direction, moonPlanetConjunctionMaybeLocalEvents(queryTT, planet))
+func moonPlanetConjunctionDirectionalEvent(queryTT float64, planet MoonPlanetConjunctionPlanet, direction int, instances ...*Instance) float64 {
+	inst := instanceValue(instances)
+
+	return moonPlanetConjunctionDirectionalEventWithLocal(queryTT, planet, direction, moonPlanetConjunctionMaybeLocalEvents(queryTT, planet, inst), inst)
 }
 
-// LastMoonPlanetConjunction 指定时刻之前最近一次行星合月（赤经合） / previous Moon-planet conjunction at or before jde.
-func LastMoonPlanetConjunction(jde float64, planet MoonPlanetConjunctionPlanet) float64 {
-	return moonPlanetConjunctionDirectionalEvent(jde, planet, -1)
+// LastMoonPlanetConjunctionWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func LastMoonPlanetConjunctionWithInstance(jde float64, planet MoonPlanetConjunctionPlanet, inst *Instance) float64 {
+	return moonPlanetConjunctionDirectionalEvent(jde, planet, -1, inst)
 }
 
-// NextMoonPlanetConjunction 指定时刻之后最近一次行星合月（赤经合） / next Moon-planet conjunction at or after jde.
-func NextMoonPlanetConjunction(jde float64, planet MoonPlanetConjunctionPlanet) float64 {
-	return moonPlanetConjunctionDirectionalEvent(jde, planet, 1)
+// NextMoonPlanetConjunctionWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func NextMoonPlanetConjunctionWithInstance(jde float64, planet MoonPlanetConjunctionPlanet, inst *Instance) float64 {
+	return moonPlanetConjunctionDirectionalEvent(jde, planet, 1, inst)
 }
 
-// ClosestMoonPlanetConjunction 离指定时刻最近一次行星合月（赤经合） / closest Moon-planet conjunction to jde.
-func ClosestMoonPlanetConjunction(jde float64, planet MoonPlanetConjunctionPlanet) float64 {
-	local := moonPlanetConjunctionMaybeLocalEvents(jde, planet)
+// ClosestMoonPlanetConjunctionWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func ClosestMoonPlanetConjunctionWithInstance(jde float64, planet MoonPlanetConjunctionPlanet, inst *Instance) float64 {
+	local := moonPlanetConjunctionMaybeLocalEvents(jde, planet, inst)
 	if !math.IsNaN(local.lastUT) && !math.IsNaN(local.nextUT) {
 		if sameEventJD(local.lastUT, local.nextUT) {
 			return local.lastUT
@@ -385,8 +403,8 @@ func ClosestMoonPlanetConjunction(jde float64, planet MoonPlanetConjunctionPlane
 	if !math.IsNaN(local.nextUT) {
 		return local.nextUT
 	}
-	last := moonPlanetConjunctionDirectionalEventWithLocal(jde, planet, -1, local)
-	next := moonPlanetConjunctionDirectionalEventWithLocal(jde, planet, 1, local)
+	last := moonPlanetConjunctionDirectionalEventWithLocal(jde, planet, -1, local, inst)
+	next := moonPlanetConjunctionDirectionalEventWithLocal(jde, planet, 1, local, inst)
 	if math.IsNaN(last) {
 		return next
 	}

@@ -3,6 +3,8 @@ package planet
 import (
 	"math"
 	"testing"
+
+	"github.com/starainrt/astro/internal/ephemtest"
 )
 
 func TestPlanetViewsMatchRawCuts(t *testing.T) {
@@ -80,6 +82,7 @@ func assertWherePlanetNaN(t *testing.T, xt, zn int, jd float64) {
 }
 
 func TestWherePlanetGoldenValues(t *testing.T) {
+	ephemtest.PinLegacy(t)
 	jd := 2451545.0
 	cases := []struct {
 		xt, zn int

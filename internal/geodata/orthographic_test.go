@@ -15,7 +15,7 @@ func orthographicTestBorderline(ring []GeoPoint, point GeoPoint) bool {
 	base := orthographicTestContainsRing(ring, point)
 	for _, bearing := range []float64{0, 90, 180, 270} {
 		offset := InterpolateGreatCircle(point, GeoPoint{
-			Longitude: normalizeLongitude(point.Longitude + 0.05*math.Cos(bearing*rad)),
+			Longitude: NormalizeLongitude(point.Longitude + 0.05*math.Cos(bearing*rad)),
 			Latitude:  point.Latitude + 0.05*math.Sin(bearing*rad),
 		}, 0.001)
 		if orthographicTestContainsRing(ring, offset) != base {

@@ -14,8 +14,10 @@ const (
 	neptunePhaseCoarseTolerance = 30.0 / 86400.0
 )
 
-func neptuneSunLongitudeDelta(jde, degree float64, filter bool) float64 {
-	sub := Limit360(Limit360(NeptuneApparentLo(jde)-HSunApparentLo(jde)) - degree)
+func neptuneSunLongitudeDelta(jde, degree float64, filter bool, instances ...*Instance) float64 {
+	inst := instanceValue(instances)
+
+	sub := Limit360(Limit360(NeptuneApparentLoWithInstance(jde, inst)-HSunApparentLoWithInstance(jde, inst)) - degree)
 	if filter {
 		if sub > 180 {
 			sub -= 360
@@ -27,8 +29,10 @@ func neptuneSunLongitudeDelta(jde, degree float64, filter bool) float64 {
 	return sub
 }
 
-func neptuneSunLongitudeDeltaN(jde, degree float64, filter bool, n int) float64 {
-	sub := Limit360(Limit360(NeptuneApparentLoN(jde, n)-HSunApparentLoN(jde, n)) - degree)
+func neptuneSunLongitudeDeltaN(jde, degree float64, filter bool, n int, instances ...*Instance) float64 {
+	inst := instanceValue(instances)
+
+	sub := Limit360(Limit360(NeptuneApparentLoNWithInstance(jde, n, inst)-HSunApparentLoNWithInstance(jde, n, inst)) - degree)
 	if filter {
 		if sub > 180 {
 			sub -= 360
@@ -40,8 +44,10 @@ func neptuneSunLongitudeDeltaN(jde, degree float64, filter bool, n int) float64 
 	return sub
 }
 
-func neptuneRADerivative(jde, delta float64) float64 {
-	sub := NeptuneApparentRa(jde+delta) - NeptuneApparentRa(jde-delta)
+func neptuneRADerivative(jde, delta float64, instances ...*Instance) float64 {
+	inst := instanceValue(instances)
+
+	sub := NeptuneApparentRaWithInstance(jde+delta, inst) - NeptuneApparentRaWithInstance(jde-delta, inst)
 	if sub > 180 {
 		sub -= 360
 	}
@@ -51,8 +57,10 @@ func neptuneRADerivative(jde, delta float64) float64 {
 	return sub / (2 * delta)
 }
 
-func neptuneRADerivativeN(jde, delta float64, n int) float64 {
-	sub := NeptuneApparentRaN(jde+delta, n) - NeptuneApparentRaN(jde-delta, n)
+func neptuneRADerivativeN(jde, delta float64, n int, instances ...*Instance) float64 {
+	inst := instanceValue(instances)
+
+	sub := NeptuneApparentRaNWithInstance(jde+delta, n, inst) - NeptuneApparentRaNWithInstance(jde-delta, n, inst)
 	if sub > 180 {
 		sub -= 360
 	}
@@ -62,13 +70,15 @@ func neptuneRADerivativeN(jde, delta float64, n int) float64 {
 	return sub / (2 * delta)
 }
 
-func neptuneConjunctionFull(jde, degree float64, next uint8) float64 {
+func neptuneConjunctionFull(jde, degree float64, next uint8, instances ...*Instance) float64 {
+	inst := instanceValue(instances)
+
 	//0=last 1=next
 	if !isFiniteFloat(jde) || !isFiniteFloat(degree) {
 		return math.NaN()
 	}
 	daysPerDegree := NEPTUNE_S_PERIOD / 360
-	currentDelta := neptuneSunLongitudeDelta(jde, degree, false)
+	currentDelta := neptuneSunLongitudeDelta(jde, degree, false, inst)
 	if next == 0 {
 		jde -= (360 - currentDelta) * daysPerDegree
 	} else {
@@ -78,8 +88,8 @@ func neptuneConjunctionFull(jde, degree float64, next uint8) float64 {
 	converged := false
 	for i := 0; i < eventNewtonMaxIterations; i++ {
 		prevJDE := estimateJDE
-		longitudeDelta := neptuneSunLongitudeDelta(prevJDE, degree, true)
-		longitudeSlope := (neptuneSunLongitudeDelta(prevJDE+0.000005, degree, true) - neptuneSunLongitudeDelta(prevJDE-0.000005, degree, true)) / 0.00001
+		longitudeDelta := neptuneSunLongitudeDelta(prevJDE, degree, true, inst)
+		longitudeSlope := (neptuneSunLongitudeDelta(prevJDE+0.000005, degree, true, inst) - neptuneSunLongitudeDelta(prevJDE-0.000005, degree, true, inst)) / 0.00001
 		nextJD := prevJDE - longitudeDelta/longitudeSlope
 		estimateJDE = nextJD
 		if math.Abs(nextJD-prevJDE) <= 0.00001 {
@@ -93,13 +103,15 @@ func neptuneConjunctionFull(jde, degree float64, next uint8) float64 {
 	return TT2UTC(estimateJDE)
 }
 
-func neptuneConjunction(jde, degree float64, next uint8) float64 {
+func neptuneConjunction(jde, degree float64, next uint8, instances ...*Instance) float64 {
+	inst := instanceValue(instances)
+
 	//0=last 1=next
 	if !isFiniteFloat(jde) || !isFiniteFloat(degree) {
 		return math.NaN()
 	}
 	daysPerDegree := NEPTUNE_S_PERIOD / 360
-	currentDelta := neptuneSunLongitudeDelta(jde, degree, false)
+	currentDelta := neptuneSunLongitudeDelta(jde, degree, false, inst)
 	if next == 0 {
 		jde -= (360 - currentDelta) * daysPerDegree
 	} else {
@@ -109,8 +121,8 @@ func neptuneConjunction(jde, degree float64, next uint8) float64 {
 	converged := false
 	for i := 0; i < eventNewtonMaxIterations; i++ {
 		prevJDE := estimateJDE
-		longitudeDelta := neptuneSunLongitudeDeltaN(prevJDE, degree, true, neptuneEventSearchN)
-		longitudeSlope := (neptuneSunLongitudeDeltaN(prevJDE+0.000005, degree, true, neptuneEventSearchN) - neptuneSunLongitudeDeltaN(prevJDE-0.000005, degree, true, neptuneEventSearchN)) / 0.00001
+		longitudeDelta := neptuneSunLongitudeDeltaN(prevJDE, degree, true, neptuneEventSearchN, inst)
+		longitudeSlope := (neptuneSunLongitudeDeltaN(prevJDE+0.000005, degree, true, neptuneEventSearchN, inst) - neptuneSunLongitudeDeltaN(prevJDE-0.000005, degree, true, neptuneEventSearchN, inst)) / 0.00001
 		nextJD := prevJDE - longitudeDelta/longitudeSlope
 		estimateJDE = nextJD
 		if math.Abs(nextJD-prevJDE) <= neptunePhaseCoarseTolerance {
@@ -124,8 +136,8 @@ func neptuneConjunction(jde, degree float64, next uint8) float64 {
 	converged = false
 	for i := 0; i < eventNewtonMaxIterations; i++ {
 		prevJDE := estimateJDE
-		longitudeDelta := neptuneSunLongitudeDelta(prevJDE, degree, true)
-		longitudeSlope := (neptuneSunLongitudeDelta(prevJDE+0.000005, degree, true) - neptuneSunLongitudeDelta(prevJDE-0.000005, degree, true)) / 0.00001
+		longitudeDelta := neptuneSunLongitudeDelta(prevJDE, degree, true, inst)
+		longitudeSlope := (neptuneSunLongitudeDelta(prevJDE+0.000005, degree, true, inst) - neptuneSunLongitudeDelta(prevJDE-0.000005, degree, true, inst)) / 0.00001
 		nextJD := prevJDE - longitudeDelta/longitudeSlope
 		estimateJDE = nextJD
 		if math.Abs(nextJD-prevJDE) <= 0.00001 {
@@ -139,39 +151,65 @@ func neptuneConjunction(jde, degree float64, next uint8) float64 {
 	return TT2UTC(estimateJDE)
 }
 
-func LastNeptuneConjunction(jde float64) float64 {
-	return inclusiveLastPhaseEvent(jde, 0, neptuneConjunction)
+// LastNeptuneConjunctionWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func LastNeptuneConjunctionWithInstance(jde float64, inst *Instance) float64 {
+	return inclusiveLastPhaseEvent(jde, 0, func(jde, degree float64, next uint8) float64 {
+		return neptuneConjunction(jde, degree, next, inst)
+	})
 }
 
-func NextNeptuneConjunction(jde float64) float64 {
-	return inclusiveNextPhaseEvent(jde, 0, neptuneConjunction)
+// NextNeptuneConjunctionWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func NextNeptuneConjunctionWithInstance(jde float64, inst *Instance) float64 {
+	return inclusiveNextPhaseEvent(jde, 0, func(jde, degree float64, next uint8) float64 {
+		return neptuneConjunction(jde, degree, next, inst)
+	})
 }
 
-func LastNeptuneOpposition(jde float64) float64 {
-	return inclusiveLastPhaseEvent(jde, 180, neptuneConjunction)
+// LastNeptuneOppositionWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func LastNeptuneOppositionWithInstance(jde float64, inst *Instance) float64 {
+	return inclusiveLastPhaseEvent(jde, 180, func(jde, degree float64, next uint8) float64 {
+		return neptuneConjunction(jde, degree, next, inst)
+	})
 }
 
-func NextNeptuneOpposition(jde float64) float64 {
-	return inclusiveNextPhaseEvent(jde, 180, neptuneConjunction)
+// NextNeptuneOppositionWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func NextNeptuneOppositionWithInstance(jde float64, inst *Instance) float64 {
+	return inclusiveNextPhaseEvent(jde, 180, func(jde, degree float64, next uint8) float64 {
+		return neptuneConjunction(jde, degree, next, inst)
+	})
 }
 
-func NextNeptuneEasternQuadrature(jde float64) float64 {
-	return inclusiveNextPhaseEvent(jde, 90, neptuneConjunction)
+// NextNeptuneEasternQuadratureWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func NextNeptuneEasternQuadratureWithInstance(jde float64, inst *Instance) float64 {
+	return inclusiveNextPhaseEvent(jde, 90, func(jde, degree float64, next uint8) float64 {
+		return neptuneConjunction(jde, degree, next, inst)
+	})
 }
 
-func LastNeptuneEasternQuadrature(jde float64) float64 {
-	return inclusiveLastPhaseEvent(jde, 90, neptuneConjunction)
+// LastNeptuneEasternQuadratureWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func LastNeptuneEasternQuadratureWithInstance(jde float64, inst *Instance) float64 {
+	return inclusiveLastPhaseEvent(jde, 90, func(jde, degree float64, next uint8) float64 {
+		return neptuneConjunction(jde, degree, next, inst)
+	})
 }
 
-func NextNeptuneWesternQuadrature(jde float64) float64 {
-	return inclusiveNextPhaseEvent(jde, 270, neptuneConjunction)
+// NextNeptuneWesternQuadratureWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func NextNeptuneWesternQuadratureWithInstance(jde float64, inst *Instance) float64 {
+	return inclusiveNextPhaseEvent(jde, 270, func(jde, degree float64, next uint8) float64 {
+		return neptuneConjunction(jde, degree, next, inst)
+	})
 }
 
-func LastNeptuneWesternQuadrature(jde float64) float64 {
-	return inclusiveLastPhaseEvent(jde, 270, neptuneConjunction)
+// LastNeptuneWesternQuadratureWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func LastNeptuneWesternQuadratureWithInstance(jde float64, inst *Instance) float64 {
+	return inclusiveLastPhaseEvent(jde, 270, func(jde, degree float64, next uint8) float64 {
+		return neptuneConjunction(jde, degree, next, inst)
+	})
 }
 
-func neptuneRetrogradeAroundOpposition(oppositionJD float64, searchBeforeOpposition bool) float64 {
+func neptuneRetrogradeAroundOpposition(oppositionJD float64, searchBeforeOpposition bool, instances ...*Instance) float64 {
+	inst := instanceValue(instances)
+
 	if !isFiniteFloat(oppositionJD) {
 		return math.NaN()
 	}
@@ -179,103 +217,107 @@ func neptuneRetrogradeAroundOpposition(oppositionJD float64, searchBeforeOpposit
 	startTT := oppositionTT
 	endTT := oppositionTT
 	if searchBeforeOpposition {
-		easternQuadratureUT := neptuneConjunction(oppositionTT, 90, 0)
+		easternQuadratureUT := neptuneConjunction(oppositionTT, 90, 0, inst)
 		startTT = UTC2TT(easternQuadratureUT)
 	} else {
-		westernQuadratureUT := neptuneConjunction(oppositionTT, 270, 1)
+		westernQuadratureUT := neptuneConjunction(oppositionTT, 270, 1, inst)
 		endTT = UTC2TT(westernQuadratureUT)
 	}
 	bestJDE := zeroEventInWindow(startTT, endTT, 2.0, 2.0, 30.0/86400.0, func(jd float64) float64 {
-		return neptuneRADerivativeN(jd, stationDerivativeStepDay, neptuneEventSearchN)
+		return neptuneRADerivativeN(jd, stationDerivativeStepDay, neptuneEventSearchN, inst)
 	}, func(jd float64) float64 {
-		return neptuneRADerivative(jd, stationDerivativeStepDay)
+		return neptuneRADerivative(jd, stationDerivativeStepDay, inst)
 	})
 	return TT2UTC(bestJDE)
 }
 
-func NextNeptuneRetrogradeToPrograde(jde float64) float64 {
+// NextNeptuneRetrogradeToProgradeWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func NextNeptuneRetrogradeToProgradeWithInstance(jde float64, inst *Instance) float64 {
 	if !isFiniteFloat(jde) {
 		return math.NaN()
 	}
-	lastOppositionJD := neptuneConjunctionFull(jde, 180, 0)
-	date := neptuneRetrogradeAroundOpposition(lastOppositionJD, false)
+	lastOppositionJD := neptuneConjunctionFull(jde, 180, 0, inst)
+	date := neptuneRetrogradeAroundOpposition(lastOppositionJD, false, inst)
 	if isFiniteFloat(date) && stationUTQueryAfterOrEqual(date, jde) {
 		return date
 	}
-	nextOppositionJD := neptuneConjunctionFull(jde, 180, 1)
+	nextOppositionJD := neptuneConjunctionFull(jde, 180, 1, inst)
 	if !isFiniteFloat(nextOppositionJD) {
 		return math.NaN()
 	}
-	date = neptuneRetrogradeAroundOpposition(nextOppositionJD, false)
+	date = neptuneRetrogradeAroundOpposition(nextOppositionJD, false, inst)
 	if !isFiniteFloat(date) || !stationUTQueryAfterOrEqual(date, jde) {
 		return math.NaN()
 	}
 	return date
 }
 
-func LastNeptuneRetrogradeToPrograde(jde float64) float64 {
+// LastNeptuneRetrogradeToProgradeWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func LastNeptuneRetrogradeToProgradeWithInstance(jde float64, inst *Instance) float64 {
 	if !isFiniteFloat(jde) {
 		return math.NaN()
 	}
-	lastOppositionJD := neptuneConjunctionFull(jde, 180, 0)
-	date := neptuneRetrogradeAroundOpposition(lastOppositionJD, false)
+	lastOppositionJD := neptuneConjunctionFull(jde, 180, 0, inst)
+	date := neptuneRetrogradeAroundOpposition(lastOppositionJD, false, inst)
 	if isFiniteFloat(date) && stationUTQueryBeforeOrEqual(date, jde) {
 		return date
 	}
 	if !isFiniteFloat(lastOppositionJD) {
 		return math.NaN()
 	}
-	previousOppositionJD := neptuneConjunctionFull(eventUTLastQueryTT(lastOppositionJD), 180, 0)
+	previousOppositionJD := neptuneConjunctionFull(eventUTLastQueryTT(lastOppositionJD), 180, 0, inst)
 	if !isFiniteFloat(previousOppositionJD) {
 		return math.NaN()
 	}
-	date = neptuneRetrogradeAroundOpposition(previousOppositionJD, false)
+	date = neptuneRetrogradeAroundOpposition(previousOppositionJD, false, inst)
 	if !isFiniteFloat(date) || !stationUTQueryBeforeOrEqual(date, jde) {
 		return math.NaN()
 	}
 	return date
 }
 
-func NextNeptuneProgradeToRetrograde(jde float64) float64 {
+// NextNeptuneProgradeToRetrogradeWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func NextNeptuneProgradeToRetrogradeWithInstance(jde float64, inst *Instance) float64 {
 	if !isFiniteFloat(jde) {
 		return math.NaN()
 	}
-	nextOppositionJD := neptuneConjunctionFull(jde, 180, 1)
-	date := neptuneRetrogradeAroundOpposition(nextOppositionJD, true)
+	nextOppositionJD := neptuneConjunctionFull(jde, 180, 1, inst)
+	date := neptuneRetrogradeAroundOpposition(nextOppositionJD, true, inst)
 	if isFiniteFloat(date) && stationUTQueryAfterOrEqual(date, jde) {
 		return date
 	}
 	if !isFiniteFloat(nextOppositionJD) {
 		return math.NaN()
 	}
-	followingOppositionJD := neptuneConjunctionFull(eventUTNextQueryTT(nextOppositionJD), 180, 1)
+	followingOppositionJD := neptuneConjunctionFull(eventUTNextQueryTT(nextOppositionJD), 180, 1, inst)
 	if !isFiniteFloat(followingOppositionJD) {
 		return math.NaN()
 	}
-	date = neptuneRetrogradeAroundOpposition(followingOppositionJD, true)
+	date = neptuneRetrogradeAroundOpposition(followingOppositionJD, true, inst)
 	if !isFiniteFloat(date) || !stationUTQueryAfterOrEqual(date, jde) {
 		return math.NaN()
 	}
 	return date
 }
 
-func LastNeptuneProgradeToRetrograde(jde float64) float64 {
+// LastNeptuneProgradeToRetrogradeWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func LastNeptuneProgradeToRetrogradeWithInstance(jde float64, inst *Instance) float64 {
 	if !isFiniteFloat(jde) {
 		return math.NaN()
 	}
-	nextOppositionJD := neptuneConjunctionFull(jde, 180, 1)
-	date := neptuneRetrogradeAroundOpposition(nextOppositionJD, true)
+	nextOppositionJD := neptuneConjunctionFull(jde, 180, 1, inst)
+	date := neptuneRetrogradeAroundOpposition(nextOppositionJD, true, inst)
 	if isFiniteFloat(date) && stationUTQueryBeforeOrEqual(date, jde) {
 		return date
 	}
 	if !isFiniteFloat(nextOppositionJD) {
 		return math.NaN()
 	}
-	lastOppositionJD := neptuneConjunctionFull(jde, 180, 0)
+	lastOppositionJD := neptuneConjunctionFull(jde, 180, 0, inst)
 	if !isFiniteFloat(lastOppositionJD) {
 		return math.NaN()
 	}
-	date = neptuneRetrogradeAroundOpposition(lastOppositionJD, true)
+	date = neptuneRetrogradeAroundOpposition(lastOppositionJD, true, inst)
 	if !isFiniteFloat(date) || !stationUTQueryBeforeOrEqual(date, jde) {
 		return math.NaN()
 	}

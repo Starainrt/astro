@@ -238,13 +238,13 @@ func TestSmoothOccultationHairpinsKeepsShortDisplayEdges(t *testing.T) {
 	maximumEdge := 0.0
 	maximumDetour := 0.0
 	for index := 1; index < len(smoothed); index++ {
-		maximumEdge = math.Max(maximumEdge, geoDistanceKM(smoothed[index-1], smoothed[index]))
+		maximumEdge = math.Max(maximumEdge, geodata.EquatorialDistanceKM(smoothed[index-1], smoothed[index]))
 	}
 	for index := 1; index+1 < len(smoothed); index++ {
 		maximumDetour = math.Max(maximumDetour,
-			geoDistanceKM(smoothed[index-1], smoothed[index])+
-				geoDistanceKM(smoothed[index], smoothed[index+1])-
-				geoDistanceKM(smoothed[index-1], smoothed[index+1]))
+			geodata.EquatorialDistanceKM(smoothed[index-1], smoothed[index])+
+				geodata.EquatorialDistanceKM(smoothed[index], smoothed[index+1])-
+				geodata.EquatorialDistanceKM(smoothed[index-1], smoothed[index+1]))
 	}
 	if maximumEdge > 50.01 {
 		t.Fatalf("smoothed maximum edge=%.1f km, want <=50 km", maximumEdge)
@@ -300,10 +300,10 @@ func TestSmoothOccultationOrdinaryWobblesHandlesHighLatitudeArc(t *testing.T) {
 	}
 	changed := false
 	for index := 1; index+1 < len(points); index++ {
-		if geoDistanceKM(points[index], smoothed[index]) > 0.001 {
+		if geodata.EquatorialDistanceKM(points[index], smoothed[index]) > 0.001 {
 			changed = true
-			if geoDistanceKM(points[index], smoothed[index]) > 20 {
-				t.Fatalf("high-latitude smoothing moved point %d by %.2f km", index, geoDistanceKM(points[index], smoothed[index]))
+			if geodata.EquatorialDistanceKM(points[index], smoothed[index]) > 20 {
+				t.Fatalf("high-latitude smoothing moved point %d by %.2f km", index, geodata.EquatorialDistanceKM(points[index], smoothed[index]))
 			}
 		}
 	}
@@ -321,7 +321,7 @@ func TestDensifyOccultationPolygonsIncludesClosingEdge(t *testing.T) {
 	}
 	densified := densifyOccultationPolygons([][]geodata.GeoPoint{points}, 50)
 	ring := densified[0]
-	maximumEdge := geoDistanceKM(ring[len(ring)-1], ring[0])
+	maximumEdge := geodata.EquatorialDistanceKM(ring[len(ring)-1], ring[0])
 	if maximumEdge > 50.01 {
 		t.Fatalf("closing edge=%.1f km, want <=50 km", maximumEdge)
 	}
@@ -449,7 +449,7 @@ func TestVisibleBandPolygons20250105SaturnEnvelopeCandidates(t *testing.T) {
 	}
 	for _, polygon := range final {
 		for index := 1; index < len(polygon); index++ {
-			if distance := geoDistanceKM(polygon[index-1], polygon[index]); distance > BoundaryBranchJumpKM {
+			if distance := geodata.EquatorialDistanceKM(polygon[index-1], polygon[index]); distance > BoundaryBranchJumpKM {
 				t.Fatalf("band ring spans a %.1f km edge", distance)
 			}
 		}
@@ -519,7 +519,7 @@ func TestSmoothOccultationOrdinaryWobblesPreservesEndpointsAndBoundedMotion(t *t
 		t.Fatalf("ordinary smoothing changed open endpoints: %#v", cleaned)
 	}
 	for index, point := range cleaned {
-		if move := geoDistanceKM(point, ring[index]); move > 20.001 {
+		if move := geodata.EquatorialDistanceKM(point, ring[index]); move > 20.001 {
 			t.Fatalf("point %d moved %.2f km, want <=20 km", index, move)
 		}
 	}
@@ -585,7 +585,7 @@ func occultationTestWindowTouchesHorizon(
 	}
 	for offset := -2; offset <= 2; offset++ {
 		for _, horizon := range horizons {
-			if geoDistanceKM(polygon[index+offset], horizon) <= windowKM {
+			if geodata.EquatorialDistanceKM(polygon[index+offset], horizon) <= windowKM {
 				return true
 			}
 		}
@@ -716,7 +716,7 @@ func TestVisibleBandPolygons20250729MarsStitchesEndRiseFold(t *testing.T) {
 		minimumTurn := 180.0
 		for index := 1; index+1 < len(polygon); index++ {
 			first, middle, last := polygon[index-1], polygon[index], polygon[index+1]
-			detour := geoDistanceKM(first, middle) + geoDistanceKM(middle, last) - geoDistanceKM(first, last)
+			detour := geodata.EquatorialDistanceKM(first, middle) + geodata.EquatorialDistanceKM(middle, last) - geodata.EquatorialDistanceKM(first, last)
 			if detour > maximumDetour {
 				maximumDetour = detour
 			}
@@ -1027,7 +1027,7 @@ func TestOccultationPhaseBoundaryCycleExcludesGreatestInteriorLine(t *testing.T)
 		minimum := math.Inf(1)
 		for _, line := range phaseLines {
 			for _, candidate := range line {
-				minimum = math.Min(minimum, geoDistanceKM(point, candidate))
+				minimum = math.Min(minimum, geodata.EquatorialDistanceKM(point, candidate))
 			}
 		}
 		if minimum > 1 {
@@ -1135,7 +1135,7 @@ func TestVisibleBandPolygons20250729MarsTotalRiseSetRemovesPolarBacktrack(t *tes
 				limit = len(polygon) - 1
 			}
 			for endIndex := startIndex + 1; endIndex <= limit; endIndex++ {
-				edge := geoDistanceKM(polygon[endIndex-1], polygon[endIndex])
+				edge := geodata.EquatorialDistanceKM(polygon[endIndex-1], polygon[endIndex])
 				arcLength += edge
 				if edge > maximumEdge {
 					maximumEdge = edge
@@ -1143,7 +1143,7 @@ func TestVisibleBandPolygons20250729MarsTotalRiseSetRemovesPolarBacktrack(t *tes
 				if endIndex < startIndex+3 {
 					continue
 				}
-				closure := geoDistanceKM(polygon[startIndex], polygon[endIndex])
+				closure := geodata.EquatorialDistanceKM(polygon[startIndex], polygon[endIndex])
 				if closure <= 180 && arcLength-closure >= 35 {
 					t.Fatalf("total polygon %d retains a large polar backtrack: start=%d end=%d closure=%.1f km detour=%.1f km",
 						polygonIndex, startIndex, endIndex, closure, arcLength-closure)

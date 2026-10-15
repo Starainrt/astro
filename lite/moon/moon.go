@@ -6,7 +6,6 @@ import (
 	"math"
 	"time"
 
-	"github.com/starainrt/astro/basic"
 	lite "github.com/starainrt/astro/lite/internal"
 	. "github.com/starainrt/astro/tools"
 )
@@ -19,50 +18,50 @@ var (
 
 // TrueLo 轻量真黄经 / lightweight true ecliptic longitude.
 func TrueLo(date time.Time) float64 {
-	return lite.MoonGeocentric(basic.Date2JD(date.UTC())).Longitude
+	return lite.MoonGeocentric(lite.Date2JD(date.UTC())).Longitude
 }
 
 // TrueBo 轻量真黄纬 / lightweight true ecliptic latitude.
 func TrueBo(date time.Time) float64 {
-	return lite.MoonGeocentric(basic.Date2JD(date.UTC())).Latitude
+	return lite.MoonGeocentric(lite.Date2JD(date.UTC())).Latitude
 }
 
 // TrueRa 轻量真赤经 / lightweight true right ascension.
 func TrueRa(date time.Time) float64 {
-	return lite.MoonGeocentric(basic.Date2JD(date.UTC())).RightAscension
+	return lite.MoonGeocentric(lite.Date2JD(date.UTC())).RightAscension
 }
 
 // TrueDec 轻量真赤纬 / lightweight true declination.
 func TrueDec(date time.Time) float64 {
-	return lite.MoonGeocentric(basic.Date2JD(date.UTC())).Declination
+	return lite.MoonGeocentric(lite.Date2JD(date.UTC())).Declination
 }
 
 // TrueRaDec 轻量真赤经、真赤纬 / lightweight true right ascension and declination.
 func TrueRaDec(date time.Time) (float64, float64) {
-	state := lite.MoonGeocentric(basic.Date2JD(date.UTC()))
+	state := lite.MoonGeocentric(lite.Date2JD(date.UTC()))
 	return state.RightAscension, state.Declination
 }
 
 // ApparentRa 轻量站心视赤经 / lightweight topocentric apparent right ascension.
 func ApparentRa(date time.Time, lon, lat float64) float64 {
-	state := lite.MoonTopocentric(basic.Date2JD(date.UTC()), lon, lat, 0)
+	state := lite.MoonTopocentric(lite.Date2JD(date.UTC()), lon, lat, 0)
 	return state.RightAscension
 }
 
 // ApparentDec 轻量站心视赤纬 / lightweight topocentric apparent declination.
 func ApparentDec(date time.Time, lon, lat float64) float64 {
-	state := lite.MoonTopocentric(basic.Date2JD(date.UTC()), lon, lat, 0)
+	state := lite.MoonTopocentric(lite.Date2JD(date.UTC()), lon, lat, 0)
 	return state.Declination
 }
 
 // ApparentRaDec 轻量站心视赤经、视赤纬 / lightweight topocentric apparent right ascension and declination.
 func ApparentRaDec(date time.Time, lon, lat float64) (float64, float64) {
-	state := lite.MoonTopocentric(basic.Date2JD(date.UTC()), lon, lat, 0)
+	state := lite.MoonTopocentric(lite.Date2JD(date.UTC()), lon, lat, 0)
 	return state.RightAscension, state.Declination
 }
 
 func topocentricHorizontal(date time.Time, lon, lat float64) (altitude, azimuth, hourAngle float64) {
-	jd := basic.Date2JD(date.UTC())
+	jd := lite.Date2JD(date.UTC())
 	state := lite.MoonTopocentric(jd, lon, lat, 0)
 	return lite.HorizontalCoordinates(state.RightAscension, state.Declination, jd, lon, lat)
 }
@@ -93,7 +92,7 @@ func Zenith(date time.Time, lon, lat float64) float64 {
 
 // SunMoonLoDiff 轻量日月黄经差 / lightweight Moon-Sun ecliptic-longitude difference.
 func SunMoonLoDiff(date time.Time) float64 {
-	jdUTC := basic.Date2JD(date.UTC())
+	jdUTC := lite.Date2JD(date.UTC())
 	return Limit360(lite.MoonGeocentric(jdUTC).Longitude - lite.SunApparentLo(jdUTC))
 }
 
@@ -129,11 +128,11 @@ func SetTime(date time.Time, lon, lat, height float64, aero bool) (time.Time, er
 
 func riseSetTime(date time.Time, lon, lat, height float64, aero, isRise bool) (time.Time, error) {
 	localMidnight := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, date.Location())
-	localJD := basic.Date2JD(localMidnight)
+	localJD := lite.Date2JD(localMidnight)
 	_, offset := localMidnight.Zone()
 	timezone := float64(offset) / 3600.0
 
-	horizonDip := basic.HeightDegreeByLat(height, lat)
+	horizonDip := lite.HeightDegreeByLat(height, lat)
 
 	altitudeFn := func(localJD float64) float64 {
 		utcJD := localJD - timezone/24.0
@@ -141,7 +140,7 @@ func riseSetTime(date time.Time, lon, lat, height float64, aero, isRise bool) (t
 		altitude, _, _ := lite.HorizontalCoordinates(state.RightAscension, state.Declination, utcJD, lon, lat)
 		residual := altitude + horizonDip
 		if aero {
-			residual += basic.RefractionFromTrueAltitude(altitude, 1010, 10)
+			residual += lite.RefractionFromTrueAltitude(altitude, 1010, 10)
 			residual += liteMoonSemidiameterDegrees(state.DistanceEarthRadii)
 		}
 		return residual
@@ -160,7 +159,7 @@ func riseSetTime(date time.Time, lon, lat, height float64, aero, isRise bool) (t
 			return time.Time{}, err
 		}
 	}
-	return basic.JD2DateByZone(eventJD-timezone/24, date.Location(), false), nil
+	return lite.JD2DateByZone(eventJD-timezone/24, date.Location(), false), nil
 }
 
 func liteMoonSemidiameterDegrees(distanceEarthRadii float64) float64 {

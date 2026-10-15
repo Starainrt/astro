@@ -67,13 +67,11 @@ type starOccultationDiagramTime struct {
 	labels []string
 }
 
-// StarOccultationDiagram 为已求解的固定地点恒星月掩计算以月心为原点的切平面轨迹。事件数据无效或不完整时，结果不含帧。
-// StarOccultationDiagram computes a Moon-centered tangent-plane track for an already solved fixed-site stellar occultation. Invalid or incomplete event data produces a result without frames.
-func StarOccultationDiagram(
+// StarOccultationDiagramWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func StarOccultationDiagramWithInstance(
 	info StarOccultationInfo,
 	star StarCoordinate,
-	options StarOccultationDiagramOptions,
-) StarOccultationDiagramResult {
+	options StarOccultationDiagramOptions, inst *Instance) StarOccultationDiagramResult {
 	options = normalizeStarOccultationDiagramOptions(options)
 	result := StarOccultationDiagramResult{Occultation: info, StepDays: options.StepDays}
 	if star.Validate() != nil || info.Observer.Validate() != nil ||
@@ -86,9 +84,9 @@ func StarOccultationDiagram(
 	startTT := occultationTimeToTT(info.Immersion)
 	greatestTT := occultationTimeToTT(info.Greatest)
 	endTT := occultationTimeToTT(info.Emersion)
-	immersionFrame, immersionOK := starOccultationDiagramFrameAt(startTT, star, info.Observer)
-	greatestFrame, greatestOK := starOccultationDiagramFrameAt(greatestTT, star, info.Observer)
-	emersionFrame, emersionOK := starOccultationDiagramFrameAt(endTT, star, info.Observer)
+	immersionFrame, immersionOK := starOccultationDiagramFrameAt(startTT, star, info.Observer, inst)
+	greatestFrame, greatestOK := starOccultationDiagramFrameAt(greatestTT, star, info.Observer, inst)
+	emersionFrame, emersionOK := starOccultationDiagramFrameAt(endTT, star, info.Observer, inst)
 	if !immersionOK || !greatestOK || !emersionOK ||
 		!starOccultationDiagramMatchesInfo(info, immersionFrame, greatestFrame, emersionFrame) {
 		return result
@@ -97,7 +95,7 @@ func StarOccultationDiagram(
 	result.StepDays = stepDays
 	result.Frames = make([]StarOccultationDiagramFrame, 0, len(times))
 	for _, item := range times {
-		frame, ok := starOccultationDiagramFrameAt(item.jde, star, info.Observer)
+		frame, ok := starOccultationDiagramFrameAt(item.jde, star, info.Observer, inst)
 		if !ok {
 			return StarOccultationDiagramResult{Occultation: info, StepDays: stepDays}
 		}
@@ -116,8 +114,9 @@ func starOccultationDiagramMatchesInfo(
 		!finite(info.PositionAngleDeg) {
 		return false
 	}
-	if math.Abs(immersion.SeparationArcsec-immersion.MoonRadiusArcsec) > starOccultationDiagramGeometryArcsec ||
-		math.Abs(emersion.SeparationArcsec-emersion.MoonRadiusArcsec) > starOccultationDiagramGeometryArcsec {
+	// 已按月缘剖面收敛的接触不在圆月面上，圆月面接触判据只适用于未修正的结果。
+	if !info.LunarLimbApplied && (math.Abs(immersion.SeparationArcsec-immersion.MoonRadiusArcsec) > starOccultationDiagramGeometryArcsec ||
+		math.Abs(emersion.SeparationArcsec-emersion.MoonRadiusArcsec) > starOccultationDiagramGeometryArcsec) {
 		return false
 	}
 	return math.Abs(greatest.SeparationArcsec-info.MinimumSeparationArcsec) <= starOccultationDiagramGeometryArcsec &&
@@ -221,9 +220,11 @@ func starOccultationDiagramLabelPriority(labels []string) int {
 	}
 }
 
-func starOccultationDiagramFrameAt(tt float64, star StarCoordinate, observer Observer) (StarOccultationDiagramFrame, bool) {
-	position := starMoonPositionAt(tt, star, observer)
-	moonRadius := moonTopocentricSemidiameterN(tt, observer, -1)
+func starOccultationDiagramFrameAt(tt float64, star StarCoordinate, observer Observer, instances ...*Instance) (StarOccultationDiagramFrame, bool) {
+	inst := instanceValue(instances)
+
+	position := starMoonPositionAt(tt, star, observer, inst)
+	moonRadius := moonTopocentricSemidiameterN(tt, observer, -1, inst)
 	if !position.valid || !finite(moonRadius) || moonRadius <= 0 {
 		return StarOccultationDiagramFrame{}, false
 	}

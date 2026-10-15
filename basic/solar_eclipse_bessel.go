@@ -1,6 +1,8 @@
 package basic
 
-import "math"
+import (
+	"math"
+)
 
 //下游研究需要，改成直接导出
 
@@ -93,11 +95,9 @@ func SolarEclipseBesselianMuForPublishedTable(
 	return SolarEclipseBesselianPolynomial{mu[0] + shift, mu[1], mu[2], mu[3]}
 }
 
-// SolarEclipseBesselianElements 计算给定近朔时刻附近一次日食的多项式贝塞尔根数，窗口内无日食时返回 false。
-// Polynomial Besselian elements for the solar eclipse near the given new-moon instant; false when there is none.
-func SolarEclipseBesselianElements(
-	seedJDE float64, options SolarEclipseBesselianElementsOptions,
-) (SolarEclipseBesselianElementsResult, bool) {
+// SolarEclipseBesselianElementsWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func SolarEclipseBesselianElementsWithInstance(
+	seedJDE float64, options SolarEclipseBesselianElementsOptions, inst *Instance) (SolarEclipseBesselianElementsResult, bool) {
 	options.Model = normalizeSolarEclipseRadiusModel(options.Model)
 	options.SunRadiusModel = normalizeSolarEclipseSunRadiusModel(options.SunRadiusModel)
 	validHours := options.ValidHours
@@ -105,10 +105,10 @@ func SolarEclipseBesselianElements(
 		validHours = solarEclipseBesselianDefaultValidHours
 	}
 
-	solver := newSolarEclipseSolverWithOptions(CalcMoonSHByJDE(seedJDE, 0), SolarEclipseOptions{
+	solver := newSolarEclipseSolverWithOptions(solarEclipseAnchorNewMoon(seedJDE, inst), SolarEclipseOptions{
 		RadiusModel:    options.Model,
 		SunRadiusModel: options.SunRadiusModel,
-	}).
+	}, inst).
 		withDeltaTSeconds(options.DeltaTSeconds)
 	feature := solver.feature()
 	if feature.typeCode == "N" {

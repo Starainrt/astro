@@ -1,6 +1,8 @@
 package moon
 
-import "github.com/starainrt/astro/basic"
+import (
+	"github.com/starainrt/astro/basic"
+)
 
 // PlanetOccultationDiagramOptions 控制本地行星月掩轨迹采样。
 // PlanetOccultationDiagramOptions controls local planetary-occultation track sampling.
@@ -14,11 +16,10 @@ type PlanetOccultationDiagramFrame = basic.PlanetOccultationDiagramFrame
 // PlanetOccultationDiagramResult contains a fixed-site Moon-centered planetary track.
 type PlanetOccultationDiagramResult = basic.PlanetOccultationDiagramResult
 
-// PlanetOccultationDiagram 为已求解的固定地点行星月掩计算图形几何数据。
-// PlanetOccultationDiagram computes diagram geometry for an already solved fixed-site planetary occultation.
-func PlanetOccultationDiagram(
+// PlanetOccultationDiagram 为已求解的固定地点行星月掩计算图形几何数据 / diagram geometry for a solved local planetary occultation.
+func (module *Moon) PlanetOccultationDiagram(
 	info PlanetOccultationInfo,
 	options PlanetOccultationDiagramOptions,
 ) PlanetOccultationDiagramResult {
-	return basic.PlanetOccultationDiagram(info, options)
+	return basic.PlanetOccultationDiagramWithInstance(info, options, module.inst)
 }

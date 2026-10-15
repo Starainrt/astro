@@ -32,18 +32,18 @@ type TransitInfo struct {
 }
 
 // NextTransit 下一次地心金星凌日 / next geocentric Venus transit.
-func NextTransit(date time.Time) TransitInfo {
-	return transitInfoFromBasic(basic.NextVenusTransit(basic.Date2JD(date.UTC())), date.Location())
+func (module *Venus) NextTransit(date time.Time) TransitInfo {
+	return transitInfoFromBasic(basic.NextVenusTransitWithInstance(basic.Date2JD(date.UTC()), module.inst), date.Location())
 }
 
 // LastTransit 上一次地心金星凌日 / previous geocentric Venus transit.
-func LastTransit(date time.Time) TransitInfo {
-	return transitInfoFromBasic(basic.LastVenusTransit(basic.Date2JD(date.UTC())), date.Location())
+func (module *Venus) LastTransit(date time.Time) TransitInfo {
+	return transitInfoFromBasic(basic.LastVenusTransitWithInstance(basic.Date2JD(date.UTC()), module.inst), date.Location())
 }
 
 // ClosestTransit 最近一次地心金星凌日 / closest geocentric Venus transit.
-func ClosestTransit(date time.Time) TransitInfo {
-	return transitInfoFromBasic(basic.ClosestVenusTransit(basic.Date2JD(date.UTC())), date.Location())
+func (module *Venus) ClosestTransit(date time.Time) TransitInfo {
+	return transitInfoFromBasic(basic.ClosestVenusTransitWithInstance(basic.Date2JD(date.UTC()), module.inst), date.Location())
 }
 
 func transitInfoFromBasic(result basic.PlanetTransitResult, loc *time.Location) TransitInfo {
@@ -70,4 +70,27 @@ func transitInfoFromBasic(result basic.PlanetTransitResult, loc *time.Location) 
 		info.InternalDuration = info.InternalEnd.Sub(info.InternalStart)
 	}
 	return info
+}
+
+// LocalTransitInfo 站心金星凌日信息 / topocentric Venus transit information.
+//
+// 时刻保持调用者传入的 TransitInfo 的时区；太阳高度为几何中心高度，不含折射。
+// Times keep the timezone of the supplied TransitInfo; Sun altitudes are geometric centre altitudes without refraction.
+type LocalTransitInfo = basic.PlanetTransitLocalInfo
+
+// LocalTransitContact 站心凌日接触 / topocentric transit contact.
+type LocalTransitContact = basic.PlanetTransitLocalContactInfo
+
+// LocalTransit 地心凌日 transit 在观测地的站心接触与凌甚 / topocentric contacts of transit seen from the site.
+//
+// lon、lat 为度，东经、北纬为正；height 为海拔米。
+// lon and lat are in degrees, east and north positive; height is in meters.
+func (module *Venus) LocalTransit(transit TransitInfo, lon, lat, height float64) LocalTransitInfo {
+	if !transit.Valid {
+		return LocalTransitInfo{}
+	}
+	result := basic.PlanetTransitResultFromTimes(2,
+		transit.Start, transit.InternalStart, transit.Greatest, transit.InternalEnd, transit.End)
+	local := basic.PlanetTransitLocalWithInstance(result, basic.Observer{Longitude: lon, Latitude: lat, Height: height}, module.inst)
+	return basic.PlanetTransitLocalInfoFromResult(local, transit.Greatest.Location())
 }

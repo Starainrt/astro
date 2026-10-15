@@ -28,6 +28,7 @@ func lunarEclipseInfoFromBasic(
 ) LunarEclipseInfo {
 	info := LunarEclipseInfo{
 		Type:               mapBasicLunarEclipseType(result.Type),
+		LunarLimbApplied:   result.LunarLimbApplied,
 		PenumbralMagnitude: result.PenumbralMagnitude,
 		UmbralMagnitude:    result.Magnitude,
 		PenumbralStart:     ttJDEToTime(result.PenumbralStart, location),

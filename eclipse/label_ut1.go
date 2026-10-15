@@ -3,7 +3,7 @@ package eclipse
 import (
 	"time"
 
-	"github.com/starainrt/astro"
+	"github.com/starainrt/astro/basic"
 )
 
 // 以下函数把结构里的民用时刻换成同一物理时刻的 UT1 时刻，供出图与导出共用。
@@ -13,7 +13,7 @@ func ut1Label(t time.Time) time.Time {
 	if t.IsZero() {
 		return t
 	}
-	return astro.LabelIn(astro.TimeScaleUT1, t)
+	return basic.LabelIn(basic.TimeScaleUT1, t)
 }
 
 // TimeLabelsInUT1 返回换成 UT1 时刻的新切片 / returns a copy in UT1.

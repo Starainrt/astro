@@ -24,7 +24,6 @@ type moonMaxDeclinationMonthState struct {
 }
 
 func TestMoonMaximumDeclinationsMatchHorizonsBaseline(t *testing.T) {
-	// Baseline is generated from JPL Horizons by scripts/generate_moon_max_declination_baseline.sh.
 	data, err := os.ReadFile("testdata/moon_max_declination_baseline.json")
 	if err != nil {
 		t.Fatalf("read baseline: %v", err)

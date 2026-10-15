@@ -16,7 +16,6 @@ type sunPhysicalSample struct {
 }
 
 func TestSunPhysicalMatchesHorizonsBaseline(t *testing.T) {
-	// Baseline is generated from JPL Horizons by scripts/generate_sun_physical_baseline.sh.
 	data, err := os.ReadFile("testdata/sun_physical_baseline.json")
 	if err != nil {
 		t.Fatalf("read baseline: %v", err)

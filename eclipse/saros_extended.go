@@ -5,11 +5,14 @@ import (
 	"sync"
 
 	"github.com/starainrt/astro/basic"
+	"github.com/starainrt/astro/internal/ephem"
 )
 
 const (
-	sarosInexLunations = 358
-	sarosLunationEpoch = 2451550.09765
+	sarosExtendedStartTT = 625308.343824885320
+	sarosExtendedEndTT   = 3912880.500800740905
+	sarosInexLunations   = 358
+	sarosLunationEpoch   = 2451550.09765
 	// Keep the acceptance interval below half a synodic month while allowing
 	// the mean-phase seed to drift in remote eras.
 	sarosEclipseSeedToleranceDays = 7.0
@@ -17,9 +20,9 @@ const (
 	sarosEclipseMemoSlots = 4096
 )
 
-// 键是（朔望月序号，相位）；判定与模型无关，只有月序号和相位决定结果。
 type sarosEclipseMemoEntry struct {
 	key     int64
+	gen     uint64
 	maximum float64
 	exists  bool
 	valid   bool
@@ -42,7 +45,7 @@ func sarosEclipseLookup(k, phase int) (float64, bool, bool, bool) {
 	sarosEclipseMemoMu.RLock()
 	entry := sarosEclipseMemoEntries[slot]
 	sarosEclipseMemoMu.RUnlock()
-	if !entry.set || entry.key != key {
+	if !entry.set || entry.key != key || entry.gen != ephem.Generation() {
 		return 0, false, false, false
 	}
 	return entry.maximum, entry.exists, entry.valid, true
@@ -53,7 +56,7 @@ func sarosEclipseStore(k, phase int, maximum float64, exists, valid bool) {
 	slot := sarosEclipseMemoSlot(key)
 	sarosEclipseMemoMu.Lock()
 	sarosEclipseMemoEntries[slot] = sarosEclipseMemoEntry{
-		key: key, maximum: maximum, exists: exists, valid: valid, set: true,
+		key: key, gen: ephem.Generation(), maximum: maximum, exists: exists, valid: valid, set: true,
 	}
 	sarosEclipseMemoMu.Unlock()
 }
@@ -108,15 +111,20 @@ func matchSarosSpans(spans []sarosSpan, k int) (SarosInfo, bool) {
 }
 
 func extendedSarosInfo(ttJDE float64, phase int) (SarosInfo, bool) {
+	return defaultModule.extendedSarosInfo(ttJDE, phase)
+}
+
+func (module *Eclipse) extendedSarosInfo(ttJDE float64, phase int) (SarosInfo, bool) {
+	return extendedSarosInfoForModel(ttJDE, phase, module.model(), module.sarosEclipse)
+}
+
+func extendedSarosInfoForModel(ttJDE float64, phase int, model ephem.Model, evaluate func(int, int) (float64, bool, bool)) (SarosInfo, bool) {
 	k, ok := sarosLunation(ttJDE, phase)
 	if !ok {
 		return SarosInfo{}, false
 	}
 	if ttJDE >= sarosExtendedStartTT && ttJDE < sarosExtendedEndTT {
-		spans := solarSarosExtended[:]
-		if phase == 1 {
-			spans = lunarSarosExtended[:]
-		}
+		spans := sarosExtensionSpansForModel(phase, model)
 		info, ok := matchSarosSpans(spans, k)
 		if !ok {
 			return SarosInfo{}, false
@@ -126,31 +134,58 @@ func extendedSarosInfo(ttJDE float64, phase int) (SarosInfo, bool) {
 		}
 		return info, true
 	}
-	return extrapolateSaros(k, phase)
+	return extrapolateSarosWithEvaluator(k, phase, evaluate)
 }
 
-func sarosEclipse(k, phase int) (float64, bool, bool) {
+func sarosExtensionSpans(phase int) []sarosSpan {
+	return sarosExtensionSpansForModel(phase, ephem.Active())
+}
+
+func sarosExtensionSpansForModel(phase int, model ephem.Model) []sarosSpan {
+	if model == ephem.Semianalytic {
+		if phase == 1 {
+			return lunarSarosExtendedSemianalytic[:]
+		}
+		return solarSarosExtendedSemianalytic[:]
+	}
+	if phase == 1 {
+		return lunarSarosExtendedLegacy[:]
+	}
+	return solarSarosExtendedLegacy[:]
+}
+
+func sarosEclipse(k, phase int) (float64, bool, bool) { return defaultModule.sarosEclipse(k, phase) }
+
+func (module *Eclipse) sarosEclipse(k, phase int) (float64, bool, bool) {
+	if module.inst != nil {
+		return sarosEclipseUncached(k, phase, module)
+	}
 	if maximum, exists, valid, ok := sarosEclipseLookup(k, phase); ok {
 		return maximum, exists, valid
 	}
-	maximum, exists, valid := sarosEclipseUncached(k, phase)
+	maximum, exists, valid := sarosEclipseUncached(k, phase, module)
 	sarosEclipseStore(k, phase, maximum, exists, valid)
 	return maximum, exists, valid
 }
 
 // Saros metadata uses the Split-K solar model and the union of Danjon and
 // Chauvenet lunar detections, independent of the observer or display model.
-func sarosEclipseUncached(k, phase int) (float64, bool, bool) {
+func sarosEclipseUncached(k, phase int, modules ...*Eclipse) (float64, bool, bool) {
+	module := &defaultModule
+	if len(modules) > 0 {
+		module = modules[0]
+	}
+
 	seed := sarosLunationEpoch + (float64(k)+float64(phase)/2)*solarEclipseSynodicMonthDays
 	var maximum float64
 	var exists bool
 	if phase == 0 {
-		result := basic.SolarEclipseNASABulletinSplitK(seed)
+		result := basic.SolarEclipseNASABulletinSplitKWithInstance(seed, module.inst)
 		maximum, exists = result.GreatestEclipse, result.Type != basic.SolarEclipseNone
 	} else {
-		result := basic.LunarEclipseDanjon(seed)
+		result := basic.LunarEclipseDanjonWithInstance(seed, module.inst)
 		if result.Type == basic.LunarEclipseNone {
-			result = basic.LunarEclipseChauvenet(seed)
+			result = basic.LunarEclipseChauvenetWithInstance(seed, module.inst)
 		}
 		maximum, exists = result.Maximum, result.Type != basic.LunarEclipseNone
 	}
@@ -159,9 +194,13 @@ func sarosEclipseUncached(k, phase int) (float64, bool, bool) {
 }
 
 func extrapolateSaros(k, phase int) (SarosInfo, bool) {
+	return extrapolateSarosWithEvaluator(k, phase, sarosEclipse)
+}
+
+func extrapolateSarosWithEvaluator(k, phase int, evaluate func(int, int) (float64, bool, bool)) (SarosInfo, bool) {
 	info := SarosInfo{Series: sarosNumber(k, phase)}
 	for offset := -sarosExtrapolationWindow; offset <= sarosExtrapolationWindow; offset++ {
-		_, exists, valid := sarosEclipse(k+offset*sarosCycleLunations, phase)
+		_, exists, valid := evaluate(k+offset*sarosCycleLunations, phase)
 		if !valid || (offset == 0 && !exists) {
 			return SarosInfo{}, false
 		}

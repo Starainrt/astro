@@ -110,8 +110,7 @@ func TestSolarEclipseGreatestTimeContoursRejectOutOfWindowLevels(t *testing.T) {
 	}
 }
 
-// 同一时刻取值的等时线必须是一条连通曲线：曾经因为"覆盖判据用点到顶点距离"而把同一条线
-// 用多个种子各画一遍（四条重复支路、点数翻三倍）。
+// 同一时刻取值的等时线必须是一条连通曲线，不得由多个种子重复描出支路。
 func TestSolarEclipseGreatestTimeContoursHaveSingleBranchPerLevel(t *testing.T) {
 	for _, tc := range []struct {
 		name string

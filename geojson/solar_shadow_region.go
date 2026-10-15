@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/starainrt/astro/basic"
-
 	eclipsecore "github.com/starainrt/astro/eclipse"
 	"github.com/starainrt/astro/internal/geodata"
 	"github.com/starainrt/astro/internal/solarclosure"
@@ -30,8 +29,12 @@ const (
 func appendSolarHorizonClosedShadowFootprint(
 	features []feature,
 	footprint eclipsecore.SolarEclipsePartialFootprint,
-	properties map[string]interface{},
-) ([]feature, error) {
+	properties map[string]interface{}, modules ...*Generator) ([]feature, error) {
+	module := &defaultModule
+	if len(modules) > 0 {
+		module = modules[0]
+	}
+
 	curve, err := solarShadowFootprintCurve(footprint)
 	if err != nil {
 		return nil, fmt.Errorf("geojson: solar %s at %s: %w",
@@ -41,7 +44,7 @@ func appendSolarHorizonClosedShadowFootprint(
 		return features, nil
 	}
 	ring, boundary := solarShadowFootprintHorizonRing(
-		footprint.Time, footprint.Boundaries, footprint.HorizonEnds, curve,
+		footprint.Time, footprint.Boundaries, footprint.HorizonEnds, curve, module,
 	)
 	if solarShadowRegionDegenerate(curve, ring) {
 		return features, nil
@@ -56,7 +59,7 @@ func appendSolarHorizonClosedShadowFootprint(
 	regionProperties["source_boundary_closed"] = false
 	regionProperties["geometry_role"] = "horizon-closed-region"
 	regionProperties["closure"] = solarHorizonClosureProperties(
-		footprint.Time, footprint.Time, solarHorizonClosureExact(footprint.Boundaries, footprint.HorizonEnds),
+		footprint.Time, footprint.Time, solarHorizonClosureExact(footprint.Boundaries, footprint.HorizonEnds), module,
 	)
 	regionProperties["interp_signature"] = solarShadowFootprintSignature(
 		footprint.Boundaries, false, eclipsecore.SolarEclipseShadowUmbra,
@@ -145,7 +148,7 @@ func solarShadowRegionAreaDegrees2(ring []geodata.GeoPoint) float64 {
 func solarShadowFootprintCurveLengthKM(curve []geodata.GeoPoint) float64 {
 	length := 0.0
 	for index := 1; index < len(curve); index++ {
-		length += solarCentralBandGeoPointDistanceKM(curve[index-1], curve[index])
+		length += geodata.MeanDistanceKM(curve[index-1], curve[index])
 	}
 	return length
 }
@@ -154,12 +157,16 @@ func solarShadowFootprintHorizonRing(
 	value time.Time,
 	boundaries [][]eclipsecore.SolarEclipsePathPoint,
 	horizonEnds []eclipsecore.SolarEclipsePathPoint,
-	curve []geodata.GeoPoint,
-) ([]geodata.GeoPoint, []geodata.GeoPoint) {
+	curve []geodata.GeoPoint, modules ...*Generator) ([]geodata.GeoPoint, []geodata.GeoPoint) {
+	module := &defaultModule
+	if len(modules) > 0 {
+		module = modules[0]
+	}
+
 	return solarclosure.HorizonRing(solarclosure.Footprint{
 		Boundaries:  solarClosureSegments(boundaries),
 		HorizonEnds: solarClosureEnds(horizonEnds),
-		Subsolar:    solarSubsolarPoint(value),
+		Subsolar:    solarSubsolarPoint(value, module),
 	}, curve)
 }
 
@@ -199,8 +206,12 @@ func solarClosureEnds(horizonEnds []eclipsecore.SolarEclipsePathPoint) []geodata
 
 // solarClosureFootprint 转换瞬时足迹；边界坐标非法时报错。
 func solarClosureFootprint(
-	footprint eclipsecore.SolarEclipsePartialFootprint,
-) (solarclosure.Footprint, error) {
+	footprint eclipsecore.SolarEclipsePartialFootprint, modules ...*Generator) (solarclosure.Footprint, error) {
+	module := &defaultModule
+	if len(modules) > 0 {
+		module = modules[0]
+	}
+
 	segments := make([][]geodata.GeoPoint, len(footprint.Boundaries))
 	for index, source := range footprint.Boundaries {
 		segment := make([]geodata.GeoPoint, len(source))
@@ -215,7 +226,7 @@ func solarClosureFootprint(
 	return solarclosure.Footprint{
 		Boundaries:  segments,
 		HorizonEnds: solarClosureEnds(footprint.HorizonEnds),
-		Subsolar:    solarSubsolarPoint(footprint.Time),
+		Subsolar:    solarSubsolarPoint(footprint.Time, module),
 		Closed:      footprint.Closed,
 	}, nil
 }
@@ -230,8 +241,13 @@ func solarHorizonClosureExact(
 
 // solarHorizonClosureProperties 声明式闭合弧；exact 为假表示缺精确擦地点、按采样端点近似闭合。
 // 月下点按几何时刻算，time 属性写输出时标的时刻。
-func solarHorizonClosureProperties(geometryTime, labelTime time.Time, exact bool) map[string]interface{} {
-	subsolar := solarSubsolarPoint(geometryTime)
+func solarHorizonClosureProperties(geometryTime, labelTime time.Time, exact bool, modules ...*Generator) map[string]interface{} {
+	module := &defaultModule
+	if len(modules) > 0 {
+		module = modules[0]
+	}
+
+	subsolar := solarSubsolarPoint(geometryTime, module)
 	return map[string]interface{}{
 		"kind":     "horizon",
 		"exact":    exact,

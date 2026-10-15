@@ -3,7 +3,6 @@ package basic
 import (
 	"math"
 
-	"github.com/starainrt/astro/planet"
 	. "github.com/starainrt/astro/tools"
 )
 
@@ -29,10 +28,10 @@ func JupiterCentralMeridians(jde float64) JupiterCentralMeridianInfo {
 	return JupiterCentralMeridiansN(jde, -1)
 }
 
-// JupiterCentralMeridiansN 木星 System I/II/III 中央经线（截断版） / truncated Jupiter System I/II/III central meridians.
-func JupiterCentralMeridiansN(jde float64, n int) JupiterCentralMeridianInfo {
-	observations := jupiterPhysicalObservationsN(jde, n)
-	physical := JupiterPhysicalN(jde, n)
+// JupiterCentralMeridiansNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func JupiterCentralMeridiansNWithInstance(jde float64, n int, inst *Instance) JupiterCentralMeridianInfo {
+	observations := jupiterPhysicalObservationsN(jde, n, inst)
+	physical := JupiterPhysicalNWithInstance(jde, n, inst)
 	return JupiterCentralMeridianInfo{
 		SystemI:   observations.SystemI,
 		SystemII:  observations.SystemII,
@@ -45,13 +44,15 @@ func JupiterDSDE(jde float64) (ds, de float64) {
 	return JupiterDSDEN(jde, -1)
 }
 
-// JupiterDSDEN 木星 DS/DE 行星中心赤纬（截断版） / truncated Jupiter planetocentric declinations of Sun and Earth.
-func JupiterDSDEN(jde float64, n int) (ds, de float64) {
-	observations := jupiterPhysicalObservationsN(jde, n)
+// JupiterDSDENWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func JupiterDSDENWithInstance(jde float64, n int, inst *Instance) (ds, de float64) {
+	observations := jupiterPhysicalObservationsN(jde, n, inst)
 	return observations.DS, observations.DE
 }
 
-func jupiterPhysicalObservationsN(jde float64, n int) jupiterPhysicalObservationInfo {
+func jupiterPhysicalObservationsN(jde float64, n int, instances ...*Instance) jupiterPhysicalObservationInfo {
+	inst := instanceValue(instances)
+
 	days := jde - 2433282.5
 	julianCentury := days / 36525.0
 
@@ -60,9 +61,9 @@ func jupiterPhysicalObservationsN(jde float64, n int) jupiterPhysicalObservation
 	w1 := (17.71 + 877.90003539*days) * rad
 	w2 := (16.838 + 870.27003539*days) * rad
 
-	earthLon := planet.WherePlanetN(-1, 0, jde, n)
-	earthLat := planet.WherePlanetN(-1, 1, jde, n)
-	earthRadius := planet.WherePlanetN(-1, 2, jde, n)
+	earthLon := PlanetCoordinateNWithInstance(-1, 0, jde, n, inst)
+	earthLat := PlanetCoordinateNWithInstance(-1, 1, jde, n, inst)
+	earthRadius := PlanetCoordinateNWithInstance(-1, 2, jde, n, inst)
 
 	delta := 4.0
 	var jupiterLon float64
@@ -73,9 +74,9 @@ func jupiterPhysicalObservationsN(jde float64, n int) jupiterPhysicalObservation
 	var z float64
 	for i := 0; i < 2; i++ {
 		lightTimeDays := astronomicalUnitLightTimeDays * delta
-		jupiterLon = planet.WherePlanetN(4, 0, jde-lightTimeDays, n)
-		jupiterLat = planet.WherePlanetN(4, 1, jde-lightTimeDays, n)
-		jupiterRadius = planet.WherePlanetN(4, 2, jde-lightTimeDays, n)
+		jupiterLon = PlanetCoordinateNWithInstance(4, 0, jde-lightTimeDays, n, inst)
+		jupiterLat = PlanetCoordinateNWithInstance(4, 1, jde-lightTimeDays, n, inst)
+		jupiterRadius = PlanetCoordinateNWithInstance(4, 2, jde-lightTimeDays, n, inst)
 		x = jupiterRadius*Cos(jupiterLat)*Cos(jupiterLon) - earthRadius*Cos(earthLat)*Cos(earthLon)
 		y = jupiterRadius*Cos(jupiterLat)*Sin(jupiterLon) - earthRadius*Cos(earthLat)*Sin(earthLon)
 		z = jupiterRadius*Sin(jupiterLat) - earthRadius*Sin(earthLat)

@@ -19,9 +19,7 @@ func addBase(t *testing.T, y, m, d int) Time {
 	return fwd
 }
 
-// Add 必须与 time.Time 一样精确；此前 d≥1s 时经儒略日往返，普通日期会漂几微秒。
-// Add must be as exact as time.Time; it used to round-trip through the Julian day for d >= 1s,
-// which drifted by a few microseconds on ordinary dates.
+// Add 必须与 time.Time 一样精确，不得经儒略日往返引入微秒漂移。
 func TestTimeAddIsExact(t *testing.T) {
 	base := addBase(t, 2024, 3, 1)
 	cases := []struct {
@@ -65,5 +63,20 @@ func TestTimeAddSkipsGregorianReformGap(t *testing.T) {
 		if got != c.want {
 			t.Errorf("%d-%02d-%02d Add(%v) = %s, want %s", c.y, c.m, c.d, c.delta, got, c.want)
 		}
+	}
+}
+
+func TestAddOutsideLunarRangeKeepsSolarTime(t *testing.T) {
+	base, err := SolarToLunarByYMD(-721, 1, 15)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := base.Add(-30 * 24 * time.Hour)
+	want := base.Solar().Add(-30 * 24 * time.Hour)
+	if !got.Solar().Equal(want) {
+		t.Fatalf("Solar() = %v, want %v", got.Solar(), want)
+	}
+	if len(got.Lunars()) != 0 {
+		t.Fatalf("Lunars() = %v, want empty", got.Lunars())
 	}
 }

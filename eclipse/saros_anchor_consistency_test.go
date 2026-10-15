@@ -80,9 +80,9 @@ func sarosTestMember(window sarosTestWindow, ttJDE float64) int {
 
 func sarosTestSpans(phase int) []sarosSpan {
 	if phase == 1 {
-		return lunarSarosExtended[:]
+		return sarosExtensionSpans(1)
 	}
-	return solarSarosExtended[:]
+	return sarosExtensionSpans(0)
 }
 
 func sarosTestInfo(ttJDE float64, phase int) (SarosInfo, bool) {

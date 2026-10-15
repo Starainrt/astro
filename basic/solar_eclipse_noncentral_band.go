@@ -316,7 +316,7 @@ func appendNonCentralBandInterpolatedSegment(
 		fraction := float64(step) / float64(steps)
 		points = append(points, SolarEclipsePathPoint{
 			JDE:         start.JDE + fraction*(end.JDE-start.JDE),
-			Longitude:   normalizeLongitude(start.Longitude + fraction*deltaLongitude),
+			Longitude:   geodata.NormalizeLongitude(start.Longitude + fraction*deltaLongitude),
 			Latitude:    start.Latitude + fraction*(end.Latitude-start.Latitude),
 			SunAltitude: start.SunAltitude + fraction*(end.SunAltitude-start.SunAltitude),
 		})
@@ -442,7 +442,7 @@ func (solver solarEclipseSolver) appendRefinedSolarEclipseCentralHorizonSegment(
 		return append(points, end)
 	}
 	jde := (start.JDE + end.JDE) / 2
-	longitude := normalizeLongitude(
+	longitude := geodata.NormalizeLongitude(
 		start.Longitude + math.Remainder(end.Longitude-start.Longitude, 360)/2,
 	)
 	latitude := (start.Latitude + end.Latitude) / 2
@@ -547,7 +547,7 @@ func normalizeSolarEclipseSphericalCoordinates(longitude, latitude float64) (flo
 		longitude += 180
 	}
 	if crossedPole {
-		longitude = normalizeLongitude(longitude)
+		longitude = geodata.NormalizeLongitude(longitude)
 	}
 	return longitude, latitude
 }
@@ -559,7 +559,7 @@ func (solver solarEclipseSolver) validNonCentralBandState(
 	iterations int,
 ) (solarEclipseNonCentralBandState, int, bool) {
 	jde := referenceJDE + coordinates[2]/solarEclipseNonCentralBandTimeScale
-	longitude, latitude := normalizeLongitude(coordinates[0]), coordinates[1]
+	longitude, latitude := geodata.NormalizeLongitude(coordinates[0]), coordinates[1]
 	evaluation := solver.magnitudeEvaluationAt(jde)
 	state := evaluation.center.stateAt(longitude*rad, latitude*rad, 0)
 	if math.Abs(solarEclipseCentralContactGap(state)) > 1e-6 ||
@@ -586,7 +586,7 @@ func (solver solarEclipseSolver) nonCentralBandBoundaryJacobian(
 	referenceJDE float64,
 ) ([2]float64, [2][3]float64, bool) {
 	jde := referenceJDE + coordinates[2]/solarEclipseNonCentralBandTimeScale
-	longitude, latitude := normalizeLongitude(coordinates[0]), coordinates[1]
+	longitude, latitude := geodata.NormalizeLongitude(coordinates[0]), coordinates[1]
 	evaluation := solver.magnitudeEvaluationAt(jde)
 	residual, ok := solarEclipseNonCentralBandBoundaryResidualAt(evaluation, longitude, latitude)
 	if !ok {
@@ -670,7 +670,7 @@ func (solver solarEclipseSolver) refineNonCentralBandHorizonGapCrossing(
 	for iteration := 0; iteration < 64; iteration++ {
 		jde := (first.JDE + second.JDE) / 2
 		fraction := (jde - first.JDE) / (second.JDE - first.JDE)
-		longitude := normalizeLongitude(
+		longitude := geodata.NormalizeLongitude(
 			first.Longitude + fraction*math.Remainder(second.Longitude-first.Longitude, 360),
 		)
 		latitude := first.Latitude + fraction*(second.Latitude-first.Latitude)

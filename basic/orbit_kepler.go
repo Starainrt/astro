@@ -209,11 +209,9 @@ func orbitParabolicTrueAnomalyAndRadius(jd float64, elements OrbitElements) (tru
 		return math.NaN(), math.NaN(), elements, false
 	}
 	w := 1.5 * gaussianGravitationalConstant * (jd - elements.TpJD) / (math.Sqrt2 * math.Pow(elements.Q, 1.5))
-	y := math.Cbrt(w + math.Sqrt(w*w+1))
-	if y == 0 {
-		return 0, elements.Q, elements, true
-	}
-	d := y - 1/y
+	// tan(v/2) 是 w 的奇函数；按 |w| 求再补符号，避免 w 很负时 w+sqrt(w²+1) 相消为 0。
+	y := math.Cbrt(math.Abs(w) + math.Sqrt(w*w+1))
+	d := math.Copysign(y-1/y, w)
 	trueAnomaly = 2 * math.Atan(d)
 	radius = elements.Q * (1 + d*d)
 	resolved = elements

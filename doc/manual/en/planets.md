@@ -6,14 +6,14 @@ The seven major planets each have a package of their own: `mercury`, `venus`, `m
 
 They share the same API shape: a civil instant is passed as `time.Time`, angles and distances come back as `float64`, and event searches return `time.Time` or a struct.
 
-The inner planets (Mercury and Venus) add superior/inferior conjunction, greatest elongation, and geocentric transit; the outer planets (Mars through Neptune) add opposition and quadrature; Jupiter alone has the Galilean satellites and Saturn alone has ring parameters. The low-level VSOP87 series and the solar/lunar analytic series live in the `planet` package, shared by these seven packages and by `sun` / `moon`.
+The inner planets (Mercury and Venus) add superior/inferior conjunction, greatest elongation, and geocentric and topocentric transits; the outer planets (Mars through Neptune) add opposition and quadrature; Jupiter alone has the Galilean satellites and Saturn alone has ring parameters. The `planet` package holds the built-in semianalytic model and the Legacy series, shared by these packages and by `sun` / `moon`. Default builds use to semianalytic; use an explicit Context to fix the model.
 
 - The function names of the common capabilities are identical across the seven packages (for example all of them provide `ApparentRa`, `ApparentDec`, and `ApparentRaDec`); only the extra families differ.
 
   Always qualify a call with its package name instead of mixing packages.
 - Position functions return a **geocentric apparent place**.
 
-  Topocentric quantities and horizontal coordinates are separate: `Altitude` / `Azimuth` / `Zenith` / `HourAngle` / `ParallacticAngle`, with formulas under [Coordinate Tools](coord.md).
+  Horizontal quantities are separate: `Altitude` / `Azimuth` / `Zenith` are topocentric, while `HourAngle` / `ParallacticAngle` are geocentric (no topocentric parallax), with formulas under [Coordinate Tools](coord.md).
 - Event-search families come as `Last...` / `Next...` pairs (some also `Closest...`) and always return the nearest event at or before/after the input instant, endpoints included.
 - The planets have no dedicated SVG chart entry point; occultation-related charts (including Saturn-ring occultations) are documented in [Lunar Occultations](occultation.md#lunar-occultation-charts).
 
@@ -23,7 +23,7 @@ The inner planets (Mercury and Venus) add superior/inferior conjunction, greates
 - [API Reference](#api-reference)
   - [Cross-planet comparison](#cross-planet-comparison)
   - [Common capabilities and units](#common-capabilities-and-units)
-  - [The `...N` truncation family](#the-n-truncation-family)
+  - [The `...N` family](#the-n-family)
 - [Usage examples](#usage-examples)
   - [Which planet can I see tonight?](#which-planet-can-i-see-tonight)
   - [Oppositions, conjunctions, elongations, stations and retrogrades](#oppositions-conjunctions-elongations-stations-and-retrogrades)
@@ -43,7 +43,7 @@ The inner planets (Mercury and Venus) add superior/inferior conjunction, greates
   - [Division of labour with other manuals](#division-of-labour-with-other-manuals)
   - [Physical ephemerides](#physical-ephemerides)
   - [Galilean satellites of Jupiter](#galilean-satellites-of-jupiter)
-  - [Shared types and constants from the `planet` package](#shared-types-and-constants-from-the-planet-package)
+  - [Shared low-level entry points in the `planet` package](#shared-low-level-entry-points-in-the-planet-package)
 - [Parameter and result conventions](#parameter-and-result-conventions)
   - [Time scale and civil time](#time-scale-and-civil-time)
   - [Units and conventions](#units-and-conventions)
@@ -86,7 +86,7 @@ func main() {
 
 Rows list capabilities and columns list planetary packages. Qualify each function with its package, for example `mars.NextOpposition`. A slash separates function names; `—` means the package has no corresponding API.
 
-| Capability | `mercury` | `venus` | `mars` | `jupiter` | `saturn` | `uranus` | `neptune` |
+| Quantity | `mercury` | `venus` | `mars` | `jupiter` | `saturn` | `uranus` | `neptune` |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | Apparent ecliptic longitude / latitude | `ApparentLo` / `ApparentBo` | `ApparentLo` / `ApparentBo` | `ApparentLo` / `ApparentBo` | `ApparentLo` / `ApparentBo` | `ApparentLo` / `ApparentBo` | `ApparentLo` / `ApparentBo` | `ApparentLo` / `ApparentBo` |
 | Apparent right ascension / declination | `ApparentRa` / `ApparentDec` / `ApparentRaDec` | `ApparentRa` / `ApparentDec` / `ApparentRaDec` | `ApparentRa` / `ApparentDec` / `ApparentRaDec` | `ApparentRa` / `ApparentDec` / `ApparentRaDec` | `ApparentRa` / `ApparentDec` / `ApparentRaDec` | `ApparentRa` / `ApparentDec` / `ApparentRaDec` | `ApparentRa` / `ApparentDec` / `ApparentRaDec` |
@@ -95,7 +95,7 @@ Rows list capabilities and columns list planetary packages. Qualify each functio
 | Orbital ascending / descending node | `AscendingNode` / `DescendingNode` | `AscendingNode` / `DescendingNode` | `AscendingNode` / `DescendingNode` | `AscendingNode` / `DescendingNode` | `AscendingNode` / `DescendingNode` | `AscendingNode` / `DescendingNode` | `AscendingNode` / `DescendingNode` |
 | Apparent diameter / semidiameter | `Diameter` / `Semidiameter` | `Diameter` / `Semidiameter` | `Diameter` / `Semidiameter` | `Diameter` / `Semidiameter` | `Diameter` / `Semidiameter` | `Diameter` / `Semidiameter` | `Diameter` / `Semidiameter` |
 | Phase angle / illuminated fraction / bright-limb position angle | `PhaseAngle` / `Phase` / `IlluminatedFraction` / `BrightLimbPositionAngle` | `PhaseAngle` / `Phase` / `IlluminatedFraction` / `BrightLimbPositionAngle` | `PhaseAngle` / `Phase` / `IlluminatedFraction` / `BrightLimbPositionAngle` | `PhaseAngle` / `Phase` / `IlluminatedFraction` / `BrightLimbPositionAngle` | `PhaseAngle` / `Phase` / `IlluminatedFraction` / `BrightLimbPositionAngle` | `PhaseAngle` / `Phase` / `IlluminatedFraction` / `BrightLimbPositionAngle` | `PhaseAngle` / `Phase` / `IlluminatedFraction` / `BrightLimbPositionAngle` |
-| Topocentric horizontal quantities | `Altitude` / `Azimuth` / `Zenith` / `HourAngle` / `ParallacticAngle` | `Altitude` / `Azimuth` / `Zenith` / `HourAngle` / `ParallacticAngle` | `Altitude` / `Azimuth` / `Zenith` / `HourAngle` / `ParallacticAngle` | `Altitude` / `Azimuth` / `Zenith` / `HourAngle` / `ParallacticAngle` | `Altitude` / `Azimuth` / `Zenith` / `HourAngle` / `ParallacticAngle` | `Altitude` / `Azimuth` / `Zenith` / `HourAngle` / `ParallacticAngle` | `Altitude` / `Azimuth` / `Zenith` / `HourAngle` / `ParallacticAngle` |
+| Horizontal quantities | `Altitude` / `Azimuth` / `Zenith` / `HourAngle` / `ParallacticAngle` | `Altitude` / `Azimuth` / `Zenith` / `HourAngle` / `ParallacticAngle` | `Altitude` / `Azimuth` / `Zenith` / `HourAngle` / `ParallacticAngle` | `Altitude` / `Azimuth` / `Zenith` / `HourAngle` / `ParallacticAngle` | `Altitude` / `Azimuth` / `Zenith` / `HourAngle` / `ParallacticAngle` | `Altitude` / `Azimuth` / `Zenith` / `HourAngle` / `ParallacticAngle` | `Altitude` / `Azimuth` / `Zenith` / `HourAngle` / `ParallacticAngle` |
 | Rise / set / culmination | `RiseTime` / `SetTime` / `DownTime` / `CulminationTime` | `RiseTime` / `SetTime` / `DownTime` / `CulminationTime` | `RiseTime` / `SetTime` / `DownTime` / `CulminationTime` | `RiseTime` / `SetTime` / `DownTime` / `CulminationTime` | `RiseTime` / `SetTime` / `DownTime` / `CulminationTime` | `RiseTime` / `SetTime` / `DownTime` / `CulminationTime` | `RiseTime` / `SetTime` / `DownTime` / `CulminationTime` |
 | Physical ephemeris | `Physical` / `PhysicalN` | `Physical` / `PhysicalN` | `Physical` / `PhysicalN` | `Physical` / `PhysicalN` / `CentralMeridians` / `CentralMeridiansN` | `Physical` / `PhysicalN` / `PhysicalSystemIII` / `Ring` | `Physical` / `PhysicalN` / `PhysicalSystemIII` | `Physical` / `PhysicalN` |
 | Conjunction | `LastConjunction` / `NextConjunction` | `LastConjunction` / `NextConjunction` | `LastConjunction` / `NextConjunction` | `LastConjunction` / `NextConjunction` | `LastConjunction` / `NextConjunction` | `LastConjunction` / `NextConjunction` | `LastConjunction` / `NextConjunction` |
@@ -104,25 +104,27 @@ Rows list capabilities and columns list planetary packages. Qualify each functio
 | Opposition | — | — | `LastOpposition` / `NextOpposition` | `LastOpposition` / `NextOpposition` | `LastOpposition` / `NextOpposition` | `LastOpposition` / `NextOpposition` | `LastOpposition` / `NextOpposition` |
 | Quadrature | — | — | `LastEasternQuadrature` / `NextEasternQuadrature` / `LastWesternQuadrature` / `NextWesternQuadrature` | `LastEasternQuadrature` / `NextEasternQuadrature` / `LastWesternQuadrature` / `NextWesternQuadrature` | `LastEasternQuadrature` / `NextEasternQuadrature` / `LastWesternQuadrature` / `NextWesternQuadrature` | `LastEasternQuadrature` / `NextEasternQuadrature` / `LastWesternQuadrature` / `NextWesternQuadrature` | `LastEasternQuadrature` / `NextEasternQuadrature` / `LastWesternQuadrature` / `NextWesternQuadrature` |
 | Greatest elongation | `LastGreatestElongation` / `NextGreatestElongation` / `LastGreatestElongationEast` / `NextGreatestElongationEast` / `LastGreatestElongationWest` / `NextGreatestElongationWest` | `LastGreatestElongation` / `NextGreatestElongation` / `LastGreatestElongationEast` / `NextGreatestElongationEast` / `LastGreatestElongationWest` / `NextGreatestElongationWest` | — | — | — | — | — |
-| Geocentric transit | `LastTransit` / `NextTransit` / `ClosestTransit` | `LastTransit` / `NextTransit` / `ClosestTransit` | — | — | — | — | — |
+| Transit | `LastTransit` / `NextTransit` / `ClosestTransit` / `LocalTransit` | `LastTransit` / `NextTransit` / `ClosestTransit` / `LocalTransit` | — | — | — | — | — |
 | Galilean satellites | — | — | — | `Satellites` / `SatellitePhenomena` / `LastGalileanPhenomenonEvent` / `NextGalileanPhenomenonEvent` / `ClosestGalileanPhenomenonEvent` / `LastGalileanPhenomenonContactEvent` / `NextGalileanPhenomenonContactEvent` / `ClosestGalileanPhenomenonContactEvent` | — | — | — |
-| Result types | `PhysicalInfo` / `TransitInfo` | `PhysicalInfo` / `TransitInfo` | `PhysicalInfo` | `PhysicalInfo` / `CentralMeridianInfo` / `GalileanSatellitesInfo` / `GalileanPhenomenaInfo` / `GalileanSatellitePosition` / `GalileanSatellitePhenomenon` / `GalileanPhenomenonEvent` / `GalileanPhenomenonContactEvent` | `PhysicalInfo` / `RingInfo` | `PhysicalInfo` | `PhysicalInfo` |
+| Result types | `PhysicalInfo` / `TransitInfo` / `LocalTransitInfo` | `PhysicalInfo` / `TransitInfo` / `LocalTransitInfo` | `PhysicalInfo` | `PhysicalInfo` / `CentralMeridianInfo` / `GalileanSatellitesInfo` / `GalileanPhenomenaInfo` / `GalileanSatellitePosition` / `GalileanSatellitePhenomenon` / `GalileanPhenomenonEvent` / `GalileanPhenomenonContactEvent` | `PhysicalInfo` / `RingInfo` | `PhysicalInfo` | `PhysicalInfo` |
 
-All seven packages spell the **truncation family** the same way: append `N` to any instantaneous evaluation function, where `n < 0` uses the full built-in series and `n >= 0` truncates it.
+All seven packages spell the **`...N` family** the same way: append `N` to an instantaneous evaluation function. `n < 0` selects the full series; all nonnegative `n` select one fixed semianalytic fast table, while Legacy truncates according to `n`.
 
-See [the `...N` truncation family](#the-n-truncation-family) for details. Event-search families (`Last...` / `Next...` / `Closest...`) have no `N` variants.
+See [the `...N` family](#the-n-family) for details. Event-search families (`Last...` / `Next...` / `Closest...`) have no `N` variants.
 
 ### Common capabilities and units
 
-| Capability | Purpose | Unit and convention |
+| Quantity | Purpose | Unit and convention |
 | --- | --- | --- |
 | `ApparentLo` / `ApparentBo` | Geocentric apparent ecliptic longitude and latitude | degrees; true equinox of date, including light time, aberration, and nutation |
 | `ApparentRa` / `ApparentDec` / `ApparentRaDec` | Geocentric apparent right ascension and declination | degrees; true equator of date; `ApparentRaDec` returns both at once |
 | `ApparentMagnitude` | Apparent visual magnitude | magnitudes (dimensionless) |
-| `Altitude` / `Azimuth` / `Zenith` / `HourAngle` | Topocentric horizontal coordinates | degrees; azimuth runs from north toward east, and `Zenith` equals `90 - Altitude` |
+| `Altitude` / `Azimuth` / `Zenith` | Topocentric horizontal coordinates | degrees; azimuth runs from north toward east, and `Zenith` equals `90 - Altitude` |
+| `HourAngle` | Geocentric apparent hour angle, without topocentric parallax | degrees |
 | `RiseTime` / `SetTime` / `DownTime` | Rise and set within the local civil day | `time.Time` keeping the input time zone; `DownTime` is a compatibility alias for `SetTime` |
+| `RiseTimeWithAtmosphere` / `SetTimeWithAtmosphere` | Rise and set with measured pressure (hPa) and temperature (°C) | `time.Time`; refraction always applied |
 | `CulminationTime` | Upper culmination instant | `time.Time` keeping the input time zone |
-| `ParallacticAngle` | Parallactic angle (zenith direction angle) | degrees |
+| `ParallacticAngle` | Geocentric parallactic angle (zenith direction angle), from the geocentric hour angle and declination | degrees |
 | `Diameter` / `Semidiameter` | Geocentric apparent diameter and semidiameter | arcseconds |
 | `PhaseAngle` | Sun-planet-Earth angle | degrees |
 | `IlluminatedFraction` / `Phase` | Illuminated fraction | `0-1`; `Phase` is an alias for `IlluminatedFraction` |
@@ -130,18 +132,23 @@ See [the `...N` truncation family](#the-n-truncation-family) for details. Event-
 | `EarthDistance` / `SunDistance` | Earth distance and Sun distance | AU |
 | `AscendingNode` / `DescendingNode` | Ecliptic longitude of the orbital plane's intersections with the ecliptic | degrees; the two differ by about `180°` at the same instant |
 | `Physical` | Disk orientation, sub-Earth/sub-Solar coordinates, north-pole position angle | degrees; the positive longitude direction follows each body's IAU convention |
-| `planet.WherePlanet` / `planet.WherePlanetN` | VSOP87 longitude, latitude, and heliocentric distance | degrees / AU; out-of-range input returns `NaN` instead of panicking |
+| `planet.WherePlanet` / `planet.WherePlanetN` | Selected built-in model's longitude, latitude, and heliocentric distance | degrees / AU; out-of-range input returns `NaN` instead of panicking |
 
-### The `...N` truncation family
+### The `...N` family
 
-Every instantaneous evaluation function has an `...N` variant that trades accuracy for cost: `n < 0` uses the full built-in series and is equivalent to the plain function, while `n >= 0` keeps roughly `n` principal terms and scales the higher orders proportionally.
+Every instantaneous evaluation function has an `...N` variant that trades accuracy for cost. `n < 0` selects the full series and matches the plain function. All nonnegative `n` select one fixed semianalytic fast table, so increasing `n` does not improve accuracy; Legacy scales its principal and higher-order terms according to `n`.
 
 Event-search families (`Last...` / `Next...` / `Closest...`) have no `N` variant.
 
-Functions with an `N` variant include `ApparentLoN`, `ApparentBoN`, `ApparentRaN`, `ApparentDecN`, `ApparentRaDecN`, `ApparentMagnitudeN`, `EarthDistanceN`, `SunDistanceN`, `AltitudeN`, `AzimuthN`, `ZenithN`, `HourAngleN`, `CulminationTimeN`, `RiseTimeN`, `SetTimeN`, `DownTimeN`, `ParallacticAngleN`, `DiameterN`, `SemidiameterN`, `PhaseAngleN`, `PhaseN`, `IlluminatedFractionN`, `BrightLimbPositionAngleN`, `AscendingNodeN`, `DescendingNodeN`, and `PhysicalN`, plus `CentralMeridiansN` for Jupiter, `RingN` and `PhysicalSystemIIIN` for Saturn, and `PhysicalSystemIIIN` for Uranus.
+Functions with an `N` variant, grouped by purpose:
+
+- Position and distance: `ApparentLoN`, `ApparentBoN`, `ApparentRaN`, `ApparentDecN`, `ApparentRaDecN`, `EarthDistanceN`, `SunDistanceN`
+- Horizon and instants: `AltitudeN`, `AzimuthN`, `ZenithN`, `HourAngleN`, `CulminationTimeN`, `RiseTimeN`, `SetTimeN`, `DownTimeN`, `ParallacticAngleN`
+- Disc and phase: `ApparentMagnitudeN`, `DiameterN`, `SemidiameterN`, `PhaseAngleN`, `PhaseN`, `IlluminatedFractionN`, `BrightLimbPositionAngleN`
+- Nodes and rotation: `AscendingNodeN`, `DescendingNodeN`, `PhysicalN`, plus `CentralMeridiansN` for Jupiter, `RingN` and `PhysicalSystemIIIN` for Saturn, and `PhysicalSystemIIIN` for Uranus
 
 ```go
-fmt.Println(mars.ApparentLo(date), mars.ApparentLoN(date, 8))   // ecliptic longitude: full series / truncated to about 8 terms
+fmt.Println(mars.ApparentLo(date), mars.ApparentLoN(date, 8))   // full series / fast table; Legacy truncates according to n
 fmt.Println(mars.SunDistance(date), mars.SunDistanceN(date, 8)) // heliocentric distance, AU
 ```
 
@@ -161,7 +168,7 @@ fmt.Println(mars.Altitude(date, lon, lat), mars.Azimuth(date, lon, lat)) // Mars
 31.194578177219057 152.07031660415714
 ```
 
-Above the horizon means `Altitude` greater than `0`, and azimuth increases from due north towards the east; `aero = true` lowers the geometric horizon to about `-0.5667°` for standard refraction.
+Azimuth increases from due north towards the east; `aero = true` lowers the geometric horizon to about `-0.5667°` for standard refraction.
 
 Per-parameter conventions and the polar sentinel errors are in [Rise, set and culmination](#rise-set-and-culmination).
 
@@ -196,7 +203,21 @@ true 2032-11-13 14:41:13.161198198 +0800 CST 2032-11-13 16:54:12.821315824 +0800
 4h26m2.695272267s 572.0643215495325
 ```
 
-`TransitInfo.Valid` false means no transit inside the search window and every other field is the zero value; a transit is a geocentric geometry test and does not check whether the Sun is above the horizon at a given site.
+`TransitInfo.Valid` false means no transit inside the search window and every other field is the zero value; `TransitInfo` is the geocentric geometry. For the contact times seen from one site, `LocalTransit` returns the topocentric result:
+
+```go
+transit := mercury.NextTransit(time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC))
+local := mercury.LocalTransit(transit, -77.0, 38.9, 0)        // Washington: longitude, latitude, height in metres
+fmt.Println(local.Valid, local.HasInternal, local.Visible)     // topocentric transit, internal contacts, Sun above the apparent horizon
+fmt.Println(local.Start.Time, local.Start.SunAltitude)         // topocentric C1 and the Sun's altitude then
+```
+
+```text
+true true true
+2019-11-11 12:36:09.037762284 +0000 UTC 7.933256722170642
+```
+
+Topocentric contacts are re-solved after applying parallax to the Sun and the planet separately; Venus contacts can shift by about ±7 minutes from the geocentric ones across the globe, Mercury by about ±2 minutes. `SunAltitude` is the geometric altitude of the Sun's center; `Visible`, `Sunrise` and `Sunset` test whether the Sun's center is above the apparent horizon with standard refraction (1010 hPa, 10 °C), a geometric threshold of about −34′. A site may see only a grazing transit even when the geocentric one has internal contacts (the 1999-11-15 Mercury transit at high southern latitudes); then `HasInternal` is false and `InternalStart` / `InternalEnd` are zero. Global maps and topocentric disk charts are in [Eclipses and transits](eclipse.md#transit-charts).
 
 The four contacts, partial transits and the internal-contact fields are in [Greatest elongation and geocentric transits](#greatest-elongation-and-geocentric-transits).
 
@@ -216,7 +237,7 @@ fmt.Println(mars.AscendingNode(date), mars.DescendingNode(date)) // ascending/de
 
 `Phase` is an alias of `IlluminatedFraction` and runs from `0` to `1`; the two nodes are about `180°` apart at any instant.
 
-Definitions, aliases and the truncated versions are in [Nodes, phase, magnitude, diameter and parallactic angle](#nodes-phase-magnitude-diameter-and-parallactic-angle).
+Definitions, aliases and the `n` variants are in [Nodes, phase, magnitude, diameter and parallactic angle](#nodes-phase-magnitude-diameter-and-parallactic-angle).
 
 ### Physical ephemerides and the Galilean satellites
 
@@ -237,7 +258,7 @@ Saturn's rings have their own `saturn.Ring` (`EarthLatitude`, `MinorAxis`, and s
 ### Comparison conventions
 
 ```go
-fmt.Println(mars.ApparentLo(date), mars.ApparentLoN(date, 8)) // apparent longitude with every term / truncated to about 8
+fmt.Println(mars.ApparentLo(date), mars.ApparentLoN(date, 8)) // full series / fast table; Legacy truncates according to n
 _, err := mars.RiseTime(date, 0, 89, 0, true)                 // an observing site in the polar region
 fmt.Println(errors.Is(err, mars.ERR_MARS_NEVER_RISE), errors.Is(err, mars.ERR_MARS_NEVER_SET))
 ```
@@ -247,9 +268,9 @@ fmt.Println(errors.Is(err, mars.ERR_MARS_NEVER_RISE), errors.Is(err, mars.ERR_MA
 true false
 ```
 
-`ApparentLo` and friends are geocentric apparent places referred to the **true equinox of date**; bring external J2000 or mean places to the same convention with `coord.Precess` before comparing.
+`ApparentLo` and friends are geocentric apparent places referred to the **true equinox of date**. Comparing them with external J2000 or mean places requires matching the frame, nutation and apparent-place corrections; precession alone does not remove every difference.
 
-In the truncation family `n < 0` uses every built-in term and `n >= 0` truncates.
+For model-dependent `n` semantics, see [the `...N` family](#the-n-family).
 
 The convention gap between the Galilean contact events and JPL Horizons / IMCCE tables is documented under [External baselines](#external-baselines), and the overall boundaries under [Parameter and result conventions](#parameter-and-result-conventions).
 
@@ -308,20 +329,20 @@ func main() {
 Output:
 
 ```text
-2019-11-11 23:21:41.971051096 +0800 CST // previous inferior conjunction of Mercury
-2021-03-26 14:57:42.052354216 +0800 CST // next superior conjunction of Venus
-2019-11-01 04:31:49.749019145 +0800 CST // previous Mercury station from prograde to retrograde
-2020-06-25 02:07:41.599749326 +0800 CST // next Venus station from retrograde to prograde
-2019-10-20 12:01:37.740152478 +0800 CST // previous greatest eastern elongation of Mercury
-2020-08-13 08:14:46.304587125 +0800 CST // next greatest western elongation of Venus
-2020-01-01 10:02:34.172435402 +0800 CST <nil> // Venus rise time in Xi'an; no error
-2020-01-01 20:25:37.36411482 +0800 CST <nil> // Venus set time in Xi'an; no error
+2019-11-11 23:21:41.729008555 +0800 CST // previous inferior conjunction of Mercury
+2021-03-26 14:57:43.352850079 +0800 CST // next superior conjunction of Venus
+2019-11-01 04:31:49.712648391 +0800 CST // previous Mercury station from prograde to retrograde
+2020-06-25 02:07:26.280500292 +0800 CST // next Venus station from retrograde to prograde
+2019-10-20 12:01:37.925546765 +0800 CST // previous greatest eastern elongation of Mercury
+2020-08-13 08:14:45.946914553 +0800 CST // next greatest western elongation of Venus
+2020-01-01 10:02:34.94517982 +0800 CST <nil> // Venus rise time in Xi'an; no error
+2020-01-01 20:25:36.944952607 +0800 CST <nil> // Venus set time in Xi'an; no error
 -4 // Venus apparent magnitude
-49.98145049145023 // Venus phase angle, degrees
-0.8215177914415865 // illuminated fraction of Venus
-255.63802053541346 // bright-limb position angle of Venus, degrees
-1.2778819631550336 // Earth-Venus distance, AU
-0.7262651056423838 // Sun-Venus distance, AU
+49.98142313573699 // Venus phase angle, degrees
+0.8215179742647736 // illuminated fraction of Venus
+255.63803631896667 // bright-limb position angle of Venus, degrees
+1.2778823747747166 // Earth-Venus distance, AU
+0.7262651318993368 // Sun-Venus distance, AU
 ```
 
 Inner and outer planets also expose `Diameter` / `Semidiameter` and `N` variants, returning geocentric apparent diameter/semidiameter in arcseconds.
@@ -346,7 +367,7 @@ For `date := 2020-01-01 08:08:08 CST`, the output is:
 76.86008484515058 256.8600848451506 // Venus ascending-node and descending-node longitudes, degrees
 ```
 
-Mercury and Venus also expose `NextTransit` / `LastTransit` / `ClosestTransit` for geocentric planetary transits. "Geocentric" means the planet disk crosses the solar disk as seen from Earth's center; it does not test whether the Sun is above the horizon at a particular observing site. For observing plans, combine this with local solar altitude and weather.
+Mercury and Venus also expose `NextTransit` / `LastTransit` / `ClosestTransit` for geocentric planetary transits. "Geocentric" means the planet disk crosses the solar disk as seen from Earth's center; it does not test whether the Sun is above the horizon at a particular observing site. For observing plans, use `LocalTransit` for topocentric contacts and solar altitudes (see above).
 
 ```go
 package main
@@ -389,22 +410,22 @@ Output:
 
 ```text
 true // a valid geocentric Mercury transit was found
-2019-11-11 12:35:31.567597389 +0000 UTC // first contact: Mercury externally enters the solar disk
-2019-11-11 12:37:12.817581295 +0000 UTC // second contact: Mercury is fully inside the solar disk
-2019-11-11 15:19:48.36056292 +0000 UTC // greatest transit: Mercury center is closest to the Sun center
-2019-11-11 18:02:29.176982045 +0000 UTC // third contact: Mercury starts leaving the solar disk
-2019-11-11 18:04:10.637948513 +0000 UTC // fourth contact: Mercury externally leaves the solar disk
-5h28m39.070351124s // geocentric transit duration from first to fourth contact
-75.92400059923187 // minimum Mercury-Sun center separation at greatest transit, arcseconds
-968.8881519533047 // solar semidiameter at greatest transit, arcseconds
-4.978442871670873 // Mercury semidiameter at greatest transit, arcseconds
+2019-11-11 12:35:31.142292916 +0000 UTC // first contact: Mercury externally enters the solar disk
+2019-11-11 12:37:12.603219151 +0000 UTC // second contact: Mercury is fully inside the solar disk
+2019-11-11 15:19:48.146160542 +0000 UTC // greatest transit: Mercury center is closest to the Sun center
+2019-11-11 18:02:28.751637339 +0000 UTC // third contact: Mercury starts leaving the solar disk
+2019-11-11 18:04:10.212523341 +0000 UTC // fourth contact: Mercury externally leaves the solar disk
+5h28m39.070230425s // geocentric transit duration from first to fourth contact
+75.93592092696468 // minimum Mercury-Sun center separation at greatest transit, arcseconds
+968.8881399120452 // solar semidiameter at greatest transit, arcseconds
+4.978442587642365 // Mercury semidiameter at greatest transit, arcseconds
 true // a valid geocentric Venus transit was found
-2012-06-05 22:09:47.466886639 +0000 UTC // first contact: Venus externally enters the solar disk
-2012-06-05 22:27:35.865356326 +0000 UTC // second contact: Venus is fully inside the solar disk
-2012-06-06 01:29:35.572371482 +0000 UTC // greatest transit: Venus center is closest to the Sun center
-2012-06-06 04:31:35.068444311 +0000 UTC // third contact: Venus starts leaving the solar disk
-2012-06-06 04:49:23.25597167 +0000 UTC // fourth contact: Venus externally leaves the solar disk
-6h39m35.789085031s // geocentric transit duration from first to fourth contact
+2012-06-05 22:09:48.690456748 +0000 UTC // first contact: Venus externally enters the solar disk
+2012-06-05 22:27:37.088886201 +0000 UTC // second contact: Venus is fully inside the solar disk
+2012-06-06 01:29:36.58495903 +0000 UTC // greatest transit: Venus center is closest to the Sun center
+2012-06-06 04:31:35.87008953 +0000 UTC // third contact: Venus starts leaving the solar disk
+2012-06-06 04:49:24.268559217 +0000 UTC // fourth contact: Venus externally leaves the solar disk
+6h39m35.578102469s // geocentric transit duration from first to fourth contact
 ```
 
 ### Outer planets
@@ -467,18 +488,18 @@ func main() {
 Output:
 
 ```text
-2020-10-14 07:25:50.441412627 +0800 CST // next opposition of Mars
-2021-01-29 09:39:33.697994649 +0800 CST // next conjunction of Jupiter
-2019-04-30 10:28:00.187439918 +0800 CST // previous Saturn station from prograde to retrograde
-saturn B=23.577025 Bp=23.266930 P=6.629811 dU=1.171016 major=34.133852 minor=13.652911 // Saturn ring B, B', P, dU, major axis, minor axis
-2020-01-11 15:23:23.360308706 +0800 CST // next Uranus station from retrograde to prograde
-2019-12-08 17:00:15.517960488 +0800 CST // previous eastern quadrature of Neptune
-2020-06-07 03:11:00.026179254 +0800 CST // next western quadrature of Mars
-2020-01-01 04:41:29.621566236 +0800 CST <nil> // Mars rise time in Xi'an; no error
-2020-01-01 14:55:32.963508367 +0800 CST <nil> // Mars set time in Xi'an; no error
+2020-10-14 07:25:53.541214764 +0800 CST // next opposition of Mars
+2021-01-29 09:39:32.556620836 +0800 CST // next conjunction of Jupiter
+2019-04-30 10:28:17.254818677 +0800 CST // previous Saturn station from prograde to retrograde
+saturn B=23.577010 Bp=23.266930 P=6.629810 dU=1.171003 major=34.133617 minor=13.652809 // Saturn ring B, B', P, dU, major axis, minor axis
+2020-01-11 15:22:18.532456755 +0800 CST // next Uranus station from retrograde to prograde
+2019-12-08 17:00:04.494322836 +0800 CST // previous eastern quadrature of Neptune
+2020-06-07 03:10:55.059157311 +0800 CST // next western quadrature of Mars
+2020-01-01 04:41:30.157055854 +0800 CST <nil> // Mars rise time in Xi'an; no error
+2020-01-01 14:55:32.792302966 +0800 CST <nil> // Mars set time in Xi'an; no error
 1.57 // Mars apparent magnitude
-2.1844284956325937 // Earth-Mars distance, AU
-1.5897860004265403 // Sun-Mars distance, AU
+2.1844226019239925 // Earth-Mars distance, AU
+1.5897858533008575 // Sun-Mars distance, AU
 ```
 
 `saturn.Ring` returns `RingInfo`: `EarthLatitude` is ring opening angle B, `SunLatitude` is B', `PositionAngle` is the position angle of the northern semiminor axis, `DeltaU` is the Saturnicentric longitude difference between the Sun and Earth in the ring plane, and `MajorAxis` / `MinorAxis` are the apparent outer major/minor axes in arcseconds.
@@ -505,9 +526,9 @@ fmt.Println(venus.EarthDistance(date), venus.SunDistance(date))
 
 ### Rise, set and culmination
 
-`RiseTime` / `SetTime` / `DownTime` work on the **local civil day** only: `date` selects the local date and the output time zone (when the local hour is greater than 12 it is first shifted back by 12 hours), `height` is the ellipsoidal height in meters, and `aero == true` adds standard atmospheric refraction (lowering the geometric horizon to about `-0.5667°`).
+`RiseTime` / `SetTime` / `DownTime` work on the **local civil day** only: `date` selects the local date and the output time zone, and the returned events belong to that local civil day; `height` is the ellipsoidal height in meters, and `aero == true` adds standard atmospheric refraction (lowering the geometric horizon to about `-0.5667°`).
 
-Polar day, polar night, or a day with no crossing returns a [sentinel error](#parameter-and-result-conventions) instead of an instant. `CulminationTime` gives upper culmination; `Altitude` / `Azimuth` / `Zenith` / `HourAngle` / `ParallacticAngle` form the topocentric family, with geometry under [Coordinate Tools](coord.md).
+Polar day, polar night, or a day with no crossing returns a [sentinel error](#parameter-and-result-conventions) instead of an instant. `CulminationTime` gives upper culmination; `Altitude` / `Azimuth` / `Zenith` are topocentric instantaneous quantities and `HourAngle` / `ParallacticAngle` geocentric ones, with geometry under [Coordinate Tools](coord.md).
 
 ```go
 // Rise, set, and culmination on the local civil day in Xi'an; aero=true adds refraction.
@@ -525,7 +546,7 @@ fmt.Println(mars.ParallacticAngle(date, lon, lat))
 ```
 
 ```go
-// DownTime is a compatibility alias for SetTime; the N variant evaluates a truncated series.
+// DownTime is a compatibility alias for SetTime; the N variant evaluates the `n` variant.
 set, err := mars.DownTime(date, lon, lat, height, true)
 fmt.Println(set, err)
 fmt.Println(mars.CulminationTimeN(date, lon, 12))
@@ -597,7 +618,7 @@ fmt.Println(transit.SunSemidiameterArcsec, transit.PlanetSemidiameterArcsec)
 
 `PhaseAngle` is the Sun-planet-Earth angle in degrees; `IlluminatedFraction` (alias `Phase`) is the illuminated fraction from `0` to `1`; `BrightLimbPositionAngle` is the position angle of the bright-limb center in degrees.
 
-`Diameter` / `Semidiameter` return the geocentric apparent diameter and semidiameter in arcseconds. `ParallacticAngle` returns the topocentric parallactic angle (zenith direction angle) in degrees; topocentric coordinates are under [Coordinate Tools](coord.md).
+`Diameter` / `Semidiameter` return the geocentric apparent diameter and semidiameter in arcseconds. `ParallacticAngle` returns the geocentric parallactic angle (zenith direction angle) in degrees, computed from the geocentric hour angle and declination without topocentric parallax; topocentric coordinates are under [Coordinate Tools](coord.md).
 
 ```go
 fmt.Println(mars.AscendingNode(date), mars.DescendingNode(date))                     // node longitudes, degrees
@@ -611,7 +632,7 @@ fmt.Println(mars.ParallacticAngle(date, lon, lat))        // parallactic angle, 
 ```
 
 ```go
-// Nodes and apparent diameter also have truncated variants.
+// Nodes and apparent diameter also have `n` variants.
 fmt.Println(mars.AscendingNodeN(date, 12), mars.DescendingNodeN(date, 12))
 fmt.Println(mars.DiameterN(date, 12), mars.SemidiameterN(date, 12))
 ```
@@ -669,8 +690,8 @@ func main() {
 Output:
 
 ```text
-jupiter DS=54.342153 DE=1.436485 CMI=292.712909 CMII=276.309048 CMIII=147.241811 // Jupiter DS/DE and System I/II/III central meridians, degrees
-saturn B=-0.608048 Bp=-2.675677 P=4.480276 major=42.709920 minor=0.453248 // Saturn ring B, B', minor-axis position angle, outer major/minor axes
+jupiter DS=54.342201 DE=1.436449 CMI=292.712946 CMII=276.309085 CMIII=147.241848 // Jupiter DS/DE and System I/II/III central meridians, degrees
+saturn B=-0.608032 Bp=-2.675667 P=4.480277 major=42.709152 minor=0.453228 // Saturn ring B, B', minor-axis position angle, outer major/minor axes
 ```
 
 If only Jupiter central meridians are needed:
@@ -796,8 +817,8 @@ func main() {
 Output:
 
 ```text
-io x=-0.675026 y=-0.032798 front=true // Io X/Y offset from Jupiter center, in Jupiter radii; in front of Jupiter
-europa ra=110.769133 dec=22.335828 // Europa apparent RA and Dec, degrees
+io x=-0.675023 y=-0.032794 front=true // Io X/Y offset from Jupiter center, in Jupiter radii; in front of Jupiter
+europa ra=110.769095 dec=22.335877 // Europa apparent RA and Dec, degrees
 io transit=true occultation=false eclipse=false shadow=true // Io is transiting, and its shadow is also transiting
 europa transit=false occultation=false eclipse=false shadow=false // Europa has no transit, occultation, eclipse, or shadow transit at this instant
 event valid=true sat=1 type=transit // next valid event is an Io transit
@@ -829,15 +850,15 @@ Comparison results:
 - `GalileanPhenomenonContactEvent` differs from IMCCE 2026 D/F contact times by at most about `79 s`, and contact durations by about `17 s` in the compared cases.
 - `GalileanPhenomenonEvent` uses a different definition from IMCCE D/F contacts, so start and end times can differ by about `7 min`.
 
-### Shared types and constants from the `planet` package
+### Shared low-level entry points in the `planet` package
 
-The `planet` package is the low-level analytic-series entry point, shared by the seven planet packages and by `sun` / `moon`.
+The `planet` package provides low-level entry points to the built-in models and series, shared by the seven planet packages and by `sun` / `moon`.
 
-It exports functions only and **no types**, so what the planet packages really share is one set of numerical conventions and truncation semantics rather than shared types: each package's `PhysicalInfo` mirrors `basic.PlanetPhysicalInfo` and `TransitInfo` mirrors `basic.PlanetTransitResult`, field for field, while the types themselves still belong to their own packages.
+It exports functions only, not types. The planet packages share numerical conventions and model choices rather than result types: each package's `PhysicalInfo` mirrors `basic.PlanetPhysicalInfo` and `TransitInfo` mirrors `basic.PlanetTransitResult`, field for field, while the types themselves still belong to their own packages. External kernel-engine types live in the separate `planet/spk` subpackage.
 
 | Entry point | Purpose | Unit |
 | --- | --- | --- |
-| `planet.WherePlanet` / `planet.WherePlanetN` | VSOP87 result: `xt` is `1..7` for Mercury through Neptune and `-1` or `0` for Earth, `zn` is `0` longitude, `1` latitude, `2` heliocentric distance; an out-of-range `xt` / `zn` returns `NaN` instead of panicking | degrees / AU |
+| `planet.WherePlanet` / `planet.WherePlanetN` | Selected built-in model: `xt` is `1..7` for Mercury through Neptune and `-1` or `0` for Earth, `zn` is `0` longitude, `1` latitude, `2` heliocentric distance; an out-of-range `xt` / `zn` returns `NaN` instead of panicking | degrees / AU |
 | `planet.Distance` | Sun-Earth distance | AU |
 | `planet.SunLo` / `planet.SunM` / `planet.SunMidFun` / `planet.SunTrueLo` / `planet.SunApparentLo` | Solar geometric longitude, mean anomaly, equation of center, true longitude, apparent longitude | degrees |
 | `planet.Earthe` / `planet.EarthPI` | Earth's orbital eccentricity and longitude of perihelion | dimensionless / degrees |
@@ -848,7 +869,7 @@ It exports functions only and **no types**, so what the planet packages really s
 ```go
 // xt=1..7 is Mercury..Neptune; zn=0 longitude, 1 latitude, 2 heliocentric distance (AU).
 fmt.Println(planet.WherePlanet(4, 2, 2460000.5))      // Jupiter heliocentric distance, AU
-fmt.Println(planet.WherePlanetN(4, 2, 2460000.5, 12)) // truncated form, about 12 principal terms
+fmt.Println(planet.WherePlanetN(4, 2, 2460000.5, 12)) // semianalytic fast table; Legacy truncates according to n
 fmt.Println(planet.WherePlanet(8, 0, 2460000.5))      // xt out of range: NaN
 ```
 
@@ -873,17 +894,17 @@ From 1972 on the built-in leap-second table is used, and beyond the exact window
 
 Angles are always in degrees; apparent diameter and semidiameter are in arcseconds; distances follow the function name -- `EarthDistance` / `SunDistance` and `planet.WherePlanet` with `zn=2` are in AU, while `planet.MoonAway` is in km.
 
-`PhaseAngle` is in degrees, `IlluminatedFraction` and its alias `Phase` are `0-1`, and `ApparentMagnitude` is a magnitude (dimensionless); rise/set, culmination, and every event search return `time.Time` in the input time zone.
+`PhaseAngle` is in degrees, `IlluminatedFraction` and its alias `Phase` are `0-1`, and `ApparentMagnitude` is a magnitude (dimensionless, classic phase polynomials); `ApparentMagnitude2018` uses Mallama & Hilton 2018, better for Mercury/Venus at large phase and Saturn's rings, without the Mars rotation and season terms; rise/set, culmination, and every event search return `time.Time` in the input time zone.
 
 Duration fields inside event structs (`TransitInfo.Duration`, `TransitInfo.InternalDuration`, `GalileanPhenomenonEvent.Duration`, `GalileanPhenomenonContact.Duration`) are Go `time.Duration` values, not Julian days or day counts; the `Start` / `Greatest` / `End` / `InternalStart` / `InternalEnd` fields of `TransitInfo` keep the caller's time zone.
 
-Geocentric, topocentric, and distance are three different conventions: `ApparentLo` / `ApparentBo` / `ApparentRa` / `ApparentDec` / `ApparentRaDec` are geocentric apparent places, `Altitude` / `Azimuth` / `Zenith` / `HourAngle` / `ParallacticAngle` are topocentric quantities, and `EarthDistance` / `SunDistance` are geometric geocentric distances.
+Geocentric, topocentric, and distance are three different conventions: `ApparentLo` / `ApparentBo` / `ApparentRa` / `ApparentDec` / `ApparentRaDec` are geocentric apparent places, `Altitude` / `Azimuth` / `Zenith` are topocentric quantities, `HourAngle` / `ParallacticAngle` are geocentric quantities without topocentric parallax, and `EarthDistance` / `SunDistance` are geometric geocentric distances.
 
 ### Zero values, out-of-range input and sentinel errors
 
 When an event search finds nothing inside its window it returns zero values or a struct with `Valid == false` (`TransitInfo.Valid`, `GalileanPhenomenonEvent.Valid`, `GalileanPhenomenonContactEvent.Valid`) instead of an error; when `TransitInfo.HasInternal` is false, `InternalStart` / `InternalEnd` are zero values because a partial transit has no internal contacts.
 
-`planet.WherePlanet` / `planet.WherePlanetN` return `NaN` instead of panicking when `xt` / `zn` is out of range; in the `...N` truncation family, `n < 0` uses the full built-in series and `n >= 0` truncates it.
+`planet.WherePlanet` / `planet.WherePlanetN` return `NaN` instead of panicking when `xt` / `zn` is out of range. `n < 0` selects the full series; all nonnegative `n` select one semianalytic fast table, while Legacy truncates according to `n`.
 
 `RiseTime` / `SetTime` / `DownTime` (including their `N` forms) are the only family that returns an `error`: when the body has no geometric rise or set on that day they return the sentinel error below with a zero instant.
 
@@ -916,12 +937,12 @@ case errors.Is(err, mercury.ERR_MERCURY_NEVER_SET):
 
 `Altitude` / `Azimuth` / `Zenith` / `HourAngle` / `ParallacticAngle` use `date`'s time zone for local-time computation, with east-positive longitude, north-positive latitude, and `height` as the ellipsoidal height in meters (not orthometric elevation).
 
-They are a different convention from the geocentric apparent place of `ApparentRa` / `ApparentDec`; convert through [Coordinate Tools](coord.md) before mixing them.
+`Altitude` / `Azimuth` / `Zenith` include topocentric parallax and are a different convention from the geocentric apparent place of `ApparentRa` / `ApparentDec`; `HourAngle` / `ParallacticAngle` come straight from the geocentric apparent place without topocentric parallax. Convert through [Coordinate Tools](coord.md) before mixing them.
 
 ### Accuracy and scope
 
-The planet packages use the built-in truncated VSOP87 series, covering about 4000 years around J2000; the truncation magnitudes relative to full VSOP87 are in [Sun and planets](accuracy.md#sun-and-planets) and the overall scope is in [Scope And Accuracy](accuracy.md).
+The planet packages default to the semianalytic model, with Legacy or custom engines selectable explicitly. An available range does not imply uniform accuracy across it; Legacy truncation error against complete VSOP87 is not total error against DE ephemerides. See [Legacy truncation error](accuracy.md#legacy-truncation-error).
 
-The `...N` forms relax that baseline further and suit batch scans or live front-end refreshes.
+The fast table suits coarse scans. Use the full series and matching time/frame conventions for event refinement or comparisons with external tables.
 
 `saturn.Ring` and the physical ephemerides affect only the disk and band rendering: the Saturn ring takes no part in occultation contact geometry and is not drawn as a disk boundary. The planets have no dedicated chart entry point; occultation and Saturn-ring charts are in [Lunar Occultations](occultation.md#lunar-occultation-charts).

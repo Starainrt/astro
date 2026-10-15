@@ -3,6 +3,8 @@ package basic
 import (
 	"math"
 	"sort"
+
+	"github.com/starainrt/astro/internal/geodata"
 )
 
 // RiseSetPhase 标识升落边界对应的局部事件阶段。
@@ -199,7 +201,7 @@ func riseSetRefineGeographicRoot(
 			return 0, 0, false
 		}
 		if math.Abs(first) <= 1e-11 && math.Abs(second) <= 1e-11 {
-			return normalizeLongitude(longitude), latitude, true
+			return geodata.NormalizeLongitude(longitude), latitude, true
 		}
 		firstLon, secondLon, lonOK := residualAt(longitude+finiteDifferenceDegrees, latitude)
 		firstLat, secondLat, latOK := residualAt(longitude, latitude+finiteDifferenceDegrees)
@@ -221,14 +223,14 @@ func riseSetRefineGeographicRoot(
 			deltaLongitude *= 5 / scale
 			deltaLatitude *= 5 / scale
 		}
-		longitude = normalizeLongitude(longitude + deltaLongitude)
+		longitude = geodata.NormalizeLongitude(longitude + deltaLongitude)
 		latitude += deltaLatitude
 		if latitude <= -89.999999 || latitude >= 89.999999 || !finite(latitude) {
 			return 0, 0, false
 		}
 	}
 	first, second, ok := residualAt(longitude, latitude)
-	return normalizeLongitude(longitude), latitude,
+	return geodata.NormalizeLongitude(longitude), latitude,
 		ok && finite(first) && finite(second) && math.Abs(first) <= 1e-8 && math.Abs(second) <= 1e-8
 }
 
@@ -251,7 +253,7 @@ func riseSetHorizonPoint(centerLongitude, centerLatitude, angle float64) (float6
 		first[1]*math.Cos(angle) + second[1]*math.Sin(angle),
 		first[2]*math.Cos(angle) + second[2]*math.Sin(angle),
 	}
-	return normalizeLongitude(math.Atan2(point[1], point[0]) * 180 / math.Pi),
+	return geodata.NormalizeLongitude(math.Atan2(point[1], point[0]) * 180 / math.Pi),
 		math.Asin(math.Max(-1, math.Min(1, point[2]))) * 180 / math.Pi
 }
 

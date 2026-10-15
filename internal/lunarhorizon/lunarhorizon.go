@@ -18,17 +18,9 @@ import (
 	"time"
 
 	"github.com/starainrt/astro/basic"
+	"github.com/starainrt/astro/internal/ephem"
 	"github.com/starainrt/astro/internal/geodata"
 )
-
-// normalizeLongitude 把经度归一化到 [-180, 180)；internal/geodata 与 geojson 各有一份等价的未导出实现，无法跨包复用。
-func normalizeLongitude(value float64) float64 {
-	value = math.Mod(value+180, 360)
-	if value < 0 {
-		value += 360
-	}
-	return value - 180
-}
 
 // defaultToleranceDegrees 是 GeoJSON 导出使用的误差门限。GeoJSON 客户端可以无限放大，
 // 因此这里取远小于任何地图像素的角度。
@@ -47,7 +39,12 @@ const DefaultToleranceDegrees = defaultToleranceDegrees
 // longitude. Refine in map coordinates before clipping; extra vertices are
 // corrected to the same topocentric zero-altitude curve as the source ring.
 func Refine(points []geodata.GeoPoint, at time.Time) []geodata.GeoPoint {
-	return RefineWithin(points, at, defaultToleranceDegrees)
+	return RefineWithInstance(points, at, nil)
+}
+
+// RefineWithInstance 指定星历实例的站心地平线细分 / topocentric horizon refinement with an explicit instance.
+func RefineWithInstance(points []geodata.GeoPoint, at time.Time, inst *ephem.Instance) []geodata.GeoPoint {
+	return RefineWithinWithInstance(points, at, defaultToleranceDegrees, inst)
 }
 
 // RefineWithin 用给定误差门限（单位：度）细分一条站心地平线。插入的顶点被校正回零高度，
@@ -58,6 +55,11 @@ func Refine(points []geodata.GeoPoint, at time.Time) []geodata.GeoPoint {
 // accuracy without moving the curve. A fixed-resolution target such as an SVG map can pass a
 // tolerance matched to its pixel scale instead of emitting vertices no display can resolve.
 func RefineWithin(points []geodata.GeoPoint, at time.Time, toleranceDegrees float64) []geodata.GeoPoint {
+	return RefineWithinWithInstance(points, at, toleranceDegrees, nil)
+}
+
+// RefineWithinWithInstance 指定星历实例和误差门限的站心地平线细分 / topocentric horizon refinement with an explicit instance and tolerance.
+func RefineWithinWithInstance(points []geodata.GeoPoint, at time.Time, toleranceDegrees float64, inst *ephem.Instance) []geodata.GeoPoint {
 	if !(toleranceDegrees > 0) {
 		toleranceDegrees = defaultToleranceDegrees
 	}
@@ -66,10 +68,10 @@ func RefineWithin(points []geodata.GeoPoint, at time.Time, toleranceDegrees floa
 	}
 	jd := basic.Date2JD(at.UTC())
 	tt := basic.UTC2TT(jd)
-	ra, dec := basic.HMoonTrueRaDec(tt)
-	distanceAU := basic.HMoonAway(tt) / 149597870.7
+	ra, dec := basic.HMoonTrueRaDecWithInstance(tt, inst)
+	distanceAU := basic.HMoonAwayWithInstance(tt, inst) / 149597870.7
 	sidereal := basic.ApparentSiderealTime(basic.UTC2UT1(jd)) * 15
-	center := geodata.GeoPoint{Longitude: normalizeLongitude(ra - sidereal), Latitude: dec}
+	center := geodata.GeoPoint{Longitude: geodata.NormalizeLongitude(ra - sidereal), Latitude: dec}
 	// Every correction is at the same instant. Reuse its full ephemeris while
 	// retaining the ellipsoid and topocentric transform used by HMoonHeight.
 	altitudeAt := func(point geodata.GeoPoint) float64 {

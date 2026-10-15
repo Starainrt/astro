@@ -5,6 +5,8 @@ import (
 	"sort"
 	"sync"
 	"time"
+
+	"github.com/starainrt/astro/internal/geodata"
 )
 
 const (
@@ -29,16 +31,12 @@ const (
 	occultationPathBoundaryBranchJumpKM             = 120.0
 	occultationPathBoundaryBranchSpeedKMPerSecond   = 10.0
 
-	occultationPathEarthEquatorialRadiusKM = 6378.1366
-	occultationPathEarthPolarRatio         = 0.99664719
-	occultationPathAstronomicalUnitKM      = 149597870.7
+	occultationPathEarthPolarRatio    = 0.99664719
+	occultationPathAstronomicalUnitKM = 149597870.7
 )
 
-// FindStarOccultationPaths 搜索单颗点源恒星月掩的全球掩带。
-// 查询窗口按全球几何掩甚点选择事件，端点容差为 10 ms，与数值根精度一致。返回路径扩展到完整全球起止点；函数不会加载内嵌星表，调用者需显式提供坐标。
-// FindStarOccultationPaths searches the global lunar-occultation footprint of one point-source star.
-// The query window selects events by global geometric greatest, with a 10 ms endpoint tolerance matching the numerical root precision. Each returned path expands to its complete global start and end; the function does not load the embedded catalog.
-func FindStarOccultationPaths(start, end time.Time, star StarCoordinate, options OccultationPathOptions) ([]StarOccultationPath, error) {
+// FindStarOccultationPathsWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func FindStarOccultationPathsWithInstance(start, end time.Time, star StarCoordinate, options OccultationPathOptions, inst *Instance) ([]StarOccultationPath, error) {
 	if err := validateOccultationTimeRange(start, end); err != nil {
 		return nil, err
 	}
@@ -60,11 +58,11 @@ func FindStarOccultationPaths(start, end time.Time, star StarCoordinate, options
 		candidateEndTT,
 		starOccultationCoarseStepDays(coarseOptions),
 		star,
-		0,
+		0, inst,
 	)
 	paths := make([]StarOccultationPath, 0, len(candidates))
 	for _, seedTT := range candidates {
-		path, ok, err := starOccultationPathAtSeed(seedTT, star, options, start, end)
+		path, ok, err := starOccultationPathAtSeed(seedTT, star, options, start, end, inst)
 		if err != nil {
 			return nil, err
 		}
@@ -122,10 +120,11 @@ func starOccultationPathAtSeed(
 	seedTT float64,
 	star StarCoordinate,
 	options OccultationPathOptions,
-	selectionStart, selectionEnd time.Time,
-) (StarOccultationPath, bool, error) {
+	selectionStart, selectionEnd time.Time, instances ...*Instance) (StarOccultationPath, bool, error) {
+	inst := instanceValue(instances)
+
 	location := selectionStart.Location()
-	cache := newStarOccultationEventCache(star)
+	cache := newStarOccultationEventCache(star, inst)
 	cache.prepareLocalEphemeris(seedTT)
 	frameAt := cache.frameAt
 	candidateFrameAt := cache.candidateFrameAt
@@ -170,14 +169,14 @@ func starOccultationPathAtSeed(
 		return StarOccultationPath{}, false, ErrOccultationPathSamplingLimit
 	}
 
-	start := starOccultationPathBoundaryEndpointWithFrame(outerStart, frameAt, location, 1)
-	end := starOccultationPathBoundaryEndpointWithFrame(outerEnd, frameAt, location, -1)
+	start := starOccultationPathBoundaryEndpointWithFrame(outerStart, frameAt, location, 1, inst)
+	end := starOccultationPathBoundaryEndpointWithFrame(outerEnd, frameAt, location, -1, inst)
 	if !start.valid || !end.valid {
 		return StarOccultationPath{}, false, nil
 	}
 	exactFrameAt := frameAt
 	if options.Algorithm != OccultationPathAlgorithmExact {
-		optimized := newStarOccultationEventCache(star)
+		optimized := newStarOccultationEventCache(star, inst)
 		optimized.preparePathEphemeris(seedTT, options.Algorithm)
 		if optimized.local.dense {
 			cache = optimized
@@ -220,6 +219,10 @@ func starOccultationPathAtSeed(
 	path.SouthernLimit = occultationStationCorrectLimitSeries(
 		path.SouthernLimit, frameAt, cache.riseSetContextAt, false, location,
 	)
+	var northApplied, southApplied bool
+	path.NorthernLimit, northApplied = occultationLimbCorrectLimitSeries(path.NorthernLimit, cache.riseSetContextAt, options.LunarLimb, location, inst)
+	path.SouthernLimit, southApplied = occultationLimbCorrectLimitSeries(path.SouthernLimit, cache.riseSetContextAt, options.LunarLimb, location, inst)
+	path.LunarLimbApplied = northApplied || southApplied
 	path.GreatestLimitSeparationKM, _ = occultationPathLimitSeparations(
 		path.NorthernLimit, path.SouthernLimit, greatestTT,
 	)
@@ -458,9 +461,11 @@ func occultationPathContourStepDays(options OccultationPathOptions) float64 {
 	return stepDays
 }
 
-func starOccultationPathWindow(seedTT, startTT, endTT float64, star StarCoordinate, center bool) (float64, float64, bool) {
+func starOccultationPathWindow(seedTT, startTT, endTT float64, star StarCoordinate, center bool, instances ...*Instance) (float64, float64, bool) {
+	inst := instanceValue(instances)
+
 	return starOccultationPathWindowWithFrame(seedTT, startTT, endTT, func(tt float64) (occultationPathFrame, bool) {
-		return starOccultationPathFrameAt(tt, star)
+		return starOccultationPathFrameAt(tt, star, inst)
 	}, center)
 }
 
@@ -511,9 +516,11 @@ func occultationPathWindowWithCandidateFrames(
 	)
 }
 
-func starOccultationPathGreatest(seedTT, startTT, endTT float64, star StarCoordinate) float64 {
+func starOccultationPathGreatest(seedTT, startTT, endTT float64, star StarCoordinate, instances ...*Instance) float64 {
+	inst := instanceValue(instances)
+
 	return starOccultationPathGreatestWithFrame(seedTT, startTT, endTT, func(tt float64) (occultationPathFrame, bool) {
-		return starOccultationPathFrameAt(tt, star)
+		return starOccultationPathFrameAt(tt, star, inst)
 	})
 }
 
@@ -746,6 +753,8 @@ type starOccultationEphemerisState struct {
 }
 
 type starOccultationEventCache struct {
+	inst *Instance
+
 	star         StarCoordinate
 	states       map[uint64]starOccultationEphemerisState
 	frames       map[uint64]planetOccultationFrameCacheEntry
@@ -753,8 +762,10 @@ type starOccultationEventCache struct {
 	local        *starOccultationLocalEphemeris
 }
 
-func newStarOccultationEventCache(star StarCoordinate) *starOccultationEventCache {
-	cache := &starOccultationEventCache{
+func newStarOccultationEventCache(star StarCoordinate, instances ...*Instance) *starOccultationEventCache {
+	inst := instanceValue(instances)
+
+	cache := &starOccultationEventCache{inst: inst,
 		star:   star,
 		states: make(map[uint64]starOccultationEphemerisState),
 		frames: make(map[uint64]planetOccultationFrameCacheEntry),
@@ -785,7 +796,7 @@ func (cache *starOccultationEventCache) stateAt(tt float64) starOccultationEphem
 		state, interpolated = cache.local.stateAt(tt)
 	}
 	if !interpolated {
-		state = starOccultationEphemerisStateAt(tt, cache.star)
+		state = starOccultationEphemerisStateAt(tt, cache.star, cache.inst)
 	}
 	cache.states[key] = state
 	return state
@@ -793,7 +804,7 @@ func (cache *starOccultationEventCache) stateAt(tt float64) starOccultationEphem
 
 func (cache *starOccultationEventCache) prepareLocalEphemeris(center float64) {
 	if cache.local == nil {
-		cache.local = newStarOccultationLocalEphemeris(center, cache.star)
+		cache.local = newStarOccultationLocalEphemeris(center, cache.star, cache.inst)
 	}
 }
 
@@ -851,15 +862,19 @@ type occultationPathEndpoint struct {
 func (f occultationPathFrame) moonProjectionX() float64 { return occultationPathDot(f.moon, f.first) }
 func (f occultationPathFrame) moonProjectionY() float64 { return occultationPathDot(f.moon, f.second) }
 
-func starOccultationPathFrameAt(tt float64, star StarCoordinate) (occultationPathFrame, bool) {
-	return starOccultationPathFrameFromState(starOccultationEphemerisStateAt(tt, star))
+func starOccultationPathFrameAt(tt float64, star StarCoordinate, instances ...*Instance) (occultationPathFrame, bool) {
+	inst := instanceValue(instances)
+
+	return starOccultationPathFrameFromState(starOccultationEphemerisStateAt(tt, star, inst))
 }
 
-func starOccultationEphemerisStateAt(tt float64, star StarCoordinate) starOccultationEphemerisState {
-	moonRA, moonDec := HMoonGeocentricApparentRaDecN(tt, -1)
-	moonDistanceKM := HMoonAwayN(tt, -1)
+func starOccultationEphemerisStateAt(tt float64, star StarCoordinate, instances ...*Instance) starOccultationEphemerisState {
+	inst := instanceValue(instances)
+
+	moonRA, moonDec := HMoonGeocentricApparentRaDecNWithInstance(tt, -1, inst)
+	moonDistanceKM := HMoonAwayNWithInstance(tt, -1, inst)
 	// 方向与距离必须来自同一次三维推进，否则视差修正会退回历元距离。
-	starRA, starDec, starDistanceAU := starApparentRaDecDistanceGeocentric(tt, star)
+	starRA, starDec, starDistanceAU := starApparentRaDecDistanceGeocentric(tt, star, inst)
 	starDistanceKM := starDistanceAU * occultationPathAstronomicalUnitKM
 	return starOccultationEphemerisState{
 		moonRA: moonRA, moonDec: moonDec, moonDistanceKM: moonDistanceKM,
@@ -906,8 +921,9 @@ func starOccultationPathBoundaryEndpointWithFrame(
 	tt float64,
 	frameAt occultationPathFrameFunc,
 	location *time.Location,
-	direction int,
-) occultationPathEndpoint {
+	direction int, instances ...*Instance) occultationPathEndpoint {
+	inst := instanceValue(instances)
+
 	if _, ok := frameAt(tt); !ok {
 		return occultationPathEndpoint{}
 	}
@@ -919,15 +935,17 @@ func starOccultationPathBoundaryEndpointWithFrame(
 		}
 		vector, _, valid := occultationPathBoundaryTangent(candidateFrame)
 		if valid {
-			return occultationPathEndpoint{point: occultationPathPointFromVector(candidateTT, vector, 0, location), valid: true}
+			return occultationPathEndpoint{point: occultationPathPointFromVector(candidateTT, vector, 0, location, inst), valid: true}
 		}
 	}
 	return occultationPathEndpoint{}
 }
 
-func starOccultationPathCenterPoint(tt float64, star StarCoordinate, location *time.Location) (OccultationPathPoint, bool) {
+func starOccultationPathCenterPoint(tt float64, star StarCoordinate, location *time.Location, instances ...*Instance) (OccultationPathPoint, bool) {
+	inst := instanceValue(instances)
+
 	return starOccultationPathCenterPointWithFrame(tt, func(candidateTT float64) (occultationPathFrame, bool) {
-		return starOccultationPathFrameAt(candidateTT, star)
+		return starOccultationPathFrameAt(candidateTT, star, inst)
 	}, location)
 }
 
@@ -1227,7 +1245,7 @@ func occultationPathBoundaryLine(frame occultationPathFrame, theta float64) (dis
 	polarRatioSquared := occultationPathEarthPolarRatio * occultationPathEarthPolarRatio
 	a := direction.x*direction.x + direction.y*direction.y + direction.z*direction.z/polarRatioSquared
 	b = origin.x*direction.x + origin.y*direction.y + origin.z*direction.z/polarRatioSquared
-	c := origin.x*origin.x + origin.y*origin.y + origin.z*origin.z/polarRatioSquared - occultationPathEarthEquatorialRadiusKM*occultationPathEarthEquatorialRadiusKM
+	c := origin.x*origin.x + origin.y*origin.y + origin.z*origin.z/polarRatioSquared - geodata.EarthEquatorialRadiusKM*geodata.EarthEquatorialRadiusKM
 	discriminant = b*b - a*c
 	scale = math.Max(math.Abs(b*b), math.Abs(a*c))
 	return discriminant, b, scale, a > 0 && finite(discriminant)
@@ -1241,9 +1259,11 @@ func occultationPathBoundaryIntersection(frame occultationPathFrame, theta, tole
 	return occultationEarthLineIntersectionWithTolerance(origin, direction, tolerance)
 }
 
-func occultationPathPointFromVector(tt float64, vector occultationPathVector, width float64, location *time.Location) OccultationPathPoint {
+func occultationPathPointFromVector(tt float64, vector occultationPathVector, width float64, location *time.Location, instances ...*Instance) OccultationPathPoint {
+	inst := instanceValue(instances)
+
 	lon, lat := occultationPathGeodetic(tt, vector)
-	moonRA, moonDec := moonTopocentricApparentRaDec(tt, Observer{Longitude: lon, Latitude: lat}, -1)
+	moonRA, moonDec := moonTopocentricApparentRaDec(tt, Observer{Longitude: lon, Latitude: lat}, -1, inst)
 	return OccultationPathPoint{
 		Time:         occultationTTToLocation(tt, location),
 		Longitude:    lon,
@@ -1419,17 +1439,7 @@ func occultationPathDistanceKM(a, b OccultationPathPoint) float64 {
 }
 
 func occultationPathDistanceKMValues(lon1, lat1, lon2, lat2 float64) float64 {
-	lat1 *= math.Pi / 180
-	lat2 *= math.Pi / 180
-	dLat := lat2 - lat1
-	dLon := (lon2 - lon1) * math.Pi / 180
-	dLon = math.Mod(dLon+math.Pi, 2*math.Pi)
-	if dLon < 0 {
-		dLon += 2 * math.Pi
-	}
-	dLon -= math.Pi
-	h := math.Sin(dLat/2)*math.Sin(dLat/2) + math.Cos(lat1)*math.Cos(lat2)*math.Sin(dLon/2)*math.Sin(dLon/2)
-	return 2 * occultationPathEarthEquatorialRadiusKM * math.Asin(math.Sqrt(math.Min(1, h)))
+	return geodata.EarthEquatorialRadiusKM * geodata.CentralAngle(lon1, lat1, lon2, lat2)
 }
 
 type occultationPathVector struct{ x, y, z float64 }
@@ -1504,14 +1514,14 @@ func occultationPathTrackReference(frame occultationPathFrame) (occultationPathV
 	if metricRadius <= 1e-9 || !finite(metricRadius) {
 		return occultationPathVector{}, false
 	}
-	return occultationPathScale(closest, occultationPathEarthEquatorialRadiusKM/metricRadius), true
+	return occultationPathScale(closest, geodata.EarthEquatorialRadiusKM/metricRadius), true
 }
 
 func occultationEarthLineIntersectionWithTolerance(origin, direction occultationPathVector, tolerance float64) (occultationPathVector, float64, bool) {
 	polarRatioSquared := occultationPathEarthPolarRatio * occultationPathEarthPolarRatio
 	a := direction.x*direction.x + direction.y*direction.y + direction.z*direction.z/polarRatioSquared
 	b := origin.x*direction.x + origin.y*direction.y + origin.z*direction.z/polarRatioSquared
-	c := origin.x*origin.x + origin.y*origin.y + origin.z*origin.z/polarRatioSquared - occultationPathEarthEquatorialRadiusKM*occultationPathEarthEquatorialRadiusKM
+	c := origin.x*origin.x + origin.y*origin.y + origin.z*origin.z/polarRatioSquared - geodata.EarthEquatorialRadiusKM*geodata.EarthEquatorialRadiusKM
 	discriminant := b*b - a*c
 	if discriminant < -tolerance || a <= 0 {
 		return occultationPathVector{}, 0, false
@@ -1542,7 +1552,7 @@ func occultationPathGeodeticWithSidereal(
 	vector occultationPathVector,
 	siderealDegrees float64,
 ) (float64, float64) {
-	longitude := normalizeLongitude(math.Atan2(vector.y, vector.x)*180/math.Pi - siderealDegrees)
+	longitude := geodata.NormalizeLongitude(math.Atan2(vector.y, vector.x)*180/math.Pi - siderealDegrees)
 	return longitude, occultationPathGeodeticLatitude(vector)
 }
 
@@ -1576,12 +1586,4 @@ func occultationPathEarthFixedVectorWithRotation(
 		y: -rotation.sine*vector.x + rotation.cosine*vector.y,
 		z: vector.z,
 	}
-}
-
-func normalizeLongitude(longitude float64) float64 {
-	longitude = math.Mod(longitude+180, 360)
-	if longitude < 0 {
-		longitude += 360
-	}
-	return longitude - 180
 }

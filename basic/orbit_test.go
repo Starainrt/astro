@@ -124,3 +124,21 @@ func TestOrbitInvalidEllipticElementsReturnNaN(t *testing.T) {
 		}
 	}
 }
+
+func TestParabolicRadiusMonotonicFarBeforePerihelion(t *testing.T) {
+	elements := OrbitElements{Q: 0.005, E: 1, I: 0, Omega: 0, W: 0, TpJD: orbitReferenceJD}
+	previous := math.Inf(1)
+	for years := 1000.0; years <= 20000; years += 1000 {
+		before := OrbitHeliocentricXYZJ2000(orbitReferenceJD-years*365.25, elements)
+		after := OrbitHeliocentricXYZJ2000(orbitReferenceJD+years*365.25, elements)
+		rb := math.Hypot(math.Hypot(before[0], before[1]), before[2])
+		ra := math.Hypot(math.Hypot(after[0], after[1]), after[2])
+		if math.Abs(rb-ra) > 1e-9*ra {
+			t.Fatalf("%v yr: radius before %.9f, after %.9f", years, rb, ra)
+		}
+		if previous != math.Inf(1) && ra <= previous {
+			t.Fatalf("%v yr: radius %.9f not increasing from %.9f", years, ra, previous)
+		}
+		previous = ra
+	}
+}

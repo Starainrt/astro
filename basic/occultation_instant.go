@@ -44,9 +44,8 @@ type PlanetOccultationInstant struct {
 	Total             *PlanetOccultationFootprint
 }
 
-// StarOccultationFootprintAt 返回指定时刻的精确点源恒星月掩可见足迹；它采用与路径时间线相同的分辨率，并对完整接触弧执行站心校正。
-// StarOccultationFootprintAt returns the exact visible lunar-occultation footprint of a point-source star at one instant, using timeline resolution and station-centred correction of the complete contact arc.
-func StarOccultationFootprintAt(at time.Time, star StarCoordinate) (StarOccultationInstant, error) {
+// StarOccultationFootprintAtWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func StarOccultationFootprintAtWithInstance(at time.Time, star StarCoordinate, inst *Instance) (StarOccultationInstant, error) {
 	result := StarOccultationInstant{Time: at, TargetID: star.ID}
 	if at.IsZero() {
 		return result, fmt.Errorf("%w: time is required", ErrInvalidOccultationInput)
@@ -55,7 +54,7 @@ func StarOccultationFootprintAt(at time.Time, star StarCoordinate) (StarOccultat
 		return result, err
 	}
 
-	cache := newStarOccultationEventCache(star)
+	cache := newStarOccultationEventCache(star, inst)
 	tt := occultationTimeToTT(at)
 	result.DeltaTSeconds = DeltaT(tt, true)
 	result.SublunarLongitude, result.SublunarLatitude = occultationSublunarPoint(tt, cache.frameAt)
@@ -65,9 +64,8 @@ func StarOccultationFootprintAt(at time.Time, star StarCoordinate) (StarOccultat
 	return result, nil
 }
 
-// PlanetOccultationFootprintsAt 返回指定时刻有限行星盘面的精确外接触和内接触月掩可见足迹；它采用路径时间线分辨率，并对每条完整接触弧执行站心校正。
-// PlanetOccultationFootprintsAt returns the exact visible outer- and inner-contact lunar-occultation footprints of a finite planetary disk at one instant, using timeline resolution and station-centred correction of each complete contact arc.
-func PlanetOccultationFootprintsAt(at time.Time, planet OccultationPlanet) (PlanetOccultationInstant, error) {
+// PlanetOccultationFootprintsAtWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func PlanetOccultationFootprintsAtWithInstance(at time.Time, planet OccultationPlanet, inst *Instance) (PlanetOccultationInstant, error) {
 	result := PlanetOccultationInstant{Time: at, Planet: planet, TargetID: planet.String()}
 	if at.IsZero() {
 		return result, fmt.Errorf("%w: time is required", ErrInvalidOccultationInput)
@@ -76,8 +74,8 @@ func PlanetOccultationFootprintsAt(at time.Time, planet OccultationPlanet) (Plan
 		return result, err
 	}
 
-	config, _ := planetOccultationConfigFor(planet)
-	cache := newPlanetOccultationEventCache(config)
+	config, _ := planetOccultationConfigFor(planet, inst)
+	cache := newPlanetOccultationEventCache(config, inst)
 	tt := occultationTimeToTT(at)
 	result.DeltaTSeconds = DeltaT(tt, true)
 	result.SublunarLongitude, result.SublunarLatitude = occultationSublunarPoint(tt, cache.outerFrameAt)

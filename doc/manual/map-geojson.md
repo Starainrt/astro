@@ -7,6 +7,7 @@
 ## 目录
 
 - [导出日食 GeoJSON](#导出日食-geojson)
+- [导出凌日 GeoJSON](#导出凌日-geojson)
 - [API 参考](#api-参考)
 - [常用场景](#常用场景)
   - [给事件选投影](#给事件选投影)
@@ -70,6 +71,25 @@ func main() {
 
 偏食可以没有中心路径，因此 `centralPath` 允许为 `nil`。本例把 GeoJSON 写到标准输出，可重定向到文件；SVG 与 KML 用法见后文。
 
+## 导出凌日 GeoJSON
+
+凌日入口接收地心 `TransitInfo`，分区口径与凌日全球图一致：
+
+```go
+m := mercury.NextTransit(time.Date(2026, 10, 12, 0, 0, 0, 0, cst))
+data, err := geojson.MarshalMercuryTransit(m, geojson.PlanetTransitOptions{
+	BoundaryPoints: 360,
+	IsochroneStep:  5 * time.Minute,
+	TimeMarkers:    &geojson.TimeMarkerOptions{Step: time.Hour, Location: cst},
+})
+if err != nil {
+	log.Fatal(err)
+}
+fmt.Println(string(data))
+```
+
+金星把 `mercury.NextTransit` 换成 `venus.NextTransit`、`MarshalMercuryTransit` 换成 `MarshalVenusTransit`，选项相同。`date` 早于该次凌日即可：`NextTransit` 返回其后最近的一次，取前后最近一次用 `ClosestTransit`。`TransitInfo.Valid` 为假时导出返回错误。
+
 ## API 参考
 
 SVG 片段使用导入别名 `eclipsesvg "github.com/starainrt/astro/eclipse/svg"`；月掩图使用 `moonsvg "github.com/starainrt/astro/moon/svg"`。日期和时区沿用首例。
@@ -82,6 +102,7 @@ SVG 片段使用导入别名 `eclipsesvg "github.com/starainrt/astro/eclipse/svg
 | `StarOccultationPathSVG` / `PlanetOccultationPathSVG` | 月掩全球掩带图 | 返回 `(string, error)` |
 | `MarshalSolarEclipse` / `MarshalSolarEclipseWithTimeMarkers` | 日食 GeoJSON | 无/带时间标记 |
 | `MarshalLunarEclipse` / `MarshalLunarEclipseWithTimeMarkers` / `MarshalLunarEclipseWithOptions` | 月食 GeoJSON | 同上 |
+| `MarshalMercuryTransit` / `MarshalVenusTransit` | 凌日 GeoJSON | 选项见 `PlanetTransitOptions` |
 | `MarshalStarOccultation` / `MarshalPlanetOccultation`（及 `...WithTimeMarkers`） | 月掩 GeoJSON | 同上 |
 | `NewSolarEclipseShadowSolver` / `MarshalSolarEclipseShadowInstant` | 单时刻足迹及其 GeoJSON | 拖动时间轴用 |
 | `TimeMarkerOptions` | 时间标记 `Step`、`Location`、`TimeScale` | `Step` 零值 30 分钟，最多 1440 个 |
@@ -132,7 +153,7 @@ fmt.Println(err, json.Valid(data), len(data))
 
 - `WithTimeMarkers` 会追加 `role=time-marker` 的 Point 要素：`label` 按 `Location` 本地化显示，`time` 始终是 UTC RFC 3339。
 - `Step` 零值为 30 分钟，正值至少 1 分钟，单次导出最多 1440 个标记；不需要标记就用不带后缀的 `MarshalSolarEclipse`。
-- 月食与月掩有对称入口（`MarshalLunarEclipse*`、`MarshalStarOccultation*`、`MarshalPlanetOccultation*`）；GeoJSON 不携带底图、边界、样式或投影，Web Mercator 与瓦片选择由应用决定。
+- 月食与月掩有对称入口（`MarshalLunarEclipse*`、`MarshalStarOccultation*`、`MarshalPlanetOccultation*`）。
 
 ### 时标声明与 UT1
 
@@ -161,7 +182,15 @@ true <nil> true 4217
 
 - 单时刻接口只算"这一瞬间的本影/半影足迹"与站心日月几何，不产生可见带、食分线、升落边界或南北界；本影不在地球上时返回空值而不是错误。
 - 插值前先比 `interp_signature`：只有相同的相邻时刻才适合按顶点插值，`closed` 翻转、段数/顶点数变化、空↔非空（U1/U4 附近）都必须改取精确几何。
-- 可降级图层用 `data-source` 标注实际几何来源，取值词表见[地图投影](#地图投影)。
+- 可降级图层用 `data-source` 标注实际几何来源，没有降级分支的图层不带该属性；合法取值见下面的图层词表。
+
+可降级图层的 `data-source` 取值按出图族分组，完整含义见 `eclipse/svg` 包注释：
+
+- 日食边界与可见域：`partial-band-union`、`sampled-footprint-sweep`、`partial-band-contours`、`besselian-critical-envelope`、`paired-limit-chords`、`sampled-open-sweep`、`central-path-limits`
+- 日食时刻与食分线：`rise-set-phase-lines`、`magnitude-contours`、`greatest-time-isochrones`
+- 瞬时轮廓：`penumbral-outlines`、`central-shadow-outlines`
+- 月食：`p1-p4-visibility-regions`、`p1-p4-horizon-boundaries`
+- 凌日：`c1-c4-visibility-regions`、`c1-c4-horizon-boundaries`、`transit-contact-isochrones`
 
 ## 地图投影
 
@@ -200,9 +229,7 @@ for _, spec := range []struct {
 }
 ```
 
-各族的选项、图层开关与带图示例见[日食与月食手册](eclipse.md#全球见食图与月食出图)与[月掩手册](occultation.md#月掩出图)；GeoJSON 侧只携带地理结果，投影由应用自行选择。
-
-可降级的图层用 `data-source` 标注实际几何来源，取值词表见 `eclipse/svg` 包注释：`partial-band-union`、`sampled-footprint-sweep`、`partial-band-contours`、`rise-set-phase-lines`、`magnitude-contours`、`greatest-time-isochrones`、`besselian-critical-envelope`、`paired-limit-chords`、`sampled-open-sweep`、`central-path-limits`、`penumbral-outlines`、`central-shadow-outlines`、`p1-p4-visibility-regions`、`p1-p4-horizon-boundaries`。
+各族的选项、图层开关与带图示例见[日月食与凌日手册](eclipse.md#全球见食图与月食出图)与[月掩手册](occultation.md#月掩出图)；GeoJSON 侧只携带地理结果，投影由应用自行选择。凌日的可见分区、C1/C4 视地平线与可选站心等时线也可以直接导出为 GeoJSON，见上面的凌日导出示例。
 
 ## 时标声明
 
@@ -215,7 +242,7 @@ GeoJSON 侧的对应成员是 `time_scale`：UTC 口径省略该成员，UT1 口
 
 ## GeoJSON
 
-`geojson` 接收已经计算好的日食、月食或月掩结果，返回 `[]byte`。这段字节是完整的 UTF-8 RFC 7946 `FeatureCollection` JSON，不是图片，也不是压缩数据，可以直接写入 `.geojson`、交给 `encoding/json`，或发送给前端地图组件。
+`geojson` 接收已经计算好的日食、月食或月掩结果，返回 `[]byte`。这段字节是完整的 UTF-8 RFC 7946 `FeatureCollection` JSON，可直接写入 `.geojson`，或交给 `encoding/json` 与前端地图组件。
 
 ```go
 package main
@@ -264,9 +291,10 @@ func main() {
 
 - `MarshalSolarEclipse` / `MarshalSolarEclipseWithTimeMarkers`
 - `MarshalLunarEclipse` / `MarshalLunarEclipseWithTimeMarkers`
-- `MarshalLunarEclipseWithOptions`：用 `LunarEclipseOptions` 一次给出时间标记、`SkipRoles` 与时间包络的采样档位。`SkipRoles` 可跳过时间包络和仅见半影带；跳过两个时间包络时不会执行包络采样。`EnvelopeSweepSamples` 默认 48，限制在 `[2, 192]`；`EnvelopeLongitudePoints` 默认 `max(360, boundaryPoints)`，限制在 `[12, 720]`。
+- `MarshalLunarEclipseWithOptions`：用 `LunarEclipseOptions` 一次给出时间标记、`SkipRoles` 与时间包络的采样参数。`SkipRoles` 可跳过时间包络和仅见半影带；跳过两个时间包络时不会执行包络采样。`EnvelopeSweepSamples` 默认 48，限制在 `[2, 192]`；`EnvelopeLongitudePoints` 默认 `max(360, boundaryPoints)`，限制在 `[12, 720]`。
 - `MarshalStarOccultation` / `MarshalStarOccultationWithTimeMarkers`
 - `MarshalPlanetOccultation` / `MarshalPlanetOccultationWithTimeMarkers`
+- `MarshalMercuryTransit` / `MarshalVenusTransit`：接收 `mercury.TransitInfo` / `venus.TransitInfo`，分区口径同凌日 SVG 全球图（一触、凌甚、四触太阳中心是否在视地平上，计入标准大气折射）。`BoundaryPoints` 是地平线采样点数，同时决定分区的经度列数 `max(360, BoundaryPoints)`（上限 720）。role 有 `transit-entire`、`transit-at-sunrise`、`transit-at-sunset` 三个分区，`visible-at-c1` / `visible-at-c4` 与 `c1-horizon` / `c4-horizon`，`greatest`（太阳直射点）与时间标记 `time-marker`；`IsochroneStep` 为正（至少 1 秒）时追加 `c1-isochrone` 到 `c4-isochrone` 站心等时线（掠凌无二、三触；时刻是站心接触时刻，受视差影响可落在地心一触到四触之外），某个接触的等时线不落在可见半球上时该 role 不出现；`SkipRoles` 跳过全部三个分区时不做分区计算。
 - `MarshalSolarEclipseWithOptions`：用 `SolarEclipseOptions` 一次给出时间标记与 `SkipRoles`，等价于上面的日食入口再加图层裁剪。`SkipRoles` 里最常用的是 `partial-footprint`（瞬时半影轮廓）；`partial-band` 是日食带边缘（食分 0 界限），通常要留着。
 
 ### 图层筛选
@@ -320,7 +348,7 @@ GeoJSON 不携带底图、样式或投影，应用可自行选择瓦片、Web Me
 
 只画真实阴影边缘时使用 `central-shadow-boundary`；需要填色时使用 footprint。阴影在 U1/U4 收缩为空时不输出该要素，不会退化成折线。`source_boundary_closed=true` 表示物理边界本身已经闭合。
 
-采样的半影足迹也带这些属性。足迹是瞬时覆盖区域，静态掩带是整场事件的包络，两者不能互相替代。
+采样的半影足迹也带这些属性。足迹只覆盖一个时刻，静态掩带覆盖整场事件，取几何时不要混用。
 
 相邻帧可先比较 `interp_signature`，例如 `umbra-closed-seg1-pt97`。只有签名一致、分段数与顶点数对应时才适合按顶点插值；这不代表插值具有严格误差上界。闭合状态改变、反经线分段改变或空/非空切换时，应查询精确几何。
 
@@ -342,7 +370,7 @@ GeoJSON 不携带底图、样式或投影，应用可自行选择瓦片、Web Me
 
 只需要事件列表时，可先用 `eclipse.SolarEclipseCandidates(start, end, options)` 获取食甚时刻、食型、中心食类型、食分、伽马和可选沙罗信息；这个结果不包含地理几何。
 
-固定地点的中心食搜索使用 `SearchLocalCentralSolarEclipse`，选项包括 `Kind`、`MaxYears`、`Backward`、`Geometric`、`Model`，返回 `(info, status)`。`status.Exhausted` 表示已用尽搜索范围。
+固定地点的中心食搜索使用 `SearchLocalCentralSolarEclipse`，选项包括 `Kind`、`MaxYears`、`Backward`、`Geometric`、`Model`，返回 `(info, SolarEclipseLocalSearchStatus)`，其 `Exhausted` 表示已用尽搜索范围。
 
 `MaxYears<=0` 使用默认搜索预算（6000 次候选步进，约 992 年）。找到事件后再计算路径、足迹或 SVG，可以避免为不需要的事件生成地图数据。
 
@@ -406,6 +434,7 @@ func main() {
 | 掩星全掩与偏掩带 | `total-band`、`partial-band`、`total-band-outline`、`occultation-band` | 黄色，带半透明填充 |
 | 升落可见边界、月食时间包络、日食偏食带边缘 | `visibility-boundary`、`p1-horizon`、`p4-horizon`、`visible-at-p1`、`visible-at-p4`、`visible-during-eclipse`、`visible-throughout-eclipse`、日食的 `partial-band` | 橙色 |
 | 仅见半影的月出/月落带 | `penumbra-moonrise`、`penumbra-moonset` | 月出蓝紫、月落紫红，带半透明填充 |
+| 凌日可见分区与接触线 | `transit-entire`、`transit-at-sunrise`、`transit-at-sunset`、`c1-horizon`、`c4-horizon`、`visible-at-c1`、`visible-at-c4`、`c1-isochrone` … `c4-isochrone` | 三个分区各有填充色；C1/C4 视地平与可见半球橙色；四触等时线各一色 |
 | 其他限界、轮廓、足迹与时间标记 | 其他 `role` | 灰色，面默认只画轮廓 |
 
 `Style` 的零值字段沿用默认样式：

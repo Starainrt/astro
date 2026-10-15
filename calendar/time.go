@@ -177,7 +177,11 @@ func (t Time) Add(d time.Duration) Time {
 		jd := Date2JD(t.solarTime) + d.Seconds()/86400.0
 		newT = basic.JD2DateByZone(jd, t.solarTime.Location(), true)
 	}
-	rT, _ := SolarToLunar(newT)
+	rT, err := SolarToLunar(newT)
+	if err != nil {
+		// 超出农历覆盖范围时仍保留公历时刻，农历部分为空。
+		return Time{solarTime: newT}
+	}
 	return rT
 }
 

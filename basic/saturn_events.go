@@ -14,8 +14,10 @@ const (
 	saturnPhaseCoarseTolerance = 30.0 / 86400.0
 )
 
-func saturnSunLongitudeDelta(jde, degree float64, filter bool) float64 {
-	sub := Limit360(Limit360(SaturnApparentLo(jde)-HSunApparentLo(jde)) - degree)
+func saturnSunLongitudeDelta(jde, degree float64, filter bool, instances ...*Instance) float64 {
+	inst := instanceValue(instances)
+
+	sub := Limit360(Limit360(SaturnApparentLoWithInstance(jde, inst)-HSunApparentLoWithInstance(jde, inst)) - degree)
 	if filter {
 		if sub > 180 {
 			sub -= 360
@@ -27,8 +29,10 @@ func saturnSunLongitudeDelta(jde, degree float64, filter bool) float64 {
 	return sub
 }
 
-func saturnSunLongitudeDeltaN(jde, degree float64, filter bool, n int) float64 {
-	sub := Limit360(Limit360(SaturnApparentLoN(jde, n)-HSunApparentLoN(jde, n)) - degree)
+func saturnSunLongitudeDeltaN(jde, degree float64, filter bool, n int, instances ...*Instance) float64 {
+	inst := instanceValue(instances)
+
+	sub := Limit360(Limit360(SaturnApparentLoNWithInstance(jde, n, inst)-HSunApparentLoNWithInstance(jde, n, inst)) - degree)
 	if filter {
 		if sub > 180 {
 			sub -= 360
@@ -40,8 +44,10 @@ func saturnSunLongitudeDeltaN(jde, degree float64, filter bool, n int) float64 {
 	return sub
 }
 
-func saturnRADerivative(jde, delta float64) float64 {
-	sub := SaturnApparentRa(jde+delta) - SaturnApparentRa(jde-delta)
+func saturnRADerivative(jde, delta float64, instances ...*Instance) float64 {
+	inst := instanceValue(instances)
+
+	sub := SaturnApparentRaWithInstance(jde+delta, inst) - SaturnApparentRaWithInstance(jde-delta, inst)
 	if sub > 180 {
 		sub -= 360
 	}
@@ -51,8 +57,10 @@ func saturnRADerivative(jde, delta float64) float64 {
 	return sub / (2 * delta)
 }
 
-func saturnRADerivativeN(jde, delta float64, n int) float64 {
-	sub := SaturnApparentRaN(jde+delta, n) - SaturnApparentRaN(jde-delta, n)
+func saturnRADerivativeN(jde, delta float64, n int, instances ...*Instance) float64 {
+	inst := instanceValue(instances)
+
+	sub := SaturnApparentRaNWithInstance(jde+delta, n, inst) - SaturnApparentRaNWithInstance(jde-delta, n, inst)
 	if sub > 180 {
 		sub -= 360
 	}
@@ -62,13 +70,15 @@ func saturnRADerivativeN(jde, delta float64, n int) float64 {
 	return sub / (2 * delta)
 }
 
-func saturnConjunctionFull(jde, degree float64, next uint8) float64 {
+func saturnConjunctionFull(jde, degree float64, next uint8, instances ...*Instance) float64 {
+	inst := instanceValue(instances)
+
 	//0=last 1=next
 	if !isFiniteFloat(jde) || !isFiniteFloat(degree) {
 		return math.NaN()
 	}
 	daysPerDegree := SATURN_S_PERIOD / 360
-	currentDelta := saturnSunLongitudeDelta(jde, degree, false)
+	currentDelta := saturnSunLongitudeDelta(jde, degree, false, inst)
 	if next == 0 {
 		jde -= (360 - currentDelta) * daysPerDegree
 	} else {
@@ -78,8 +88,8 @@ func saturnConjunctionFull(jde, degree float64, next uint8) float64 {
 	converged := false
 	for i := 0; i < eventNewtonMaxIterations; i++ {
 		prevJDE := estimateJDE
-		longitudeDelta := saturnSunLongitudeDelta(prevJDE, degree, true)
-		longitudeSlope := (saturnSunLongitudeDelta(prevJDE+0.000005, degree, true) - saturnSunLongitudeDelta(prevJDE-0.000005, degree, true)) / 0.00001
+		longitudeDelta := saturnSunLongitudeDelta(prevJDE, degree, true, inst)
+		longitudeSlope := (saturnSunLongitudeDelta(prevJDE+0.000005, degree, true, inst) - saturnSunLongitudeDelta(prevJDE-0.000005, degree, true, inst)) / 0.00001
 		nextJD := prevJDE - longitudeDelta/longitudeSlope
 		estimateJDE = nextJD
 		if math.Abs(nextJD-prevJDE) <= 0.00001 {
@@ -93,13 +103,15 @@ func saturnConjunctionFull(jde, degree float64, next uint8) float64 {
 	return TT2UTC(estimateJDE)
 }
 
-func saturnConjunction(jde, degree float64, next uint8) float64 {
+func saturnConjunction(jde, degree float64, next uint8, instances ...*Instance) float64 {
+	inst := instanceValue(instances)
+
 	//0=last 1=next
 	if !isFiniteFloat(jde) || !isFiniteFloat(degree) {
 		return math.NaN()
 	}
 	daysPerDegree := SATURN_S_PERIOD / 360
-	currentDelta := saturnSunLongitudeDelta(jde, degree, false)
+	currentDelta := saturnSunLongitudeDelta(jde, degree, false, inst)
 	if next == 0 {
 		jde -= (360 - currentDelta) * daysPerDegree
 	} else {
@@ -109,8 +121,8 @@ func saturnConjunction(jde, degree float64, next uint8) float64 {
 	converged := false
 	for i := 0; i < eventNewtonMaxIterations; i++ {
 		prevJDE := estimateJDE
-		longitudeDelta := saturnSunLongitudeDeltaN(prevJDE, degree, true, saturnEventSearchN)
-		longitudeSlope := (saturnSunLongitudeDeltaN(prevJDE+0.000005, degree, true, saturnEventSearchN) - saturnSunLongitudeDeltaN(prevJDE-0.000005, degree, true, saturnEventSearchN)) / 0.00001
+		longitudeDelta := saturnSunLongitudeDeltaN(prevJDE, degree, true, saturnEventSearchN, inst)
+		longitudeSlope := (saturnSunLongitudeDeltaN(prevJDE+0.000005, degree, true, saturnEventSearchN, inst) - saturnSunLongitudeDeltaN(prevJDE-0.000005, degree, true, saturnEventSearchN, inst)) / 0.00001
 		nextJD := prevJDE - longitudeDelta/longitudeSlope
 		estimateJDE = nextJD
 		if math.Abs(nextJD-prevJDE) <= saturnPhaseCoarseTolerance {
@@ -124,8 +136,8 @@ func saturnConjunction(jde, degree float64, next uint8) float64 {
 	converged = false
 	for i := 0; i < eventNewtonMaxIterations; i++ {
 		prevJDE := estimateJDE
-		longitudeDelta := saturnSunLongitudeDelta(prevJDE, degree, true)
-		longitudeSlope := (saturnSunLongitudeDelta(prevJDE+0.000005, degree, true) - saturnSunLongitudeDelta(prevJDE-0.000005, degree, true)) / 0.00001
+		longitudeDelta := saturnSunLongitudeDelta(prevJDE, degree, true, inst)
+		longitudeSlope := (saturnSunLongitudeDelta(prevJDE+0.000005, degree, true, inst) - saturnSunLongitudeDelta(prevJDE-0.000005, degree, true, inst)) / 0.00001
 		nextJD := prevJDE - longitudeDelta/longitudeSlope
 		estimateJDE = nextJD
 		if math.Abs(nextJD-prevJDE) <= 0.00001 {
@@ -139,39 +151,65 @@ func saturnConjunction(jde, degree float64, next uint8) float64 {
 	return TT2UTC(estimateJDE)
 }
 
-func LastSaturnConjunction(jde float64) float64 {
-	return inclusiveLastPhaseEvent(jde, 0, saturnConjunction)
+// LastSaturnConjunctionWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func LastSaturnConjunctionWithInstance(jde float64, inst *Instance) float64 {
+	return inclusiveLastPhaseEvent(jde, 0, func(jde, degree float64, next uint8) float64 {
+		return saturnConjunction(jde, degree, next, inst)
+	})
 }
 
-func NextSaturnConjunction(jde float64) float64 {
-	return inclusiveNextPhaseEvent(jde, 0, saturnConjunction)
+// NextSaturnConjunctionWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func NextSaturnConjunctionWithInstance(jde float64, inst *Instance) float64 {
+	return inclusiveNextPhaseEvent(jde, 0, func(jde, degree float64, next uint8) float64 {
+		return saturnConjunction(jde, degree, next, inst)
+	})
 }
 
-func LastSaturnOpposition(jde float64) float64 {
-	return inclusiveLastPhaseEvent(jde, 180, saturnConjunction)
+// LastSaturnOppositionWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func LastSaturnOppositionWithInstance(jde float64, inst *Instance) float64 {
+	return inclusiveLastPhaseEvent(jde, 180, func(jde, degree float64, next uint8) float64 {
+		return saturnConjunction(jde, degree, next, inst)
+	})
 }
 
-func NextSaturnOpposition(jde float64) float64 {
-	return inclusiveNextPhaseEvent(jde, 180, saturnConjunction)
+// NextSaturnOppositionWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func NextSaturnOppositionWithInstance(jde float64, inst *Instance) float64 {
+	return inclusiveNextPhaseEvent(jde, 180, func(jde, degree float64, next uint8) float64 {
+		return saturnConjunction(jde, degree, next, inst)
+	})
 }
 
-func NextSaturnEasternQuadrature(jde float64) float64 {
-	return inclusiveNextPhaseEvent(jde, 90, saturnConjunction)
+// NextSaturnEasternQuadratureWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func NextSaturnEasternQuadratureWithInstance(jde float64, inst *Instance) float64 {
+	return inclusiveNextPhaseEvent(jde, 90, func(jde, degree float64, next uint8) float64 {
+		return saturnConjunction(jde, degree, next, inst)
+	})
 }
 
-func LastSaturnEasternQuadrature(jde float64) float64 {
-	return inclusiveLastPhaseEvent(jde, 90, saturnConjunction)
+// LastSaturnEasternQuadratureWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func LastSaturnEasternQuadratureWithInstance(jde float64, inst *Instance) float64 {
+	return inclusiveLastPhaseEvent(jde, 90, func(jde, degree float64, next uint8) float64 {
+		return saturnConjunction(jde, degree, next, inst)
+	})
 }
 
-func NextSaturnWesternQuadrature(jde float64) float64 {
-	return inclusiveNextPhaseEvent(jde, 270, saturnConjunction)
+// NextSaturnWesternQuadratureWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func NextSaturnWesternQuadratureWithInstance(jde float64, inst *Instance) float64 {
+	return inclusiveNextPhaseEvent(jde, 270, func(jde, degree float64, next uint8) float64 {
+		return saturnConjunction(jde, degree, next, inst)
+	})
 }
 
-func LastSaturnWesternQuadrature(jde float64) float64 {
-	return inclusiveLastPhaseEvent(jde, 270, saturnConjunction)
+// LastSaturnWesternQuadratureWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func LastSaturnWesternQuadratureWithInstance(jde float64, inst *Instance) float64 {
+	return inclusiveLastPhaseEvent(jde, 270, func(jde, degree float64, next uint8) float64 {
+		return saturnConjunction(jde, degree, next, inst)
+	})
 }
 
-func saturnRetrogradeAroundOpposition(oppositionJD float64, searchBeforeOpposition bool) float64 {
+func saturnRetrogradeAroundOpposition(oppositionJD float64, searchBeforeOpposition bool, instances ...*Instance) float64 {
+	inst := instanceValue(instances)
+
 	if !isFiniteFloat(oppositionJD) {
 		return math.NaN()
 	}
@@ -179,103 +217,107 @@ func saturnRetrogradeAroundOpposition(oppositionJD float64, searchBeforeOppositi
 	startTT := oppositionTT
 	endTT := oppositionTT
 	if searchBeforeOpposition {
-		easternQuadratureUT := saturnConjunction(oppositionTT, 90, 0)
+		easternQuadratureUT := saturnConjunction(oppositionTT, 90, 0, inst)
 		startTT = UTC2TT(easternQuadratureUT)
 	} else {
-		westernQuadratureUT := saturnConjunction(oppositionTT, 270, 1)
+		westernQuadratureUT := saturnConjunction(oppositionTT, 270, 1, inst)
 		endTT = UTC2TT(westernQuadratureUT)
 	}
 	bestJDE := zeroEventInWindow(startTT, endTT, 2.0, 2.0, 30.0/86400.0, func(jd float64) float64 {
-		return saturnRADerivativeN(jd, stationDerivativeStepDay, saturnEventSearchN)
+		return saturnRADerivativeN(jd, stationDerivativeStepDay, saturnEventSearchN, inst)
 	}, func(jd float64) float64 {
-		return saturnRADerivative(jd, stationDerivativeStepDay)
+		return saturnRADerivative(jd, stationDerivativeStepDay, inst)
 	})
 	return TT2UTC(bestJDE)
 }
 
-func NextSaturnRetrogradeToPrograde(jde float64) float64 {
+// NextSaturnRetrogradeToProgradeWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func NextSaturnRetrogradeToProgradeWithInstance(jde float64, inst *Instance) float64 {
 	if !isFiniteFloat(jde) {
 		return math.NaN()
 	}
-	lastOppositionJD := saturnConjunctionFull(jde, 180, 0)
-	date := saturnRetrogradeAroundOpposition(lastOppositionJD, false)
+	lastOppositionJD := saturnConjunctionFull(jde, 180, 0, inst)
+	date := saturnRetrogradeAroundOpposition(lastOppositionJD, false, inst)
 	if isFiniteFloat(date) && stationUTQueryAfterOrEqual(date, jde) {
 		return date
 	}
-	nextOppositionJD := saturnConjunctionFull(jde, 180, 1)
+	nextOppositionJD := saturnConjunctionFull(jde, 180, 1, inst)
 	if !isFiniteFloat(nextOppositionJD) {
 		return math.NaN()
 	}
-	date = saturnRetrogradeAroundOpposition(nextOppositionJD, false)
+	date = saturnRetrogradeAroundOpposition(nextOppositionJD, false, inst)
 	if !isFiniteFloat(date) || !stationUTQueryAfterOrEqual(date, jde) {
 		return math.NaN()
 	}
 	return date
 }
 
-func LastSaturnRetrogradeToPrograde(jde float64) float64 {
+// LastSaturnRetrogradeToProgradeWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func LastSaturnRetrogradeToProgradeWithInstance(jde float64, inst *Instance) float64 {
 	if !isFiniteFloat(jde) {
 		return math.NaN()
 	}
-	lastOppositionJD := saturnConjunctionFull(jde, 180, 0)
-	date := saturnRetrogradeAroundOpposition(lastOppositionJD, false)
+	lastOppositionJD := saturnConjunctionFull(jde, 180, 0, inst)
+	date := saturnRetrogradeAroundOpposition(lastOppositionJD, false, inst)
 	if isFiniteFloat(date) && stationUTQueryBeforeOrEqual(date, jde) {
 		return date
 	}
 	if !isFiniteFloat(lastOppositionJD) {
 		return math.NaN()
 	}
-	previousOppositionJD := saturnConjunctionFull(eventUTLastQueryTT(lastOppositionJD), 180, 0)
+	previousOppositionJD := saturnConjunctionFull(eventUTLastQueryTT(lastOppositionJD), 180, 0, inst)
 	if !isFiniteFloat(previousOppositionJD) {
 		return math.NaN()
 	}
-	date = saturnRetrogradeAroundOpposition(previousOppositionJD, false)
+	date = saturnRetrogradeAroundOpposition(previousOppositionJD, false, inst)
 	if !isFiniteFloat(date) || !stationUTQueryBeforeOrEqual(date, jde) {
 		return math.NaN()
 	}
 	return date
 }
 
-func NextSaturnProgradeToRetrograde(jde float64) float64 {
+// NextSaturnProgradeToRetrogradeWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func NextSaturnProgradeToRetrogradeWithInstance(jde float64, inst *Instance) float64 {
 	if !isFiniteFloat(jde) {
 		return math.NaN()
 	}
-	nextOppositionJD := saturnConjunctionFull(jde, 180, 1)
-	date := saturnRetrogradeAroundOpposition(nextOppositionJD, true)
+	nextOppositionJD := saturnConjunctionFull(jde, 180, 1, inst)
+	date := saturnRetrogradeAroundOpposition(nextOppositionJD, true, inst)
 	if isFiniteFloat(date) && stationUTQueryAfterOrEqual(date, jde) {
 		return date
 	}
 	if !isFiniteFloat(nextOppositionJD) {
 		return math.NaN()
 	}
-	followingOppositionJD := saturnConjunctionFull(eventUTNextQueryTT(nextOppositionJD), 180, 1)
+	followingOppositionJD := saturnConjunctionFull(eventUTNextQueryTT(nextOppositionJD), 180, 1, inst)
 	if !isFiniteFloat(followingOppositionJD) {
 		return math.NaN()
 	}
-	date = saturnRetrogradeAroundOpposition(followingOppositionJD, true)
+	date = saturnRetrogradeAroundOpposition(followingOppositionJD, true, inst)
 	if !isFiniteFloat(date) || !stationUTQueryAfterOrEqual(date, jde) {
 		return math.NaN()
 	}
 	return date
 }
 
-func LastSaturnProgradeToRetrograde(jde float64) float64 {
+// LastSaturnProgradeToRetrogradeWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func LastSaturnProgradeToRetrogradeWithInstance(jde float64, inst *Instance) float64 {
 	if !isFiniteFloat(jde) {
 		return math.NaN()
 	}
-	nextOppositionJD := saturnConjunctionFull(jde, 180, 1)
-	date := saturnRetrogradeAroundOpposition(nextOppositionJD, true)
+	nextOppositionJD := saturnConjunctionFull(jde, 180, 1, inst)
+	date := saturnRetrogradeAroundOpposition(nextOppositionJD, true, inst)
 	if isFiniteFloat(date) && stationUTQueryBeforeOrEqual(date, jde) {
 		return date
 	}
 	if !isFiniteFloat(nextOppositionJD) {
 		return math.NaN()
 	}
-	lastOppositionJD := saturnConjunctionFull(jde, 180, 0)
+	lastOppositionJD := saturnConjunctionFull(jde, 180, 0, inst)
 	if !isFiniteFloat(lastOppositionJD) {
 		return math.NaN()
 	}
-	date = saturnRetrogradeAroundOpposition(lastOppositionJD, true)
+	date = saturnRetrogradeAroundOpposition(lastOppositionJD, true, inst)
 	if !isFiniteFloat(date) || !stationUTQueryBeforeOrEqual(date, jde) {
 		return math.NaN()
 	}

@@ -3,6 +3,8 @@ package basic
 import (
 	"math"
 	"testing"
+
+	"github.com/starainrt/astro/internal/ephemtest"
 )
 
 type lunarEclipseBaseline struct {
@@ -117,10 +119,20 @@ func TestLunarEclipseChauvenetAgainstLegacyBaseline(t *testing.T) {
 
 	const timeTolerance = 1e-6
 	const magnitudeTolerance = 2e-5
+	values := ephemtest.NewValues(t, "lunar_eclipse_chauvenet")
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			result := LunarEclipseChauvenet(tc.jde)
+			w := func(field string, legacy, got float64) float64 { return values.Want(tc.name+"/"+field, legacy, got) }
+			tc.expectedMax = w("Maximum", tc.expectedMax, result.Maximum)
+			tc.expectedMag = w("Magnitude", tc.expectedMag, result.Magnitude)
+			tc.expectedPenumbralStart = w("PenumbralStart", tc.expectedPenumbralStart, result.PenumbralStart)
+			tc.expectedPenumbralEnd = w("PenumbralEnd", tc.expectedPenumbralEnd, result.PenumbralEnd)
+			tc.expectedPartialStart = w("PartialStart", tc.expectedPartialStart, result.PartialStart)
+			tc.expectedPartialEnd = w("PartialEnd", tc.expectedPartialEnd, result.PartialEnd)
+			tc.expectedTotalStart = w("TotalStart", tc.expectedTotalStart, result.TotalStart)
+			tc.expectedTotalEnd = w("TotalEnd", tc.expectedTotalEnd, result.TotalEnd)
 
 			if result.Type != tc.expectedType {
 				t.Fatalf("Type mismatch: got %s want %s", result.Type, tc.expectedType)

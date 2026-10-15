@@ -21,14 +21,14 @@ type PhysicalInfo struct {
 }
 
 // Physical 金星物理观测参数 / physical observing parameters of Venus.
-func Physical(date time.Time) PhysicalInfo {
-	return PhysicalN(date, -1)
+func (module *Venus) Physical(date time.Time) PhysicalInfo {
+	return module.PhysicalN(date, -1)
 }
 
-// PhysicalN 金星物理观测参数（截断版） / truncated physical observing parameters of Venus.
-func PhysicalN(date time.Time, n int) PhysicalInfo {
+// PhysicalN 金星物理观测参数（n 变体） / n-parameterised physical observing parameters of Venus.
+func (module *Venus) PhysicalN(date time.Time, n int) PhysicalInfo {
 	jd := basic.Date2JD(date.UTC())
-	info := basic.VenusPhysicalN(basic.UTC2TT(jd), n)
+	info := basic.VenusPhysicalNWithInstance(basic.UTC2TT(jd), n, module.inst)
 	return PhysicalInfo{
 		SubEarthLongitude:      info.SubEarthLongitude,
 		SubEarthLatitude:       info.SubEarthLatitude,

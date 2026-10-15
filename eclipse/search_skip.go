@@ -11,9 +11,14 @@ const (
 	eclipseSeasonMaxSearchStep        = 4
 )
 
-func nextEclipseSearchCandidateTT(candidateTT float64, phaseType, direction int, synodicMonthDays float64) float64 {
+func nextEclipseSearchCandidateTT(candidateTT float64, phaseType, direction int, synodicMonthDays float64, modules ...*Eclipse) float64 {
+	module := &defaultModule
+	if len(modules) > 0 {
+		module = modules[0]
+	}
+
 	step := eclipseSearchStep(candidateTT, direction, synodicMonthDays)
-	return basic.CalcMoonSHByJDE(candidateTT+float64(direction*step)*synodicMonthDays, phaseType)
+	return basic.CalcMoonSHByJDEWithInstance(candidateTT+float64(direction*step)*synodicMonthDays, phaseType, module.inst)
 }
 
 func eclipseSearchStep(candidateTT float64, direction int, synodicMonthDays float64) int {

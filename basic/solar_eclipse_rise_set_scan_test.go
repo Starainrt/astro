@@ -9,6 +9,9 @@ import (
 )
 
 func TestSolarEclipsePathTopologyAcrossSarosAnchors(t *testing.T) {
+	if testing.Short() {
+		t.Skip("slow regression")
+	}
 	for _, year := range []int{1526, 1600, 1700, 1800, 1900, 2000, 2100, 2200, 2300, 2400, 2526} {
 		events := solarEclipseScanEvents(JDCalc(year, 1, 1), JDCalc(year+1, 1, 1))
 		if len(events) == 0 {

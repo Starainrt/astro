@@ -17,14 +17,14 @@ type PhysicalInfo struct {
 }
 
 // Physical 太阳物理观测参数 / physical observing parameters of the Sun.
-func Physical(date time.Time) PhysicalInfo {
-	return PhysicalN(date, -1)
+func (module *Sun) Physical(date time.Time) PhysicalInfo {
+	return module.PhysicalN(date, -1)
 }
 
-// PhysicalN 太阳物理观测参数（截断版） / truncated physical observing parameters of the Sun.
-func PhysicalN(date time.Time, n int) PhysicalInfo {
+// PhysicalN 太阳物理观测参数（n 变体） / n-parameterised physical observing parameters of the Sun.
+func (module *Sun) PhysicalN(date time.Time, n int) PhysicalInfo {
 	jd := basic.Date2JD(date.UTC())
-	info := basic.SunPhysicalN(basic.UTC2TT(jd), n)
+	info := basic.SunPhysicalNWithInstance(basic.UTC2TT(jd), n, module.inst)
 	return PhysicalInfo{
 		P:  info.P,
 		B0: info.B0,

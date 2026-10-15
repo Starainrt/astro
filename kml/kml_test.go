@@ -1219,3 +1219,32 @@ func TestLunarPenumbraBandFeaturesCarryNames(t *testing.T) {
 		}
 	}
 }
+
+// 契约：第三方输入里真正跨过反经线的面在 ±180 处切成两块，填充环里不得出现跨 180° 的边。
+func TestCrossingPolygonIsSplitAtAntimeridian(t *testing.T) {
+	inputs := []string{
+		`{"type":"Polygon","coordinates":[[[179,10],[-179,10],[-179,12],[179,12],[179,10]]]}`,
+		`{"type":"Polygon","coordinates":[[[-179,10],[179,10],[179,12],[-179,12],[-179,10]]]}`,
+		`{"type":"MultiPolygon","coordinates":[[[[170,0],[-170,0],[-170,20],[170,20],[170,0]],[[175,5],[175,15],[-175,15],[-175,5],[175,5]]]]}`,
+	}
+	for _, input := range inputs {
+		root := convert(t, collection(feature("solar-eclipse", "central-band", input, "")), Options{FillContext: true})
+		polygons := 0
+		for _, item := range placemarksOfRole(root, "central-band") {
+			for _, coordinates := range coordinatesOf(item.geometry) {
+				positions := splitPositions(coordinates)
+				for index := 1; index < len(positions); index++ {
+					if math.Abs(positions[index][0]-positions[index-1][0]) > 180 {
+						t.Fatalf("%s: edge %v → %v spans the globe", input, positions[index-1], positions[index])
+					}
+				}
+			}
+			if item.MultiGeometry != nil {
+				polygons += len(item.MultiGeometry.Polygons)
+			}
+		}
+		if polygons != 2 {
+			t.Fatalf("%s: %d polygons, want 2", input, polygons)
+		}
+	}
+}

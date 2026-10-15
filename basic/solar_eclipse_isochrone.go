@@ -1,6 +1,10 @@
 package basic
 
-import "math"
+import (
+	"math"
+
+	"github.com/starainrt/astro/internal/geodata"
+)
 
 const (
 	solarEclipseGreatestTimeContourSeedLatitudeStepDegrees  = 5.0
@@ -61,7 +65,7 @@ func (arc solarEclipseGreatestTimeArc) residual(longitude, latitude float64) flo
 func (arc solarEclipseGreatestTimeArc) point(longitude, latitude float64, state localSolarEclipseState) SolarEclipsePathPoint {
 	return SolarEclipsePathPoint{
 		JDE:         arc.evaluation.jd,
-		Longitude:   normalizeLongitude(longitude),
+		Longitude:   geodata.NormalizeLongitude(longitude),
 		Latitude:    latitude,
 		SunAltitude: state.sunAltitudeRad / rad,
 	}
@@ -187,7 +191,7 @@ func (solver solarEclipseSolver) traceGreatestTimeArc(
 		next := arc.point(nextLongitude, nextLatitude, nextState)
 		distance := solarEclipsePathDistanceKM(points[len(points)-1], next)
 		// 校正回到原点说明该方向已经走到支路端点，继续只会原地打转。
-		if distance < 1e-9 || distance > 4*step*greatestTimeContourKMPerDegree {
+		if distance < 1e-9 || distance > 4*step*geodata.EarthKMPerDegree {
 			break
 		}
 		points = append(points, next)

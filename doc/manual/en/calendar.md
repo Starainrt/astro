@@ -343,9 +343,9 @@ The explicit-calendar entry points work only for years that have data, and `Anci
 
   The pre-Qin range uses reconstructed Chunqiu and ancient-six-calendar systems, `-220..-104` uses the Qin/Han Zhuanxu calendar, `-103..1912` uses calendar tables, and `1913` onward uses the modern algorithm.
 - **Explicit ancient calendars**: use APIs such as `SolarToLunarWithCalendar` / `LunarToSolarWithCalendar` when a specific ancient calendar system is required.
-- **Data sources**: ancient-calendar support mainly references 《寿星天文历》; [Professor ytliu0's ChineseCalendar data](https://ytliu0.github.io/ChineseCalendar/index_simp.html) is used for validation.
+- **Data sources**: ancient-calendar support mainly references 《寿星天文历》; [Professor ytliu0's ChineseCalendar data](https://ytliu0.github.io/ChineseCalendar/index_simp.html) is used for cross-validation.
 
-  The modern range follows GB/T 33661-2017 and uses VSOP87/ELP computations for solar terms and new moons.
+  The modern range follows GB/T 33661-2017 and uses the VSOP87 and ELP series for new moons and solar terms.
 - **Solar terms**: `JieQi` returns modern astronomical solar-term instants; `CalendricalJieQi` returns calendar-compatible solar-term dates.
 
 ## Usage notes
@@ -368,7 +368,7 @@ All computation goes through Julian Days. The Gregorian side follows these rules
 ### 4. Time zone
 The package targets the Chinese calendar, so solar terms and new moons are computed in Beijing time (UTC+8) by default. Applying Chinese lunisolar rules in another time zone can shift dates.
 
-For exploration and research, the lower-level `Solar` and `Lunar` methods convert between the Gregorian and lunisolar calendars under a **custom time zone**, following the **current Chinese calendar algorithm (GB/T 33661-2017)**.
+`Solar` and `Lunar` are the low-level entry points; they convert between the Gregorian and lunisolar calendars under a **custom time zone**, following the **current Chinese calendar algorithm (GB/T 33661-2017)**.
 For standard conversions in Beijing time, use the wrapped `SolarToLunar` and `LunarToSolar` methods.
 
 **Example**: the calendar rules require the winter solstice to fall in the eleventh lunisolar month. For the 1984 winter solstice:
@@ -395,7 +395,7 @@ fmt.Println(calendar.Solar(1985, 1, 1, false, 7.0))
 
 ⚠️ Go's standard-library `time.Time` differs from this package in calendar handling:
 
-- Before 1582-10-15 Go uses the proleptic Gregorian calendar rather than the Julian calendar. Without `Add`, it generally works as expected.
+- Before 1582-10-15 Go uses the proleptic Gregorian calendar rather than the Julian calendar; as long as you do not call `time.Time`'s `Add`/`AddDate`, every other use is unaffected.
 - So **before 1582-10-15, `time.Time.Weekday()` does not agree with this package**:
   for 1582-10-04 this package reports Thursday, Go reports Monday.
 
@@ -412,7 +412,7 @@ For example, 700 is a leap year in the Julian calendar but not in Go's proleptic
 
 ### 6. Julian-only leap days (for example 700-02-29)
 Before 1582, years divisible by 100 but not 400 (such as 100, 700 or 1500) have a 29 February in the Julian calendar,
-while Go's `time.Time` uses the proleptic Gregorian calendar and has no such day (`time.Date(700, 2, 29, ...)` normalises to 700-03-01). The library accepts 700-02-29 as an existing day, with these constraints:
+while Go's `time.Time` uses the proleptic Gregorian calendar and has no such day (`time.Date(700, 2, 29, ...)` normalizes to 700-03-01). The library accepts 700-02-29 as an existing day, with these constraints:
 
 - `Time.Solar()` / `LunarTime.SolarDate`: the library's canonical output, always the **following day**
   (700-03-01 for 700-02-29), matching `basic.JD2DateByZone`;
@@ -591,8 +591,8 @@ Output:
   }
 ] // structured lunisolar records, one object per matching historical result
 1083-11-24 00:00:00 +0800 CST // Gregorian date corresponding to 元丰六年十月十二日
-[宋神宗 元丰六年十月十二 辽道宗 大康九年十月十二] // the same day also matches a Liao calendar result
-2026-02-17 00:00:00 +0800 CST // Chinese New Year in 2026
+[宋神宗 元丰六年十月十二 辽道宗 大康九年十月十二] // the same day also matches the Liao calendar (大康九年十月十二)
+2026-02-17 00:00:00 +0800 CST // modern lunisolar conversion; the 2026 Chinese New Year falls on 2026-02-17
 ```
 
 ## Solar terms
@@ -627,10 +627,10 @@ func main() {
 Output:
 
 ```text
-2020-02-04 17:03:20.471614301 +0800 CST // Beginning of Spring
-2020-12-21 18:02:20.648710727 +0800 CST // Winter Solstice
-2020-03-20 11:49:37.149532735 +0800 CST // March Equinox
-2020-03-20 11:49:37.149532735 +0800 CST // same result from direct longitude input
+2020-02-04 17:03:19.850052595 +0800 CST // Beginning of Spring
+2020-12-21 18:02:20.574118494 +0800 CST // Winter Solstice
+2020-03-20 11:49:37.111029624 +0800 CST // March Equinox
+2020-03-20 11:49:37.111029624 +0800 CST // same result from direct longitude input
 ```
 
 Calendrical solar-term example:
@@ -664,13 +664,13 @@ Output:
 
 - Every public instant is treated as a civil value, meaning the fields of the `time.Time` are read directly as a UTC label.
 
-  When the library converts civil time to TT, values before 1972-01-01 are treated as UT1 and the exact window uses the built-in leap-second table; for explicit conversion use the root package's `astro.UT1FromUTC` / `astro.TTFromUTC` / `astro.DUT1`.
+  When the library converts civil time to TT, values before 1972-01-01 are treated as UT1 and from then on the built-in leap-second table is used; for explicit conversion use the root package's `astro.UT1FromUTC` / `astro.TTFromUTC` / `astro.DUT1`.
 - `JieQi` and `WuHou` return civil instants in Beijing time with full fractional-second precision; `CalendricalJieQi*` always returns 00:00 Beijing time on the matching day.
 - `JD`, `Date2JD`, and `NowJD` are all Julian-day floats on that same civil convention: the Beijing civil day `2026-02-17` corresponds to `2461088.5`.
 
 ### Zero Values and Out-of-Range Input
 
-- The ten Gregorian days from 1582-10-05 through 1582-10-14 do not exist; the affected entry points report an error instead of silently normalising to a neighbouring date.
+- The ten Gregorian days from 1582-10-05 through 1582-10-14 do not exist; the affected entry points report an error instead of silently normalizing to a neighbouring date.
 - `SolarToLunar` / `SolarToLunarByYMD` return an error outside `[-721,3000]`. `LunarToSolar*` is limited to the same Gregorian range, and the boundary lunisolar year `-722` is accepted while its result still falls inside that range.
 - `CalendricalJieQiWithCalendar` returns an error for the Chunqiu calendar and for years without calendrical solar-term data; `LunarToSolarWithCalendar` accepts an era-name description only when the ancient era table matches and errors otherwise.
 - `SolarCandidates()` returns a one-element slice holding `Solar()` when there is no second candidate, never an empty slice; `Lunar()` returns a zero-value `LunarTime` when there is no candidate, and its `JulianOnly()` then reports `false`.

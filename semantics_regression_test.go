@@ -189,7 +189,8 @@ func TestObservationZenithMatchesIndependentFormula(t *testing.T) {
 			jde := basic.Date2JD(date)
 			_, loc := date.Zone()
 			timezone := float64(loc) / 3600.0
-			tt := basic.UTC2TT(jde - timezone/24)
+			utcJD := jde - timezone/24
+			tt := basic.UTC2TT(utcJD)
 
 			checks := []struct {
 				name    string
@@ -199,7 +200,7 @@ func TestObservationZenithMatchesIndependentFormula(t *testing.T) {
 			}{
 				{"sun", sunTolerance,
 					sun.Zenith(date, place.lon, place.lat),
-					zenithFromHourAngle(sun.HourAngle(date, place.lon, place.lat), basic.HSunApparentDec(tt), place.lat)},
+					topocentricZenith(sun.HourAngle(date, place.lon, place.lat), basic.HSunApparentRa(tt), basic.HSunApparentDec(tt), basic.EarthAway(tt), place.lat, place.lon, utcJD)},
 				{"moon", moonTolerance,
 					moon.Zenith(date, place.lon, place.lat),
 					zenithFromHourAngle(moon.HourAngle(date, place.lon, place.lat), moon.ApparentDec(date, place.lon, place.lat), place.lat)},
@@ -211,25 +212,25 @@ func TestObservationZenithMatchesIndependentFormula(t *testing.T) {
 					zenithFromHourAngle(star.HourAngle(date, starRa, place.lon), starDec, place.lat)},
 				{"mercury", planetTolerance,
 					mercury.Zenith(date, place.lon, place.lat),
-					zenithFromHourAngle(mercury.HourAngle(date, place.lon), mercury.ApparentDec(date), place.lat)},
+					topocentricZenith(mercury.HourAngle(date, place.lon), mercury.ApparentRa(date), mercury.ApparentDec(date), basic.EarthMercuryAway(tt), place.lat, place.lon, utcJD)},
 				{"venus", planetTolerance,
 					venus.Zenith(date, place.lon, place.lat),
-					zenithFromHourAngle(venus.HourAngle(date, place.lon), venus.ApparentDec(date), place.lat)},
+					topocentricZenith(venus.HourAngle(date, place.lon), venus.ApparentRa(date), venus.ApparentDec(date), basic.EarthVenusAway(tt), place.lat, place.lon, utcJD)},
 				{"mars", planetTolerance,
 					mars.Zenith(date, place.lon, place.lat),
-					zenithFromHourAngle(mars.HourAngle(date, place.lon), mars.ApparentDec(date), place.lat)},
+					topocentricZenith(mars.HourAngle(date, place.lon), mars.ApparentRa(date), mars.ApparentDec(date), basic.EarthMarsAway(tt), place.lat, place.lon, utcJD)},
 				{"jupiter", planetTolerance,
 					jupiter.Zenith(date, place.lon, place.lat),
-					zenithFromHourAngle(jupiter.HourAngle(date, place.lon), jupiter.ApparentDec(date), place.lat)},
+					topocentricZenith(jupiter.HourAngle(date, place.lon), jupiter.ApparentRa(date), jupiter.ApparentDec(date), basic.EarthJupiterAway(tt), place.lat, place.lon, utcJD)},
 				{"saturn", planetTolerance,
 					saturn.Zenith(date, place.lon, place.lat),
-					zenithFromHourAngle(saturn.HourAngle(date, place.lon), saturn.ApparentDec(date), place.lat)},
+					topocentricZenith(saturn.HourAngle(date, place.lon), saturn.ApparentRa(date), saturn.ApparentDec(date), basic.EarthSaturnAway(tt), place.lat, place.lon, utcJD)},
 				{"uranus", planetTolerance,
 					uranus.Zenith(date, place.lon, place.lat),
-					zenithFromHourAngle(uranus.HourAngle(date, place.lon), uranus.ApparentDec(date), place.lat)},
+					topocentricZenith(uranus.HourAngle(date, place.lon), uranus.ApparentRa(date), uranus.ApparentDec(date), basic.EarthUranusAway(tt), place.lat, place.lon, utcJD)},
 				{"neptune", planetTolerance,
 					neptune.Zenith(date, place.lon, place.lat),
-					zenithFromHourAngle(neptune.HourAngle(date, place.lon), neptune.ApparentDec(date), place.lat)},
+					topocentricZenith(neptune.HourAngle(date, place.lon), neptune.ApparentRa(date), neptune.ApparentDec(date), basic.EarthNeptuneAway(tt), place.lat, place.lon, utcJD)},
 			}
 
 			for _, tc := range checks {
@@ -240,6 +241,12 @@ func TestObservationZenithMatchesIndependentFormula(t *testing.T) {
 			}
 		}
 	}
+}
+
+// topocentricZenith 由地心时角、地心视赤经赤纬与地心距（AU）先做站心视差修正，再独立求天顶距，单位度。
+func topocentricZenith(hourAngle, ra, dec, distanceAU, lat, lon, utcJD float64) float64 {
+	topocentricRA, topocentricDec := basic.TopocentricRaDec(ra, dec, lat, lon, utcJD, distanceAU, 0)
+	return zenithFromHourAngle(hourAngle+ra-topocentricRA, topocentricDec, lat)
 }
 
 // zenithFromHourAngle 由时角与赤纬按 cos z = sinφ·sinδ + cosφ·cosδ·cos H 独立求天顶距，单位度。

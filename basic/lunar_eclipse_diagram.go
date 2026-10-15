@@ -18,6 +18,8 @@ type LunarEclipseDiagramOptions struct {
 	// StepDays 是路径采样步长，单位为日；<=0 时使用 5 分钟。
 	// StepDays is the path sampling step in days; values <= 0 use five minutes.
 	StepDays float64
+	// LunarLimb 月缘剖面，nil 为圆月面；只精修接触时刻，月盘仍按圆面绘制 / lunar limb profile for contacts.
+	LunarLimb LunarLimb
 }
 
 // LunarEclipseDiagramPoint 表示月食穿影图上的一个月心位置。
@@ -88,8 +90,12 @@ func lunarEclipseDiagram(
 	shadowModel lunarEclipseShadowModel,
 	options LunarEclipseDiagramOptions,
 ) LunarEclipseDiagramResult {
+	return lunarEclipseDiagramWithInstance(seedJDE, shadowModel, options, nil)
+}
+
+func lunarEclipseDiagramWithInstance(seedJDE float64, shadowModel lunarEclipseShadowModel, options LunarEclipseDiagramOptions, inst *Instance) LunarEclipseDiagramResult {
 	options = normalizeLunarEclipseDiagramOptions(options)
-	eclipse := lunarEclipse(seedJDE, shadowModel)
+	eclipse := LunarEclipseWithLunarLimb(lunarEclipseWithInstance(seedJDE, shadowModel, inst), options.LunarLimb, inst)
 	result := LunarEclipseDiagramResult{
 		Eclipse:  eclipse,
 		StepDays: options.StepDays,
@@ -98,7 +104,7 @@ func lunarEclipseDiagram(
 		return result
 	}
 
-	maximumState := computeLunarShadowState(eclipse.Maximum, shadowModel)
+	maximumState := computeLunarShadowStateWithInstance(eclipse.Maximum, shadowModel, inst)
 	if maximumState.moonRadiusRad <= 0 {
 		return result
 	}
@@ -111,7 +117,7 @@ func lunarEclipseDiagram(
 	result.StepDays = stepDays
 	result.Points = make([]LunarEclipseDiagramPoint, 0, len(times))
 	for _, item := range times {
-		plane := lunarEclipsePlaneStateAt(item.jde)
+		plane := lunarEclipsePlaneStateAtWithInstance(item.jde, inst)
 		result.Points = append(result.Points, LunarEclipseDiagramPoint{
 			JDE:    item.jde,
 			X:      plane.x / maximumState.moonRadiusRad,

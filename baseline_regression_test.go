@@ -13,6 +13,8 @@ import (
 	"github.com/starainrt/astro/moon"
 	"github.com/starainrt/astro/planet"
 	"github.com/starainrt/astro/sun"
+
+	"github.com/starainrt/astro/internal/ephemtest"
 )
 
 type baselinePlanetSnapshot struct {
@@ -171,6 +173,7 @@ func assertTruncationConverges(t *testing.T, cases []truncationCase, samples int
 }
 
 func TestPlanetMoonBaselineRegression(t *testing.T) {
+	ephemtest.PinLegacy(t)
 	samples := loadBaselineSamples(t)
 	for _, sample := range samples {
 		for _, body := range sample.Planets {
@@ -239,6 +242,7 @@ func planetMoonTruncationCases(samples []baselineSample) []truncationCase {
 }
 
 func TestPlanetMoonTruncationConvergesToFullSeries(t *testing.T) {
+	ephemtest.PinLegacy(t)
 	samples := loadBaselineSamples(t)
 	assertTruncationConverges(t, planetMoonTruncationCases(samples), len(samples))
 }
@@ -257,6 +261,7 @@ func publicSunMoonTruncationCases(t *testing.T, samples []baselineSample) []trun
 }
 
 func TestPublicSunMoonTruncationConvergesToFullSeries(t *testing.T) {
+	ephemtest.PinLegacy(t)
 	samples := loadBaselineSamples(t)
 	assertTruncationConverges(t, publicSunMoonTruncationCases(t, samples), len(samples))
 }

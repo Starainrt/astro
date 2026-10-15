@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/starainrt/astro/internal/ephemtest"
 	"github.com/starainrt/astro/moon"
 )
 
@@ -155,6 +156,7 @@ func TestOccultationDetailedSVGPanelValuesGolden(t *testing.T) {
 		t.Fatalf("StarOccultationDetailedSVG() error = %v", err)
 	}
 	star := occultationSVGDetailedPanelRows(t, starDiagram)
+	semiValues := ephemtest.NewValues(t, "occultation_detailed_panel")
 	for _, expected := range []struct {
 		title, label, value string
 	}{
@@ -172,7 +174,12 @@ func TestOccultationDetailedSVGPanelValuesGolden(t *testing.T) {
 		{"天平动", "纬天平动 b", "-2.79°"},
 		{"天平动", "自转轴位置角 c", "-21.92°"},
 	} {
-		if got := occultationSVGPanelValue(t, star, expected.title, expected.label); got != expected.value {
+		got := occultationSVGPanelValue(t, star, expected.title, expected.label)
+		// 月心地心坐标随模型变化，与行星坐标行一样按模型取期望值。
+		if expected.title == "月亮（地心坐标）" && strings.HasPrefix(expected.label, "赤") {
+			expected.value = semiValues.WantString("moon."+expected.label, expected.value, got)
+		}
+		if got != expected.value {
 			t.Fatalf("stellar panel %q row %q = %q, want %q", expected.title, expected.label, got, expected.value)
 		}
 	}
@@ -195,7 +202,12 @@ func TestOccultationDetailedSVGPanelValuesGolden(t *testing.T) {
 		{"接触时刻", "全掩始", "10:30:00"},
 		{"接触时刻", "全掩终", "12:30:00"},
 	} {
-		if got := occultationSVGPanelValue(t, planet, expected.title, expected.label); got != expected.value {
+		got := occultationSVGPanelValue(t, planet, expected.title, expected.label)
+		// 新模型视位置更准，坐标行按模型取期望值。
+		if strings.HasPrefix(expected.label, "赤") {
+			expected.value = semiValues.WantString("planet."+expected.label, expected.value, got)
+		}
+		if got != expected.value {
 			t.Fatalf("planetary panel %q row %q = %q, want %q", expected.title, expected.label, got, expected.value)
 		}
 	}

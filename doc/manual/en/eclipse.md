@@ -1,8 +1,10 @@
-# Solar and Lunar Eclipses
+# Eclipses and Transits
 
 [中文](../eclipse.md) | [Back to README](../../../README.en.md)
 
 > Full examples in this manual run from the repository root and write their figures to `doc/img/`.
+
+This manual covers solar- and lunar-eclipse queries and charts, plus the two Mercury and Venus transit SVG charts. Transit contact times and topocentric visibility come from the `planets` transit entry points, see [Planets: Mercury and Venus transits](planets.md#mercury-and-venus-transits).
 
 ## Contents
 
@@ -23,10 +25,14 @@
   - [Checks against NASA data](#checks-against-nasa-data)
   - [Lunar-eclipse SVG](#lunar-eclipse-svg)
   - [References](#references)
+- [Lunar limb correction](#lunar-limb-correction)
 - [Solar and Lunar Eclipse Charts](#solar-and-lunar-eclipse-charts)
   - [Global visibility maps](#global-visibility-maps)
   - [Lunar eclipse charts](#lunar-eclipse-charts)
   - [Time scale and UT1](#time-scale-and-ut1)
+- [Transit charts](#transit-charts)
+  - [Mercury: 2032-11-13 (Beijing)](#mercury-2032-11-13-beijing)
+  - [Venus: 2012-06-06 (Beijing)](#venus-2012-06-06-beijing)
 
 ## Simple example: the 2009 Great Yangtze Eclipse at a site in Shanghai
 
@@ -63,7 +69,7 @@ SVG snippets use the import aliases `eclipsesvg "github.com/starainrt/astro/ecli
 | --- | --- | --- |
 | `LocalSolarEclipseOnDate` / `LocalSolarEclipseOnDateNASABulletinSplitK` | Fixed-site solar eclipse query | Returns `(info, bool)`; NASA Split-K by default |
 | `LunarEclipseOnDate` / `LunarEclipseOnDateDanjon` / `LunarEclipseOnDateChauvenet` | Lunar eclipse query | Same; the suffix forces a shadow-radius model |
-| `SearchLocalCentralSolarEclipse` / `SolarEclipseCandidates` | Cross-year central-eclipse search / candidate list | The former carries `status.Exhausted` |
+| `SearchLocalCentralSolarEclipse` / `SolarEclipseCandidates` | Cross-year central-eclipse search / candidate list | The former returns `(info, SolarEclipseLocalSearchStatus)` |
 | `SolarEclipseCentralPath` / `SolarEclipsePartialFootprints` | Central path and partial-footprint geometry | Options are `SolarEclipsePathOptions` / `SolarEclipsePartialFootprintOptions` |
 | `SolarEclipseBesselianElements` / `SolarEclipseBesselianMuForPublishedTable` | Besselian elements and the published-table conversion | For table comparison |
 | `eclipsesvg.SolarEclipseMapSVG` / `LunarEclipseMapSVG` | Global visibility maps | Return `(string, bool)` |
@@ -89,7 +95,7 @@ true total
 ```
 
 - `LocalSolarEclipseOnDate` returns the type, all contact instants, magnitude, obscuration and the solar altitude at greatest eclipse in one call; when you only care whether something happens, read the second return value.
-- To find "the next central eclipse" across years use `SearchLocalCentralSolarEclipse` (its `status.Exhausted` separates "nothing in the span" from "found"); for a bare candidate list use `SolarEclipseCandidates`.
+- To find "the next central eclipse" across years use `SearchLocalCentralSolarEclipse` (the `Exhausted` field of the returned `SolarEclipseLocalSearchStatus` separates "nothing in the span" from "found"); for a bare candidate list use `SolarEclipseCandidates`.
 - On the lunar side the counterparts are `LunarEclipseOnDate` plus the `Danjon` / `Chauvenet` suffixed entry points that force a shadow-radius model.
 
 ### Global visibility maps and lunar charts
@@ -154,9 +160,13 @@ There are two solar-radius conventions: the **standard** one (`959.639″` at 1 
 
 For the 2024-04-08 total eclipse the measured convention narrows the path by about 0.6 km per side and shortens totality by about 1.5 s; for the 2023-10-14 annular eclipse it widens the path by about 1.3 km and lengthens the annular phase by about 2.1 s; partial magnitudes change by about `1e-4`.
 
-This lets you gauge how sensitive eclipse limits and central durations are to the solar radius.
+Either convention can be selected:
 
-Either convention can be selected through `eclipse.SolarEclipseOptions{SunRadiusModel: ...}` with `SolarEclipseOnDateWithOptions`, `LocalSolarEclipseOnDateWithOptions`, and the search/panel variants `LastSolarEclipseWithOptions` / `NextSolarEclipseWithOptions` / `ClosestSolarEclipseWithOptions` / `SolarEclipseGeocentricPanelWithOptions`, or through `basic.SolarEclipseWithOptions` / `basic.LocalSolarEclipseWithOptions` and the `SunRadiusModel` field of the various `...Options` structs; the returned `SunRadiusModel` records the convention used, and `basic.SolarEclipseSunSemidiameter` together with the "S.D." rows of the panels use that same convention.
+- Evaluation: `eclipse.SolarEclipseOptions{SunRadiusModel: ...}` with `SolarEclipseOnDateWithOptions` and `LocalSolarEclipseOnDateWithOptions`
+- Search and panels: `LastSolarEclipseWithOptions`, `NextSolarEclipseWithOptions`, `ClosestSolarEclipseWithOptions`, `SolarEclipseGeocentricPanelWithOptions`
+- The `basic` layer: `SolarEclipseWithOptions`, `LocalSolarEclipseWithOptions`, and the `SunRadiusModel` field of the various `...Options` structs
+
+The returned `SunRadiusModel` records the convention used, and `basic.SolarEclipseSunSemidiameter` together with the "S.D." rows of the panels use that same convention.
 
 Common entry points:
 
@@ -173,7 +183,7 @@ Common entry points:
 
 `SolarEclipseBesselianElements` returns the same shape of table that published element tables carry: `T0JDE` is the reference instant, `t = (jde - T0JDE) * 24` is the number of TT hours from it, and `X`/`Y`/`D`/`L1`/`L2`/`Mu` are cubics in `t` (`D` and `Mu` in degrees, the rest in equatorial Earth radii), with `TanF1`/`TanF2` constant over the eclipse.
 
-`L1`/`L2` use the Explanatory Supplement form with its `1/cos f` factor, and a negative umbral `L2` means the Moon's centre has not yet passed the umbra's apex.
+`L1`/`L2` use the Explanatory Supplement form with its `1/cos f` factor, and a negative umbral `L2` means the Moon's center has not yet passed the umbra's apex.
 
 By default `T0` is the whole TT hour below greatest eclipse, the window half-width is 3 hours, and five evenly spaced samples inside it are fitted by least squares, matching the fitting convention of published tables.
 
@@ -181,7 +191,7 @@ The `Model`, `SunRadiusModel`, `PenumbralK`, `UmbralK` and `DeltaTSeconds` field
 
 **`Mu` uses a different time argument from published tables and must be shifted before comparison.** Published tables evaluate sidereal time at `T0` itself, while this library uses `UT = TT - ΔT`; the two differ by `DeltaT * 15.041067/3600` degrees. `Mu` stays continuous across the window and is not folded into `[0,360)`, and `SolarEclipseBesselianMuForPublishedTable` shifts only the constant term.
 
-The library reports the true Greenwich hour angle so that `Mu` stays consistent with its own greatest-eclipse longitude, centre line and contact times; pairing a published table's `Mu` with a correct sidereal time yields a longitude error of about 0.3 degrees (roughly 30 km at the greatest-eclipse latitude of 2024-04-08).
+The library reports the true Greenwich hour angle so that `Mu` stays consistent with its own greatest-eclipse longitude, center line and contact times; pairing a published table's `Mu` with a correct sidereal time yields a longitude error of about 0.3 degrees (roughly 30 km at the greatest-eclipse latitude of 2024-04-08).
 
 ```go
 // A Besselian element table; an explicit T0 and DeltaT make it directly comparable.
@@ -277,6 +287,7 @@ That `4.8-5.9 s` gap enters every UT-level comparison. Convert it to a ground qu
   gamma differences median `3.2e-5`, magnitude differences median `4.2e-5`, path-width differences median `0.5 km` (max `8.3 km`) and central-duration differences median `0.25 s` (max `0.59 s`).
 
   These are the figures that describe geometry and ephemeris accuracy.
+- **Difference between the two built-in models**: the comparisons above were made while Legacy was the default. On the four regression samples the greatest-eclipse TT difference between the semianalytic model and Legacy is only `0.008-0.198 s`, below the TD-layer residual and far below the `4.8-5.9 s` ΔT convention offset of the UT layer; an `astro_legacy` build passes the same NASA baselines. The tables are therefore not split by model.
 - **To reproduce a publisher's UT values**: inject their adopted ΔT with `astro.SetDeltaT` (for example `74 s` for 2024) and read UT, which removes the convention offset from the comparison; the injection only affects the conversion and never the TT geometry.
 - Global eclipse references often publish seconds, so second-level checks are meaningful there.
 
@@ -333,14 +344,14 @@ Output:
 ```text
 true total // Yangshan site has a local total solar eclipse
 true {136 37 71 true} // Solar Saros 136, member 37/71, verified
-2009-07-22 08:23:55.092397034 +0800 CST // first contact
-2009-07-22 09:37:23.088684976 +0800 CST // totality begins
-2009-07-22 09:40:20.87983489 +0800 CST // greatest eclipse
-2009-07-22 09:43:19.723805487 +0800 CST // totality ends
-2009-07-22 11:03:13.914820253 +0800 CST // last contact
-5m56.635120511s // totality duration
-magnitude=1.076997 obscuration=1.000000 altitude=57.293 // magnitude, obscuration, solar altitude at greatest eclipse
-greatest lon=144.1167 lat=24.2193 width=258.3km center=289 // global greatest point, path width, center-line sample count
+2009-07-22 08:23:55.491912066 +0800 CST // first contact
+2009-07-22 09:37:23.525415658 +0800 CST // totality begins
+2009-07-22 09:40:21.314272284 +0800 CST // greatest eclipse
+2009-07-22 09:43:20.161139667 +0800 CST // totality ends
+2009-07-22 11:03:14.368167221 +0800 CST // last contact
+5m56.635724009s // totality duration
+magnitude=1.076997 obscuration=1.000000 altitude=57.295 // magnitude, obscuration, solar altitude at greatest eclipse
+greatest lon=144.1154 lat=24.2190 width=258.3km center=289 // global greatest point, path width, center-line sample count
 ```
 
 ### 2012 Xiamen annular eclipse
@@ -379,12 +390,12 @@ Output:
 ```text
 true annular // Xiamen site has a local annular solar eclipse
 true {128 58 73 true} // Solar Saros 128, member 58/73, verified
-2012-05-21 05:08:12.878718674 +0800 CST // first contact
-2012-05-21 06:08:15.561088621 +0800 CST // annularity begins
-2012-05-21 06:10:25.180663168 +0800 CST // greatest eclipse
-2012-05-21 06:12:34.80941087 +0800 CST // annularity ends
-2012-05-21 07:20:54.806806147 +0800 CST // last contact
-4m19.248322249s // annularity duration
+2012-05-21 05:08:12.807224392 +0800 CST // first contact
+2012-05-21 06:08:15.319126546 +0800 CST // annularity begins
+2012-05-21 06:10:25.112628936 +0800 CST // greatest eclipse
+2012-05-21 06:12:34.91297096 +0800 CST // annularity ends
+2012-05-21 07:20:54.736518859 +0800 CST // last contact
+4m19.593844414s // annularity duration
 magnitude=0.933289 obscuration=0.872354 altitude=9.565 // magnitude, obscuration, solar altitude at greatest eclipse
 ```
 
@@ -476,12 +487,12 @@ func main() {
 Output:
 
 ```text
-true 13587 // Yangshan total-eclipse SVG generated, 13587 bytes
-true 13516 // Xiamen annular-eclipse SVG generated, 13516 bytes
+true 13603 // Yangshan total-eclipse SVG generated, 13603 bytes
+true 13532 // Xiamen annular-eclipse SVG generated, 13532 bytes
 true total // Beijing site has a local total solar eclipse
 true {145 23 77 true} // Solar Saros 145, member 23/77, verified
-1m33.329527974s // totality duration near downtown Beijing
-true 13548 // Beijing total-eclipse SVG generated, 13548 bytes
+1m33.053206801s // totality duration near downtown Beijing
+true 13564 // Beijing total-eclipse SVG generated, 13564 bytes
 ```
 
 Rendered examples:
@@ -596,18 +607,18 @@ Output:
 ```text
 total // eclipse type
 true {125 49 72 true} // Lunar Saros 125, member 49/72, verified
-2028-12-31 16:52:05.603753328 +0000 UTC // greatest eclipse
-2.2739938633996872 1.2461094682708755 // penumbral and umbral magnitudes
-2028-12-31 14:03:54.239418804 +0000 UTC // P1
-2028-12-31 15:07:42.171904742 +0000 UTC // U1
-2028-12-31 16:16:27.306801974 +0000 UTC // U2
-2028-12-31 17:27:46.228030622 +0000 UTC // U3
-2028-12-31 18:36:32.270547151 +0000 UTC // U4
-2028-12-31 19:40:11.575520038 +0000 UTC // P4
-2.299608256177245 1.2511661731458574 // Chauvenet penumbral and umbral magnitudes
+2028-12-31 16:52:05.797516107 +0000 UTC // greatest eclipse
+2.2740102011228953 1.246124858428628 // penumbral and umbral magnitudes
+2028-12-31 14:03:54.428796172 +0000 UTC // P1
+2028-12-31 15:07:42.35383898 +0000 UTC // U1
+2028-12-31 16:16:27.44777888 +0000 UTC // U2
+2028-12-31 17:27:46.474579274 +0000 UTC // U3
+2028-12-31 18:36:32.476299405 +0000 UTC // U4
+2028-12-31 19:40:11.773990094 +0000 UTC // P4
+2.29962460346294 1.2511815539147877 // Chauvenet penumbral and umbral magnitudes
 true // local date overlaps an eclipse
 total // local eclipse type
-2029-01-01 00:52:05.603753328 +0800 CST // greatest eclipse in UTC+8
+2029-01-01 00:52:05.797516107 +0800 CST // greatest eclipse in UTC+8
 ```
 
 ### Checks against NASA data
@@ -617,6 +628,8 @@ The reference values come from NASA GSFC's lunar-eclipse catalog (greatest eclip
 **A UT-level comparison must first remove the time-scale convention**: the catalogue and the single-eclipse diagram pages convert TD to UT with the ΔT adopted at publication (`75 s` for 2026, `74 s` for 2024), while the measured ΔT is only about `69.1-69.2 s`.
 
 That is a `4.8-5.9 s` offset, so any UT-level contact comparison carries it wholesale; it is not a lunar-geometry error. The TD level (no ΔT) is the layer that tests the ephemeris and the shadow geometry on its own.
+
+The table below was measured while Legacy was the default. Re-measuring `2026-03-03` with the semianalytic model gives a greatest-eclipse TD of `+0.083 s` against the `+0.114 s` for Legacy in the table, a `0.031 s` model difference; that is far below the `0.1-1.0 s` convention residuals in the table, so the table is not split by model.
 
 | Sample | Model | Penumbral magnitude error | Umbral magnitude error | Greatest-eclipse TD difference (no ΔT) | Greatest-eclipse UT difference (with the ΔT convention) |
 | --- | --- | --- | --- | --- | --- |
@@ -696,7 +709,7 @@ func main() {
 Output:
 
 ```text
-true 19816 // lunar-eclipse SVG generated, 19816 bytes
+true 19832 // lunar-eclipse SVG generated, 19832 bytes
 ```
 
 Rendered example:
@@ -711,6 +724,60 @@ Rendered example:
 - NASA 2024-03-25 penumbral lunar eclipse diagram: <https://eclipse.gsfc.nasa.gov/LEplot/LEplot2001/LE2024Mar25N.pdf>
 - NASA lunar eclipse algorithm and history notes: <https://eclipse.gsfc.nasa.gov/LEhistory/LEhistory.html>
 
+## Lunar limb correction
+
+The Moon is a circular disk by default; local solar eclipses, global solar eclipses, lunar eclipses and fixed-site occultations can all use the lunar limb profile from `moon/limb`. The profile gives the actual limb radius toward the target and is used to refine contact times.
+
+| Quantity | Corrected with the limb? |
+| --- | --- |
+| Local solar eclipse first and last contacts, central begin/end and central duration | Yes |
+| Local magnitude and obscuration at greatest eclipse | Yes; the instant of greatest eclipse is unchanged |
+| Global solar eclipse partial begin/end (P1/P4) and the central duration at greatest eclipse | Yes |
+| Solar central path northern/southern limits, per-point widths, width at greatest eclipse, central band footprint and longest central duration | Yes, via `SolarEclipsePathOptions.LunarLimb` or the module |
+| Outer partial visibility boundary (zero-magnitude envelope and the start/end sunrise-sunset curves) | Yes, via `SolarEclipsePartialFootprintOptions.LunarLimb` or the module |
+| The six lunar-eclipse contacts | Yes, only through the module or context |
+| Occultation disappearance, reappearance and planetary inner/outer contacts | Yes, see the [occultation manual](occultation.md#lunar-limb-correction) |
+| Local and global instant of greatest eclipse, global magnitude, type, the center line itself, magnitude isolines, greatest-eclipse isochrones and the greatest-eclipse sunrise-sunset curves | No, still circular |
+
+Correction rules:
+
+- Annular and total-lunar inner contacts use the limb on the far side from the contact center.
+- P1/P4 scan observers along the Earth's limb on both sides of the circular tangent point and keep the earliest (latest) contact.
+- Central-path limits take the worst point within ±45° of position angle around the central direction: a total limit is where the deepest limb valley still covers the Sun, an annular limit where the highest limb point still lies inside the Sun. Endpoints on the horizon stay circular.
+- The outer partial boundary is where the highest limb point just touches the near edge of the Sun. Horizon endpoints and the start/end sunrise-sunset curves move along the terminator at the same instant, so the two still meet at one point. Points with solar altitude between 0.05° and 0.5° stay circular. `PartialBoundaryLimbApplied` reports that at least one point moved. Across four eclipses including 2024-04-08 and high-latitude partial ones, the zero-magnitude envelope shifts by a median of 1–4 km and a maximum of about 7 km; the start/end sunrise-sunset curves slide along the terminator and can move more than 10 km at individual points; with the default step, footprint computation takes about 10%–20% longer.
+
+```go
+import "github.com/starainrt/astro/moon/limb"
+
+// Per query
+info, ok := eclipse.LocalSolarEclipseOnDateWithOptions(date, lon, lat, 0,
+	eclipse.SolarEclipseOptions{LunarLimb: limb.Default()})
+
+// For every local solar eclipse in a context
+base, err := astro.NewContext(astro.ModelSemianalytic)
+if err != nil {
+	panic(err)
+}
+ctx := base.WithLunarLimb(limb.Default())
+info, ok = ctx.Eclipse().LocalSolarEclipseOnDate(date, lon, lat, 0)
+```
+
+Charts support it too: every eclipse-chart options struct in `eclipse/svg` carries a `LunarLimb` field. The local solar chart corrects contact times and the magnitude and obscuration at greatest eclipse; both lunar diagrams correct contact times, with the disks still drawn as circles and the instant of greatest eclipse unchanged; the lunar world map moves each phase horizon with the corrected contact; the global solar map corrects the central-band limits, the width at greatest eclipse, the outer partial visibility boundary, the global P1/P4 and the local panel at greatest eclipse (including the central duration), while magnitude isolines, isochrones and the geocentric panel stay circular.
+
+The layers are independent — a profile with values only at some position angles may correct just some of them — and the global solar map footer lists only the layers actually corrected, e.g. "Lunar limb profile applied to visibility boundary (isolines circular)."; `CentralLimitsLimbApplied` on the central path result records whether the limits and width were corrected.
+
+Each chart declares the convention after the time-scale note ("Circular limb." or "Limb profile." on local charts), and a custom `FooterNote` does not replace it.
+
+`LunarLimbApplied` on a result records whether the limb correction actually took effect, and charts use it rather than whether the option is set. Where the profile has no value (`LimbRadiusKM` returns `false`), the radius falls back to the circular limb and that sample does not take part in the correction; when nothing in a result was corrected the field is `false` and the numbers equal the circular result exactly.
+
+`LunarLimb` in the options takes precedence over the module setting. `eclipse.(*Eclipse).WithLunarLimb` returns a new module and leaves the original unchanged. Any type implementing `eclipse.LunarLimb` can supply another profile; the low-level `basic.LunarEclipseWithLunarLimb` offers the same capability.
+
+The built-in profile lives in the separate `moon/limb` package. It is a processed product of the ISAS/JAXA SELENE (Kaguya) LALT global topography data (published by DARTS, 16 pixels/degree) and is about 1.5 MB; the data is linked only when that package is imported. The table is indexed by the observer's selenographic longitude and latitude (±9° / ±8°, 1° steps) and position angle (0.1° steps); trilinear interpolation reproduces profiles taken directly from the DEM with an RMS error of about 90 m.
+
+The corrections are a few seconds: totality at Dallas on 2024-04-08 changes from `227.6 s` to `229.8 s`, Torreón `250.6 s` → `255.0 s`, annularity at Albuquerque on 2023-10-14 `289.4 s` → `290.3 s`, and the contacts of the 2025-09-07 total lunar eclipse move by `-4.4 s` to `+0.2 s`. The total-path limits move by about `2.1 km` / `1.0 km` on average (up to about `3.2 km`), the width at greatest eclipse from `198.6 km` to `196.8 km`, the longest central duration from `268.0 s` to `271.7 s` and the central duration at greatest eclipse from `268.0 s` to `271.2 s`.
+
+For item-by-item checks, compare with the published values of the *Chinese Astronomical Almanac* (Purple Mountain Observatory): about `-0.8 s` / `+0.2 s` at whole-second precision, and with the Chauvenet convention at 0.1-minute precision a mean error of `1.5 s` circular and `2.2 s` with the limb, both within the published rounding.
+
 ## Solar and Lunar Eclipse Charts
 
 All five `eclipse/svg` entry points return `(string, bool)`.
@@ -719,11 +786,11 @@ A `false` second value means the chart cannot be drawn with the current argument
 
 | Entry point | Chart | Suggested canvas |
 | --- | --- | --- |
-| `LocalSolarEclipseSVG` | Fixed-site solar disk chart (see "Solar-eclipse SVG" above) | 920x720 and up |
-| `SolarEclipseMapSVG` | Global visibility map, four selectable projections | 1200x800; orthographic globe 1000x1414 |
-| `LunarEclipseSVG` | Lunar shadow-path diagram | 960x620 and up |
-| `LunarEclipseMapSVG` | Lunar world visibility map | 1200x800 |
-| `LunarEclipseDetailedSVG` | Lunar detailed layout (diagram and base map on one page) | 1000x1414 or 1414x1000 |
+| `LocalSolarEclipseSVG` | Fixed-site solar disk chart (see "Solar-eclipse SVG" above) | 920×720 and up |
+| `SolarEclipseMapSVG` | Global visibility map, four selectable projections | 1200×800; orthographic globe 1000×1414 |
+| `LunarEclipseSVG` | Lunar shadow-path diagram | 960×620 and up |
+| `LunarEclipseMapSVG` | Lunar world visibility map | 1200×800 |
+| `LunarEclipseDetailedSVG` | Lunar detailed layout (diagram and base map on one page) | 1000×1414 or 1414×1000 |
 
 A solar global map draws the full partial-visibility region, the total/annular central band, the central line, global phase information and central-line time markers, together with the rise/set lines of first/greatest/last contact, the subsolar point, the shadow-axis entry and exit points, the `P1-P4/U1-U4` contacts, and the sampled penumbral and umbral/antumbral outlines that are off by default and requested on demand.
 
@@ -771,7 +838,7 @@ fmt.Println(ok, len(annular), len(total))
 
 `EclipseMapProjectionOrthographic` gives the NASA-style **orthographic globe**: the view point is the greatest-eclipse point, only the hemisphere facing it is drawn, and the projection boundary is the great circle of the visible hemisphere.
 
-The orthographic projection uses the NASA-style centered-globe layout; a `1000x1414` canvas is recommended. It does not change the underlying geographic results.
+The orthographic projection uses the NASA-style centered-globe layout; a `1000×1414` canvas is recommended. It does not change the underlying geographic results.
 
 ```go
 globe, ok := eclipsesvg.SolarEclipseMapSVG(
@@ -786,11 +853,11 @@ globe, ok := eclipsesvg.SolarEclipseMapSVG(
 
 ![2009 Yangtze total solar eclipse orthographic globe](../../img/solar-eclipse-yangshan-2009-globe-en.svg)
 
-The orthographic globe is most comfortable in portrait (e.g. `1000x1414`); landscape (`1200x800`) also renders, with a visibly smaller globe.
+The orthographic globe is most comfortable in portrait (e.g. `1000×1414`); landscape (`1200×800`) also renders, with a visibly smaller globe.
 
 #### Polar azimuthal equidistant
 
-`EclipseMapProjectionNorthPolar` and `EclipseMapProjectionSouthPolar` place the pole at the centre of the canvas, which suits events whose band lies entirely at high latitude.
+`EclipseMapProjectionNorthPolar` and `EclipseMapProjectionSouthPolar` place the pole at the center of the canvas, which suits events whose band lies entirely at high latitude.
 
 `EclipseMapProjectionAuto` (the zero value) picks a polar map when that fits, so specify a projection explicitly only when the layout must be fixed; the projection only affects SVG presentation and never the underlying WGS84 geography.
 
@@ -885,9 +952,9 @@ Degradable layers record their actual geometry source in `data-source`; the voca
 
 #### Canvas floors and fallbacks
 
-- The solar-map floor is **800x560**: a width below 800 or a height below 560 falls back to 960x640. On narrower landscape canvases the map frame overlaps the right-hand data grid horizontally and the panel line spacing drops below 1 px.
+- The solar-map floor is **800×560**: a width below 800 or a height below 560 falls back to 960×640. On narrower landscape canvases the map frame overlaps the right-hand data grid horizontally and the panel line spacing drops below 1 px.
 - The partial-region fill is a union of instantaneous footprints, so `PartialStep` values below two minutes are clamped to two minutes; a denser request does not improve the result.
-- The lunar detailed layout derives its arrangement from `Height`: `640x420` and `800x600` cannot hold the diagram and base-map floors and return `false`, while `1000x1414` and `1414x1000` render normally.
+- The lunar detailed layout derives its arrangement from `Height`: `640×420` and `800×600` cannot hold the diagram and base-map floors and return `false`, while `1000×1414` and `1414×1000` render normally.
 
 ### Lunar eclipse charts
 
@@ -941,7 +1008,7 @@ penumbral, ok := eclipsesvg.LunarEclipseMapSVG(
 
 #### Detailed layout
 
-The detailed layout combines both lunar charts on one page: a centred summary (greatest eclipse, penumbral/umbral magnitude, gamma, penumbral/umbral radii, Moon distance, Saros series), geocentric coordinate blocks for Sun and Moon on either side, the shadow-path diagram, three columns for duration, arc-minute scale and contact times, and the world visibility base map with its legend underneath.
+The detailed layout combines both lunar charts on one page: a centered summary (greatest eclipse, penumbral/umbral magnitude, gamma, penumbral/umbral radii, Moon distance, Saros series), geocentric coordinate blocks for Sun and Moon on either side, the shadow-path diagram, three columns for duration, arc-minute scale and contact times, and the world visibility base map with its legend underneath.
 
 The shadow geometry comes from `basic.LunarEclipseShadowGeometryAt`, where **gamma uses the Earth equatorial radius while the penumbral/umbral radii are in degrees** - to convert them into Earth radii, multiply by the Earth parallax at the Moon.
 
@@ -990,3 +1057,43 @@ ut1, ok := eclipsesvg.SolarEclipseMapSVG(
 ```
 
 ![2009 Yangtze total solar eclipse global visibility map (UT1 scale)](../../img/solar-eclipse-yangshan-2009-global-ut1-en.svg)
+
+## Transit charts
+
+Transit contact times, topocentric visibility and `LocalTransit` live in [Planets: Mercury and Venus transits](planets.md#mercury-and-venus-transits); this section covers only the two `eclipse/svg` charts. `eclipse/svg` has two transit renderers, both returning `(string, bool)`; `date` selects the closest transit, and a same-day query finds that day's transit.
+
+| Entry | Chart | Suggested canvas |
+| --- | --- | --- |
+| `TransitMapSVG` | Geocentric global visibility: entire transit, transit at sunrise, transit at sunset, not visible | 960×640 and up |
+| `TransitLocalSVG` | Topocentric solar disk: north up, east left, planet-center track, planet disk at each contact and at greatest, contact table | 960×680 and up |
+
+Regions follow whether the Sun's center is above the apparent horizon at C1, greatest and C4, with standard refraction (a horizon circle of 90°34′). Isochrones are off by default; enable them bitwise with `Isochrones`: `TransitIsochroneC1` … `TransitIsochroneC4`, or the combinations `TransitIsochroneExternal` (C1 and C4) and `TransitIsochroneAll`. C2/C3 are dropped for a grazing transit without internal contacts. Isochrones are topocentric contact times drawn only where the Sun is above the apparent horizon; a non-positive `IsochroneStep` uses 20 s for Mercury and 1 min for Venus. A transit is visible from roughly half the globe, so the map always shows the whole world; `Projection` selects one of the four projections.
+
+```go
+venus := time.Date(2012, 6, 6, 0, 0, 0, 0, time.UTC)
+world, ok := eclipsesvg.TransitMapSVG(eclipsesvg.TransitVenus, venus, eclipsesvg.TransitMapSVGOptions{
+	Isochrones:    eclipsesvg.TransitIsochroneExternal,
+	IsochroneStep: 10 * time.Minute,
+	Language:      "en",
+})
+local, ok := eclipsesvg.TransitLocalSVG(eclipsesvg.TransitVenus, venus, 116.4, 39.9, 50,
+	eclipsesvg.TransitLocalSVGOptions{Language: "en"})
+```
+
+On the disk chart, track parts with the Sun's center below the apparent horizon are grey and dashed, and the table adds sunrise or sunset during the transit. `TransitLocalSVG` returns `false` when the site sees no geometric transit. The topocentric contact method is described in [Planets](planets.md#mercury-and-venus-transits).
+
+### Mercury: 2032-11-13 (Beijing)
+
+2032-11-13 is the next Mercury transit visible from Beijing. Beijing sees first contact, second contact and greatest, with the Sun only `+0.2°` high at greatest; third and fourth contact happen after sunset (Sun about `-24°`) and are drawn grey and dashed on the disk chart.
+
+![Mercury transit of 2032-11-13 from Beijing](../../img/transit-mercury-beijing-2032-en.svg)
+
+![Mercury transit of 2032-11-13 global visibility](../../img/transit-mercury-beijing-2032-global-en.svg)
+
+### Venus: 2012-06-06 (Beijing)
+
+The Venus transit of 2012-06-06 was visible in full from Beijing, with `6h39m4s` from first to fourth contact and solar altitudes of `+14°` to `+71°` at the contacts.
+
+![Venus transit of 2012-06-06 from Beijing](../../img/transit-venus-beijing-2012-en.svg)
+
+![Venus transit of 2012-06-06 global visibility](../../img/transit-venus-beijing-2012-global-en.svg)

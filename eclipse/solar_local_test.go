@@ -5,6 +5,8 @@ import (
 	"time"
 
 	"github.com/starainrt/astro/basic"
+
+	"github.com/starainrt/astro/internal/ephemtest"
 )
 
 func TestLocalSolarEclipseOnDateByLocalDay(t *testing.T) {
@@ -284,6 +286,7 @@ func TestLocalSolarEclipseInfoKeepsLocation(t *testing.T) {
 }
 
 func TestLocalSolarEclipseContactPoints(t *testing.T) {
+	values := ephemtest.NewValues(t, "local_solar_contact_points")
 	loc := time.FixedZone("UTC+08", 8*3600)
 	info := ClosestLocalSolarEclipse(
 		time.Date(2024, 4, 8, 12, 0, 0, 0, loc),
@@ -302,10 +305,10 @@ func TestLocalSolarEclipseContactPoints(t *testing.T) {
 	for _, point := range info.ContactPoints {
 		points[point.Label] = point
 	}
-	assertSolarFloatClose(t, "C1.ContactPositionAngle", points["C1"].ContactPositionAngle, 226.219228, 1e-3)
-	assertSolarFloatClose(t, "C2.ContactPositionAngle", points["C2"].ContactPositionAngle, 19.133602, 1e-3)
-	assertSolarFloatClose(t, "C2.MoonCenterPositionAngle", points["C2"].MoonCenterPositionAngle, 199.133602, 1e-3)
-	assertSolarFloatClose(t, "C4.ContactClockwiseAngle", points["C4"].ContactClockwiseAngle, 310.781438, 1e-3)
+	assertSolarFloatClose(t, "C1.ContactPositionAngle", points["C1"].ContactPositionAngle, values.Want("C1.ContactPositionAngle", 226.219228, points["C1"].ContactPositionAngle), 1e-3)
+	assertSolarFloatClose(t, "C2.ContactPositionAngle", points["C2"].ContactPositionAngle, values.Want("C2.ContactPositionAngle", 19.133602, points["C2"].ContactPositionAngle), 1e-3)
+	assertSolarFloatClose(t, "C2.MoonCenterPositionAngle", points["C2"].MoonCenterPositionAngle, values.Want("C2.MoonCenterPositionAngle", 199.133602, points["C2"].MoonCenterPositionAngle), 1e-3)
+	assertSolarFloatClose(t, "C4.ContactClockwiseAngle", points["C4"].ContactClockwiseAngle, values.Want("C4.ContactClockwiseAngle", 310.781438, points["C4"].ContactClockwiseAngle), 1e-3)
 }
 
 func TestLocalSolarEclipseContactPointsFromMergedFrameLabels(t *testing.T) {

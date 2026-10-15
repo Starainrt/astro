@@ -128,7 +128,7 @@ func closedFootprintRingAlignmentScore(
 	score := 0.0
 	for sample := 0; sample < samples; sample++ {
 		index := sample * len(previous) / samples
-		score += geoDistanceKM(previous[index], current[(index+shift)%len(current)])
+		score += geodata.EquatorialDistanceKM(previous[index], current[(index+shift)%len(current)])
 	}
 	return score
 }
@@ -153,7 +153,7 @@ func footprintClosedSweepMaximumStep(
 	}
 	maximum := 0.0
 	for index := 0; index < count; index++ {
-		maximum = math.Max(maximum, geoDistanceKM(first[index], second[index]))
+		maximum = math.Max(maximum, geodata.EquatorialDistanceKM(first[index], second[index]))
 	}
 	return maximum
 }
@@ -337,7 +337,7 @@ func occultationUnitBoundsNear(first, second occultationUnitBounds, limitKM floa
 	dy := math.Max(0, math.Max(first.minY-second.maxY, second.minY-first.maxY))
 	dz := math.Max(0, math.Max(first.minZ-second.maxZ, second.minZ-first.maxZ))
 	// 大圆距离不小于弦长，因此弦距下界可以作为 60 km 近邻判定的必要条件。
-	return EarthRadiusKM*math.Sqrt(dx*dx+dy*dy+dz*dz) <= limitKM
+	return geodata.EarthEquatorialRadiusKM*math.Sqrt(dx*dx+dy*dy+dz*dz) <= limitKM
 }
 
 func mergeTouchingVisiblePolygons(polygons [][]geodata.GeoPoint) [][]geodata.GeoPoint {
@@ -367,7 +367,7 @@ func mergeTouchingVisiblePolygons(polygons [][]geodata.GeoPoint) [][]geodata.Geo
 				}
 				for _, left := range polygons[first] {
 					for _, right := range polygons[second] {
-						if geoDistanceKM(left, right) > touchingDistanceKM {
+						if geodata.EquatorialDistanceKM(left, right) > touchingDistanceKM {
 							continue
 						}
 						firstIndex, secondIndex = first, second
@@ -388,7 +388,7 @@ func mergeTouchingVisiblePolygons(polygons [][]geodata.GeoPoint) [][]geodata.Geo
 			break
 		}
 		bridgeHalfDeg := minimumBridgeHalfDeg
-		if gap := geoDistanceKM(leftTouch, rightTouch) / EarthRadiusKM * 180 / math.Pi; gap/2+0.002 > bridgeHalfDeg {
+		if gap := geodata.EquatorialDistanceKM(leftTouch, rightTouch) / geodata.EarthEquatorialRadiusKM * 180 / math.Pi; gap/2+0.002 > bridgeHalfDeg {
 			bridgeHalfDeg = gap/2 + 0.002
 		}
 		bridge := []geodata.GeoPoint{
@@ -629,7 +629,7 @@ func nearestFootprintPointIndex(points []geodata.GeoPoint, target geodata.GeoPoi
 	nearest := 0
 	distance := math.Inf(1)
 	for index, point := range points {
-		candidate := geoDistanceKM(point, target)
+		candidate := geodata.EquatorialDistanceKM(point, target)
 		if candidate < distance {
 			nearest, distance = index, candidate
 		}
@@ -672,7 +672,7 @@ func footprintArcMatchScore(candidate, reference []geodata.GeoPoint) float64 {
 	for index := 0; index < samples; index++ {
 		candidateIndex := index * (len(candidate) - 1) / (samples - 1)
 		referenceIndex := index * (len(reference) - 1) / (samples - 1)
-		score += geoDistanceKM(candidate[candidateIndex], reference[referenceIndex])
+		score += geodata.EquatorialDistanceKM(candidate[candidateIndex], reference[referenceIndex])
 	}
 	return score
 }
@@ -721,7 +721,7 @@ func footprintStaticInteriorPolygons(footprints []basic.OccultationFootprint) []
 			}
 			centerCap := geodata.SphericalCircle(
 				center,
-				staticCenterCapRadiusKM/EarthRadiusKM*180/math.Pi,
+				staticCenterCapRadiusKM/geodata.EarthEquatorialRadiusKM*180/math.Pi,
 				staticCenterCapPoints,
 			)
 			if len(centerCap) >= 3 {
@@ -782,8 +782,8 @@ func footprintPolygons(footprints []basic.OccultationFootprint) [][]geodata.GeoP
 
 func geoPointSegmentDistanceKM(point, start, end geodata.GeoPoint) float64 {
 	latitude := point.Latitude * math.Pi / 180
-	scaleX := math.Cos(latitude) * EarthRadiusKM * math.Pi / 180
-	scaleY := EarthRadiusKM * math.Pi / 180
+	scaleX := math.Cos(latitude) * geodata.EarthEquatorialRadiusKM * math.Pi / 180
+	scaleY := geodata.EarthEquatorialRadiusKM * math.Pi / 180
 	x := func(value geodata.GeoPoint) float64 {
 		return math.Remainder(value.Longitude-point.Longitude, 360) * scaleX
 	}
@@ -855,18 +855,8 @@ func BoundaryBranchChanged(first, second basic.OccultationPathPoint) bool {
 // DistanceKM 返回两个边界样本之间的最短球面距离。
 // DistanceKM returns the shortest spherical surface distance between two boundary samples.
 func DistanceKM(first, second basic.OccultationPathPoint) float64 {
-	return geoDistanceKM(
+	return geodata.EquatorialDistanceKM(
 		geodata.GeoPoint{Longitude: first.Longitude, Latitude: first.Latitude},
 		geodata.GeoPoint{Longitude: second.Longitude, Latitude: second.Latitude},
 	)
-}
-
-func geoDistanceKM(first, second geodata.GeoPoint) float64 {
-	firstLatitude := first.Latitude * math.Pi / 180
-	secondLatitude := second.Latitude * math.Pi / 180
-	deltaLatitude := secondLatitude - firstLatitude
-	deltaLongitude := math.Remainder((second.Longitude-first.Longitude)*math.Pi/180, 2*math.Pi)
-	haversine := math.Sin(deltaLatitude/2)*math.Sin(deltaLatitude/2) +
-		math.Cos(firstLatitude)*math.Cos(secondLatitude)*math.Sin(deltaLongitude/2)*math.Sin(deltaLongitude/2)
-	return 2 * EarthRadiusKM * math.Asin(math.Sqrt(math.Min(1, haversine)))
 }

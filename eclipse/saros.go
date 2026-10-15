@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/starainrt/astro/basic"
+	"github.com/starainrt/astro/internal/ephem"
 )
 
 const (
@@ -29,6 +30,11 @@ const (
 )
 
 // SarosInfo 沙罗序列信息, Saros series metadata.
+//
+// Series 与星历模型无关；Member 与 Count 在序列首尾可能随模型变化：食分接近 0 的
+// 擦边食是否成立取决于模型，差异量级小于模型自身误差，不同模型因而可能多算或少算
+// 一个首尾成员。Series is model-independent; Member and Count can differ by one at
+// a series head or tail, where a grazing eclipse falls within model error.
 type SarosInfo struct {
 	// Series 是权威目录系列编号；Verified=false 时为根据周期外推得到的暂定编号。
 	// Series is the authoritative catalog series number, or a provisional number when Verified is false.
@@ -154,11 +160,19 @@ var lunarSarosHeadOverrides = [...]sarosHeadOverride{
 	{Series: 61, Count: 78, HeadYear: -762, HeadMonth: 12, HeadDay: 24, MemberOffset: 1},
 }
 
-func solarSarosInfo(ttJDE float64) (SarosInfo, bool) {
+func solarSarosInfo(ttJDE float64, modules ...*Eclipse) (SarosInfo, bool) {
+	module := &defaultModule
+	if len(modules) > 0 {
+		module = modules[0]
+	}
+
+	if module.model() == ephem.Custom {
+		return SarosInfo{}, false
+	}
 	if info, ok := matchSarosMagic(solarSarosAnchors[:], 0, solarSarosHeadOverrides[:], ttJDE); ok {
 		return info, true
 	}
-	return reconciledSarosInfo(extendedSarosInfo, ttJDE, 0)
+	return reconciledSarosInfo(module.extendedSarosInfo, ttJDE, 0)
 }
 
 func lunarSarosInfo(ttJDE float64) (SarosInfo, bool) {

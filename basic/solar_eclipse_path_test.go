@@ -5,6 +5,8 @@ import (
 	"math"
 	"testing"
 	"time"
+
+	"github.com/starainrt/astro/internal/ephemtest"
 )
 
 func TestSolarEclipseCentralPathMatchesGlobalGreatest(t *testing.T) {
@@ -172,6 +174,10 @@ func TestSolarEclipseNonCentralGreatestHorizonFoldsRemainTimedSegments(t *testin
 	} {
 		date := date
 		t.Run(fmt.Sprintf("%04d-%02d-%02d", date[0], date[1], date[2]), func(t *testing.T) {
+			if date[0] == 1967 {
+				// 该日的折返只在旧模型几何下出现，用来覆盖拆段分支。
+				ephemtest.PinLegacy(t)
+			}
 			result := SolarEclipsePartialFootprints(JDCalc(date[0], date[1], float64(date[2])), SolarEclipsePartialFootprintOptions{
 				StepDays: 2.0 / 1440.0, BoundaryPoints: 24, RiseSetStepDays: 2.0 / 1440.0,
 			})

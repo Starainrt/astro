@@ -1,0 +1,28 @@
+本包内嵌的月缘剖面数据不适用本仓库的 Apache-2.0，遵循其来源条款。完整声明见仓库根目录 /NOTICE（第 1 节）。
+The lunar limb profile embedded in this package is NOT covered by this repository's Apache-2.0 licence; it follows the terms of its source. The full notice is section 1 of /NOTICE in the repository root.
+
+SELENE (KAGUYA) lunar limb profile — kaguya_lalt.bin
+  Source data: SELENE Global Grid Topographic Data of the Moon (LALT_GGT_NUM),
+  dataset sln-l-lalt-5-topo-ggt-num-v2.0, version 2.0, published 2017.
+  Origin of the data: ISAS/JAXA.
+  Provided by the SELENE (KAGUYA) Data Archive (DARTS), ISAS/JAXA:
+    https://darts.isas.jaxa.jp/datasets/darts:sln-l-lalt-5-topo-ggt-num-v2.0
+
+  Acknowledgement, as requested by the SELENE Data Archive:
+    "We thank the SELENE(KAGUYA) LALT team and the SELENE Data Archive for
+     providing the SELENE(KAGUYA) data. SELENE is a Japanese mission developed
+     and operated by JAXA."
+
+  Modifications: the original PDS3 fixed-width table (1/16 degree global grid,
+  2880 x 5760 samples) was converted to a float32 elevation grid and resampled
+  into a limb-radius profile table on a 1 degree grid of selenographic
+  (libration) longitude and latitude and a 0.1 degree grid of position angle,
+  taking max (R + h) cos(alpha) over a +/-9 degree arc per direction; the
+  result is stored in this project's own zlib-compressed LLB1 container.
+
+  Licence: ISAS Data Policy,
+    https://www.isas.jaxa.jp/en/researchers/data-policy/
+  which states that its rules are compatible with Creative Commons Attribution
+  4.0 International, https://creativecommons.org/licenses/by/4.0/
+  Provided "as is", without warranties of any kind. ISAS/JAXA is not
+  responsible for the actions of data users and does not endorse this project.

@@ -3,6 +3,8 @@ package basic
 import (
 	"math"
 	"sort"
+
+	"github.com/starainrt/astro/internal/geodata"
 )
 
 func (solver solarEclipseSolver) magnitudeContourSegments(
@@ -24,6 +26,8 @@ func (solver solarEclipseSolver) magnitudeContourSegmentsWithSpacing(
 	if targetSpacingKM <= 0 || math.IsNaN(targetSpacingKM) || math.IsInf(targetSpacingKM, 0) {
 		targetSpacingKM = solarEclipseMagnitudeContourTargetSpacingKM
 	}
+	// 追踪用事件局部插值星历求残差与雅可比，输出点仍由 validMagnitudeArcState 精确确认。
+	solver = solver.withLocalEphemeris()
 	var transitions []SolarEclipsePathPoint
 	if hybrid && math.Abs(magnitude-1) <= 1e-12 {
 		transitions = solver.centralMagnitudeOneTransitionsInInterval(
@@ -527,7 +531,7 @@ func (solver solarEclipseSolver) validMagnitudeArcState(
 	iterations int,
 ) (solarEclipseMagnitudeArcState, int, bool) {
 	jde := referenceJDE + coordinates[2]/solarEclipseMagnitudeContourTimeScale
-	longitude := normalizeLongitude(coordinates[0])
+	longitude := geodata.NormalizeLongitude(coordinates[0])
 	latitude := coordinates[1]
 	evaluation := solver.magnitudeEvaluationAt(jde)
 	state := evaluation.center.stateAt(longitude*rad, latitude*rad, 0)
@@ -553,9 +557,9 @@ func (solver solarEclipseSolver) magnitudeEnvelopeJacobian(
 	magnitude, referenceJDE float64,
 ) ([2]float64, [2][3]float64, bool) {
 	jde := referenceJDE + coordinates[2]/solarEclipseMagnitudeContourTimeScale
-	longitude := normalizeLongitude(coordinates[0])
+	longitude := geodata.NormalizeLongitude(coordinates[0])
 	latitude := coordinates[1]
-	evaluation := solver.magnitudeEvaluationAt(jde)
+	evaluation := solver.magnitudeCandidateEvaluationAt(jde)
 	residual, ok := solarEclipseMagnitudeEnvelopeResidualAt(evaluation, longitude, latitude, magnitude)
 	if !ok {
 		return [2]float64{}, [2][3]float64{}, false
@@ -574,14 +578,14 @@ func (solver solarEclipseSolver) magnitudeEnvelopeJacobian(
 			jacobian[row][column] = (shiftedResidual[row] - residual[row]) / steps[column]
 		}
 	}
-	timeEvaluation := solver.magnitudeEvaluationAt(jde + steps[2]/solarEclipseMagnitudeContourTimeScale)
+	timeEvaluation := solver.magnitudeCandidateEvaluationAt(jde + steps[2]/solarEclipseMagnitudeContourTimeScale)
 	timeResidual, timeOK := solarEclipseMagnitudeEnvelopeResidualAt(
 		timeEvaluation, longitude, latitude, magnitude,
 	)
 	if !timeOK {
 		return [2]float64{}, [2][3]float64{}, false
 	}
-	beforeEvaluation := solver.magnitudeEvaluationAt(jde - steps[2]/solarEclipseMagnitudeContourTimeScale)
+	beforeEvaluation := solver.magnitudeCandidateEvaluationAt(jde - steps[2]/solarEclipseMagnitudeContourTimeScale)
 	beforeResidual, beforeOK := solarEclipseMagnitudeEnvelopeResidualAt(
 		beforeEvaluation, longitude, latitude, magnitude,
 	)
@@ -638,7 +642,7 @@ func (solver solarEclipseSolver) refineMagnitudeHorizonCrossing(
 	deltaLongitude := math.Remainder(hidden.Longitude-visible.Longitude, 360)
 	return solver.refineMagnitudeHorizonPoint(
 		visible.JDE+fraction*(hidden.JDE-visible.JDE),
-		normalizeLongitude(visible.Longitude+fraction*deltaLongitude),
+		geodata.NormalizeLongitude(visible.Longitude+fraction*deltaLongitude),
 		visible.Latitude+fraction*(hidden.Latitude-visible.Latitude),
 		magnitude,
 	)
@@ -688,7 +692,7 @@ func (solver solarEclipseSolver) refineMagnitudeHorizonPoint(
 		if math.Abs(delta[2]) > 10.0/1440.0 {
 			delta[2] = math.Copysign(10.0/1440.0, delta[2])
 		}
-		longitude = normalizeLongitude(longitude + delta[0])
+		longitude = geodata.NormalizeLongitude(longitude + delta[0])
 		latitude += delta[1]
 		jde += delta[2]
 	}
@@ -725,14 +729,14 @@ func (solver solarEclipseSolver) magnitudeCandidateEvaluationAt(jde float64) sol
 
 func (solver solarEclipseSolver) localStateContextAt(jde float64) localSolarEclipseStateContext {
 	if solver.localStateContextCache == nil {
-		return newLocalSolarEclipseStateContextWithOverride(jde, solver.deltaTSeconds, solver.params)
+		return newLocalSolarEclipseStateContextWithOverride(jde, solver.deltaTSeconds, solver.params, solver.inst)
 	}
 	key := math.Float64bits(jde)
 	if context, ok := solver.localStateContextCache[key]; ok &&
 		context.generation == deltaTGenerationValue() {
 		return context
 	}
-	context := newLocalSolarEclipseStateContextWithOverride(jde, solver.deltaTSeconds, solver.params)
+	context := newLocalSolarEclipseStateContextWithOverride(jde, solver.deltaTSeconds, solver.params, solver.inst)
 	return storeLocalSolarEclipseStateContext(solver.localStateContextCache, key, context)
 }
 
@@ -756,19 +760,28 @@ func storeLocalSolarEclipseStateContext(
 }
 
 func (solver solarEclipseSolver) localStateContextCandidateAt(jde float64) localSolarEclipseStateContext {
-	if solver.localEphemeris == nil {
+	// 有月缘时坐标架也取插值表；插值表缺失或越界时退回精确上下文。
+	if solver.localEphemeris == nil || (solver.params.lunarLimb != nil && solver.limbAxes == nil) {
 		return solver.localStateContextAt(jde)
 	}
 	sun, moon, ok := solver.localEphemeris.equatorialAt(jde)
 	if !ok {
 		return solver.localStateContextAt(jde)
 	}
-	return localSolarEclipseStateContext{
+	context := localSolarEclipseStateContext{
 		sunXYZ:  solarEclipseLLRToXYZ(sun[0], sun[1], sun[2]),
 		moonXYZ: solarEclipseLLRToXYZ(moon[0], moon[1], moon[2]),
 		gst:     solver.siderealTimeAt(jde),
 		params:  solver.params,
 	}
+	if solver.params.lunarLimb != nil {
+		frame, ok := solver.limbAxes.frameAt(jde)
+		if !ok {
+			return solver.localStateContextAt(jde)
+		}
+		context.limbFrame = &frame
+	}
+	return context
 }
 
 func (solver solarEclipseSolver) magnitudeHorizonResidual(
@@ -924,7 +937,7 @@ func (solver solarEclipseSolver) magnitudeContourGeographicSeedsAt(jde, magnitud
 		// Reuse the global greatest-eclipse coordinates as the bounded seed for
 		// the local envelope solver instead of treating the missing central axis
 		// as evidence that every magnitude contour is absent.
-		result := solarEclipse(solver.newMoonJDE, solver.model)
+		result := solarEclipse(solver.newMoonJDE, solver.model, solver.inst)
 		if !result.HasPartial || result.GreatestEclipse == 0 {
 			return nil
 		}
@@ -972,7 +985,7 @@ func (solver solarEclipseSolver) magnitudeContourGeographicSeedsAt(jde, magnitud
 				centerVector[1]*math.Cos(angle) + direction[1]*math.Sin(angle),
 				centerVector[2]*math.Cos(angle) + direction[2]*math.Sin(angle),
 			}
-			longitude := normalizeLongitude(math.Atan2(pointVector[1], pointVector[0]) / rad)
+			longitude := geodata.NormalizeLongitude(math.Atan2(pointVector[1], pointVector[0]) / rad)
 			latitude := math.Asin(math.Max(-1, math.Min(1, pointVector[2]))) / rad
 			state := evaluation.center.stateAt(longitude*rad, latitude*rad, 0)
 			value := solarEclipseMagnitudeAtTarget(state, magnitude) - magnitude
@@ -992,7 +1005,7 @@ func (solver solarEclipseSolver) magnitudeContourGeographicSeedsAt(jde, magnitud
 						centerVector[1]*math.Cos(middleAngle) + direction[1]*math.Sin(middleAngle),
 						centerVector[2]*math.Cos(middleAngle) + direction[2]*math.Sin(middleAngle),
 					}
-					middleLongitude := normalizeLongitude(math.Atan2(middleVector[1], middleVector[0]) / rad)
+					middleLongitude := geodata.NormalizeLongitude(math.Atan2(middleVector[1], middleVector[0]) / rad)
 					middleLatitude := math.Asin(math.Max(-1, math.Min(1, middleVector[2]))) / rad
 					middleState := evaluation.center.stateAt(middleLongitude*rad, middleLatitude*rad, 0)
 					middleValue := solarEclipseMagnitudeAtTarget(middleState, magnitude) - magnitude
@@ -1012,7 +1025,7 @@ func (solver solarEclipseSolver) magnitudeContourGeographicSeedsAt(jde, magnitud
 					centerVector[1]*math.Cos(seedAngle) + direction[1]*math.Sin(seedAngle),
 					centerVector[2]*math.Cos(seedAngle) + direction[2]*math.Sin(seedAngle),
 				}
-				seedLongitude := normalizeLongitude(math.Atan2(seedVector[1], seedVector[0]) / rad)
+				seedLongitude := geodata.NormalizeLongitude(math.Atan2(seedVector[1], seedVector[0]) / rad)
 				seedLatitude := math.Asin(math.Max(-1, math.Min(1, seedVector[2]))) / rad
 				seedLongitude, seedLatitude, refined := solver.refineMagnitudeEnvelopePoint(
 					magnitude, seedLongitude, seedLatitude, evaluation,
@@ -1160,7 +1173,7 @@ func (solver solarEclipseSolver) magnitudeContourPointAt(
 		return SolarEclipsePathPoint{}, false
 	}
 	longitude, latitude := solarEclipseIntersectionGeodetic(intersection, axis)
-	sunAltitudeRad := solarEclipseSunAltitudeAtGreatest(jde, longitude, latitude, axis.gst)
+	sunAltitudeRad := solarEclipseSunAltitudeAtGreatest(jde, longitude, latitude, axis.gst, solver.inst)
 	return SolarEclipsePathPoint{
 		JDE:         jde,
 		Longitude:   longitude,

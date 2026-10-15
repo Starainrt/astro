@@ -8,23 +8,23 @@ import (
 )
 
 // Semidiameter 木星视半径，单位角秒 / apparent Jupiter semidiameter in arcseconds.
-func Semidiameter(date time.Time) float64 {
-	return SemidiameterN(date, -1)
+func (module *Jupiter) Semidiameter(date time.Time) float64 {
+	return module.SemidiameterN(date, -1)
 }
 
-// SemidiameterN 木星视半径（截断版），单位角秒 / truncated apparent Jupiter semidiameter in arcseconds.
-func SemidiameterN(date time.Time, n int) float64 {
+// SemidiameterN 木星视半径（n 变体），单位角秒 / n-parameterised apparent Jupiter semidiameter in arcseconds.
+func (module *Jupiter) SemidiameterN(date time.Time, n int) float64 {
 	jd := calendar.Date2JD(date.UTC())
-	return basic.JupiterSemidiameterN(basic.UTC2TT(jd), n)
+	return basic.JupiterSemidiameterNWithInstance(basic.UTC2TT(jd), n, module.inst)
 }
 
 // Diameter 木星视直径，单位角秒 / apparent Jupiter diameter in arcseconds.
-func Diameter(date time.Time) float64 {
-	return DiameterN(date, -1)
+func (module *Jupiter) Diameter(date time.Time) float64 {
+	return module.DiameterN(date, -1)
 }
 
-// DiameterN 木星视直径（截断版），单位角秒 / truncated apparent Jupiter diameter in arcseconds.
-func DiameterN(date time.Time, n int) float64 {
+// DiameterN 木星视直径（n 变体），单位角秒 / n-parameterised apparent Jupiter diameter in arcseconds.
+func (module *Jupiter) DiameterN(date time.Time, n int) float64 {
 	jd := calendar.Date2JD(date.UTC())
-	return basic.JupiterDiameterN(basic.UTC2TT(jd), n)
+	return basic.JupiterDiameterNWithInstance(basic.UTC2TT(jd), n, module.inst)
 }

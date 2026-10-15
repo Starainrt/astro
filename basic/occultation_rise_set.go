@@ -3,6 +3,8 @@ package basic
 import (
 	"math"
 	"time"
+
+	"github.com/starainrt/astro/internal/geodata"
 )
 
 const (
@@ -26,8 +28,6 @@ const (
 	occultationRiseSetEvaluationCacheMaximumEntries = 16384
 	occultationRiseSetTimeEpsilonDays               = 1e-8
 	occultationRiseSetTargetSpacingKM               = 100.0
-	occultationTopocentricEarthRadiusKM             = 6378.14
-	occultationTopocentricEarthPolarRadiusKM        = 6356.755
 )
 
 // 站心赤经赤纬的历史公式使用固定地平视差常数；保留该尺度可使向量算法与既有结果数值等价。
@@ -372,7 +372,7 @@ func (context occultationRiseSetContext) moonHorizonResidual(longitude, latitude
 	sinTheta, cosTheta := math.Sincos(theta)
 	moonDotZenith := cosLatitude*(context.moon.positionKM.x*cosTheta+context.moon.positionKM.y*sinTheta) +
 		context.moon.positionKM.z*sinLatitude
-	polarRatio := occultationTopocentricEarthPolarRadiusKM / occultationTopocentricEarthRadiusKM
+	polarRatio := topocentricEarthPolarRadiusKM / topocentricEarthRadiusKM
 	shapeDotZenith := math.Sqrt(cosLatitude*cosLatitude + polarRatio*polarRatio*sinLatitude*sinLatitude)
 	residual := moonDotZenith - occultationLegacyParallaxRadiusKM*shapeDotZenith
 	return residual, finite(residual)
@@ -385,7 +385,7 @@ func occultationRiseSetObserverVectors(
 	theta := (siderealDegrees + longitude) * rad
 	sinLatitude, cosLatitude := math.Sincos(latitudeRad)
 	sinTheta, cosTheta := math.Sincos(theta)
-	polarRatio := occultationTopocentricEarthPolarRadiusKM / occultationTopocentricEarthRadiusKM
+	polarRatio := topocentricEarthPolarRadiusKM / topocentricEarthRadiusKM
 	u := math.Atan(polarRatio * math.Tan(latitudeRad))
 	sinU, cosU := math.Sincos(u)
 	shape := occultationPathVector{
@@ -395,7 +395,7 @@ func occultationRiseSetObserverVectors(
 	}
 	zenith := occultationPathVector{x: cosLatitude * cosTheta, y: cosLatitude * sinTheta, z: sinLatitude}
 	return occultationPathScale(shape, occultationLegacyParallaxRadiusKM),
-		occultationPathScale(shape, occultationTopocentricEarthRadiusKM), zenith
+		occultationPathScale(shape, topocentricEarthRadiusKM), zenith
 }
 
 func occultationRiseSetTopocentricDirection(
@@ -636,7 +636,7 @@ func (evaluation occultationRiseSetEvaluation) pointsAt(
 		return result
 	}
 	gst := ApparentSiderealTime(TT2UT1(evaluation.tt)) * 15
-	centerLongitude := normalizeLongitude(evaluation.center.moonRA - gst)
+	centerLongitude := geodata.NormalizeLongitude(evaluation.center.moonRA - gst)
 	centerLatitude := evaluation.center.moonDec
 	appendRoots := func(greatest bool) {
 		// Keep the historical geographic refinement for ordinary latitudes; it

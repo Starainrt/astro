@@ -31,10 +31,12 @@ Targets use two distinct contact models:
   - [Path algorithms and contours](#path-algorithms-and-contours)
   - [Greatest-time contours](#greatest-time-contours)
 - [Planetary occultations](#planetary-occultations)
+- [Lunar limb correction](#lunar-limb-correction)
 - [Lunar Occultation Charts](#lunar-occultation-charts)
   - [Global paths](#global-paths)
   - [Detailed layout](#detailed-layout)
   - [Fixed-site charts](#fixed-site-charts)
+  - [Precise limb-profile chart](#precise-limb-profile-chart)
   - [Time scale and UT1](#time-scale-and-ut1)
 
 ## Searching for a stellar occultation at a fixed site
@@ -92,6 +94,8 @@ The snippets use the target and search window from the first example. SVG calls 
 | `moonsvg.FindLocalStarOccultationSVGs` / `FindLocalPlanetOccultationSVGs` | Search and render fixed-site charts | Same |
 | `moonsvg.StarOccultationPathSVG` / `PlanetOccultationPathSVG` | Render an existing global path | Return `(string, error)` |
 | `moonsvg.StarOccultationDetailedSVG` / `PlanetOccultationDetailedSVG` | One-page detailed layout | Fixed orthographic globe |
+| `moon.StarOccultationLimbProfile` / `StarOccultationLimbProfileInUT1` | Precise solve along the star track with a limb profile, returning every hidden interval and the in-band samples | Needs a profile; result is a `StarOccultationLimbProfileResult` |
+| `moonsvg.StarOccultationLimbProfileSVG` | Precise limb-profile chart | Options are `StarOccultationLimbProfileSVGOptions` |
 | `moonsvg.StarOccultationSVGOptions` / `moonsvg.OccultationDetailedSVGOptions` | Chart options (canvas, projection, scale, marker step) | Projections via `MapProjection*`, scales via `astro.TimeScale*` |
 | `moon.OccultationMercury` ... `moon.OccultationNeptune` | Planetary target constants | Passed to the planetary entry points |
 | `moon.OccultationSearchOptions` / `moon.OccultationPathOptions` | Search and path options | Path options include `Step`, `TargetSpacingKM` and `GreatestTimeStep` |
@@ -183,7 +187,7 @@ fmt.Println(err, len(svg), detailErr, len(detailed))
 
 - Path maps return `(string, error)` and accept the same four projections as the solar maps; the detailed layout is fixed to the orthographic globe, accepts no other projection, and derives its arrangement from the canvas aspect.
 - Use `StarOccultationPathSVG` when the path already exists, and `FindStarOccultationSVGs` for search-plus-render in one call (see the two chains above).
-- Canvas floors: `640x480` for a standalone path map. The detailed layout accepts a width of `480` but in practice needs about `670x595` to hold the map, data blocks and footer; smaller canvases return an error.
+- Canvas floors: `640×480` for a standalone path map. The detailed layout accepts a width of `480` but in practice needs about `670×595` to hold the map, data blocks and footer; smaller canvases return an error.
 
 ### Grazing events, isochrones and band widths
 
@@ -309,10 +313,10 @@ Output:
 
 ```text
 进贤增九 total
-2025-06-05 19:14:01.076 CST 2025-06-05 20:02:06.311 CST 2025-06-05 20:50:10.721 CST
-altitude=75.561 visible=true
-2025-06-05 17:45:28.475 CST 2025-06-05 20:02:06.300 CST 2025-06-05 22:18:49.945 CST
-greatest=121.566009 6.807079 width=3582.4km center=108
+2025-06-05 19:14:03.127 CST 2025-06-05 20:02:08.397 CST 2025-06-05 20:50:12.789 CST
+altitude=75.556 visible=true
+2025-06-05 17:45:29.822 CST 2025-06-05 20:02:07.622 CST 2025-06-05 22:18:51.246 CST
+greatest=121.561060 6.808173 width=3582.4km center=108
 ```
 
 ### Search and path sampling options
@@ -333,11 +337,7 @@ The result's `GreatestLimitSeparationKM` is the ground separation between northe
 
 ### Path algorithms and contours
 
-`OccultationPathOptions.Algorithm` selects the stellar/planetary global-path ephemeris branch.
-
-Its zero value or `moon.OccultationPathAlgorithmOptimized` uses checked Cartesian interpolation at 30-minute nodes while retaining the station equations, continuous envelopes, and rise/set curves.
-
-`moon.OccultationPathAlgorithmExact` uses interpolated candidates with full-term ephemerides for final solving. Failed table checks fall back to full-term solving; evaluations outside the interpolation window use exact ephemerides.
+`OccultationPathOptions.Algorithm` selects the stellar/planetary global-path ephemeris branch: its zero value or `moon.OccultationPathAlgorithmOptimized` approximates the ephemeris with vector interpolation at 30-minute nodes, and recomputes with the full ephemeris when the interpolation self-check fails or the instant falls outside the interpolation window. `moon.OccultationPathAlgorithmExact` interpolates only during candidate screening and always solves with the full ephemeris. Both branches keep the same station equations, band boundaries and rise/set curves.
 
 Checks are sampled safeguards, not a rigorous error bound at every instant. The branches share the geometric definition, but sample points and GeoJSON bytes need not be identical.
 
@@ -406,16 +406,53 @@ Output:
 
 ```text
 Saturn total true
-2025-02-01 11:29:09.710 CST
-2025-02-01 11:29:40.069 CST
-2025-02-01 12:00:48.747 CST
-2025-02-01 12:32:46.415 CST
-2025-02-01 12:33:18.312 CST
+2025-02-01 11:29:10.984 CST
+2025-02-01 11:29:41.333 CST
+2025-02-01 12:00:50.058 CST
+2025-02-01 12:32:47.753 CST
+2025-02-01 12:33:19.650 CST
 ```
 
 Global `FindPlanetOccultationPaths` results contain both the region where any part of the planetary disk overlaps the Moon and the region where the whole planet is hidden.
 
 `HasTotalBand` reports whether a total band exists, and `GreatestTotalWidthKM` is its width at greatest occultation; center lines, limits, and enabled instantaneous footprints all carry sample times.
+
+## Lunar limb correction
+
+The Moon is a circular disk by default. Stellar and planetary occultation searches at a fixed site can use the ISAS/JAXA limb profile from the `moon/limb` package (a processed product of SELENE/Kaguya LALT data; see the [eclipse and transit manual](eclipse.md#lunar-limb-correction)): disappearance, reappearance and the planet's inner and outer contacts are refined with the actual limb radius toward the target. Greatest occultation, type and candidate screening still use the circular disk.
+
+```go
+import "github.com/starainrt/astro/moon/limb"
+
+events, err := moon.FindStarOccultations(start, end, star, lon, lat, 0,
+	moon.OccultationSearchOptions{LunarLimb: limb.Default()})
+
+// Or set it once on a context
+base, err := astro.NewContext(astro.ModelSemianalytic)
+if err != nil {
+	panic(err)
+}
+ctx := base.WithLunarLimb(limb.Default())
+events, err = ctx.Moon().FindStarOccultations(start, end, star, lon, lat, 0, moon.OccultationSearchOptions{})
+```
+
+Corrections are usually a few seconds; for the 2024-08-21 occultation of Saturn the contacts move by `-1.8 s` to `-0.6 s`.
+
+Accuracy limits:
+
+- The built-in profile is interpolated on a 1° libration grid; the limb margin at a single contact is good to about `±0.05″` (about 100 m on the Moon), set by the 16 pixel/degree terrain and the interpolation together.
+- In a graze the star skims the limb with a margin of a few hundredths of an arcsecond, so the number of hidden intervals and the brief disappearances and reappearances can differ from observations; only the main interval and its magnitude are reliable. Example: the Regulus graze of 2017-09-18 (Greece, 5 intervals observed by IOTA) gives 1 interval here, whose disappearance and reappearance differ from the last observed interval by `+0.6 s` / `-0.4 s`.
+- For finer graze profiles, build a table from higher-resolution terrain and load it with `limb.Parse`, or implement the `LunarLimb` interface.
+
+Global occultation paths (`FindStarOccultationPaths`, `FindPlanetOccultationPaths`, via `OccultationPathOptions.LunarLimb` or the module setting) correct only the outer-contact northern and southern limits:
+
+- The limits move onto the limb graze lines: the star track is treated as straight near the tangent point and the effective limb is the highest point within ±8° of position angle.
+- Points with the Moon near the horizon stay circular.
+- Planetary total-occultation limits, band fills, isochrones and rise/set curves stay circular.
+- Multiple disappearances and reappearances inside the graze zone are not computed here.
+- For HR 4799 on 2025-06-05 the graze lines move by up to about `4 km`.
+
+Charts need no extra switch: `LunarLimbApplied` on the result records whether the limb correction actually took effect, and `moon/svg` declares the convention after the time-scale note. A local result sets it only when every contact converged on the profile; if any contact fails, the whole result stays circular. A path sets it when at least one limit point was corrected. Converged contacts no longer sit on the circular limb, so local charts skip the circular contact check for them and render events from the built-in or a custom profile directly.
 
 ## Lunar Occultation Charts
 
@@ -428,6 +465,7 @@ Global `FindPlanetOccultationPaths` results contain both the region where any pa
 | `StarOccultationDetailedSVG` / `PlanetOccultationDetailedSVG` | One-page detailed layout |
 | `FindLocalStarOccultationSVGs` / `FindLocalPlanetOccultationSVGs` | Fixed-site topocentric lunar track, lunar path and contact-phase charts |
 | `LocalStarOccultationSVG` / `LocalPlanetOccultationSVG` | Render an existing fixed-site event |
+| `StarOccultationLimbProfileSVG` | Precise limb-profile chart: limb relief along the track, every hidden interval and the immersion/reappearance numbering |
 
 `eclipse/svg` entry points return `(string, bool)` while `moon/svg` entry points return `(string, error)` or `([]string, error)`: on the occultation side the second value is a real error (UT1 with a non-UTC location, canvas below the floor, invalid path), not a "cannot draw this chart" flag.
 
@@ -445,8 +483,8 @@ Greatest instants are measured from the Sun-Moon center separation for point sta
 | --- | --- |
 | `MapProjectionAuto` (zero value) | Chosen per event; high-latitude events may land on a polar map |
 | `MapProjectionEquirectangular` | Equirectangular, clearest for long paths crossing the antimeridian |
-| `MapProjectionNorthPolar` / `MapProjectionSouthPolar` | Azimuthal equidistant with the pole at the centre |
-| `MapProjectionOrthographic` | Orthographic globe viewed from the event centre, drawing only the hemisphere facing it |
+| `MapProjectionNorthPolar` / `MapProjectionSouthPolar` | Azimuthal equidistant with the pole at the center |
+| `MapProjectionOrthographic` | Orthographic globe viewed from the event center, drawing only the hemisphere facing it |
 
 The orthographic globe (`2025-06-05` occultation of HR 4799):
 
@@ -493,15 +531,15 @@ svgs, err := moonsvg.FindStarOccultationSVGs(start, end, target,
 fmt.Println(err, len(svgs))
 ```
 
-`TimeLabelStep` defaults to 30 minutes and a negative value disables the time markers along the center line. A standalone global path map needs at least `640x480`; smaller canvases return `ErrInvalidStarOccultationSVGOptions` (`ErrInvalidPlanetOccultationSVGOptions` for the planetary entry points).
+`TimeLabelStep` defaults to 30 minutes and a negative value disables the time markers along the center line. A standalone global path map needs at least `640×480`; smaller canvases return `ErrInvalidStarOccultationSVGOptions` (`ErrInvalidPlanetOccultationSVGOptions` for the planetary entry points).
 
-The legend, footer and graticule all reserve space by canvas height, so shorter canvases press against the footer more easily; the south-polar example in this manual works fine at `1200x800`.
+The legend, footer and graticule all reserve space by canvas height, so shorter canvases press against the footer more easily; the south-polar example in this manual works fine at `1200×800`.
 
 ### Detailed layout
 
-The detailed layout combines a whole occultation on one `1000x1414` page: a centred summary, geocentric/topocentric data blocks for Moon and target, an **orthographic globe** path map (northern and southern limits, visible/geometric center lines, the greatest point, immersion/greatest/emersion phase points and 30-minute time markers), and a footer note.
+The detailed layout combines a whole occultation on one `1000×1414` page: a centered summary, geocentric/topocentric data blocks for Moon and target, an **orthographic globe** path map (northern and southern limits, visible/geometric center lines, the greatest point, immersion/greatest/emersion phase points and 30-minute time markers), and a footer note.
 
-The globe is viewed from the event centre and this layout is fixed to the orthographic projection, accepting no other; use the `StarOccultationPathSVG` / `FindStarOccultationSVGs` above when only a standalone path map is needed.
+The globe is viewed from the event center and this layout is fixed to the orthographic projection, accepting no other; use the `StarOccultationPathSVG` / `FindStarOccultationSVGs` above when only a standalone path map is needed.
 
 ```go
 detailed, err := moonsvg.StarOccultationDetailedSVG(paths[0], target,
@@ -519,15 +557,15 @@ A landscape canvas puts the data blocks in two columns by three rows to the righ
 
 The globe path map uses the Natural Earth `1:50m` coastline without administrative boundaries.
 
-The detailed layout derives its arrangement from the canvas and needs about `670x595` in practice (the `480` width floor is only an argument check), returning `ErrInvalidOccultationDetailedSVGOptions` when the map and data blocks do not fit (`800x600`, `1000x1414` and `1414x1000` all render; `660x600`, `800x590`, `640x420` and `900x400` are rejected).
+The detailed layout derives its arrangement from the canvas and needs about `670×595` in practice (the `480` width floor is only an argument check), returning `ErrInvalidOccultationDetailedSVGOptions` when the map and data blocks do not fit (`800×600`, `1000×1414` and `1414×1000` all render; `660×600`, `800×590`, `640×420` and `900×400` are rejected).
 
-The "band width" printed on the map is the ground separation of the northern and southern limits at greatest occultation, `GreatestLimitSeparationKM` (about `3666.6 km` for the HR 4799 sample), which is a different convention from the across-center-line width `Greatest.WidthKM` (about `3582.4 km`); the two are not interchangeable.
+The "band width" printed on the map is the ground separation of the northern and southern limits at greatest occultation, `GreatestLimitSeparationKM`, not the across-center-line width `Greatest.WidthKM`; the two are not interchangeable.
 
 Greatest-time isochrones must be requested explicitly at the path layer through `moon.OccultationPathOptions.GreatestTimeStep`: `moon/svg` offers no switch of its own and only draws the `GreatestTimeContours` already present in the path result, so the request has to be made while computing the path and the line positions follow the core convention (`GreatestTimeStep` aligns to whole UTC marks; to align to the display time zone, convert the instants to dynamical-time Julian days first and pass them as `GreatestTimeValues`).
 
 A lunar occultation is visible worldwide for only a few hours (4 h 33 min for the HR 4799 sample), so the usual interval is denser than for solar eclipses, on the order of 15-30 minutes.
 
-A compact band using `DisableFootprints` merges once on the first render and then caches for the same path.
+A compact band using `DisableFootprints` is computed only once on the first render, and the same path reuses the cache afterwards.
 
 ### Fixed-site charts
 
@@ -543,9 +581,47 @@ fmt.Println(err, len(localSVGs))
 
 The local chart is drawn from the topocentric geometry of the given observer; the figure below reuses the `2025-06-05` occultation of Xianxianzengjiu (HR 4799).
 
-The observer is at `121.56601 E, 6.80706 N`, close to the global geometric greatest point; the immersion, greatest and emersion instants in the figure are the topocentric contacts actually seen from that site, together with lunar orientation, the lunar path, Moon altitude, azimuth and horizon visibility.
+The chart's observer is at `121.56601°E, 6.80706°N`, close to the global geometric greatest point; the immersion, greatest and emersion instants in the figure are the topocentric contacts actually seen from that site, together with lunar orientation, the lunar path, Moon altitude, azimuth and horizon visibility.
 
 ![2025 occultation of Xianxianzengjiu fixed-site chart](../../img/lunar-occultation-hr4799-2025-06-05-local-en.svg)
+
+### Precise limb-profile chart
+
+The contact times above are solved on a circular limb. Feeding the limb relief in point by point gives the limb geometry at every instant along the star track and **every** hidden interval: a deep occultation has one disappearance and one reappearance segment, a grazing event usually just one, and a limb valley can split a single occultation into several separate intervals.
+
+```go
+profile, err := moon.StarOccultationLimbProfile(events[0], target, limb.Default(),
+	moon.StarOccultationLimbProfileOptions{Step: 200 * time.Millisecond})
+fmt.Println(len(profile.Hidden), profile.Hidden[0].Start.UTC(), profile.Hidden[len(profile.Hidden)-1].End.UTC())
+samples := 0
+for _, segment := range profile.Segments {
+	samples += len(segment)
+}
+fmt.Println(profile.Step, len(profile.Segments), samples)
+
+profileSVG, err := moonsvg.StarOccultationLimbProfileSVG(profile,
+	moonsvg.StarOccultationLimbProfileSVGOptions{Width: 1000, Height: 620, Location: cst, Language: "en"})
+fmt.Println(err, len(profileSVG))
+```
+
+```text
+1 2025-06-05 11:13:59.65061903 +0000 UTC 2025-06-05 12:50:11.632025241 +0000 UTC
+200ms 2 191
+<nil> 30702
+```
+
+![Precise limb profile of the 2025 occultation of HR 4799](../../img/lunar-occultation-hr4799-2025-06-05-limb-profile-en.svg)
+
+The horizontal axis is time, each tick also labelled with the limb position angle at that instant, and the vertical axis is height above the reference circular limb in kilometres. The brown solid curve is the limb radius toward the star, the red dashed curve is the star's angular distance from the Moon's center, and their crossings are the hidden intervals, shaded and numbered; one panel is drawn per entry in `Segments`, with a sky-plane inset and the immersion/reappearance list on the right. The circular-limb result for the same event (`11:14:03.127` / `12:50:12.789 UTC`) differs by a few seconds — exactly the limb-relief correction.
+
+Conventions:
+
+- `info` contributes only the instant of greatest occultation and the observer; the remaining contacts are re-solved on the profile and returned in `profile.Occultation`. It must be a UTC-based result — never pass a `...InUT1` copy.
+- A `nil` limb falls back to the module or context profile (`WithLunarLimb`); when neither is set the call returns `ErrInvalidOccultationInput`.
+- `Step` defaults to 200 ms and is raised to a 10 ms minimum; each segment keeps at least 64 samples and the total is capped at 20000, with the step adjusted automatically. **Hidden intervals shorter than the step can be missed**, so shrink the step for grazing detail.
+- `Segments` holds the samples inside the limb relief band (two for a deep occultation, usually one for a graze), `Hidden` holds every hidden interval, `ReliefMinKM` / `ReliefMaxKM` bound the limb radii used for gating, and `ReferenceRadiusKM` is the lunar radius behind `MeanRadiusArcsec`.
+- The chart defaults to `920×620` and needs at least `640×480`; anything smaller returns `ErrInvalidStarOccultationLimbProfileSVGOptions`, and a track that never enters the relief band returns `ErrEmptyStarOccultationLimbProfile`.
+- For UT1 labels take a copy with `moon.StarOccultationLimbProfileInUT1(profile)`, or pass `TimeScale: astro.TimeScaleUT1` to the chart options (then `Location` must be UTC).
 
 ### Time scale and UT1
 

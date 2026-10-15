@@ -141,7 +141,7 @@ segsAt := dial.DeclinationCurveAt(date, 1.0)
 fmt.Println(len(segs), len(segsAt))
 ```
 
-时间线把"地方平太阳时线上的等时刻点"直接投影成 `TimeLineSample`；赤纬曲线按固定赤纬或当日赤纬分段采样，段内 `Interval` 就是上面那条可用时角区间。
+时间线把"地方平太阳时线上的等时刻点"直接投影成 `TimeLineSample`；赤纬曲线按固定赤纬或当日赤纬分段采样，段内 `Interval` 即该赤纬对应的可用时角区间。
 
 ### 赤道、水平与垂直日晷特例
 
@@ -208,8 +208,8 @@ func main() {
 输出结果：
 
 ```text
-2026-06-21 09:34:10.438158222 +0805 LTZ
-hour angle=-36.456508 line@9am=-27.405871 line@now=-20.959182
+2026-06-21 09:34:10.404156224 +0805 LTZ
+hour angle=-36.456649 line@9am=-27.405871 line@now=-20.959281
 ```
 
 第一行的时区是合成的当地真太阳时区（经度 `121.4737°` 对应 `+08:05` 的 `LTZ`），所以打印值本身就体现了地方真太阳时与钟表时间的差。
@@ -233,7 +233,7 @@ decl=23.44 usable=-105.24..105.24 samples=211
 2 -37.92998436772365
 ```
 
-第一行说明当天在纬度 `31.2304°` 的水平日晷上，太阳赤纬 `23.44°` 时盘面能用的时角区间是 `[-105.24°, +105.24°]`（约 14 小时），采样 211 点；第二行是"地方平太阳时 9:30 这条时线"的两个采样点与其时角。这两个量配合就能直接画出一张带可用范围的水平日晷。
+第一行说明当天在纬度 `31.2304°` 的水平日晷上，太阳赤纬 `23.44°` 时盘面能用的时角区间是 `[-105.24°, +105.24°]`（约 14 小时），采样 211 点；第二行是"地方平太阳时 9:30 这条时线"的两个采样点与其时角。可用区间可直接作为时线的绘制裁剪范围。
 
 ### 常见坑
 
@@ -327,7 +327,7 @@ fmt.Println(v.PlaneNormalAzimuth, v.PlaneNormalZenithDistance)
 - **时角符号**：`HourAngle` 上午为负、下午为正；`HourAngleInterval` 的取值范围是 `[-180, 180]` 且保证 `Start <= End`。跨零点的一天会被拆成多段。
 - **`date` 的时区语义（易错）**：`MeanSolarTimePoint` / `MeanSolarTimeLine` 的 `date` 表示**目标地点的地方平太阳时**（通常是 `MeanSolarTime(...)` 的返回值）；`ZoneTimePoint` / `ZoneTimeLine` 会忽略传入 `date` 的时分秒，只用它的年月日与时区，再用参数 `zoneTimeHours` 替换钟面时间。传错会把整条时线平移。
 - **落影有效性的三个布尔量**：`SunAboveHorizon` 表示太阳在地平线以上，`PlaneIlluminated` 表示盘面朝向太阳，`Illuminated` 是两者同时成立后的最终判据；只画影子时必须看 `Illuminated`。
-- **退化情形**：当盘面法线与极轴垂直（等价于极轴晷针与盘面平行）时，`PlanarGeometry.HasFiniteCenter` 为 `false`，`CenterX`/`CenterY`/`PolarStylusLength` 返回 `NaN`、`PolarStylusPlaneAngle` 为 `0`——此时中心在无穷远，所有以中心为基准的绘制都不可用。例如纬度 `45°`、法线方位 `180°`、法线天顶距 `45°` 就落在这个退化点上。
+- **退化情形**：盘面法线与极轴垂直时 `HasFiniteCenter` 为 `false`、`CenterX`/`CenterY`/`PolarStylusLength` 为 `NaN`，中心在无穷远，以中心为基准的绘制不可用；示例见[退化情形与各面日晷口径](#退化情形与各面日晷口径)。
 - **`PlaneIlluminated` 与 `Illuminated` 的区别**：前者只做几何受光判断，后者还要求太阳在地平线以上；做"这张日晷一天里能用多久"的结论时用后者。
 
 ## 相关手册

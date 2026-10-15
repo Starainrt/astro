@@ -3,6 +3,8 @@ package eclipse
 import (
 	"testing"
 	"time"
+
+	"github.com/starainrt/astro/internal/ephemtest"
 )
 
 func TestLunarEclipseLocalDayBoundsRespectDST(t *testing.T) {
@@ -179,6 +181,7 @@ func TestLunarEclipseInfoKeepsLocation(t *testing.T) {
 }
 
 func TestLunarEclipseContactPoints(t *testing.T) {
+	values := ephemtest.NewValues(t, "lunar_contact_points")
 	loc := time.FixedZone("UTC+08", 8*3600)
 	info := ClosestLunarEclipse(time.Date(2026, 3, 3, 12, 0, 0, 0, loc))
 	if info.Type != LunarEclipseTotal {
@@ -193,20 +196,21 @@ func TestLunarEclipseContactPoints(t *testing.T) {
 		points[point.Label] = point
 	}
 	u1 := points["U1"]
-	assertFloatClose(t, "U1.ContactPositionAngle", u1.ContactPositionAngle, 96.181711, 1e-3)
-	assertFloatClose(t, "U1.ContactClockwiseAngle", u1.ContactClockwiseAngle, 263.818289, 1e-3)
+	assertFloatClose(t, "U1.ContactPositionAngle", u1.ContactPositionAngle, values.Want("U1.ContactPositionAngle", 96.181711, u1.ContactPositionAngle), 1e-3)
+	assertFloatClose(t, "U1.ContactClockwiseAngle", u1.ContactClockwiseAngle, values.Want("U1.ContactClockwiseAngle", 263.818289, u1.ContactClockwiseAngle), 1e-3)
 	u2 := points["U2"]
-	assertFloatClose(t, "U2.ContactPositionAngle", u2.ContactPositionAngle, 243.025171, 1e-3)
-	assertFloatClose(t, "U2.MoonCenterPositionAngle", u2.MoonCenterPositionAngle, 243.025171, 1e-3)
+	assertFloatClose(t, "U2.ContactPositionAngle", u2.ContactPositionAngle, values.Want("U2.ContactPositionAngle", 243.025171, u2.ContactPositionAngle), 1e-3)
+	assertFloatClose(t, "U2.MoonCenterPositionAngle", u2.MoonCenterPositionAngle, values.Want("U2.MoonCenterPositionAngle", 243.025171, u2.MoonCenterPositionAngle), 1e-3)
 }
 
 func TestLunarEclipseChauvenetRemainsAvailable(t *testing.T) {
+	values := ephemtest.NewValues(t, "lunar_chauvenet_available")
 	date := time.Date(2025, 3, 14, 12, 0, 0, 0, time.UTC)
 	defaultInfo := ClosestLunarEclipse(date)
 	chauvenetInfo := ClosestLunarEclipseChauvenet(date)
 
-	assertFloatClose(t, "Chauvenet.PenumbralMagnitude", chauvenetInfo.PenumbralMagnitude, 2.285436461, 1e-6)
-	assertFloatClose(t, "Chauvenet.UmbralMagnitude", chauvenetInfo.UmbralMagnitude, 1.182806541, 1e-6)
+	assertFloatClose(t, "Chauvenet.PenumbralMagnitude", chauvenetInfo.PenumbralMagnitude, values.Want("Chauvenet.PenumbralMagnitude", 2.285436461, chauvenetInfo.PenumbralMagnitude), 1e-6)
+	assertFloatClose(t, "Chauvenet.UmbralMagnitude", chauvenetInfo.UmbralMagnitude, values.Want("Chauvenet.UmbralMagnitude", 1.182806541, chauvenetInfo.UmbralMagnitude), 1e-6)
 
 	if !(chauvenetInfo.PenumbralMagnitude > defaultInfo.PenumbralMagnitude) {
 		t.Fatalf("expected Chauvenet penumbral magnitude > Danjon: chauvenet=%.6f danjon=%.6f", chauvenetInfo.PenumbralMagnitude, defaultInfo.PenumbralMagnitude)
@@ -217,6 +221,8 @@ func TestLunarEclipseChauvenetRemainsAvailable(t *testing.T) {
 }
 
 func TestLunarEclipseDefaultFallsBackForUltraShallowPenumbralEdge(t *testing.T) {
+	// 夹具按旧模型几何选取，用来覆盖该边界分支。
+	ephemtest.PinLegacy(t)
 	date := time.Date(-780, 12, 13, 12, 0, 0, 0, time.UTC)
 
 	defaultInfo := ClosestLunarEclipse(date)

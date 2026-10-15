@@ -3,6 +3,8 @@ package basic
 import (
 	"math"
 	"testing"
+
+	"github.com/starainrt/astro/internal/geodata"
 )
 
 // 采样并集的顶点必须保留自己的时间：平滑把顶点移了位置，时间场必须跟着同一个滤波器走，
@@ -218,7 +220,7 @@ func solarEclipseRingCenterDistanceKM(
 		return math.Inf(1)
 	}
 	return solarEclipsePathDistanceKM(SolarEclipsePathPoint{
-		Longitude: normalizeLongitude(longitude / float64(points)),
+		Longitude: geodata.NormalizeLongitude(longitude / float64(points)),
 		Latitude:  latitude / float64(points),
 	}, reference)
 }

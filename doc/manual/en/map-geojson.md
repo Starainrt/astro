@@ -7,6 +7,7 @@
 ## Contents
 
 - [Exporting solar-eclipse GeoJSON](#exporting-solar-eclipse-geojson)
+- [Exporting transit GeoJSON](#exporting-transit-geojson)
 - [API Reference](#api-reference)
 - [Usage examples](#usage-examples)
   - [Choosing a projection](#choosing-a-projection)
@@ -70,6 +71,25 @@ func main() {
 
 A partial eclipse may have no central path, so `centralPath` may be `nil`. This program writes GeoJSON to standard output for redirection to a file. SVG and KML examples follow.
 
+## Exporting transit GeoJSON
+
+The transit entry points take a geocentric `TransitInfo` and partition the globe exactly like the transit visibility map:
+
+```go
+m := mercury.NextTransit(time.Date(2026, 10, 12, 0, 0, 0, 0, cst))
+data, err := geojson.MarshalMercuryTransit(m, geojson.PlanetTransitOptions{
+	BoundaryPoints: 360,
+	IsochroneStep:  5 * time.Minute,
+	TimeMarkers:    &geojson.TimeMarkerOptions{Step: time.Hour, Location: cst},
+})
+if err != nil {
+	log.Fatal(err)
+}
+fmt.Println(string(data))
+```
+
+For Venus, use `venus.NextTransit` with `MarshalVenusTransit`; the options are the same. `date` only has to fall before the transit: `NextTransit` returns the next one after it, and `ClosestTransit` returns the nearest in either direction. An invalid `TransitInfo` (`Valid` false) makes the export fail.
+
 ## API Reference
 
 SVG snippets use the import aliases `eclipsesvg "github.com/starainrt/astro/eclipse/svg"` and, for occultations, `moonsvg "github.com/starainrt/astro/moon/svg"`. Dates and time zones reuse the first example.
@@ -82,6 +102,7 @@ SVG snippets use the import aliases `eclipsesvg "github.com/starainrt/astro/ecli
 | `StarOccultationPathSVG` / `PlanetOccultationPathSVG` | Occultation global path maps | Return `(string, error)` |
 | `MarshalSolarEclipse` / `MarshalSolarEclipseWithTimeMarkers` | Solar eclipse GeoJSON | Without and with time markers |
 | `MarshalLunarEclipse` / `MarshalLunarEclipseWithTimeMarkers` / `MarshalLunarEclipseWithOptions` | Lunar eclipse GeoJSON | Same three |
+| `MarshalMercuryTransit` / `MarshalVenusTransit` | Planetary transit GeoJSON | Options in `PlanetTransitOptions` |
 | `MarshalStarOccultation` / `MarshalPlanetOccultation` (and `...WithTimeMarkers`) | Occultation GeoJSON | Same pair |
 | `NewSolarEclipseShadowSolver` / `MarshalSolarEclipseShadowInstant` | Single-instant footprint and its GeoJSON | For time-axis scrubbing |
 | `TimeMarkerOptions` | Marker `Step`, `Location` and `TimeScale` | `Step` defaults to 30 minutes, at most 1440 markers |
@@ -134,7 +155,7 @@ fmt.Println(err, json.Valid(data), len(data))
 
 - `WithTimeMarkers` appends Point features with `role=time-marker`: `label` is localised through `Location`, while `time` stays UTC RFC 3339.
 - `Step` defaults to 30 minutes, positive values are at least one minute, and one export carries at most 1440 markers; use the unsuffixed `MarshalSolarEclipse` when no markers are wanted.
-- Lunar eclipses and occultations have symmetric entry points (`MarshalLunarEclipse*`, `MarshalStarOccultation*`, `MarshalPlanetOccultation*`); GeoJSON carries no basemap, boundary, style or projection, leaving Web Mercator and tile choices to the application.
+- Lunar eclipses and occultations have symmetric entry points (`MarshalLunarEclipse*`, `MarshalStarOccultation*`, `MarshalPlanetOccultation*`).
 
 ### Declaring the scale and UT1
 
@@ -165,7 +186,15 @@ true <nil> true 4217
 
 - The single-instant API computes only "this instant's umbral/penumbral footprint" and the station geometry; it produces no visibility bands, magnitude contours, rise/set boundaries or limits, and returns an empty value (not an error) when the umbra misses the Earth.
 - Compare `interp_signature` before interpolating: only identical neighbouring instants are safe to interpolate vertex by vertex; a flipped `closed`, a changed segment or vertex count, or an empty/non-empty transition (near U1/U4) all require exact geometry instead.
-- Degradable layers record their actual geometry source in `data-source`; the vocabulary is under [Map Projections](#map-projections).
+- Degradable layers record their actual geometry source in `data-source`; layers without a degraded branch carry no such attribute. The legal values are listed below.
+
+Grouped by figure family, the `data-source` values are listed below; the `eclipse/svg` package comment gives the full meaning of each:
+
+- Solar-eclipse boundaries and visibility bands: `partial-band-union`, `sampled-footprint-sweep`, `partial-band-contours`, `besselian-critical-envelope`, `paired-limit-chords`, `sampled-open-sweep`, `central-path-limits`
+- Solar-eclipse instants and magnitude lines: `rise-set-phase-lines`, `magnitude-contours`, `greatest-time-isochrones`
+- Instantaneous outlines: `penumbral-outlines`, `central-shadow-outlines`
+- Lunar eclipses: `p1-p4-visibility-regions`, `p1-p4-horizon-boundaries`
+- Transits: `c1-c4-visibility-regions`, `c1-c4-horizon-boundaries`, `transit-contact-isochrones`
 
 ## Map Projections
 
@@ -177,14 +206,14 @@ The automatic projection (the zero value `...Auto`) picks a polar map for the so
 
 | Projection | Constant (solar/lunar - occultation) | When to use | Suggested canvas |
 | --- | --- | --- | --- |
-| Automatic | `EclipseMapProjectionAuto` - `MapProjectionAuto` | Default; picks a polar map per event | 1200x800 |
-| Equirectangular | `...Equirectangular` | Long bands crossing the antimeridian | 1200x800, 1414x1000 |
-| North/south polar equidistant | `...NorthPolar` / `...SouthPolar` | Event lies entirely at high latitude | 1200x800, 1000x1414 |
-| Orthographic globe | `...Orthographic` | NASA-style hemisphere view centred on the event | 1000x1414 |
+| Automatic | `EclipseMapProjectionAuto` - `MapProjectionAuto` | Default; picks a polar map per event | 1200×800 |
+| Equirectangular | `...Equirectangular` | Long bands crossing the antimeridian | 1200×800, 1414×1000 |
+| North/south polar equidistant | `...NorthPolar` / `...SouthPolar` | Event lies entirely at high latitude | 1200×800, 1000×1414 |
+| Orthographic globe | `...Orthographic` | NASA-style hemisphere view centered on the event | 1000×1414 |
 
-`EclipseMapProjectionOrthographic` / `MapProjectionOrthographic` produce the orthographic globe: the view point is the greatest-eclipse point (the event centre for an occultation), only the hemisphere facing it is drawn, and the projection boundary is the great circle of the visible hemisphere.
+`EclipseMapProjectionOrthographic` / `MapProjectionOrthographic` produce the orthographic globe: the view point is the greatest-eclipse point (the event center for an occultation), only the hemisphere facing it is drawn, and the projection boundary is the great circle of the visible hemisphere.
 
-The orthographic projection uses the NASA-style centered-globe layout; a `1000x1414` canvas is recommended. It does not change the underlying geographic results.
+The orthographic projection uses the NASA-style centered-globe layout; a `1000×1414` canvas is recommended. It does not change the underlying geographic results.
 
 Four projections of one event in a single pass:
 
@@ -210,9 +239,7 @@ for _, spec := range []struct {
 }
 ```
 
-Per-family options, layer switches and illustrated examples live in the [solar and lunar eclipse manual](eclipse.md#solar-and-lunar-eclipse-charts) and the [lunar occultation manual](occultation.md#lunar-occultation-charts); the GeoJSON side carries geographic results only and leaves the projection to the application.
-
-Degradable layers record their actual geometry source in `data-source`; the vocabulary is listed in the `eclipse/svg` package comment: `partial-band-union`, `sampled-footprint-sweep`, `partial-band-contours`, `rise-set-phase-lines`, `magnitude-contours`, `greatest-time-isochrones`, `besselian-critical-envelope`, `paired-limit-chords`, `sampled-open-sweep`, `central-path-limits`, `penumbral-outlines`, `central-shadow-outlines`, `p1-p4-visibility-regions`, `p1-p4-horizon-boundaries`.
+Per-family options, layer switches and illustrated examples live in the [solar, lunar and transit eclipse manual](eclipse.md#solar-and-lunar-eclipse-charts) and the [lunar occultation manual](occultation.md#lunar-occultation-charts); the GeoJSON side carries geographic results only and leaves the projection to the application. Transit visibility regions, C1/C4 apparent horizons and optional topocentric isochrones can also be exported as GeoJSON; see the transit export example above.
 
 ## Time Scale Declaration
 
@@ -233,7 +260,7 @@ Time markers are placed at whole clock ticks of the output scale (a UT1 tick is 
 
 `geojson` accepts an already computed solar-eclipse, lunar-eclipse, or lunar-occultation result and returns `[]byte`.
 
-Those bytes are one complete UTF-8 RFC 7946 `FeatureCollection`, not an image or compressed payload: they can be written to `.geojson`, passed to `encoding/json`, or served directly to a map client.
+Those bytes are one complete UTF-8 RFC 7946 `FeatureCollection`: they can be written directly to `.geojson`, or handed to `encoding/json` and a front-end map component.
 
 ```go
 package main
@@ -282,9 +309,10 @@ Each event type has plain and time-marker variants:
 
 - `MarshalSolarEclipse` / `MarshalSolarEclipseWithTimeMarkers`
 - `MarshalLunarEclipse` / `MarshalLunarEclipseWithTimeMarkers`
-- `MarshalLunarEclipseWithOptions`: one `LunarEclipseOptions` value carrying the time markers, `SkipRoles` and the time-envelope sampling. `SkipRoles` can omit envelopes and penumbra-only bands; skipping both envelopes also skips their sampling. `EnvelopeSweepSamples` defaults to 48 and is clamped to `[2, 192]`; `EnvelopeLongitudePoints` defaults to `max(360, boundaryPoints)` and is clamped to `[12, 720]`.
+- `MarshalLunarEclipseWithOptions`: one `LunarEclipseOptions` value carrying the time markers, `SkipRoles` and the time-envelope sampling parameters. `SkipRoles` can omit envelopes and penumbra-only bands; skipping both envelopes also skips their sampling. `EnvelopeSweepSamples` defaults to 48 and is clamped to `[2, 192]`; `EnvelopeLongitudePoints` defaults to `max(360, boundaryPoints)` and is clamped to `[12, 720]`.
 - `MarshalStarOccultation` / `MarshalStarOccultationWithTimeMarkers`
 - `MarshalPlanetOccultation` / `MarshalPlanetOccultationWithTimeMarkers`
+- `MarshalMercuryTransit` / `MarshalVenusTransit`: take `mercury.TransitInfo` / `venus.TransitInfo` and partition the globe like the transit SVG map (whether the Sun's center is above the apparent horizon, standard refraction, at C1, greatest and C4). `BoundaryPoints` is the horizon sample count and also sets the region longitude columns to `max(360, BoundaryPoints)`, capped at 720. Roles are the three regions `transit-entire`, `transit-at-sunrise` and `transit-at-sunset`, the visible hemispheres and horizons `visible-at-c1` / `visible-at-c4` and `c1-horizon` / `c4-horizon`, `greatest` (the subsolar point) and the time markers `time-marker`. A positive `IsochroneStep` (at least 1 s) adds topocentric `c1-isochrone` through `c4-isochrone` (no C2/C3 for a grazing transit; the times are topocentric contacts and parallax can place them outside the geocentric C1–C4 interval), and a contact whose isochrone does not reach the visible hemisphere omits that role; skipping all three region roles skips the region computation.
 - `MarshalSolarEclipseWithOptions`: one `SolarEclipseOptions` value carrying both the time markers and `SkipRoles`, equivalent to the solar entry points above plus layer trimming.
 
   The usual entry in `SkipRoles` is `partial-footprint` (the instantaneous penumbral outlines); `partial-band` is the edge of the eclipse band (the magnitude-0 limit) and is normally kept.
@@ -352,7 +380,7 @@ Prior single-machine measurements put a 96-point footprint at about 64 µs and a
 
 Draw `central-shadow-boundary` for the physical edge and fill the footprint for the region. At U1/U4, an empty footprint is omitted rather than degraded to a line. `source_boundary_closed=true` means the physical boundary closes by itself.
 
-Sampled penumbral footprints carry the same properties. A footprint describes one instant; a static band describes the event-wide envelope. They are not interchangeable.
+Sampled penumbral footprints carry the same properties. A footprint covers only one instant and a static band covers the whole event, so do not mix them when taking geometry.
 
 Compare adjacent `interp_signature` values, such as `umbra-closed-seg1-pt97`, before interpolating vertices. Signatures, segment counts and vertex counts must match. This condition is not a strict interpolation error bound.
 
@@ -380,7 +408,7 @@ Occultations use process-wide ΔT and report its actual value.
 
 `eclipse.SolarEclipseCandidates(start, end, options)` returns greatest times, eclipse types, central types, magnitudes, gamma and optional Saros information. It does not calculate geographic geometry.
 
-For central eclipses at a fixed site, `SearchLocalCentralSolarEclipse` accepts `Kind`, `MaxYears`, `Backward`, `Geometric` and `Model` options and returns `(info, status)`. `status.Exhausted` reports that the search range was exhausted.
+For central eclipses at a fixed site, `SearchLocalCentralSolarEclipse` accepts `Kind`, `MaxYears`, `Backward`, `Geometric` and `Model` options and returns `(info, SolarEclipseLocalSearchStatus)`, whose `Exhausted` field reports that the search range was exhausted.
 
 `MaxYears<=0` uses the default budget of 6000 candidate steps, about 992 years. Calculate paths, footprints or SVG only after selecting an event when full maps are not needed for every candidate.
 
@@ -444,6 +472,7 @@ Features are grouped into Folders by `event` and `role`. Collections containing 
 | Total and partial occultation bands | `total-band`, `partial-band`, `total-band-outline`, `occultation-band` | Yellow with translucent band fill |
 | Rise/set visibility edges, lunar time envelopes and solar partial-band edge | `visibility-boundary`, `p1-horizon`, `p4-horizon`, `visible-at-p1`, `visible-at-p4`, `visible-during-eclipse`, `visible-throughout-eclipse`, solar `partial-band` | Orange |
 | Penumbra-only moonrise/moonset bands | `penumbra-moonrise`, `penumbra-moonset` | Blue-violet for moonrise, violet for moonset, with a translucent fill |
+| Transit visibility regions and contact lines | `transit-entire`, `transit-at-sunrise`, `transit-at-sunset`, `c1-horizon`, `c4-horizon`, `visible-at-c1`, `visible-at-c4`, `c1-isochrone` … `c4-isochrone` | Each of the three regions has its own fill; C1/C4 horizons and visible hemispheres are orange; the four contact isochrones each get a color |
 | Other limits, outlines, footprints and time markers | Other roles | Grey; polygons are outline-only by default |
 
 Zero-valued `Style` fields retain palette defaults:

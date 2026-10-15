@@ -33,7 +33,7 @@ func TestSolarSarosInfoDerivedOutsideCatalogRange(t *testing.T) {
 		date time.Time
 	}{
 		{name: "before catalog", date: time.Date(-3200, time.January, 1, 12, 0, 0, 0, time.UTC)},
-		{name: "after catalog", date: time.Date(3288, time.November, 15, 12, 0, 0, 0, time.UTC)},
+		{name: "after extension", date: time.Date(6500, time.November, 15, 12, 0, 0, 0, time.UTC)},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			info := ClosestSolarEclipse(tc.date)

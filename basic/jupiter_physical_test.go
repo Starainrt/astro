@@ -6,9 +6,12 @@ import (
 	"os"
 	"testing"
 	"time"
+
+	"github.com/starainrt/astro/internal/ephemtest"
 )
 
 func TestJupiterCentralMeridiansMeeusExample43A(t *testing.T) {
+	ephemtest.PinLegacy(t)
 	got := JupiterCentralMeridians(2448972.50068)
 	ds, de := JupiterDSDE(2448972.50068)
 

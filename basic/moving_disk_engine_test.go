@@ -182,3 +182,13 @@ func TestMovingDiskContactCacheClearsAtBoundedCapacity(t *testing.T) {
 		t.Fatal("new entry missing after bounded cache clear")
 	}
 }
+
+func TestMovingDiskEventEngineSampleTimesBoundsTinyStep(t *testing.T) {
+	engine := movingDiskEventEngine{maxSampleCount: 9}
+	for _, step := range []float64{1e-300, math.SmallestNonzeroFloat64} {
+		times, _ := engine.sampleTimes(0, 1, 0.5, step)
+		if len(times) > 9 {
+			t.Fatalf("step %g: sample count = %d, want <= 9", step, len(times))
+		}
+	}
+}

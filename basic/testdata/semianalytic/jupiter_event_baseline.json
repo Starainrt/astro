@@ -1,0 +1,1732 @@
+{
+  "samples": [
+    {
+      "input_utc": "1991-03-11T05:17:23.456Z",
+      "tt_jd_bits": 4702512152945916237,
+      "events": {
+        "LastJupiterConjunction": 4702511639717012620,
+        "LastJupiterEasternQuadrature": 4702511393973012502,
+        "LastJupiterOpposition": 4702512064463236620,
+        "LastJupiterProgradeToRetrograde": 4702511936733572185,
+        "LastJupiterRetrogradeToPrograde": 4702511338140647854,
+        "LastJupiterWesternQuadrature": 4702511882517375690,
+        "NextJupiterConjunction": 4702512495925443449,
+        "NextJupiterEasternQuadrature": 4702512249695175741,
+        "NextJupiterOpposition": 4702512914882489890,
+        "NextJupiterProgradeToRetrograde": 4702512787041232554,
+        "NextJupiterRetrogradeToPrograde": 4702512194567421550,
+        "NextJupiterWesternQuadrature": 4702512732981189693
+      }
+    },
+    {
+      "input_utc": "1991-10-24T09:26:40.456Z",
+      "tt_jd_bits": 4702512640796462585,
+      "events": {
+        "LastJupiterConjunction": 4702512495925443449,
+        "LastJupiterEasternQuadrature": 4702512249695175741,
+        "LastJupiterOpposition": 4702512064463236620,
+        "LastJupiterProgradeToRetrograde": 4702511936733572185,
+        "LastJupiterRetrogradeToPrograde": 4702512194567421550,
+        "LastJupiterWesternQuadrature": 4702511882517375690,
+        "NextJupiterConjunction": 4702513348128945305,
+        "NextJupiterEasternQuadrature": 4702513103067048699,
+        "NextJupiterOpposition": 4702512914882489890,
+        "NextJupiterProgradeToRetrograde": 4702512787041232554,
+        "NextJupiterRetrogradeToPrograde": 4702513048376039518,
+        "NextJupiterWesternQuadrature": 4702512732981189693
+      }
+    },
+    {
+      "input_utc": "1992-06-07T13:35:57.456Z",
+      "tt_jd_bits": 4702513128647008932,
+      "events": {
+        "LastJupiterConjunction": 4702512495925443449,
+        "LastJupiterEasternQuadrature": 4702513103067048699,
+        "LastJupiterOpposition": 4702512914882489890,
+        "LastJupiterProgradeToRetrograde": 4702512787041232554,
+        "LastJupiterRetrogradeToPrograde": 4702513048376039516,
+        "LastJupiterWesternQuadrature": 4702512732981189693,
+        "NextJupiterConjunction": 4702513348128945305,
+        "NextJupiterEasternQuadrature": 4702513955120488411,
+        "NextJupiterOpposition": 4702513764159242873,
+        "NextJupiterProgradeToRetrograde": 4702513635402149085,
+        "NextJupiterRetrogradeToPrograde": 4702513899777250709,
+        "NextJupiterWesternQuadrature": 4702513580732728436
+      }
+    },
+    {
+      "input_utc": "1993-01-20T17:45:14.456Z",
+      "tt_jd_bits": 4702513616497580134,
+      "events": {
+        "LastJupiterConjunction": 4702513348128945305,
+        "LastJupiterEasternQuadrature": 4702513103067048699,
+        "LastJupiterOpposition": 4702512914882489890,
+        "LastJupiterProgradeToRetrograde": 4702512787041232554,
+        "LastJupiterRetrogradeToPrograde": 4702513048376039518,
+        "LastJupiterWesternQuadrature": 4702513580732728436,
+        "NextJupiterConjunction": 4702514197794183218,
+        "NextJupiterEasternQuadrature": 4702513955120488411,
+        "NextJupiterOpposition": 4702513764159242873,
+        "NextJupiterProgradeToRetrograde": 4702513635402149085,
+        "NextJupiterRetrogradeToPrograde": 4702513899777250709,
+        "NextJupiterWesternQuadrature": 4702514428184996343
+      }
+    },
+    {
+      "input_utc": "1993-09-04T21:54:31.456Z",
+      "tt_jd_bits": 4702514104348151337,
+      "events": {
+        "LastJupiterConjunction": 4702513348128945305,
+        "LastJupiterEasternQuadrature": 4702513955120488411,
+        "LastJupiterOpposition": 4702513764159242873,
+        "LastJupiterProgradeToRetrograde": 4702513635402149085,
+        "LastJupiterRetrogradeToPrograde": 4702513899777250709,
+        "LastJupiterWesternQuadrature": 4702513580732728436,
+        "NextJupiterConjunction": 4702514197794183218,
+        "NextJupiterEasternQuadrature": 4702514807158095234,
+        "NextJupiterOpposition": 4702514614284672284,
+        "NextJupiterProgradeToRetrograde": 4702514484375761159,
+        "NextJupiterRetrogradeToPrograde": 4702514750232579882,
+        "NextJupiterWesternQuadrature": 4702514428184996343
+      }
+    },
+    {
+      "input_utc": "1994-04-20T02:03:48.456Z",
+      "tt_jd_bits": 4702514592198697684,
+      "events": {
+        "LastJupiterConjunction": 4702514197794183218,
+        "LastJupiterEasternQuadrature": 4702513955120488411,
+        "LastJupiterOpposition": 4702513764159242873,
+        "LastJupiterProgradeToRetrograde": 4702514484375761159,
+        "LastJupiterRetrogradeToPrograde": 4702513899777250709,
+        "LastJupiterWesternQuadrature": 4702514428184996343,
+        "NextJupiterConjunction": 4702515046903579625,
+        "NextJupiterEasternQuadrature": 4702514807158095234,
+        "NextJupiterOpposition": 4702514614284672284,
+        "NextJupiterProgradeToRetrograde": 4702515336181910643,
+        "NextJupiterRetrogradeToPrograde": 4702514750232579882,
+        "NextJupiterWesternQuadrature": 4702515277713988613
+      }
+    },
+    {
+      "input_utc": "1994-12-03T06:13:05.456Z",
+      "tt_jd_bits": 4702515080049268888,
+      "events": {
+        "LastJupiterConjunction": 4702515046903579625,
+        "LastJupiterEasternQuadrature": 4702514807158095234,
+        "LastJupiterOpposition": 4702514614284672284,
+        "LastJupiterProgradeToRetrograde": 4702514484375761159,
+        "LastJupiterRetrogradeToPrograde": 4702514750232579882,
+        "LastJupiterWesternQuadrature": 4702514428184996343,
+        "NextJupiterConjunction": 4702515897478373452,
+        "NextJupiterEasternQuadrature": 4702515660462348923,
+        "NextJupiterOpposition": 4702515467054813064,
+        "NextJupiterProgradeToRetrograde": 4702515336181910643,
+        "NextJupiterRetrogradeToPrograde": 4702515601124866503,
+        "NextJupiterWesternQuadrature": 4702515277713988613
+      }
+    },
+    {
+      "input_utc": "1995-07-18T10:22:22.456Z",
+      "tt_jd_bits": 4702515567899815235,
+      "events": {
+        "LastJupiterConjunction": 4702515046903579625,
+        "LastJupiterEasternQuadrature": 4702514807158095234,
+        "LastJupiterOpposition": 4702515467054813064,
+        "LastJupiterProgradeToRetrograde": 4702515336181910643,
+        "LastJupiterRetrogradeToPrograde": 4702514750232579882,
+        "LastJupiterWesternQuadrature": 4702515277713988613,
+        "NextJupiterConjunction": 4702515897478373452,
+        "NextJupiterEasternQuadrature": 4702515660462348923,
+        "NextJupiterOpposition": 4702516323930526658,
+        "NextJupiterProgradeToRetrograde": 4702516193453094495,
+        "NextJupiterRetrogradeToPrograde": 4702515601124866503,
+        "NextJupiterWesternQuadrature": 4702516131575705913
+      }
+    },
+    {
+      "input_utc": "1996-02-29T06:31:39.456Z",
+      "tt_jd_bits": 4702516052887074907,
+      "events": {
+        "LastJupiterConjunction": 4702515897478373452,
+        "LastJupiterEasternQuadrature": 4702515660462348923,
+        "LastJupiterOpposition": 4702515467054813064,
+        "LastJupiterProgradeToRetrograde": 4702515336181910643,
+        "LastJupiterRetrogradeToPrograde": 4702515601124866503,
+        "LastJupiterWesternQuadrature": 4702515277713988613,
+        "NextJupiterConjunction": 4702516751407755873,
+        "NextJupiterEasternQuadrature": 4702516516159983202,
+        "NextJupiterOpposition": 4702516323930526658,
+        "NextJupiterProgradeToRetrograde": 4702516193453094495,
+        "NextJupiterRetrogradeToPrograde": 4702516455127076537,
+        "NextJupiterWesternQuadrature": 4702516131575705913
+      }
+    },
+    {
+      "input_utc": "1996-10-13T10:40:56.456Z",
+      "tt_jd_bits": 4702516540737621254,
+      "events": {
+        "LastJupiterConjunction": 4702515897478373452,
+        "LastJupiterEasternQuadrature": 4702516516159983202,
+        "LastJupiterOpposition": 4702516323930526658,
+        "LastJupiterProgradeToRetrograde": 4702516193453094495,
+        "LastJupiterRetrogradeToPrograde": 4702516455127076536,
+        "LastJupiterWesternQuadrature": 4702516131575705913,
+        "NextJupiterConjunction": 4702516751407755873,
+        "NextJupiterEasternQuadrature": 4702517374743580578,
+        "NextJupiterOpposition": 4702517185247368069,
+        "NextJupiterProgradeToRetrograde": 4702517056174162728,
+        "NextJupiterRetrogradeToPrograde": 4702517313542566335,
+        "NextJupiterWesternQuadrature": 4702516991222788291
+      }
+    },
+    {
+      "input_utc": "1997-05-28T14:50:13.456Z",
+      "tt_jd_bits": 4702517028588167602,
+      "events": {
+        "LastJupiterConjunction": 4702516751407755873,
+        "LastJupiterEasternQuadrature": 4702516516159983202,
+        "LastJupiterOpposition": 4702516323930526658,
+        "LastJupiterProgradeToRetrograde": 4702516193453094495,
+        "LastJupiterRetrogradeToPrograde": 4702516455127076537,
+        "LastJupiterWesternQuadrature": 4702516991222788291,
+        "NextJupiterConjunction": 4702517610018423635,
+        "NextJupiterEasternQuadrature": 4702517374743580578,
+        "NextJupiterOpposition": 4702517185247368069,
+        "NextJupiterProgradeToRetrograde": 4702517056174162728,
+        "NextJupiterRetrogradeToPrograde": 4702517313542566335,
+        "NextJupiterWesternQuadrature": 4702517856327985406
+      }
+    },
+    {
+      "input_utc": "1998-01-10T17:20:30.456Z",
+      "tt_jd_bits": 4702517516291099303,
+      "events": {
+        "LastJupiterConjunction": 4702516751407755873,
+        "LastJupiterEasternQuadrature": 4702517374743580578,
+        "LastJupiterOpposition": 4702517185247368069,
+        "LastJupiterProgradeToRetrograde": 4702517056174162728,
+        "LastJupiterRetrogradeToPrograde": 4702517313542566335,
+        "LastJupiterWesternQuadrature": 4702516991222788291,
+        "NextJupiterConjunction": 4702517610018423635,
+        "NextJupiterEasternQuadrature": 4702518235789103668,
+        "NextJupiterOpposition": 4702518049732310450,
+        "NextJupiterProgradeToRetrograde": 4702517922209431808,
+        "NextJupiterRetrogradeToPrograde": 4702518176266583881,
+        "NextJupiterWesternQuadrature": 4702517856327985406
+      }
+    },
+    {
+      "input_utc": "1998-08-25T21:29:47.456Z",
+      "tt_jd_bits": 4702518004141645651,
+      "events": {
+        "LastJupiterConjunction": 4702517610018423635,
+        "LastJupiterEasternQuadrature": 4702517374743580578,
+        "LastJupiterOpposition": 4702517185247368069,
+        "LastJupiterProgradeToRetrograde": 4702517922209431808,
+        "LastJupiterRetrogradeToPrograde": 4702517313542566335,
+        "LastJupiterWesternQuadrature": 4702517856327985406,
+        "NextJupiterConjunction": 4702518473067532604,
+        "NextJupiterEasternQuadrature": 4702518235789103668,
+        "NextJupiterOpposition": 4702518049732310450,
+        "NextJupiterProgradeToRetrograde": 4702518787154295667,
+        "NextJupiterRetrogradeToPrograde": 4702518176266583881,
+        "NextJupiterWesternQuadrature": 4702518723959510877
+      }
+    },
+    {
+      "input_utc": "1999-04-10T01:35:23.456Z",
+      "tt_jd_bits": 4702518491986723868,
+      "events": {
+        "LastJupiterConjunction": 4702518473067532604,
+        "LastJupiterEasternQuadrature": 4702518235789103668,
+        "LastJupiterOpposition": 4702518049732310450,
+        "LastJupiterProgradeToRetrograde": 4702517922209431808,
+        "LastJupiterRetrogradeToPrograde": 4702518176266583881,
+        "LastJupiterWesternQuadrature": 4702517856327985406,
+        "NextJupiterConjunction": 4702519338321929243,
+        "NextJupiterEasternQuadrature": 4702519097687911871,
+        "NextJupiterOpposition": 4702518914455502652,
+        "NextJupiterProgradeToRetrograde": 4702518787154295667,
+        "NextJupiterRetrogradeToPrograde": 4702519039884020798,
+        "NextJupiterWesternQuadrature": 4702518723959510877
+      }
+    },
+    {
+      "input_utc": "1999-11-23T05:44:40.456Z",
+      "tt_jd_bits": 4702518979837270216,
+      "events": {
+        "LastJupiterConjunction": 4702518473067532604,
+        "LastJupiterEasternQuadrature": 4702518235789103668,
+        "LastJupiterOpposition": 4702518914455502652,
+        "LastJupiterProgradeToRetrograde": 4702518787154295667,
+        "LastJupiterRetrogradeToPrograde": 4702518176266583881,
+        "LastJupiterWesternQuadrature": 4702518723959510877,
+        "NextJupiterConjunction": 4702519338321929243,
+        "NextJupiterEasternQuadrature": 4702519097687911871,
+        "NextJupiterOpposition": 4702519776235616013,
+        "NextJupiterProgradeToRetrograde": 4702519648440844497,
+        "NextJupiterRetrogradeToPrograde": 4702519039884020798,
+        "NextJupiterWesternQuadrature": 4702519589634038153
+      }
+    },
+    {
+      "input_utc": "2000-07-07T09:53:57.456Z",
+      "tt_jd_bits": 4702519467687816563,
+      "events": {
+        "LastJupiterConjunction": 4702519338321929243,
+        "LastJupiterEasternQuadrature": 4702519097687911871,
+        "LastJupiterOpposition": 4702518914455502652,
+        "LastJupiterProgradeToRetrograde": 4702518787154295667,
+        "LastJupiterRetrogradeToPrograde": 4702519039884020798,
+        "LastJupiterWesternQuadrature": 4702518723959510877,
+        "NextJupiterConjunction": 4702520202370163856,
+        "NextJupiterEasternQuadrature": 4702519958453308414,
+        "NextJupiterOpposition": 4702519776235616013,
+        "NextJupiterProgradeToRetrograde": 4702519648440844497,
+        "NextJupiterRetrogradeToPrograde": 4702519901906597261,
+        "NextJupiterWesternQuadrature": 4702519589634038153
+      }
+    },
+    {
+      "input_utc": "2001-02-18T06:03:14.456Z",
+      "tt_jd_bits": 4702519952675051380,
+      "events": {
+        "LastJupiterConjunction": 4702519338321929243,
+        "LastJupiterEasternQuadrature": 4702519097687911871,
+        "LastJupiterOpposition": 4702519776235616013,
+        "LastJupiterProgradeToRetrograde": 4702519648440844497,
+        "LastJupiterRetrogradeToPrograde": 4702519901906597261,
+        "LastJupiterWesternQuadrature": 4702519589634038153,
+        "NextJupiterConjunction": 4702520202370163856,
+        "NextJupiterEasternQuadrature": 4702519958453308414,
+        "NextJupiterOpposition": 4702520633410522885,
+        "NextJupiterProgradeToRetrograde": 4702520505561003456,
+        "NextJupiterRetrogradeToPrograde": 4702520760902612018,
+        "NextJupiterWesternQuadrature": 4702520450002368788
+      }
+    },
+    {
+      "input_utc": "2001-10-03T10:12:31.456Z",
+      "tt_jd_bits": 4702520440525597728,
+      "events": {
+        "LastJupiterConjunction": 4702520202370163856,
+        "LastJupiterEasternQuadrature": 4702519958453308414,
+        "LastJupiterOpposition": 4702519776235616013,
+        "LastJupiterProgradeToRetrograde": 4702519648440844497,
+        "LastJupiterRetrogradeToPrograde": 4702519901906597261,
+        "LastJupiterWesternQuadrature": 4702519589634038153,
+        "NextJupiterConjunction": 4702521062497845376,
+        "NextJupiterEasternQuadrature": 4702520816619029323,
+        "NextJupiterOpposition": 4702520633410522885,
+        "NextJupiterProgradeToRetrograde": 4702520505561003456,
+        "NextJupiterRetrogradeToPrograde": 4702520760902612018,
+        "NextJupiterWesternQuadrature": 4702520450002368788
+      }
+    },
+    {
+      "input_utc": "2002-05-18T14:21:48.456Z",
+      "tt_jd_bits": 4702520928376144075,
+      "events": {
+        "LastJupiterConjunction": 4702520202370163856,
+        "LastJupiterEasternQuadrature": 4702520816619029323,
+        "LastJupiterOpposition": 4702520633410522885,
+        "LastJupiterProgradeToRetrograde": 4702520505561003456,
+        "LastJupiterRetrogradeToPrograde": 4702520760902612018,
+        "LastJupiterWesternQuadrature": 4702520450002368788,
+        "NextJupiterConjunction": 4702521062497845376,
+        "NextJupiterEasternQuadrature": 4702521671866607659,
+        "NextJupiterOpposition": 4702521486257843655,
+        "NextJupiterProgradeToRetrograde": 4702521358490633847,
+        "NextJupiterRetrogradeToPrograde": 4702521616888415816,
+        "NextJupiterWesternQuadrature": 4702521304428736524
+      }
+    },
+    {
+      "input_utc": "2002-12-31T18:31:05.456Z",
+      "tt_jd_bits": 4702521416226690422,
+      "events": {
+        "LastJupiterConjunction": 4702521062497845376,
+        "LastJupiterEasternQuadrature": 4702520816619029323,
+        "LastJupiterOpposition": 4702520633410522885,
+        "LastJupiterProgradeToRetrograde": 4702521358490633847,
+        "LastJupiterRetrogradeToPrograde": 4702520760902612018,
+        "LastJupiterWesternQuadrature": 4702521304428736524,
+        "NextJupiterConjunction": 4702521917985855430,
+        "NextJupiterEasternQuadrature": 4702521671866607659,
+        "NextJupiterOpposition": 4702521486257843655,
+        "NextJupiterProgradeToRetrograde": 4702522208314915907,
+        "NextJupiterRetrogradeToPrograde": 4702521616888415816,
+        "NextJupiterWesternQuadrature": 4702522154284300978
+      }
+    },
+    {
+      "input_utc": "2003-08-15T22:40:22.456Z",
+      "tt_jd_bits": 4702521904077236770,
+      "events": {
+        "LastJupiterConjunction": 4702521062497845376,
+        "LastJupiterEasternQuadrature": 4702521671866607659,
+        "LastJupiterOpposition": 4702521486257843655,
+        "LastJupiterProgradeToRetrograde": 4702521358490633847,
+        "LastJupiterRetrogradeToPrograde": 4702521616888415816,
+        "LastJupiterWesternQuadrature": 4702521304428736524,
+        "NextJupiterConjunction": 4702521917985855430,
+        "NextJupiterEasternQuadrature": 4702522524867228697,
+        "NextJupiterOpposition": 4702522336293893979,
+        "NextJupiterProgradeToRetrograde": 4702522208314915907,
+        "NextJupiterRetrogradeToPrograde": 4702522470158124246,
+        "NextJupiterWesternQuadrature": 4702522154284300978
+      }
+    },
+    {
+      "input_utc": "2004-03-30T02:49:39.456Z",
+      "tt_jd_bits": 4702522391927783117,
+      "events": {
+        "LastJupiterConjunction": 4702521917985855430,
+        "LastJupiterEasternQuadrature": 4702521671866607659,
+        "LastJupiterOpposition": 4702522336293893979,
+        "LastJupiterProgradeToRetrograde": 4702522208314915907,
+        "LastJupiterRetrogradeToPrograde": 4702521616888415816,
+        "LastJupiterWesternQuadrature": 4702522154284300978,
+        "NextJupiterConjunction": 4702522769611689768,
+        "NextJupiterEasternQuadrature": 4702522524867228697,
+        "NextJupiterOpposition": 4702523185481663723,
+        "NextJupiterProgradeToRetrograde": 4702523056647900438,
+        "NextJupiterRetrogradeToPrograde": 4702522470158124246,
+        "NextJupiterWesternQuadrature": 4702523001754930387
+      }
+    },
+    {
+      "input_utc": "2004-11-12T05:19:56.456Z",
+      "tt_jd_bits": 4702522879630689964,
+      "events": {
+        "LastJupiterConjunction": 4702522769611689768,
+        "LastJupiterEasternQuadrature": 4702522524867228697,
+        "LastJupiterOpposition": 4702522336293893979,
+        "LastJupiterProgradeToRetrograde": 4702522208314915907,
+        "LastJupiterRetrogradeToPrograde": 4702522470158124246,
+        "LastJupiterWesternQuadrature": 4702522154284300978,
+        "NextJupiterConjunction": 4702523619040346990,
+        "NextJupiterEasternQuadrature": 4702523376757271166,
+        "NextJupiterOpposition": 4702523185481663723,
+        "NextJupiterProgradeToRetrograde": 4702523056647900438,
+        "NextJupiterRetrogradeToPrograde": 4702523321353238901,
+        "NextJupiterWesternQuadrature": 4702523001754930387
+      }
+    },
+    {
+      "input_utc": "2005-06-27T09:29:13.456Z",
+      "tt_jd_bits": 4702523367481236311,
+      "events": {
+        "LastJupiterConjunction": 4702522769611689768,
+        "LastJupiterEasternQuadrature": 4702522524867228697,
+        "LastJupiterOpposition": 4702523185481663723,
+        "LastJupiterProgradeToRetrograde": 4702523056647900438,
+        "LastJupiterRetrogradeToPrograde": 4702523321353238898,
+        "LastJupiterWesternQuadrature": 4702523001754930387,
+        "NextJupiterConjunction": 4702523619040346990,
+        "NextJupiterEasternQuadrature": 4702523376757271166,
+        "NextJupiterOpposition": 4702524035804970436,
+        "NextJupiterProgradeToRetrograde": 4702523905663624695,
+        "NextJupiterRetrogradeToPrograde": 4702524171499669562,
+        "NextJupiterWesternQuadrature": 4702523849302140088
+      }
+    },
+    {
+      "input_utc": "2006-02-08T05:38:30.456Z",
+      "tt_jd_bits": 4702523852468495983,
+      "events": {
+        "LastJupiterConjunction": 4702523619040346990,
+        "LastJupiterEasternQuadrature": 4702523376757271166,
+        "LastJupiterOpposition": 4702523185481663723,
+        "LastJupiterProgradeToRetrograde": 4702523056647900438,
+        "LastJupiterRetrogradeToPrograde": 4702523321353238901,
+        "LastJupiterWesternQuadrature": 4702523849302140088,
+        "NextJupiterConjunction": 4702524468223240294,
+        "NextJupiterEasternQuadrature": 4702524228832709253,
+        "NextJupiterOpposition": 4702524035804970436,
+        "NextJupiterProgradeToRetrograde": 4702523905663624695,
+        "NextJupiterRetrogradeToPrograde": 4702524171499669562,
+        "NextJupiterWesternQuadrature": 4702524699351306591
+      }
+    },
+    {
+      "input_utc": "2006-09-23T09:47:47.456Z",
+      "tt_jd_bits": 4702524340319042330,
+      "events": {
+        "LastJupiterConjunction": 4702523619040346990,
+        "LastJupiterEasternQuadrature": 4702524228832709253,
+        "LastJupiterOpposition": 4702524035804970436,
+        "LastJupiterProgradeToRetrograde": 4702523905663624695,
+        "LastJupiterRetrogradeToPrograde": 4702524171499669562,
+        "LastJupiterWesternQuadrature": 4702523849302140088,
+        "NextJupiterConjunction": 4702524468223240294,
+        "NextJupiterEasternQuadrature": 4702525082476556773,
+        "NextJupiterOpposition": 4702524889125945740,
+        "NextJupiterProgradeToRetrograde": 4702524758348277020,
+        "NextJupiterRetrogradeToPrograde": 4702525022873871692,
+        "NextJupiterWesternQuadrature": 4702524699351306591
+      }
+    },
+    {
+      "input_utc": "2007-05-08T13:53:23.456Z",
+      "tt_jd_bits": 4702524828164095693,
+      "events": {
+        "LastJupiterConjunction": 4702524468223240294,
+        "LastJupiterEasternQuadrature": 4702524228832709253,
+        "LastJupiterOpposition": 4702524035804970436,
+        "LastJupiterProgradeToRetrograde": 4702524758348277020,
+        "LastJupiterRetrogradeToPrograde": 4702524171499669562,
+        "LastJupiterWesternQuadrature": 4702524699351306591,
+        "NextJupiterConjunction": 4702525319223979778,
+        "NextJupiterEasternQuadrature": 4702525082476556773,
+        "NextJupiterOpposition": 4702524889125945740,
+        "NextJupiterProgradeToRetrograde": 4702525616388038372,
+        "NextJupiterRetrogradeToPrograde": 4702525022873871692,
+        "NextJupiterWesternQuadrature": 4702525554037828411
+      }
+    },
+    {
+      "input_utc": "2007-12-21T18:02:40.456Z",
+      "tt_jd_bits": 4702525316014642041,
+      "events": {
+        "LastJupiterConjunction": 4702524468223240294,
+        "LastJupiterEasternQuadrature": 4702525082476556773,
+        "LastJupiterOpposition": 4702524889125945740,
+        "LastJupiterProgradeToRetrograde": 4702524758348277020,
+        "LastJupiterRetrogradeToPrograde": 4702525022873871692,
+        "LastJupiterWesternQuadrature": 4702524699351306591,
+        "NextJupiterConjunction": 4702525319223979778,
+        "NextJupiterEasternQuadrature": 4702525938677881194,
+        "NextJupiterOpposition": 4702525746727377977,
+        "NextJupiterProgradeToRetrograde": 4702525616388038372,
+        "NextJupiterRetrogradeToPrograde": 4702525877346821269,
+        "NextJupiterWesternQuadrature": 4702525554037828411
+      }
+    },
+    {
+      "input_utc": "2008-08-04T22:11:57.456Z",
+      "tt_jd_bits": 4702525803865188388,
+      "events": {
+        "LastJupiterConjunction": 4702525319223979778,
+        "LastJupiterEasternQuadrature": 4702525082476556773,
+        "LastJupiterOpposition": 4702525746727377977,
+        "LastJupiterProgradeToRetrograde": 4702525616388038372,
+        "LastJupiterRetrogradeToPrograde": 4702525022873871692,
+        "LastJupiterWesternQuadrature": 4702525554037828411,
+        "NextJupiterConjunction": 4702526173905210046,
+        "NextJupiterEasternQuadrature": 4702525938677881194,
+        "NextJupiterOpposition": 4702526608783663316,
+        "NextJupiterProgradeToRetrograde": 4702526480112933471,
+        "NextJupiterRetrogradeToPrograde": 4702525877346821269,
+        "NextJupiterWesternQuadrature": 4702526414693471474
+      }
+    },
+    {
+      "input_utc": "2009-03-20T02:21:14.456Z",
+      "tt_jd_bits": 4702526291715759590,
+      "events": {
+        "LastJupiterConjunction": 4702526173905210046,
+        "LastJupiterEasternQuadrature": 4702525938677881194,
+        "LastJupiterOpposition": 4702525746727377977,
+        "LastJupiterProgradeToRetrograde": 4702525616388038372,
+        "LastJupiterRetrogradeToPrograde": 4702525877346821269,
+        "LastJupiterWesternQuadrature": 4702525554037828411,
+        "NextJupiterConjunction": 4702527033345979976,
+        "NextJupiterEasternQuadrature": 4702526797833950667,
+        "NextJupiterOpposition": 4702526608783663316,
+        "NextJupiterProgradeToRetrograde": 4702526480112933471,
+        "NextJupiterRetrogradeToPrograde": 4702526736805521956,
+        "NextJupiterWesternQuadrature": 4702526414693471474
+      }
+    },
+    {
+      "input_utc": "2009-11-02T06:30:31.456Z",
+      "tt_jd_bits": 4702526779566305938,
+      "events": {
+        "LastJupiterConjunction": 4702526173905210046,
+        "LastJupiterEasternQuadrature": 4702525938677881194,
+        "LastJupiterOpposition": 4702526608783663316,
+        "LastJupiterProgradeToRetrograde": 4702526480112933471,
+        "LastJupiterRetrogradeToPrograde": 4702526736805521956,
+        "LastJupiterWesternQuadrature": 4702526414693471474,
+        "NextJupiterConjunction": 4702527033345979976,
+        "NextJupiterEasternQuadrature": 4702526797833950667,
+        "NextJupiterOpposition": 4702527473657079946,
+        "NextJupiterProgradeToRetrograde": 4702527346265792180,
+        "NextJupiterRetrogradeToPrograde": 4702527599853542486,
+        "NextJupiterWesternQuadrature": 4702527280539942363
+      }
+    },
+    {
+      "input_utc": "2010-06-17T10:39:48.456Z",
+      "tt_jd_bits": 4702527267416852285,
+      "events": {
+        "LastJupiterConjunction": 4702527033345979976,
+        "LastJupiterEasternQuadrature": 4702526797833950667,
+        "LastJupiterOpposition": 4702526608783663316,
+        "LastJupiterProgradeToRetrograde": 4702526480112933471,
+        "LastJupiterRetrogradeToPrograde": 4702526736805521956,
+        "LastJupiterWesternQuadrature": 4702526414693471474,
+        "NextJupiterConjunction": 4702527896986511441,
+        "NextJupiterEasternQuadrature": 4702527659252098549,
+        "NextJupiterOpposition": 4702527473657079946,
+        "NextJupiterProgradeToRetrograde": 4702527346265792180,
+        "NextJupiterRetrogradeToPrograde": 4702527599853542486,
+        "NextJupiterWesternQuadrature": 4702527280539942363
+      }
+    },
+    {
+      "input_utc": "2011-01-29T06:49:05.456Z",
+      "tt_jd_bits": 4702527752404087102,
+      "events": {
+        "LastJupiterConjunction": 4702527033345979976,
+        "LastJupiterEasternQuadrature": 4702527659252098549,
+        "LastJupiterOpposition": 4702527473657079946,
+        "LastJupiterProgradeToRetrograde": 4702527346265792180,
+        "LastJupiterRetrogradeToPrograde": 4702527599853542486,
+        "LastJupiterWesternQuadrature": 4702527280539942363,
+        "NextJupiterConjunction": 4702527896986511441,
+        "NextJupiterEasternQuadrature": 4702528521180306142,
+        "NextJupiterOpposition": 4702528338207370916,
+        "NextJupiterProgradeToRetrograde": 4702528210771857493,
+        "NextJupiterRetrogradeToPrograde": 4702528463633127667,
+        "NextJupiterWesternQuadrature": 4702528148243761502
+      }
+    },
+    {
+      "input_utc": "2011-09-13T09:19:22.456Z",
+      "tt_jd_bits": 4702528240106993949,
+      "events": {
+        "LastJupiterConjunction": 4702527896986511441,
+        "LastJupiterEasternQuadrature": 4702527659252098549,
+        "LastJupiterOpposition": 4702527473657079946,
+        "LastJupiterProgradeToRetrograde": 4702528210771857493,
+        "LastJupiterRetrogradeToPrograde": 4702527599853542486,
+        "LastJupiterWesternQuadrature": 4702528148243761502,
+        "NextJupiterConjunction": 4702528762306740501,
+        "NextJupiterEasternQuadrature": 4702528521180306142,
+        "NextJupiterOpposition": 4702528338207370916,
+        "NextJupiterProgradeToRetrograde": 4702529071584506103,
+        "NextJupiterRetrogradeToPrograde": 4702528463633127667,
+        "NextJupiterWesternQuadrature": 4702529013282142981
+      }
+    },
+    {
+      "input_utc": "2012-04-27T13:28:39.456Z",
+      "tt_jd_bits": 4702528727957540296,
+      "events": {
+        "LastJupiterConjunction": 4702527896986511441,
+        "LastJupiterEasternQuadrature": 4702528521180306142,
+        "LastJupiterOpposition": 4702528338207370916,
+        "LastJupiterProgradeToRetrograde": 4702528210771857493,
+        "LastJupiterRetrogradeToPrograde": 4702528463633127667,
+        "LastJupiterWesternQuadrature": 4702528148243761502,
+        "NextJupiterConjunction": 4702528762306740501,
+        "NextJupiterEasternQuadrature": 4702529381592324502,
+        "NextJupiterOpposition": 4702529199353119769,
+        "NextJupiterProgradeToRetrograde": 4702529071584506103,
+        "NextJupiterRetrogradeToPrograde": 4702529325215308994,
+        "NextJupiterWesternQuadrature": 4702529013282142981
+      }
+    },
+    {
+      "input_utc": "2012-12-10T17:37:56.456Z",
+      "tt_jd_bits": 4702529215808111498,
+      "events": {
+        "LastJupiterConjunction": 4702528762306740501,
+        "LastJupiterEasternQuadrature": 4702528521180306142,
+        "LastJupiterOpposition": 4702529199353119769,
+        "LastJupiterProgradeToRetrograde": 4702529071584506103,
+        "LastJupiterRetrogradeToPrograde": 4702528463633127667,
+        "LastJupiterWesternQuadrature": 4702529013282142981,
+        "NextJupiterConjunction": 4702529625846150011,
+        "NextJupiterEasternQuadrature": 4702529381592324502,
+        "NextJupiterOpposition": 4702530055790787450,
+        "NextJupiterProgradeToRetrograde": 4702529927850115727,
+        "NextJupiterRetrogradeToPrograde": 4702529325215308994,
+        "NextJupiterWesternQuadrature": 4702529872713563813
+      }
+    },
+    {
+      "input_utc": "2013-07-25T21:47:13.456Z",
+      "tt_jd_bits": 4702529703658657846,
+      "events": {
+        "LastJupiterConjunction": 4702529625846150011,
+        "LastJupiterEasternQuadrature": 4702529381592324502,
+        "LastJupiterOpposition": 4702529199353119769,
+        "LastJupiterProgradeToRetrograde": 4702529071584506103,
+        "LastJupiterRetrogradeToPrograde": 4702529325215308994,
+        "LastJupiterWesternQuadrature": 4702529013282142981,
+        "NextJupiterConjunction": 4702530485246205430,
+        "NextJupiterEasternQuadrature": 4702530239263412377,
+        "NextJupiterOpposition": 4702530055790787450,
+        "NextJupiterProgradeToRetrograde": 4702529927850115727,
+        "NextJupiterRetrogradeToPrograde": 4702530183635691426,
+        "NextJupiterWesternQuadrature": 4702529872713563813
+      }
+    },
+    {
+      "input_utc": "2014-03-10T01:56:30.456Z",
+      "tt_jd_bits": 4702530191509204193,
+      "events": {
+        "LastJupiterConjunction": 4702529625846150011,
+        "LastJupiterEasternQuadrature": 4702529381592324502,
+        "LastJupiterOpposition": 4702530055790787450,
+        "LastJupiterProgradeToRetrograde": 4702529927850115727,
+        "LastJupiterRetrogradeToPrograde": 4702530183635691426,
+        "LastJupiterWesternQuadrature": 4702529872713563813,
+        "NextJupiterConjunction": 4702530485246205430,
+        "NextJupiterEasternQuadrature": 4702530239263412377,
+        "NextJupiterOpposition": 4702530908086288928,
+        "NextJupiterProgradeToRetrograde": 4702530780352614306,
+        "NextJupiterRetrogradeToPrograde": 4702531039231776308,
+        "NextJupiterWesternQuadrature": 4702530726333373418
+      }
+    },
+    {
+      "input_utc": "2014-10-23T06:05:47.456Z",
+      "tt_jd_bits": 4702530679359750541,
+      "events": {
+        "LastJupiterConjunction": 4702530485246205430,
+        "LastJupiterEasternQuadrature": 4702530239263412377,
+        "LastJupiterOpposition": 4702530055790787450,
+        "LastJupiterProgradeToRetrograde": 4702529927850115727,
+        "LastJupiterRetrogradeToPrograde": 4702530183635691426,
+        "LastJupiterWesternQuadrature": 4702529872713563813,
+        "NextJupiterConjunction": 4702531340061737657,
+        "NextJupiterEasternQuadrature": 4702531094085273298,
+        "NextJupiterOpposition": 4702530908086288928,
+        "NextJupiterProgradeToRetrograde": 4702530780352614306,
+        "NextJupiterRetrogradeToPrograde": 4702531039231776308,
+        "NextJupiterWesternQuadrature": 4702530726333373418
+      }
+    },
+    {
+      "input_utc": "2015-06-07T10:11:23.456Z",
+      "tt_jd_bits": 4702531167204803903,
+      "events": {
+        "LastJupiterConjunction": 4702530485246205430,
+        "LastJupiterEasternQuadrature": 4702531094085273298,
+        "LastJupiterOpposition": 4702530908086288928,
+        "LastJupiterProgradeToRetrograde": 4702530780352614306,
+        "LastJupiterRetrogradeToPrograde": 4702531039231776308,
+        "LastJupiterWesternQuadrature": 4702530726333373418,
+        "NextJupiterConjunction": 4702531340061737657,
+        "NextJupiterEasternQuadrature": 4702531946807824433,
+        "NextJupiterOpposition": 4702531757829128992,
+        "NextJupiterProgradeToRetrograde": 4702531629752352633,
+        "NextJupiterRetrogradeToPrograde": 4702531892068924335,
+        "NextJupiterWesternQuadrature": 4702531575658544590
+      }
+    },
+    {
+      "input_utc": "2016-01-19T06:20:40.456Z",
+      "tt_jd_bits": 4702531652192063576,
+      "events": {
+        "LastJupiterConjunction": 4702531340061737657,
+        "LastJupiterEasternQuadrature": 4702531094085273298,
+        "LastJupiterOpposition": 4702530908086288928,
+        "LastJupiterProgradeToRetrograde": 4702531629752352633,
+        "LastJupiterRetrogradeToPrograde": 4702531039231776308,
+        "LastJupiterWesternQuadrature": 4702531575658544590,
+        "NextJupiterConjunction": 4702532191267004195,
+        "NextJupiterEasternQuadrature": 4702531946807824433,
+        "NextJupiterOpposition": 4702531757829128992,
+        "NextJupiterProgradeToRetrograde": 4702532477989657578,
+        "NextJupiterRetrogradeToPrograde": 4702531892068924335,
+        "NextJupiterWesternQuadrature": 4702532422990713411
+      }
+    },
+    {
+      "input_utc": "2016-09-02T10:29:57.456Z",
+      "tt_jd_bits": 4702532140042609924,
+      "events": {
+        "LastJupiterConjunction": 4702531340061737657,
+        "LastJupiterEasternQuadrature": 4702531946807824433,
+        "LastJupiterOpposition": 4702531757829128992,
+        "LastJupiterProgradeToRetrograde": 4702531629752352633,
+        "LastJupiterRetrogradeToPrograde": 4702531892068924335,
+        "LastJupiterWesternQuadrature": 4702531575658544590,
+        "NextJupiterConjunction": 4702532191267004195,
+        "NextJupiterEasternQuadrature": 4702532798623165754,
+        "NextJupiterOpposition": 4702532607042507489,
+        "NextJupiterProgradeToRetrograde": 4702532477989657578,
+        "NextJupiterRetrogradeToPrograde": 4702532742987172719,
+        "NextJupiterWesternQuadrature": 4702532422990713411
+      }
+    },
+    {
+      "input_utc": "2017-04-17T14:39:14.456Z",
+      "tt_jd_bits": 4702532627893181126,
+      "events": {
+        "LastJupiterConjunction": 4702532191267004195,
+        "LastJupiterEasternQuadrature": 4702531946807824433,
+        "LastJupiterOpposition": 4702532607042507489,
+        "LastJupiterProgradeToRetrograde": 4702532477989657578,
+        "LastJupiterRetrogradeToPrograde": 4702531892068924335,
+        "LastJupiterWesternQuadrature": 4702532422990713411,
+        "NextJupiterConjunction": 4702533040521769387,
+        "NextJupiterEasternQuadrature": 4702532798623165754,
+        "NextJupiterOpposition": 4702533457714634378,
+        "NextJupiterProgradeToRetrograde": 4702533327528957514,
+        "NextJupiterRetrogradeToPrograde": 4702532742987172719,
+        "NextJupiterWesternQuadrature": 4702533270766621283
+      }
+    },
+    {
+      "input_utc": "2017-11-30T18:48:31.456Z",
+      "tt_jd_bits": 4702533115743727473,
+      "events": {
+        "LastJupiterConjunction": 4702533040521769387,
+        "LastJupiterEasternQuadrature": 4702532798623165754,
+        "LastJupiterOpposition": 4702532607042507489,
+        "LastJupiterProgradeToRetrograde": 4702532477989657578,
+        "LastJupiterRetrogradeToPrograde": 4702532742987172719,
+        "LastJupiterWesternQuadrature": 4702532422990713411,
+        "NextJupiterConjunction": 4702533889886944756,
+        "NextJupiterEasternQuadrature": 4702533650881330300,
+        "NextJupiterOpposition": 4702533457714634378,
+        "NextJupiterProgradeToRetrograde": 4702533327528957514,
+        "NextJupiterRetrogradeToPrograde": 4702533593289599713,
+        "NextJupiterWesternQuadrature": 4702533270766621283
+      }
+    },
+    {
+      "input_utc": "2018-07-15T21:18:48.456Z",
+      "tt_jd_bits": 4702533603446634320,
+      "events": {
+        "LastJupiterConjunction": 4702533040521769387,
+        "LastJupiterEasternQuadrature": 4702532798623165754,
+        "LastJupiterOpposition": 4702533457714634378,
+        "LastJupiterProgradeToRetrograde": 4702533327528957514,
+        "LastJupiterRetrogradeToPrograde": 4702533593289599713,
+        "LastJupiterWesternQuadrature": 4702533270766621283,
+        "NextJupiterConjunction": 4702533889886944756,
+        "NextJupiterEasternQuadrature": 4702533650881330300,
+        "NextJupiterOpposition": 4702534311590893876,
+        "NextJupiterProgradeToRetrograde": 4702534180736365165,
+        "NextJupiterRetrogradeToPrograde": 4702534444823697906,
+        "NextJupiterWesternQuadrature": 4702534121361764961
+      }
+    },
+    {
+      "input_utc": "2019-02-28T01:28:05.456Z",
+      "tt_jd_bits": 4702534091297180667,
+      "events": {
+        "LastJupiterConjunction": 4702533889886944756,
+        "LastJupiterEasternQuadrature": 4702533650881330300,
+        "LastJupiterOpposition": 4702533457714634378,
+        "LastJupiterProgradeToRetrograde": 4702533327528957514,
+        "LastJupiterRetrogradeToPrograde": 4702533593289599713,
+        "LastJupiterWesternQuadrature": 4702533270766621283,
+        "NextJupiterConjunction": 4702534741352700914,
+        "NextJupiterEasternQuadrature": 4702534504862757352,
+        "NextJupiterOpposition": 4702534311590893876,
+        "NextJupiterProgradeToRetrograde": 4702534180736365165,
+        "NextJupiterRetrogradeToPrograde": 4702534444823697906,
+        "NextJupiterWesternQuadrature": 4702534121361764961
+      }
+    },
+    {
+      "input_utc": "2019-10-13T05:37:22.456Z",
+      "tt_jd_bits": 4702534579147727015,
+      "events": {
+        "LastJupiterConjunction": 4702533889886944756,
+        "LastJupiterEasternQuadrature": 4702534504862757352,
+        "LastJupiterOpposition": 4702534311590893876,
+        "LastJupiterProgradeToRetrograde": 4702534180736365165,
+        "LastJupiterRetrogradeToPrograde": 4702534444823697906,
+        "LastJupiterWesternQuadrature": 4702534121361764961,
+        "NextJupiterConjunction": 4702534741352700914,
+        "NextJupiterEasternQuadrature": 4702535361541379329,
+        "NextJupiterOpposition": 4702535169914397810,
+        "NextJupiterProgradeToRetrograde": 4702535039856600034,
+        "NextJupiterRetrogradeToPrograde": 4702535300189392750,
+        "NextJupiterWesternQuadrature": 4702534976909582523
+      }
+    },
+    {
+      "input_utc": "2020-05-27T09:46:39.456Z",
+      "tt_jd_bits": 4702535066998273362,
+      "events": {
+        "LastJupiterConjunction": 4702534741352700914,
+        "LastJupiterEasternQuadrature": 4702534504862757352,
+        "LastJupiterOpposition": 4702534311590893876,
+        "LastJupiterProgradeToRetrograde": 4702535039856600034,
+        "LastJupiterRetrogradeToPrograde": 4702534444823697906,
+        "LastJupiterWesternQuadrature": 4702534976909582523,
+        "NextJupiterConjunction": 4702535596698593217,
+        "NextJupiterEasternQuadrature": 4702535361541379329,
+        "NextJupiterOpposition": 4702535169914397810,
+        "NextJupiterProgradeToRetrograde": 4702535904045179664,
+        "NextJupiterRetrogradeToPrograde": 4702535300189392750,
+        "NextJupiterWesternQuadrature": 4702535838415570408
+      }
+    },
+    {
+      "input_utc": "1991-04-17T05:17:23.456Z",
+      "tt_jd_bits": 4702512232402811213,
+      "events": {
+        "LastJupiterConjunction": 4702511639717012620,
+        "LastJupiterEasternQuadrature": 4702511393973012502,
+        "LastJupiterOpposition": 4702512064463236620,
+        "LastJupiterProgradeToRetrograde": 4702511936733572185,
+        "LastJupiterRetrogradeToPrograde": 4702512194567421550,
+        "LastJupiterWesternQuadrature": 4702511882517375690,
+        "NextJupiterConjunction": 4702512495925443449,
+        "NextJupiterEasternQuadrature": 4702512249695175741,
+        "NextJupiterOpposition": 4702512914882489890,
+        "NextJupiterProgradeToRetrograde": 4702512787041232554,
+        "NextJupiterRetrogradeToPrograde": 4702513048376039516,
+        "NextJupiterWesternQuadrature": 4702512732981189693
+      }
+    },
+    {
+      "input_utc": "1991-09-13T12:30:46.456Z",
+      "tt_jd_bits": 4702512553024182836,
+      "events": {
+        "LastJupiterConjunction": 4702512495925443449,
+        "LastJupiterEasternQuadrature": 4702512249695175741,
+        "LastJupiterOpposition": 4702512064463236620,
+        "LastJupiterProgradeToRetrograde": 4702511936733572185,
+        "LastJupiterRetrogradeToPrograde": 4702512194567421550,
+        "LastJupiterWesternQuadrature": 4702511882517375690,
+        "NextJupiterConjunction": 4702513348128945305,
+        "NextJupiterEasternQuadrature": 4702513103067048699,
+        "NextJupiterOpposition": 4702512914882489890,
+        "NextJupiterProgradeToRetrograde": 4702512787041232554,
+        "NextJupiterRetrogradeToPrograde": 4702513048376039518,
+        "NextJupiterWesternQuadrature": 4702512732981189693
+      }
+    },
+    {
+      "input_utc": "1992-02-09T19:44:09.456Z",
+      "tt_jd_bits": 4702512873645554458,
+      "events": {
+        "LastJupiterConjunction": 4702512495925443449,
+        "LastJupiterEasternQuadrature": 4702512249695175741,
+        "LastJupiterOpposition": 4702512064463236620,
+        "LastJupiterProgradeToRetrograde": 4702512787041232554,
+        "LastJupiterRetrogradeToPrograde": 4702512194567421550,
+        "LastJupiterWesternQuadrature": 4702512732981189693,
+        "NextJupiterConjunction": 4702513348128945305,
+        "NextJupiterEasternQuadrature": 4702513103067048699,
+        "NextJupiterOpposition": 4702512914882489890,
+        "NextJupiterProgradeToRetrograde": 4702513635402149085,
+        "NextJupiterRetrogradeToPrograde": 4702513048376039518,
+        "NextJupiterWesternQuadrature": 4702513580732728436
+      }
+    },
+    {
+      "input_utc": "1992-07-08T02:57:32.456Z",
+      "tt_jd_bits": 4702513194266950936,
+      "events": {
+        "LastJupiterConjunction": 4702512495925443449,
+        "LastJupiterEasternQuadrature": 4702513103067048699,
+        "LastJupiterOpposition": 4702512914882489890,
+        "LastJupiterProgradeToRetrograde": 4702512787041232554,
+        "LastJupiterRetrogradeToPrograde": 4702513048376039516,
+        "LastJupiterWesternQuadrature": 4702512732981189693,
+        "NextJupiterConjunction": 4702513348128945305,
+        "NextJupiterEasternQuadrature": 4702513955120488411,
+        "NextJupiterOpposition": 4702513764159242873,
+        "NextJupiterProgradeToRetrograde": 4702513635402149085,
+        "NextJupiterRetrogradeToPrograde": 4702513899777250709,
+        "NextJupiterWesternQuadrature": 4702513580732728436
+      }
+    },
+    {
+      "input_utc": "1992-12-04T10:10:55.456Z",
+      "tt_jd_bits": 4702513514888322559,
+      "events": {
+        "LastJupiterConjunction": 4702513348128945305,
+        "LastJupiterEasternQuadrature": 4702513103067048699,
+        "LastJupiterOpposition": 4702512914882489890,
+        "LastJupiterProgradeToRetrograde": 4702512787041232554,
+        "LastJupiterRetrogradeToPrograde": 4702513048376039518,
+        "LastJupiterWesternQuadrature": 4702512732981189693,
+        "NextJupiterConjunction": 4702514197794183218,
+        "NextJupiterEasternQuadrature": 4702513955120488411,
+        "NextJupiterOpposition": 4702513764159242873,
+        "NextJupiterProgradeToRetrograde": 4702513635402149085,
+        "NextJupiterRetrogradeToPrograde": 4702513899777250709,
+        "NextJupiterWesternQuadrature": 4702513580732728436
+      }
+    },
+    {
+      "input_utc": "1993-05-02T17:24:18.456Z",
+      "tt_jd_bits": 4702513835509694181,
+      "events": {
+        "LastJupiterConjunction": 4702513348128945305,
+        "LastJupiterEasternQuadrature": 4702513103067048699,
+        "LastJupiterOpposition": 4702513764159242873,
+        "LastJupiterProgradeToRetrograde": 4702513635402149085,
+        "LastJupiterRetrogradeToPrograde": 4702513048376039516,
+        "LastJupiterWesternQuadrature": 4702513580732728436,
+        "NextJupiterConjunction": 4702514197794183218,
+        "NextJupiterEasternQuadrature": 4702513955120488411,
+        "NextJupiterOpposition": 4702514614284672284,
+        "NextJupiterProgradeToRetrograde": 4702514484375761159,
+        "NextJupiterRetrogradeToPrograde": 4702513899777250709,
+        "NextJupiterWesternQuadrature": 4702514428184996343
+      }
+    },
+    {
+      "input_utc": "1993-09-27T06:37:41.456Z",
+      "tt_jd_bits": 4702514152372994275,
+      "events": {
+        "LastJupiterConjunction": 4702513348128945305,
+        "LastJupiterEasternQuadrature": 4702513955120488411,
+        "LastJupiterOpposition": 4702513764159242873,
+        "LastJupiterProgradeToRetrograde": 4702513635402149085,
+        "LastJupiterRetrogradeToPrograde": 4702513899777250709,
+        "LastJupiterWesternQuadrature": 4702513580732728436,
+        "NextJupiterConjunction": 4702514197794183218,
+        "NextJupiterEasternQuadrature": 4702514807158095234,
+        "NextJupiterOpposition": 4702514614284672284,
+        "NextJupiterProgradeToRetrograde": 4702514484375761159,
+        "NextJupiterRetrogradeToPrograde": 4702514750232579882,
+        "NextJupiterWesternQuadrature": 4702514428184996343
+      }
+    },
+    {
+      "input_utc": "1994-02-23T13:51:04.456Z",
+      "tt_jd_bits": 4702514472994365897,
+      "events": {
+        "LastJupiterConjunction": 4702514197794183218,
+        "LastJupiterEasternQuadrature": 4702513955120488411,
+        "LastJupiterOpposition": 4702513764159242873,
+        "LastJupiterProgradeToRetrograde": 4702513635402149085,
+        "LastJupiterRetrogradeToPrograde": 4702513899777250709,
+        "LastJupiterWesternQuadrature": 4702514428184996343,
+        "NextJupiterConjunction": 4702515046903579625,
+        "NextJupiterEasternQuadrature": 4702514807158095234,
+        "NextJupiterOpposition": 4702514614284672284,
+        "NextJupiterProgradeToRetrograde": 4702514484375761159,
+        "NextJupiterRetrogradeToPrograde": 4702514750232579882,
+        "NextJupiterWesternQuadrature": 4702515277713988613
+      }
+    },
+    {
+      "input_utc": "1994-07-22T21:04:27.456Z",
+      "tt_jd_bits": 4702514793615762376,
+      "events": {
+        "LastJupiterConjunction": 4702514197794183218,
+        "LastJupiterEasternQuadrature": 4702513955120488411,
+        "LastJupiterOpposition": 4702514614284672284,
+        "LastJupiterProgradeToRetrograde": 4702514484375761159,
+        "LastJupiterRetrogradeToPrograde": 4702514750232579882,
+        "LastJupiterWesternQuadrature": 4702514428184996343,
+        "NextJupiterConjunction": 4702515046903579625,
+        "NextJupiterEasternQuadrature": 4702514807158095234,
+        "NextJupiterOpposition": 4702515467054813064,
+        "NextJupiterProgradeToRetrograde": 4702515336181910643,
+        "NextJupiterRetrogradeToPrograde": 4702515601124866503,
+        "NextJupiterWesternQuadrature": 4702515277713988613
+      }
+    },
+    {
+      "input_utc": "1994-12-19T04:17:50.456Z",
+      "tt_jd_bits": 4702515114237133999,
+      "events": {
+        "LastJupiterConjunction": 4702515046903579625,
+        "LastJupiterEasternQuadrature": 4702514807158095234,
+        "LastJupiterOpposition": 4702514614284672284,
+        "LastJupiterProgradeToRetrograde": 4702514484375761159,
+        "LastJupiterRetrogradeToPrograde": 4702514750232579882,
+        "LastJupiterWesternQuadrature": 4702514428184996343,
+        "NextJupiterConjunction": 4702515897478373452,
+        "NextJupiterEasternQuadrature": 4702515660462348923,
+        "NextJupiterOpposition": 4702515467054813064,
+        "NextJupiterProgradeToRetrograde": 4702515336181910643,
+        "NextJupiterRetrogradeToPrograde": 4702515601124866503,
+        "NextJupiterWesternQuadrature": 4702515277713988613
+      }
+    },
+    {
+      "input_utc": "1995-05-17T09:21:13.456Z",
+      "tt_jd_bits": 4702515434664635570,
+      "events": {
+        "LastJupiterConjunction": 4702515046903579625,
+        "LastJupiterEasternQuadrature": 4702514807158095234,
+        "LastJupiterOpposition": 4702514614284672284,
+        "LastJupiterProgradeToRetrograde": 4702515336181910643,
+        "LastJupiterRetrogradeToPrograde": 4702514750232579882,
+        "LastJupiterWesternQuadrature": 4702515277713988613,
+        "NextJupiterConjunction": 4702515897478373452,
+        "NextJupiterEasternQuadrature": 4702515660462348923,
+        "NextJupiterOpposition": 4702515467054813064,
+        "NextJupiterProgradeToRetrograde": 4702516193453094495,
+        "NextJupiterRetrogradeToPrograde": 4702515601124866503,
+        "NextJupiterWesternQuadrature": 4702516131575705913
+      }
+    },
+    {
+      "input_utc": "1995-10-13T16:34:36.456Z",
+      "tt_jd_bits": 4702515755286007192,
+      "events": {
+        "LastJupiterConjunction": 4702515046903579625,
+        "LastJupiterEasternQuadrature": 4702515660462348923,
+        "LastJupiterOpposition": 4702515467054813064,
+        "LastJupiterProgradeToRetrograde": 4702515336181910643,
+        "LastJupiterRetrogradeToPrograde": 4702515601124866503,
+        "LastJupiterWesternQuadrature": 4702515277713988613,
+        "NextJupiterConjunction": 4702515897478373452,
+        "NextJupiterEasternQuadrature": 4702516516159983202,
+        "NextJupiterOpposition": 4702516323930526658,
+        "NextJupiterProgradeToRetrograde": 4702516193453094495,
+        "NextJupiterRetrogradeToPrograde": 4702516455127076536,
+        "NextJupiterWesternQuadrature": 4702516131575705913
+      }
+    },
+    {
+      "input_utc": "1996-03-09T05:47:59.456Z",
+      "tt_jd_bits": 4702516072149307286,
+      "events": {
+        "LastJupiterConjunction": 4702515897478373452,
+        "LastJupiterEasternQuadrature": 4702515660462348923,
+        "LastJupiterOpposition": 4702515467054813064,
+        "LastJupiterProgradeToRetrograde": 4702515336181910643,
+        "LastJupiterRetrogradeToPrograde": 4702515601124866503,
+        "LastJupiterWesternQuadrature": 4702515277713988613,
+        "NextJupiterConjunction": 4702516751407755873,
+        "NextJupiterEasternQuadrature": 4702516516159983202,
+        "NextJupiterOpposition": 4702516323930526658,
+        "NextJupiterProgradeToRetrograde": 4702516193453094495,
+        "NextJupiterRetrogradeToPrograde": 4702516455127076537,
+        "NextJupiterWesternQuadrature": 4702516131575705913
+      }
+    },
+    {
+      "input_utc": "1996-08-05T13:01:22.456Z",
+      "tt_jd_bits": 4702516392770678908,
+      "events": {
+        "LastJupiterConjunction": 4702515897478373452,
+        "LastJupiterEasternQuadrature": 4702515660462348923,
+        "LastJupiterOpposition": 4702516323930526658,
+        "LastJupiterProgradeToRetrograde": 4702516193453094495,
+        "LastJupiterRetrogradeToPrograde": 4702515601124866503,
+        "LastJupiterWesternQuadrature": 4702516131575705913,
+        "NextJupiterConjunction": 4702516751407755873,
+        "NextJupiterEasternQuadrature": 4702516516159983202,
+        "NextJupiterOpposition": 4702517185247368069,
+        "NextJupiterProgradeToRetrograde": 4702517056174162728,
+        "NextJupiterRetrogradeToPrograde": 4702516455127076536,
+        "NextJupiterWesternQuadrature": 4702516991222788291
+      }
+    },
+    {
+      "input_utc": "1997-01-01T20:14:45.456Z",
+      "tt_jd_bits": 4702516713392050531,
+      "events": {
+        "LastJupiterConjunction": 4702515897478373452,
+        "LastJupiterEasternQuadrature": 4702516516159983202,
+        "LastJupiterOpposition": 4702516323930526658,
+        "LastJupiterProgradeToRetrograde": 4702516193453094495,
+        "LastJupiterRetrogradeToPrograde": 4702516455127076537,
+        "LastJupiterWesternQuadrature": 4702516131575705913,
+        "NextJupiterConjunction": 4702516751407755873,
+        "NextJupiterEasternQuadrature": 4702517374743580578,
+        "NextJupiterOpposition": 4702517185247368069,
+        "NextJupiterProgradeToRetrograde": 4702517056174162728,
+        "NextJupiterRetrogradeToPrograde": 4702517313542566335,
+        "NextJupiterWesternQuadrature": 4702516991222788291
+      }
+    },
+    {
+      "input_utc": "1997-05-31T03:22:23.456Z",
+      "tt_jd_bits": 4702517034004847132,
+      "events": {
+        "LastJupiterConjunction": 4702516751407755873,
+        "LastJupiterEasternQuadrature": 4702516516159983202,
+        "LastJupiterOpposition": 4702516323930526658,
+        "LastJupiterProgradeToRetrograde": 4702516193453094495,
+        "LastJupiterRetrogradeToPrograde": 4702516455127076537,
+        "LastJupiterWesternQuadrature": 4702516991222788291,
+        "NextJupiterConjunction": 4702517610018423635,
+        "NextJupiterEasternQuadrature": 4702517374743580578,
+        "NextJupiterOpposition": 4702517185247368069,
+        "NextJupiterProgradeToRetrograde": 4702517056174162728,
+        "NextJupiterRetrogradeToPrograde": 4702517313542566335,
+        "NextJupiterWesternQuadrature": 4702517856327985406
+      }
+    },
+    {
+      "input_utc": "1997-10-27T10:35:46.456Z",
+      "tt_jd_bits": 4702517354626243610,
+      "events": {
+        "LastJupiterConjunction": 4702516751407755873,
+        "LastJupiterEasternQuadrature": 4702516516159983202,
+        "LastJupiterOpposition": 4702517185247368069,
+        "LastJupiterProgradeToRetrograde": 4702517056174162728,
+        "LastJupiterRetrogradeToPrograde": 4702517313542566335,
+        "LastJupiterWesternQuadrature": 4702516991222788291,
+        "NextJupiterConjunction": 4702517610018423635,
+        "NextJupiterEasternQuadrature": 4702517374743580578,
+        "NextJupiterOpposition": 4702518049732310450,
+        "NextJupiterProgradeToRetrograde": 4702517922209431808,
+        "NextJupiterRetrogradeToPrograde": 4702518176266583881,
+        "NextJupiterWesternQuadrature": 4702517856327985406
+      }
+    },
+    {
+      "input_utc": "1998-03-25T17:49:09.456Z",
+      "tt_jd_bits": 4702517675247615232,
+      "events": {
+        "LastJupiterConjunction": 4702517610018423635,
+        "LastJupiterEasternQuadrature": 4702517374743580578,
+        "LastJupiterOpposition": 4702517185247368069,
+        "LastJupiterProgradeToRetrograde": 4702517056174162728,
+        "LastJupiterRetrogradeToPrograde": 4702517313542566335,
+        "LastJupiterWesternQuadrature": 4702516991222788291,
+        "NextJupiterConjunction": 4702518473067532604,
+        "NextJupiterEasternQuadrature": 4702518235789103668,
+        "NextJupiterOpposition": 4702518049732310450,
+        "NextJupiterProgradeToRetrograde": 4702517922209431808,
+        "NextJupiterRetrogradeToPrograde": 4702518176266583881,
+        "NextJupiterWesternQuadrature": 4702517856327985406
+      }
+    },
+    {
+      "input_utc": "1998-08-20T07:02:32.456Z",
+      "tt_jd_bits": 4702517992110890471,
+      "events": {
+        "LastJupiterConjunction": 4702517610018423635,
+        "LastJupiterEasternQuadrature": 4702517374743580578,
+        "LastJupiterOpposition": 4702517185247368069,
+        "LastJupiterProgradeToRetrograde": 4702517922209431808,
+        "LastJupiterRetrogradeToPrograde": 4702517313542566335,
+        "LastJupiterWesternQuadrature": 4702517856327985406,
+        "NextJupiterConjunction": 4702518473067532604,
+        "NextJupiterEasternQuadrature": 4702518235789103668,
+        "NextJupiterOpposition": 4702518049732310450,
+        "NextJupiterProgradeToRetrograde": 4702518787154295667,
+        "NextJupiterRetrogradeToPrograde": 4702518176266583881,
+        "NextJupiterWesternQuadrature": 4702518723959510877
+      }
+    },
+    {
+      "input_utc": "1999-01-16T14:15:55.456Z",
+      "tt_jd_bits": 4702518312732286948,
+      "events": {
+        "LastJupiterConjunction": 4702517610018423635,
+        "LastJupiterEasternQuadrature": 4702518235789103668,
+        "LastJupiterOpposition": 4702518049732310450,
+        "LastJupiterProgradeToRetrograde": 4702517922209431808,
+        "LastJupiterRetrogradeToPrograde": 4702518176266583881,
+        "LastJupiterWesternQuadrature": 4702517856327985406,
+        "NextJupiterConjunction": 4702518473067532604,
+        "NextJupiterEasternQuadrature": 4702519097687911871,
+        "NextJupiterOpposition": 4702518914455502652,
+        "NextJupiterProgradeToRetrograde": 4702518787154295667,
+        "NextJupiterRetrogradeToPrograde": 4702519039884020798,
+        "NextJupiterWesternQuadrature": 4702518723959510877
+      }
+    },
+    {
+      "input_utc": "1999-06-14T19:19:18.456Z",
+      "tt_jd_bits": 4702518633159788519,
+      "events": {
+        "LastJupiterConjunction": 4702518473067532604,
+        "LastJupiterEasternQuadrature": 4702518235789103668,
+        "LastJupiterOpposition": 4702518049732310450,
+        "LastJupiterProgradeToRetrograde": 4702517922209431808,
+        "LastJupiterRetrogradeToPrograde": 4702518176266583881,
+        "LastJupiterWesternQuadrature": 4702517856327985406,
+        "NextJupiterConjunction": 4702519338321929243,
+        "NextJupiterEasternQuadrature": 4702519097687911871,
+        "NextJupiterOpposition": 4702518914455502652,
+        "NextJupiterProgradeToRetrograde": 4702518787154295667,
+        "NextJupiterRetrogradeToPrograde": 4702519039884020798,
+        "NextJupiterWesternQuadrature": 4702518723959510877
+      }
+    },
+    {
+      "input_utc": "1999-11-11T02:32:41.456Z",
+      "tt_jd_bits": 4702518953781160142,
+      "events": {
+        "LastJupiterConjunction": 4702518473067532604,
+        "LastJupiterEasternQuadrature": 4702518235789103668,
+        "LastJupiterOpposition": 4702518914455502652,
+        "LastJupiterProgradeToRetrograde": 4702518787154295667,
+        "LastJupiterRetrogradeToPrograde": 4702518176266583881,
+        "LastJupiterWesternQuadrature": 4702518723959510877,
+        "NextJupiterConjunction": 4702519338321929243,
+        "NextJupiterEasternQuadrature": 4702519097687911871,
+        "NextJupiterOpposition": 4702519776235616013,
+        "NextJupiterProgradeToRetrograde": 4702519648440844497,
+        "NextJupiterRetrogradeToPrograde": 4702519039884020798,
+        "NextJupiterWesternQuadrature": 4702519589634038153
+      }
+    },
+    {
+      "input_utc": "2000-04-08T09:46:04.456Z",
+      "tt_jd_bits": 4702519274402531765,
+      "events": {
+        "LastJupiterConjunction": 4702518473067532604,
+        "LastJupiterEasternQuadrature": 4702519097687911871,
+        "LastJupiterOpposition": 4702518914455502652,
+        "LastJupiterProgradeToRetrograde": 4702518787154295667,
+        "LastJupiterRetrogradeToPrograde": 4702519039884020798,
+        "LastJupiterWesternQuadrature": 4702518723959510877,
+        "NextJupiterConjunction": 4702519338321929243,
+        "NextJupiterEasternQuadrature": 4702519958453308414,
+        "NextJupiterOpposition": 4702519776235616013,
+        "NextJupiterProgradeToRetrograde": 4702519648440844497,
+        "NextJupiterRetrogradeToPrograde": 4702519901906597261,
+        "NextJupiterWesternQuadrature": 4702519589634038153
+      }
+    },
+    {
+      "input_utc": "2000-09-04T16:59:27.456Z",
+      "tt_jd_bits": 4702519595023903387,
+      "events": {
+        "LastJupiterConjunction": 4702519338321929243,
+        "LastJupiterEasternQuadrature": 4702519097687911871,
+        "LastJupiterOpposition": 4702518914455502652,
+        "LastJupiterProgradeToRetrograde": 4702518787154295667,
+        "LastJupiterRetrogradeToPrograde": 4702519039884020798,
+        "LastJupiterWesternQuadrature": 4702519589634038153,
+        "NextJupiterConjunction": 4702520202370163856,
+        "NextJupiterEasternQuadrature": 4702519958453308414,
+        "NextJupiterOpposition": 4702519776235616013,
+        "NextJupiterProgradeToRetrograde": 4702519648440844497,
+        "NextJupiterRetrogradeToPrograde": 4702519901906597261,
+        "NextJupiterWesternQuadrature": 4702520450002368788
+      }
+    },
+    {
+      "input_utc": "2001-01-30T06:12:50.456Z",
+      "tt_jd_bits": 4702519911887178626,
+      "events": {
+        "LastJupiterConjunction": 4702519338321929243,
+        "LastJupiterEasternQuadrature": 4702519097687911871,
+        "LastJupiterOpposition": 4702519776235616013,
+        "LastJupiterProgradeToRetrograde": 4702519648440844497,
+        "LastJupiterRetrogradeToPrograde": 4702519901906597261,
+        "LastJupiterWesternQuadrature": 4702519589634038153,
+        "NextJupiterConjunction": 4702520202370163856,
+        "NextJupiterEasternQuadrature": 4702519958453308414,
+        "NextJupiterOpposition": 4702520633410522885,
+        "NextJupiterProgradeToRetrograde": 4702520505561003456,
+        "NextJupiterRetrogradeToPrograde": 4702520760902612018,
+        "NextJupiterWesternQuadrature": 4702520450002368788
+      }
+    },
+    {
+      "input_utc": "2001-06-28T13:26:13.456Z",
+      "tt_jd_bits": 4702520232508550248,
+      "events": {
+        "LastJupiterConjunction": 4702520202370163856,
+        "LastJupiterEasternQuadrature": 4702519958453308414,
+        "LastJupiterOpposition": 4702519776235616013,
+        "LastJupiterProgradeToRetrograde": 4702519648440844497,
+        "LastJupiterRetrogradeToPrograde": 4702519901906597261,
+        "LastJupiterWesternQuadrature": 4702519589634038153,
+        "NextJupiterConjunction": 4702521062497845376,
+        "NextJupiterEasternQuadrature": 4702520816619029323,
+        "NextJupiterOpposition": 4702520633410522885,
+        "NextJupiterProgradeToRetrograde": 4702520505561003456,
+        "NextJupiterRetrogradeToPrograde": 4702520760902612018,
+        "NextJupiterWesternQuadrature": 4702520450002368788
+      }
+    },
+    {
+      "input_utc": "2001-11-24T20:39:36.456Z",
+      "tt_jd_bits": 4702520553129921871,
+      "events": {
+        "LastJupiterConjunction": 4702520202370163856,
+        "LastJupiterEasternQuadrature": 4702519958453308414,
+        "LastJupiterOpposition": 4702519776235616013,
+        "LastJupiterProgradeToRetrograde": 4702520505561003456,
+        "LastJupiterRetrogradeToPrograde": 4702519901906597261,
+        "LastJupiterWesternQuadrature": 4702520450002368788,
+        "NextJupiterConjunction": 4702521062497845376,
+        "NextJupiterEasternQuadrature": 4702520816619029323,
+        "NextJupiterOpposition": 4702520633410522885,
+        "NextJupiterProgradeToRetrograde": 4702521358490633847,
+        "NextJupiterRetrogradeToPrograde": 4702520760902612018,
+        "NextJupiterWesternQuadrature": 4702521304428736524
+      }
+    },
+    {
+      "input_utc": "2002-04-23T03:52:59.456Z",
+      "tt_jd_bits": 4702520873751293494,
+      "events": {
+        "LastJupiterConjunction": 4702520202370163856,
+        "LastJupiterEasternQuadrature": 4702520816619029323,
+        "LastJupiterOpposition": 4702520633410522885,
+        "LastJupiterProgradeToRetrograde": 4702520505561003456,
+        "LastJupiterRetrogradeToPrograde": 4702520760902612018,
+        "LastJupiterWesternQuadrature": 4702520450002368788,
+        "NextJupiterConjunction": 4702521062497845376,
+        "NextJupiterEasternQuadrature": 4702521671866607659,
+        "NextJupiterOpposition": 4702521486257843655,
+        "NextJupiterProgradeToRetrograde": 4702521358490633847,
+        "NextJupiterRetrogradeToPrograde": 4702521616888415816,
+        "NextJupiterWesternQuadrature": 4702521304428736524
+      }
+    },
+    {
+      "input_utc": "2002-09-19T11:06:22.456Z",
+      "tt_jd_bits": 4702521194372665116,
+      "events": {
+        "LastJupiterConjunction": 4702521062497845376,
+        "LastJupiterEasternQuadrature": 4702520816619029323,
+        "LastJupiterOpposition": 4702520633410522885,
+        "LastJupiterProgradeToRetrograde": 4702520505561003456,
+        "LastJupiterRetrogradeToPrograde": 4702520760902612018,
+        "LastJupiterWesternQuadrature": 4702520450002368788,
+        "NextJupiterConjunction": 4702521917985855430,
+        "NextJupiterEasternQuadrature": 4702521671866607659,
+        "NextJupiterOpposition": 4702521486257843655,
+        "NextJupiterProgradeToRetrograde": 4702521358490633847,
+        "NextJupiterRetrogradeToPrograde": 4702521616888415816,
+        "NextJupiterWesternQuadrature": 4702521304428736524
+      }
+    },
+    {
+      "input_utc": "2003-02-15T18:19:45.456Z",
+      "tt_jd_bits": 4702521514994036739,
+      "events": {
+        "LastJupiterConjunction": 4702521062497845376,
+        "LastJupiterEasternQuadrature": 4702520816619029323,
+        "LastJupiterOpposition": 4702521486257843655,
+        "LastJupiterProgradeToRetrograde": 4702521358490633847,
+        "LastJupiterRetrogradeToPrograde": 4702520760902612018,
+        "LastJupiterWesternQuadrature": 4702521304428736524,
+        "NextJupiterConjunction": 4702521917985855430,
+        "NextJupiterEasternQuadrature": 4702521671866607659,
+        "NextJupiterOpposition": 4702522336293893979,
+        "NextJupiterProgradeToRetrograde": 4702522208314915907,
+        "NextJupiterRetrogradeToPrograde": 4702521616888415816,
+        "NextJupiterWesternQuadrature": 4702522154284300978
+      }
+    },
+    {
+      "input_utc": "2003-07-13T05:17:23.456Z",
+      "tt_jd_bits": 4702521831654866904,
+      "events": {
+        "LastJupiterConjunction": 4702521062497845376,
+        "LastJupiterEasternQuadrature": 4702521671866607659,
+        "LastJupiterOpposition": 4702521486257843655,
+        "LastJupiterProgradeToRetrograde": 4702521358490633847,
+        "LastJupiterRetrogradeToPrograde": 4702521616888415816,
+        "LastJupiterWesternQuadrature": 4702521304428736524,
+        "NextJupiterConjunction": 4702521917985855430,
+        "NextJupiterEasternQuadrature": 4702522524867228697,
+        "NextJupiterOpposition": 4702522336293893979,
+        "NextJupiterProgradeToRetrograde": 4702522208314915907,
+        "NextJupiterRetrogradeToPrograde": 4702522470158124246,
+        "NextJupiterWesternQuadrature": 4702522154284300978
+      }
+    },
+    {
+      "input_utc": "2003-12-09T12:30:46.456Z",
+      "tt_jd_bits": 4702522152276238527,
+      "events": {
+        "LastJupiterConjunction": 4702521917985855430,
+        "LastJupiterEasternQuadrature": 4702521671866607659,
+        "LastJupiterOpposition": 4702521486257843655,
+        "LastJupiterProgradeToRetrograde": 4702521358490633847,
+        "LastJupiterRetrogradeToPrograde": 4702521616888415816,
+        "LastJupiterWesternQuadrature": 4702521304428736524,
+        "NextJupiterConjunction": 4702522769611689768,
+        "NextJupiterEasternQuadrature": 4702522524867228697,
+        "NextJupiterOpposition": 4702522336293893979,
+        "NextJupiterProgradeToRetrograde": 4702522208314915907,
+        "NextJupiterRetrogradeToPrograde": 4702522470158124246,
+        "NextJupiterWesternQuadrature": 4702522154284300978
+      }
+    },
+    {
+      "input_utc": "2004-05-06T19:44:09.456Z",
+      "tt_jd_bits": 4702522472897610149,
+      "events": {
+        "LastJupiterConjunction": 4702521917985855430,
+        "LastJupiterEasternQuadrature": 4702521671866607659,
+        "LastJupiterOpposition": 4702522336293893979,
+        "LastJupiterProgradeToRetrograde": 4702522208314915907,
+        "LastJupiterRetrogradeToPrograde": 4702522470158124246,
+        "LastJupiterWesternQuadrature": 4702522154284300978,
+        "NextJupiterConjunction": 4702522769611689768,
+        "NextJupiterEasternQuadrature": 4702522524867228697,
+        "NextJupiterOpposition": 4702523185481663723,
+        "NextJupiterProgradeToRetrograde": 4702523056647900438,
+        "NextJupiterRetrogradeToPrograde": 4702523321353238901,
+        "NextJupiterWesternQuadrature": 4702523001754930387
+      }
+    },
+    {
+      "input_utc": "2004-10-03T02:57:32.456Z",
+      "tt_jd_bits": 4702522793518981772,
+      "events": {
+        "LastJupiterConjunction": 4702522769611689768,
+        "LastJupiterEasternQuadrature": 4702522524867228697,
+        "LastJupiterOpposition": 4702522336293893979,
+        "LastJupiterProgradeToRetrograde": 4702522208314915907,
+        "LastJupiterRetrogradeToPrograde": 4702522470158124246,
+        "LastJupiterWesternQuadrature": 4702522154284300978,
+        "NextJupiterConjunction": 4702523619040346990,
+        "NextJupiterEasternQuadrature": 4702523376757271166,
+        "NextJupiterOpposition": 4702523185481663723,
+        "NextJupiterProgradeToRetrograde": 4702523056647900438,
+        "NextJupiterRetrogradeToPrograde": 4702523321353238901,
+        "NextJupiterWesternQuadrature": 4702523001754930387
+      }
+    },
+    {
+      "input_utc": "2005-03-01T10:10:55.456Z",
+      "tt_jd_bits": 4702523114140353395,
+      "events": {
+        "LastJupiterConjunction": 4702522769611689768,
+        "LastJupiterEasternQuadrature": 4702522524867228697,
+        "LastJupiterOpposition": 4702522336293893979,
+        "LastJupiterProgradeToRetrograde": 4702523056647900438,
+        "LastJupiterRetrogradeToPrograde": 4702522470158124246,
+        "LastJupiterWesternQuadrature": 4702523001754930387,
+        "NextJupiterConjunction": 4702523619040346990,
+        "NextJupiterEasternQuadrature": 4702523376757271166,
+        "NextJupiterOpposition": 4702523185481663723,
+        "NextJupiterProgradeToRetrograde": 4702523905663624695,
+        "NextJupiterRetrogradeToPrograde": 4702523321353238901,
+        "NextJupiterWesternQuadrature": 4702523849302140088
+      }
+    },
+    {
+      "input_utc": "2005-07-28T17:24:18.456Z",
+      "tt_jd_bits": 4702523434761725017,
+      "events": {
+        "LastJupiterConjunction": 4702522769611689768,
+        "LastJupiterEasternQuadrature": 4702523376757271166,
+        "LastJupiterOpposition": 4702523185481663723,
+        "LastJupiterProgradeToRetrograde": 4702523056647900438,
+        "LastJupiterRetrogradeToPrograde": 4702523321353238898,
+        "LastJupiterWesternQuadrature": 4702523001754930387,
+        "NextJupiterConjunction": 4702523619040346990,
+        "NextJupiterEasternQuadrature": 4702524228832709253,
+        "NextJupiterOpposition": 4702524035804970436,
+        "NextJupiterProgradeToRetrograde": 4702523905663624695,
+        "NextJupiterRetrogradeToPrograde": 4702524171499669562,
+        "NextJupiterWesternQuadrature": 4702523849302140088
+      }
+    },
+    {
+      "input_utc": "2005-12-23T06:37:41.456Z",
+      "tt_jd_bits": 4702523751625000256,
+      "events": {
+        "LastJupiterConjunction": 4702523619040346990,
+        "LastJupiterEasternQuadrature": 4702523376757271166,
+        "LastJupiterOpposition": 4702523185481663723,
+        "LastJupiterProgradeToRetrograde": 4702523056647900438,
+        "LastJupiterRetrogradeToPrograde": 4702523321353238901,
+        "LastJupiterWesternQuadrature": 4702523001754930387,
+        "NextJupiterConjunction": 4702524468223240294,
+        "NextJupiterEasternQuadrature": 4702524228832709253,
+        "NextJupiterOpposition": 4702524035804970436,
+        "NextJupiterProgradeToRetrograde": 4702523905663624695,
+        "NextJupiterRetrogradeToPrograde": 4702524171499669562,
+        "NextJupiterWesternQuadrature": 4702523849302140088
+      }
+    },
+    {
+      "input_utc": "2006-05-21T13:51:04.456Z",
+      "tt_jd_bits": 4702524072246396733,
+      "events": {
+        "LastJupiterConjunction": 4702523619040346990,
+        "LastJupiterEasternQuadrature": 4702523376757271166,
+        "LastJupiterOpposition": 4702524035804970436,
+        "LastJupiterProgradeToRetrograde": 4702523905663624695,
+        "LastJupiterRetrogradeToPrograde": 4702523321353238901,
+        "LastJupiterWesternQuadrature": 4702523849302140088,
+        "NextJupiterConjunction": 4702524468223240294,
+        "NextJupiterEasternQuadrature": 4702524228832709253,
+        "NextJupiterOpposition": 4702524889125945740,
+        "NextJupiterProgradeToRetrograde": 4702524758348277020,
+        "NextJupiterRetrogradeToPrograde": 4702524171499669562,
+        "NextJupiterWesternQuadrature": 4702524699351306591
+      }
+    },
+    {
+      "input_utc": "2006-10-17T21:04:27.456Z",
+      "tt_jd_bits": 4702524392867768356,
+      "events": {
+        "LastJupiterConjunction": 4702523619040346990,
+        "LastJupiterEasternQuadrature": 4702524228832709253,
+        "LastJupiterOpposition": 4702524035804970436,
+        "LastJupiterProgradeToRetrograde": 4702523905663624695,
+        "LastJupiterRetrogradeToPrograde": 4702524171499669562,
+        "LastJupiterWesternQuadrature": 4702523849302140088,
+        "NextJupiterConjunction": 4702524468223240294,
+        "NextJupiterEasternQuadrature": 4702525082476556773,
+        "NextJupiterOpposition": 4702524889125945740,
+        "NextJupiterProgradeToRetrograde": 4702524758348277020,
+        "NextJupiterRetrogradeToPrograde": 4702525022873871690,
+        "NextJupiterWesternQuadrature": 4702524699351306591
+      }
+    },
+    {
+      "input_utc": "2007-03-16T04:17:50.456Z",
+      "tt_jd_bits": 4702524713489139979,
+      "events": {
+        "LastJupiterConjunction": 4702524468223240294,
+        "LastJupiterEasternQuadrature": 4702524228832709253,
+        "LastJupiterOpposition": 4702524035804970436,
+        "LastJupiterProgradeToRetrograde": 4702523905663624695,
+        "LastJupiterRetrogradeToPrograde": 4702524171499669562,
+        "LastJupiterWesternQuadrature": 4702524699351306591,
+        "NextJupiterConjunction": 4702525319223979778,
+        "NextJupiterEasternQuadrature": 4702525082476556773,
+        "NextJupiterOpposition": 4702524889125945740,
+        "NextJupiterProgradeToRetrograde": 4702524758348277020,
+        "NextJupiterRetrogradeToPrograde": 4702525022873871692,
+        "NextJupiterWesternQuadrature": 4702525554037828411
+      }
+    },
+    {
+      "input_utc": "2007-08-12T09:21:13.456Z",
+      "tt_jd_bits": 4702525033916641550,
+      "events": {
+        "LastJupiterConjunction": 4702524468223240294,
+        "LastJupiterEasternQuadrature": 4702524228832709253,
+        "LastJupiterOpposition": 4702524889125945740,
+        "LastJupiterProgradeToRetrograde": 4702524758348277020,
+        "LastJupiterRetrogradeToPrograde": 4702525022873871692,
+        "LastJupiterWesternQuadrature": 4702524699351306591,
+        "NextJupiterConjunction": 4702525319223979778,
+        "NextJupiterEasternQuadrature": 4702525082476556773,
+        "NextJupiterOpposition": 4702525746727377977,
+        "NextJupiterProgradeToRetrograde": 4702525616388038372,
+        "NextJupiterRetrogradeToPrograde": 4702525877346821269,
+        "NextJupiterWesternQuadrature": 4702525554037828411
+      }
+    },
+    {
+      "input_utc": "2008-01-08T16:34:36.456Z",
+      "tt_jd_bits": 4702525354538013172,
+      "events": {
+        "LastJupiterConjunction": 4702525319223979778,
+        "LastJupiterEasternQuadrature": 4702525082476556773,
+        "LastJupiterOpposition": 4702524889125945740,
+        "LastJupiterProgradeToRetrograde": 4702524758348277020,
+        "LastJupiterRetrogradeToPrograde": 4702525022873871692,
+        "LastJupiterWesternQuadrature": 4702524699351306591,
+        "NextJupiterConjunction": 4702526173905210046,
+        "NextJupiterEasternQuadrature": 4702525938677881194,
+        "NextJupiterOpposition": 4702525746727377977,
+        "NextJupiterProgradeToRetrograde": 4702525616388038372,
+        "NextJupiterRetrogradeToPrograde": 4702525877346821269,
+        "NextJupiterWesternQuadrature": 4702525554037828411
+      }
+    },
+    {
+      "input_utc": "2008-06-04T05:47:59.456Z",
+      "tt_jd_bits": 4702525671401288411,
+      "events": {
+        "LastJupiterConjunction": 4702525319223979778,
+        "LastJupiterEasternQuadrature": 4702525082476556773,
+        "LastJupiterOpposition": 4702524889125945740,
+        "LastJupiterProgradeToRetrograde": 4702525616388038372,
+        "LastJupiterRetrogradeToPrograde": 4702525022873871692,
+        "LastJupiterWesternQuadrature": 4702525554037828411,
+        "NextJupiterConjunction": 4702526173905210046,
+        "NextJupiterEasternQuadrature": 4702525938677881194,
+        "NextJupiterOpposition": 4702525746727377977,
+        "NextJupiterProgradeToRetrograde": 4702526480112933471,
+        "NextJupiterRetrogradeToPrograde": 4702525877346821269,
+        "NextJupiterWesternQuadrature": 4702526414693471474
+      }
+    },
+    {
+      "input_utc": "2008-10-31T13:01:22.456Z",
+      "tt_jd_bits": 4702525992022660033,
+      "events": {
+        "LastJupiterConjunction": 4702525319223979778,
+        "LastJupiterEasternQuadrature": 4702525938677881194,
+        "LastJupiterOpposition": 4702525746727377977,
+        "LastJupiterProgradeToRetrograde": 4702525616388038372,
+        "LastJupiterRetrogradeToPrograde": 4702525877346821269,
+        "LastJupiterWesternQuadrature": 4702525554037828411,
+        "NextJupiterConjunction": 4702526173905210046,
+        "NextJupiterEasternQuadrature": 4702526797833950667,
+        "NextJupiterOpposition": 4702526608783663316,
+        "NextJupiterProgradeToRetrograde": 4702526480112933471,
+        "NextJupiterRetrogradeToPrograde": 4702526736805521956,
+        "NextJupiterWesternQuadrature": 4702526414693471474
+      }
+    },
+    {
+      "input_utc": "2009-03-29T20:14:45.456Z",
+      "tt_jd_bits": 4702526312644056511,
+      "events": {
+        "LastJupiterConjunction": 4702526173905210046,
+        "LastJupiterEasternQuadrature": 4702525938677881194,
+        "LastJupiterOpposition": 4702525746727377977,
+        "LastJupiterProgradeToRetrograde": 4702525616388038372,
+        "LastJupiterRetrogradeToPrograde": 4702525877346821269,
+        "LastJupiterWesternQuadrature": 4702525554037828411,
+        "NextJupiterConjunction": 4702527033345979976,
+        "NextJupiterEasternQuadrature": 4702526797833950667,
+        "NextJupiterOpposition": 4702526608783663316,
+        "NextJupiterProgradeToRetrograde": 4702526480112933471,
+        "NextJupiterRetrogradeToPrograde": 4702526736805521956,
+        "NextJupiterWesternQuadrature": 4702526414693471474
+      }
+    },
+    {
+      "input_utc": "2009-08-26T03:22:23.456Z",
+      "tt_jd_bits": 4702526633256853112,
+      "events": {
+        "LastJupiterConjunction": 4702526173905210046,
+        "LastJupiterEasternQuadrature": 4702525938677881194,
+        "LastJupiterOpposition": 4702526608783663316,
+        "LastJupiterProgradeToRetrograde": 4702526480112933471,
+        "LastJupiterRetrogradeToPrograde": 4702525877346821269,
+        "LastJupiterWesternQuadrature": 4702526414693471474,
+        "NextJupiterConjunction": 4702527033345979976,
+        "NextJupiterEasternQuadrature": 4702526797833950667,
+        "NextJupiterOpposition": 4702527473657079946,
+        "NextJupiterProgradeToRetrograde": 4702527346265792180,
+        "NextJupiterRetrogradeToPrograde": 4702526736805521956,
+        "NextJupiterWesternQuadrature": 4702527280539942363
+      }
+    },
+    {
+      "input_utc": "2010-01-22T10:35:46.456Z",
+      "tt_jd_bits": 4702526953878224735,
+      "events": {
+        "LastJupiterConjunction": 4702526173905210046,
+        "LastJupiterEasternQuadrature": 4702526797833950667,
+        "LastJupiterOpposition": 4702526608783663316,
+        "LastJupiterProgradeToRetrograde": 4702526480112933471,
+        "LastJupiterRetrogradeToPrograde": 4702526736805521956,
+        "LastJupiterWesternQuadrature": 4702526414693471474,
+        "NextJupiterConjunction": 4702527033345979976,
+        "NextJupiterEasternQuadrature": 4702527659252098549,
+        "NextJupiterOpposition": 4702527473657079946,
+        "NextJupiterProgradeToRetrograde": 4702527346265792180,
+        "NextJupiterRetrogradeToPrograde": 4702527599853542486,
+        "NextJupiterWesternQuadrature": 4702527280539942363
+      }
+    },
+    {
+      "input_utc": "2010-06-20T17:49:09.456Z",
+      "tt_jd_bits": 4702527274499596357,
+      "events": {
+        "LastJupiterConjunction": 4702527033345979976,
+        "LastJupiterEasternQuadrature": 4702526797833950667,
+        "LastJupiterOpposition": 4702526608783663316,
+        "LastJupiterProgradeToRetrograde": 4702526480112933471,
+        "LastJupiterRetrogradeToPrograde": 4702526736805521956,
+        "LastJupiterWesternQuadrature": 4702526414693471474,
+        "NextJupiterConjunction": 4702527896986511441,
+        "NextJupiterEasternQuadrature": 4702527659252098549,
+        "NextJupiterOpposition": 4702527473657079946,
+        "NextJupiterProgradeToRetrograde": 4702527346265792180,
+        "NextJupiterRetrogradeToPrograde": 4702527599853542486,
+        "NextJupiterWesternQuadrature": 4702527280539942363
+      }
+    }
+  ]
+}

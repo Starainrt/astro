@@ -3,6 +3,8 @@ package basic
 import (
 	"math"
 	"sort"
+
+	"github.com/starainrt/astro/internal/geodata"
 )
 
 // 地平闭包根的扫描式枚举。闭包根的定义是三个条件同时成立：站点落在 central limit 上
@@ -96,7 +98,7 @@ func (solver solarEclipseSolver) closureScanCandidatesAt(jde float64) []solarEcl
 	sun := solarEclipseXYZToLLR(
 		evaluation.center.sunXYZ[0], evaluation.center.sunXYZ[1], evaluation.center.sunXYZ[2],
 	)
-	centerLongitude := normalizeLongitude((sun[0] - evaluation.center.gst) / rad)
+	centerLongitude := geodata.NormalizeLongitude((sun[0] - evaluation.center.gst) / rad)
 	centerLatitude := sun[1] / rad
 	valueAt := func(angle float64) (float64, bool) {
 		longitude, latitude := riseSetHorizonPoint(centerLongitude, centerLatitude, angle)

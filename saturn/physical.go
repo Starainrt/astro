@@ -21,14 +21,14 @@ type PhysicalInfo struct {
 }
 
 // Physical 土星物理观测参数 / physical observing parameters of Saturn.
-func Physical(date time.Time) PhysicalInfo {
-	return PhysicalN(date, -1)
+func (module *Saturn) Physical(date time.Time) PhysicalInfo {
+	return module.PhysicalN(date, -1)
 }
 
-// PhysicalN 土星物理观测参数（截断版） / truncated physical observing parameters of Saturn.
-func PhysicalN(date time.Time, n int) PhysicalInfo {
+// PhysicalN 土星物理观测参数（n 变体） / n-parameterised physical observing parameters of Saturn.
+func (module *Saturn) PhysicalN(date time.Time, n int) PhysicalInfo {
 	jd := basic.Date2JD(date.UTC())
-	info := basic.SaturnPhysicalN(basic.UTC2TT(jd), n)
+	info := basic.SaturnPhysicalNWithInstance(basic.UTC2TT(jd), n, module.inst)
 	return PhysicalInfo{
 		SubEarthLongitude:      info.SubEarthLongitude,
 		SubEarthLatitude:       info.SubEarthLatitude,
@@ -39,11 +39,11 @@ func PhysicalN(date time.Time, n int) PhysicalInfo {
 }
 
 // PhysicalSystemIII 土星 System III 物理观测参数 / Saturn System III physical observing parameters.
-func PhysicalSystemIII(date time.Time) PhysicalInfo {
-	return Physical(date)
+func (module *Saturn) PhysicalSystemIII(date time.Time) PhysicalInfo {
+	return module.Physical(date)
 }
 
-// PhysicalSystemIIIN 土星 System III 物理观测参数（截断版） / truncated Saturn System III physical observing parameters.
-func PhysicalSystemIIIN(date time.Time, n int) PhysicalInfo {
-	return PhysicalN(date, n)
+// PhysicalSystemIIIN 土星 System III 物理观测参数（n 变体） / n-parameterised Saturn System III physical observing parameters.
+func (module *Saturn) PhysicalSystemIIIN(date time.Time, n int) PhysicalInfo {
+	return module.PhysicalN(date, n)
 }

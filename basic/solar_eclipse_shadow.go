@@ -1,6 +1,8 @@
 package basic
 
-import "math"
+import (
+	"math"
+)
 
 // SolarEclipseShadowKind 阴影类型 / shadow kind.
 type SolarEclipseShadowKind int
@@ -125,6 +127,8 @@ func (instant SolarEclipseShadowInstant) Empty() bool {
 
 // SolarEclipseShadowSolver 可复用的单时刻求解器；非并发安全，宿主每条 lane 各持一个 / reusable solver, one per lane.
 type SolarEclipseShadowSolver struct {
+	inst *Instance
+
 	options SolarEclipseShadowSolverOptions
 
 	anchorSet    bool
@@ -132,8 +136,8 @@ type SolarEclipseShadowSolver struct {
 	anchorSolver solarEclipseSolver
 }
 
-// NewSolarEclipseShadowSolver 构造单时刻求解器 / builds a single-instant solver.
-func NewSolarEclipseShadowSolver(options SolarEclipseShadowSolverOptions) *SolarEclipseShadowSolver {
+// NewSolarEclipseShadowSolverWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func NewSolarEclipseShadowSolverWithInstance(options SolarEclipseShadowSolverOptions, inst *Instance) *SolarEclipseShadowSolver {
 	options.Model = normalizeSolarEclipseRadiusModel(options.Model)
 	options.SunRadiusModel = normalizeSolarEclipseSunRadiusModel(options.SunRadiusModel)
 	if options.BoundaryPoints <= 0 {
@@ -156,7 +160,7 @@ func NewSolarEclipseShadowSolver(options SolarEclipseShadowSolverOptions) *Solar
 	if options.TargetSpacingKM < 0 {
 		options.TargetSpacingKM = 0
 	}
-	return &SolarEclipseShadowSolver{options: options}
+	return &SolarEclipseShadowSolver{inst: inst, options: options}
 }
 
 // ShadowAtJDE 给定 TT 时刻的阴影足迹；不在地球上时返回 (零值, false) / footprint at one TT instant.
@@ -210,13 +214,13 @@ func (solver *SolarEclipseShadowSolver) solverFor(jdeTT float64) solarEclipseSol
 	if solver.anchorSet && math.Abs(jdeTT-solver.anchorJDE) <= solarEclipseShadowAnchorHalfWindowDays {
 		return solver.anchorSolver
 	}
-	anchor := CalcMoonSHByJDE(jdeTT, 0)
+	anchor := solarEclipseAnchorNewMoon(jdeTT, solver.inst)
 	solver.anchorSet = true
 	solver.anchorJDE = anchor
 	solver.anchorSolver = newSolarEclipseSolverWithOptions(anchor, SolarEclipseOptions{
 		RadiusModel:    solver.options.Model,
 		SunRadiusModel: solver.options.SunRadiusModel,
-	})
+	}, solver.inst)
 	return solver.anchorSolver
 }
 
@@ -228,7 +232,7 @@ func (solver *SolarEclipseShadowSolver) besselGeometryAt(
 	if solver.options.DeltaTSeconds <= 0 {
 		return inner.besselGeometryAt(jdeTT)
 	}
-	sunEquatorial, moonEquatorial := solarEclipseSunMoonEquatorial(jdeTT)
+	sunEquatorial, moonEquatorial := solarEclipseSunMoonEquatorial(jdeTT, solver.inst)
 	axis := solarEclipseBesselAxisFromEquatorialWithDeltaT(
 		jdeTT, sunEquatorial, moonEquatorial, deltaTSeconds,
 	)
@@ -311,7 +315,7 @@ func (solver *SolarEclipseShadowSolver) StationStateAtJDE(
 	heightKM := heightMeters / 1000
 	state := localSolarEclipseStateAtWithDeltaT(
 		jdeTT, deltaT, lonDeg*rad, latDeg*rad, heightKM,
-		solarEclipseModelParams(solver.options.Model, solver.options.SunRadiusModel),
+		solarEclipseModelParams(solver.options.Model, solver.options.SunRadiusModel), solver.inst,
 	)
 	contact := state.movingDiskContactState()
 	central := contact.internalContactGap() <= 0
@@ -361,17 +365,19 @@ func SolarEclipseStationStateAtJDE(
 
 func localSolarEclipseStateAtWithDeltaT(
 	jdTT, deltaTSeconds, lonRad, latRad, heightKM float64,
-	params solarEclipseModelParameters,
-) localSolarEclipseState {
-	context := newLocalSolarEclipseStateContextWithDeltaT(jdTT, deltaTSeconds, params)
+	params solarEclipseModelParameters, instances ...*Instance) localSolarEclipseState {
+	inst := instanceValue(instances)
+
+	context := newLocalSolarEclipseStateContextWithDeltaT(jdTT, deltaTSeconds, params, inst)
 	return context.stateAt(lonRad, latRad, heightKM)
 }
 
 func newLocalSolarEclipseStateContextWithDeltaT(
 	jdTT, deltaTSeconds float64,
-	params solarEclipseModelParameters,
-) localSolarEclipseStateContext {
-	sunEquatorial, moonEquatorial := solarEclipseSunMoonEquatorial(jdTT)
+	params solarEclipseModelParameters, instances ...*Instance) localSolarEclipseStateContext {
+	inst := instanceValue(instances)
+
+	sunEquatorial, moonEquatorial := solarEclipseSunMoonEquatorial(jdTT, inst)
 	utJDE := jdTT - deltaTSeconds/86400
 	return localSolarEclipseStateContext{
 		sunXYZ:  solarEclipseLLRToXYZ(sunEquatorial[0], sunEquatorial[1], sunEquatorial[2]),

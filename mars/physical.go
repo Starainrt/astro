@@ -21,14 +21,14 @@ type PhysicalInfo struct {
 }
 
 // Physical 火星物理观测参数 / physical observing parameters of Mars.
-func Physical(date time.Time) PhysicalInfo {
-	return PhysicalN(date, -1)
+func (module *Mars) Physical(date time.Time) PhysicalInfo {
+	return module.PhysicalN(date, -1)
 }
 
-// PhysicalN 火星物理观测参数（截断版） / truncated physical observing parameters of Mars.
-func PhysicalN(date time.Time, n int) PhysicalInfo {
+// PhysicalN 火星物理观测参数（n 变体） / n-parameterised physical observing parameters of Mars.
+func (module *Mars) PhysicalN(date time.Time, n int) PhysicalInfo {
 	jd := basic.Date2JD(date.UTC())
-	info := basic.MarsPhysicalN(basic.UTC2TT(jd), n)
+	info := basic.MarsPhysicalNWithInstance(basic.UTC2TT(jd), n, module.inst)
 	return PhysicalInfo{
 		SubEarthLongitude:      info.SubEarthLongitude,
 		SubEarthLatitude:       info.SubEarthLatitude,

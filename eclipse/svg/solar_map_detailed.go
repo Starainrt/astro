@@ -8,6 +8,7 @@ import (
 	"time"
 
 	eclipsecore "github.com/starainrt/astro/eclipse"
+	"github.com/starainrt/astro/internal/geodata"
 	"github.com/starainrt/astro/internal/svgchart"
 	"github.com/starainrt/astro/internal/svgmap"
 )
@@ -90,7 +91,7 @@ func writeSolarEclipseScaleBar(
 	if radius <= 0 || slot.Width <= 0 || slot.Height <= 0 {
 		return
 	}
-	kilometresPerPixel := (math.Pi / 2 * 6371.0088) / radius
+	kilometresPerPixel := (math.Pi / 2 * geodata.EarthMeanRadiusKM) / radius
 	target := 130.0 * kilometresPerPixel
 	step := solarEclipseScaleStep(target, slot.Width, func(candidate float64) float64 {
 		barWidth := candidate / kilometresPerPixel

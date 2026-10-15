@@ -8,23 +8,23 @@ import (
 )
 
 // AscendingNode 天王星升交点黄经 / ascending node longitude of Uranus.
-func AscendingNode(date time.Time) float64 {
-	return AscendingNodeN(date, -1)
+func (module *Uranus) AscendingNode(date time.Time) float64 {
+	return module.AscendingNodeN(date, -1)
 }
 
-// AscendingNodeN 天王星升交点黄经（截断版） / truncated ascending node longitude of Uranus.
-func AscendingNodeN(date time.Time, n int) float64 {
+// AscendingNodeN 天王星升交点黄经（n 变体） / n-parameterised ascending node longitude of Uranus.
+func (module *Uranus) AscendingNodeN(date time.Time, n int) float64 {
 	jd := calendar.Date2JD(date.UTC())
-	return basic.UranusAscendingNodeN(basic.UTC2TT(jd), n)
+	return basic.UranusAscendingNodeNWithInstance(basic.UTC2TT(jd), n, module.inst)
 }
 
 // DescendingNode 天王星降交点黄经 / descending node longitude of Uranus.
-func DescendingNode(date time.Time) float64 {
-	return DescendingNodeN(date, -1)
+func (module *Uranus) DescendingNode(date time.Time) float64 {
+	return module.DescendingNodeN(date, -1)
 }
 
-// DescendingNodeN 天王星降交点黄经（截断版） / truncated descending node longitude of Uranus.
-func DescendingNodeN(date time.Time, n int) float64 {
+// DescendingNodeN 天王星降交点黄经（n 变体） / n-parameterised descending node longitude of Uranus.
+func (module *Uranus) DescendingNodeN(date time.Time, n int) float64 {
 	jd := calendar.Date2JD(date.UTC())
-	return basic.UranusDescendingNodeN(basic.UTC2TT(jd), n)
+	return basic.UranusDescendingNodeNWithInstance(basic.UTC2TT(jd), n, module.inst)
 }

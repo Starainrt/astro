@@ -3,7 +3,6 @@ package basic
 import (
 	"math"
 
-	"github.com/starainrt/astro/planet"
 	. "github.com/starainrt/astro/tools"
 )
 
@@ -15,17 +14,21 @@ type planetGeocentricPosition struct {
 	bo float64
 }
 
-func planetHeliocentricXYZN(planetIndex int, jde float64, n int) (float64, float64, float64) {
-	l := planet.WherePlanetN(planetIndex, 0, jde, n)
-	b := planet.WherePlanetN(planetIndex, 1, jde, n)
-	r := planet.WherePlanetN(planetIndex, 2, jde, n)
+func planetHeliocentricXYZN(planetIndex int, jde float64, n int, instances ...*Instance) (float64, float64, float64) {
+	inst := instanceValue(instances)
+
+	l := PlanetCoordinateNWithInstance(planetIndex, 0, jde, n, inst)
+	b := PlanetCoordinateNWithInstance(planetIndex, 1, jde, n, inst)
+	r := PlanetCoordinateNWithInstance(planetIndex, 2, jde, n, inst)
 	return sphericalToRectangular(l, b, r)
 }
 
-func earthHeliocentricXYZN(jde float64, n int) (float64, float64, float64) {
-	l := planet.WherePlanetN(-1, 0, jde, n)
-	b := planet.WherePlanetN(-1, 1, jde, n)
-	r := planet.WherePlanetN(-1, 2, jde, n)
+func earthHeliocentricXYZN(jde float64, n int, instances ...*Instance) (float64, float64, float64) {
+	inst := instanceValue(instances)
+
+	l := PlanetCoordinateNWithInstance(-1, 0, jde, n, inst)
+	b := PlanetCoordinateNWithInstance(-1, 1, jde, n, inst)
+	r := PlanetCoordinateNWithInstance(-1, 2, jde, n, inst)
 	return sphericalToRectangular(l, b, r)
 }
 
@@ -54,8 +57,10 @@ func planetGeocentricPositionN(planetIndex int, planetJD, earthJDE float64, n in
 	return geocentricPositionFromRectangular(px-ex, py-ey, pz-ez)
 }
 
-func planetGeocentricPositionWithEarthN(planetIndex int, planetJD float64, ex, ey, ez float64, n int) planetGeocentricPosition {
-	px, py, pz := planetHeliocentricXYZN(planetIndex, planetJD, n)
+func planetGeocentricPositionWithEarthN(planetIndex int, planetJD float64, ex, ey, ez float64, n int, instances ...*Instance) planetGeocentricPosition {
+	inst := instanceValue(instances)
+
+	px, py, pz := planetHeliocentricXYZN(planetIndex, planetJD, n, inst)
 	return geocentricPositionFromRectangular(px-ex, py-ey, pz-ez)
 }
 
@@ -67,17 +72,24 @@ func planetApparentGeocentricPositionN(planetIndex int, jd float64, n int) (plan
 func planetApparentGeocentricPositionAndDistanceN(
 	planetIndex int,
 	jde float64,
-	n int,
-) (planetGeocentricPosition, float64, float64) {
-	ex, ey, ez := earthHeliocentricXYZN(jde, n)
-	geoNow := planetGeocentricPositionWithEarthN(planetIndex, jde, ex, ey, ez, n)
+	n int, instances ...*Instance) (planetGeocentricPosition, float64, float64) {
+	inst := instanceValue(instances)
+
+	if planetIndex >= 1 && planetIndex <= 7 {
+		if lo, bo, tau, dist, ok := boundVectorApparent(planetBody[planetIndex], jde, n, inst); ok {
+			x, y, z := sphericalToRectangular(lo, bo, dist)
+			return planetGeocentricPosition{x: x, y: y, z: z, lo: lo, bo: bo}, tau, dist
+		}
+	}
+	ex, ey, ez := earthHeliocentricXYZN(jde, n, inst)
+	geoNow := planetGeocentricPositionWithEarthN(planetIndex, jde, ex, ey, ez, n, inst)
 	distance := math.Sqrt(geoNow.x*geoNow.x + geoNow.y*geoNow.y + geoNow.z*geoNow.z)
 	tau := 0.0057755183 * distance
-	geo := planetGeocentricPositionWithEarthN(planetIndex, jde-tau, ex, ey, ez, n)
+	geo := planetGeocentricPositionWithEarthN(planetIndex, jde-tau, ex, ey, ez, n, inst)
 	baseLo := geo.lo
 	baseBo := geo.bo
-	geo.lo = Limit360(baseLo + GXCLo(baseLo, baseBo, jde)/3600.0 + Nutation2000Bi(jde))
-	geo.bo = baseBo + GXCBo(baseLo, baseBo, jde)/3600.0
+	geo.lo = Limit360(baseLo + GXCLoWithInstance(baseLo, baseBo, jde, inst)/3600.0 + Nutation2000Bi(jde))
+	geo.bo = baseBo + GXCBoWithInstance(baseLo, baseBo, jde, inst)/3600.0
 	return geo, tau, distance
 }
 
@@ -89,6 +101,12 @@ func planetTrueGeocentricPositionN(planetIndex int, jde float64, n int) (planetG
 }
 
 func planetEarthAwayExplicitN(planetIndex int, jd float64, n int) float64 {
+	// 新模型全精度时与视位置管线同源，掩星等组合路径取到的距离逐位一致。
+	if planetIndex >= 1 && planetIndex <= 7 {
+		if _, _, _, dist, ok := vectorApparent(planetBody[planetIndex], jd, n); ok {
+			return dist
+		}
+	}
 	geoNow := planetGeocentricPositionN(planetIndex, jd, jd, n)
 	return math.Sqrt(geoNow.x*geoNow.x + geoNow.y*geoNow.y + geoNow.z*geoNow.z)
 }

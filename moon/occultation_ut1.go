@@ -3,7 +3,6 @@ package moon
 import (
 	"time"
 
-	"github.com/starainrt/astro"
 	"github.com/starainrt/astro/basic"
 )
 
@@ -14,7 +13,7 @@ func occultationUT1Label(t time.Time) time.Time {
 	if t.IsZero() {
 		return t
 	}
-	return astro.LabelIn(astro.TimeScaleUT1, t)
+	return basic.LabelIn(basic.TimeScaleUT1, t)
 }
 
 func occultationUT1PathPoint(p basic.OccultationPathPoint) basic.OccultationPathPoint {
@@ -128,4 +127,24 @@ func PlanetOccultationInfoInUT1(info basic.PlanetOccultationInfo) basic.PlanetOc
 	info.InternalEmersion = occultationUT1Label(info.InternalEmersion)
 	info.ExternalEmersion = occultationUT1Label(info.ExternalEmersion)
 	return info
+}
+
+// StarOccultationLimbProfileInUT1 返回精密恒星月掩的 UT1 时刻副本 / copy in UT1 of a precise stellar occultation.
+func StarOccultationLimbProfileInUT1(profile basic.StarOccultationLimbProfileResult) basic.StarOccultationLimbProfileResult {
+	profile.Occultation = StarOccultationInfoInUT1(profile.Occultation)
+	segments := make([][]basic.StarOccultationLimbSample, len(profile.Segments))
+	for i, segment := range profile.Segments {
+		segments[i] = append([]basic.StarOccultationLimbSample(nil), segment...)
+		for j := range segments[i] {
+			segments[i][j].Time = occultationUT1Label(segments[i][j].Time)
+		}
+	}
+	profile.Segments = segments
+	hidden := append([]basic.OccultationInterval(nil), profile.Hidden...)
+	for i := range hidden {
+		hidden[i].Start = occultationUT1Label(hidden[i].Start)
+		hidden[i].End = occultationUT1Label(hidden[i].End)
+	}
+	profile.Hidden = hidden
+	return profile
 }

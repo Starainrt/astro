@@ -21,14 +21,14 @@ type PhysicalInfo struct {
 }
 
 // Physical 海王星物理观测参数 / physical observing parameters of Neptune.
-func Physical(date time.Time) PhysicalInfo {
-	return PhysicalN(date, -1)
+func (module *Neptune) Physical(date time.Time) PhysicalInfo {
+	return module.PhysicalN(date, -1)
 }
 
-// PhysicalN 海王星物理观测参数（截断版） / truncated physical observing parameters of Neptune.
-func PhysicalN(date time.Time, n int) PhysicalInfo {
+// PhysicalN 海王星物理观测参数（n 变体） / n-parameterised physical observing parameters of Neptune.
+func (module *Neptune) PhysicalN(date time.Time, n int) PhysicalInfo {
 	jd := basic.Date2JD(date.UTC())
-	info := basic.NeptunePhysicalN(basic.UTC2TT(jd), n)
+	info := basic.NeptunePhysicalNWithInstance(basic.UTC2TT(jd), n, module.inst)
 	return PhysicalInfo{
 		SubEarthLongitude:      info.SubEarthLongitude,
 		SubEarthLatitude:       info.SubEarthLatitude,

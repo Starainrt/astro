@@ -3,7 +3,6 @@ package basic
 import (
 	"math"
 
-	"github.com/starainrt/astro/planet"
 	. "github.com/starainrt/astro/tools"
 )
 
@@ -19,9 +18,9 @@ func MoonAscendingNode(jd float64) float64 {
 	return MoonAscendingNodeN(jd, -1)
 }
 
-// MoonAscendingNodeN 月球升交点黄经（截断版） / truncated ascending node longitude of the Moon.
-func MoonAscendingNodeN(jd float64, n int) float64 {
-	return orbitalAscendingNodeLongitude(jd, n, orbitalNodeStepFastBodyDays, moonGeocentricNodePositionN)
+// MoonAscendingNodeNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func MoonAscendingNodeNWithInstance(jd float64, n int, inst *Instance) float64 {
+	return orbitalAscendingNodeLongitude(jd, n, orbitalNodeStepFastBodyDays, func(jde float64, n int) Vector3 { return moonGeocentricNodePositionN(jde, n, inst) })
 }
 
 // MoonDescendingNode 月球降交点黄经 / descending node longitude of the Moon.
@@ -29,9 +28,9 @@ func MoonDescendingNode(jd float64) float64 {
 	return MoonDescendingNodeN(jd, -1)
 }
 
-// MoonDescendingNodeN 月球降交点黄经（截断版） / truncated descending node longitude of the Moon.
-func MoonDescendingNodeN(jd float64, n int) float64 {
-	return Limit360(MoonAscendingNodeN(jd, n) + 180)
+// MoonDescendingNodeNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func MoonDescendingNodeNWithInstance(jd float64, n int, inst *Instance) float64 {
+	return Limit360(MoonAscendingNodeNWithInstance(jd, n, inst) + 180)
 }
 
 // MercuryAscendingNode 水星升交点黄经 / ascending node longitude of Mercury.
@@ -39,9 +38,9 @@ func MercuryAscendingNode(jd float64) float64 {
 	return MercuryAscendingNodeN(jd, -1)
 }
 
-// MercuryAscendingNodeN 水星升交点黄经（截断版） / truncated ascending node longitude of Mercury.
-func MercuryAscendingNodeN(jd float64, n int) float64 {
-	return planetAscendingNodeLongitudeN(1, jd, n)
+// MercuryAscendingNodeNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func MercuryAscendingNodeNWithInstance(jd float64, n int, inst *Instance) float64 {
+	return planetAscendingNodeLongitudeN(1, jd, n, inst)
 }
 
 // MercuryDescendingNode 水星降交点黄经 / descending node longitude of Mercury.
@@ -49,9 +48,9 @@ func MercuryDescendingNode(jd float64) float64 {
 	return MercuryDescendingNodeN(jd, -1)
 }
 
-// MercuryDescendingNodeN 水星降交点黄经（截断版） / truncated descending node longitude of Mercury.
-func MercuryDescendingNodeN(jd float64, n int) float64 {
-	return Limit360(MercuryAscendingNodeN(jd, n) + 180)
+// MercuryDescendingNodeNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func MercuryDescendingNodeNWithInstance(jd float64, n int, inst *Instance) float64 {
+	return Limit360(MercuryAscendingNodeNWithInstance(jd, n, inst) + 180)
 }
 
 // VenusAscendingNode 金星升交点黄经 / ascending node longitude of Venus.
@@ -59,9 +58,9 @@ func VenusAscendingNode(jd float64) float64 {
 	return VenusAscendingNodeN(jd, -1)
 }
 
-// VenusAscendingNodeN 金星升交点黄经（截断版） / truncated ascending node longitude of Venus.
-func VenusAscendingNodeN(jd float64, n int) float64 {
-	return planetAscendingNodeLongitudeN(2, jd, n)
+// VenusAscendingNodeNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func VenusAscendingNodeNWithInstance(jd float64, n int, inst *Instance) float64 {
+	return planetAscendingNodeLongitudeN(2, jd, n, inst)
 }
 
 // VenusDescendingNode 金星降交点黄经 / descending node longitude of Venus.
@@ -69,9 +68,9 @@ func VenusDescendingNode(jd float64) float64 {
 	return VenusDescendingNodeN(jd, -1)
 }
 
-// VenusDescendingNodeN 金星降交点黄经（截断版） / truncated descending node longitude of Venus.
-func VenusDescendingNodeN(jd float64, n int) float64 {
-	return Limit360(VenusAscendingNodeN(jd, n) + 180)
+// VenusDescendingNodeNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func VenusDescendingNodeNWithInstance(jd float64, n int, inst *Instance) float64 {
+	return Limit360(VenusAscendingNodeNWithInstance(jd, n, inst) + 180)
 }
 
 // MarsAscendingNode 火星升交点黄经 / ascending node longitude of Mars.
@@ -79,9 +78,9 @@ func MarsAscendingNode(jd float64) float64 {
 	return MarsAscendingNodeN(jd, -1)
 }
 
-// MarsAscendingNodeN 火星升交点黄经（截断版） / truncated ascending node longitude of Mars.
-func MarsAscendingNodeN(jd float64, n int) float64 {
-	return planetAscendingNodeLongitudeN(3, jd, n)
+// MarsAscendingNodeNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func MarsAscendingNodeNWithInstance(jd float64, n int, inst *Instance) float64 {
+	return planetAscendingNodeLongitudeN(3, jd, n, inst)
 }
 
 // MarsDescendingNode 火星降交点黄经 / descending node longitude of Mars.
@@ -89,9 +88,9 @@ func MarsDescendingNode(jd float64) float64 {
 	return MarsDescendingNodeN(jd, -1)
 }
 
-// MarsDescendingNodeN 火星降交点黄经（截断版） / truncated descending node longitude of Mars.
-func MarsDescendingNodeN(jd float64, n int) float64 {
-	return Limit360(MarsAscendingNodeN(jd, n) + 180)
+// MarsDescendingNodeNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func MarsDescendingNodeNWithInstance(jd float64, n int, inst *Instance) float64 {
+	return Limit360(MarsAscendingNodeNWithInstance(jd, n, inst) + 180)
 }
 
 // JupiterAscendingNode 木星升交点黄经 / ascending node longitude of Jupiter.
@@ -99,9 +98,9 @@ func JupiterAscendingNode(jd float64) float64 {
 	return JupiterAscendingNodeN(jd, -1)
 }
 
-// JupiterAscendingNodeN 木星升交点黄经（截断版） / truncated ascending node longitude of Jupiter.
-func JupiterAscendingNodeN(jd float64, n int) float64 {
-	return planetAscendingNodeLongitudeN(4, jd, n)
+// JupiterAscendingNodeNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func JupiterAscendingNodeNWithInstance(jd float64, n int, inst *Instance) float64 {
+	return planetAscendingNodeLongitudeN(4, jd, n, inst)
 }
 
 // JupiterDescendingNode 木星降交点黄经 / descending node longitude of Jupiter.
@@ -109,9 +108,9 @@ func JupiterDescendingNode(jd float64) float64 {
 	return JupiterDescendingNodeN(jd, -1)
 }
 
-// JupiterDescendingNodeN 木星降交点黄经（截断版） / truncated descending node longitude of Jupiter.
-func JupiterDescendingNodeN(jd float64, n int) float64 {
-	return Limit360(JupiterAscendingNodeN(jd, n) + 180)
+// JupiterDescendingNodeNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func JupiterDescendingNodeNWithInstance(jd float64, n int, inst *Instance) float64 {
+	return Limit360(JupiterAscendingNodeNWithInstance(jd, n, inst) + 180)
 }
 
 // SaturnAscendingNode 土星升交点黄经 / ascending node longitude of Saturn.
@@ -119,9 +118,9 @@ func SaturnAscendingNode(jd float64) float64 {
 	return SaturnAscendingNodeN(jd, -1)
 }
 
-// SaturnAscendingNodeN 土星升交点黄经（截断版） / truncated ascending node longitude of Saturn.
-func SaturnAscendingNodeN(jd float64, n int) float64 {
-	return planetAscendingNodeLongitudeN(5, jd, n)
+// SaturnAscendingNodeNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func SaturnAscendingNodeNWithInstance(jd float64, n int, inst *Instance) float64 {
+	return planetAscendingNodeLongitudeN(5, jd, n, inst)
 }
 
 // SaturnDescendingNode 土星降交点黄经 / descending node longitude of Saturn.
@@ -129,9 +128,9 @@ func SaturnDescendingNode(jd float64) float64 {
 	return SaturnDescendingNodeN(jd, -1)
 }
 
-// SaturnDescendingNodeN 土星降交点黄经（截断版） / truncated descending node longitude of Saturn.
-func SaturnDescendingNodeN(jd float64, n int) float64 {
-	return Limit360(SaturnAscendingNodeN(jd, n) + 180)
+// SaturnDescendingNodeNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func SaturnDescendingNodeNWithInstance(jd float64, n int, inst *Instance) float64 {
+	return Limit360(SaturnAscendingNodeNWithInstance(jd, n, inst) + 180)
 }
 
 // UranusAscendingNode 天王星升交点黄经 / ascending node longitude of Uranus.
@@ -139,9 +138,9 @@ func UranusAscendingNode(jd float64) float64 {
 	return UranusAscendingNodeN(jd, -1)
 }
 
-// UranusAscendingNodeN 天王星升交点黄经（截断版） / truncated ascending node longitude of Uranus.
-func UranusAscendingNodeN(jd float64, n int) float64 {
-	return planetAscendingNodeLongitudeN(6, jd, n)
+// UranusAscendingNodeNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func UranusAscendingNodeNWithInstance(jd float64, n int, inst *Instance) float64 {
+	return planetAscendingNodeLongitudeN(6, jd, n, inst)
 }
 
 // UranusDescendingNode 天王星降交点黄经 / descending node longitude of Uranus.
@@ -149,9 +148,9 @@ func UranusDescendingNode(jd float64) float64 {
 	return UranusDescendingNodeN(jd, -1)
 }
 
-// UranusDescendingNodeN 天王星降交点黄经（截断版） / truncated descending node longitude of Uranus.
-func UranusDescendingNodeN(jd float64, n int) float64 {
-	return Limit360(UranusAscendingNodeN(jd, n) + 180)
+// UranusDescendingNodeNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func UranusDescendingNodeNWithInstance(jd float64, n int, inst *Instance) float64 {
+	return Limit360(UranusAscendingNodeNWithInstance(jd, n, inst) + 180)
 }
 
 // NeptuneAscendingNode 海王星升交点黄经 / ascending node longitude of Neptune.
@@ -159,9 +158,9 @@ func NeptuneAscendingNode(jd float64) float64 {
 	return NeptuneAscendingNodeN(jd, -1)
 }
 
-// NeptuneAscendingNodeN 海王星升交点黄经（截断版） / truncated ascending node longitude of Neptune.
-func NeptuneAscendingNodeN(jd float64, n int) float64 {
-	return planetAscendingNodeLongitudeN(7, jd, n)
+// NeptuneAscendingNodeNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func NeptuneAscendingNodeNWithInstance(jd float64, n int, inst *Instance) float64 {
+	return planetAscendingNodeLongitudeN(7, jd, n, inst)
 }
 
 // NeptuneDescendingNode 海王星降交点黄经 / descending node longitude of Neptune.
@@ -169,18 +168,20 @@ func NeptuneDescendingNode(jd float64) float64 {
 	return NeptuneDescendingNodeN(jd, -1)
 }
 
-// NeptuneDescendingNodeN 海王星降交点黄经（截断版） / truncated descending node longitude of Neptune.
-func NeptuneDescendingNodeN(jd float64, n int) float64 {
-	return Limit360(NeptuneAscendingNodeN(jd, n) + 180)
+// NeptuneDescendingNodeNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func NeptuneDescendingNodeNWithInstance(jd float64, n int, inst *Instance) float64 {
+	return Limit360(NeptuneAscendingNodeNWithInstance(jd, n, inst) + 180)
 }
 
-func planetAscendingNodeLongitudeN(planetIndex int, jd float64, n int) float64 {
+func planetAscendingNodeLongitudeN(planetIndex int, jd float64, n int, instances ...*Instance) float64 {
+	inst := instanceValue(instances)
+
 	step := orbitalNodeStepSlowBodyDays
 	if planetIndex <= 3 {
 		step = orbitalNodeStepFastBodyDays
 	}
 	return orbitalAscendingNodeLongitude(jd, n, step, func(sampleJD float64, seriesTerms int) Vector3 {
-		return planetHeliocentricNodePositionN(planetIndex, sampleJD, seriesTerms)
+		return planetHeliocentricNodePositionN(planetIndex, sampleJD, seriesTerms, inst)
 	})
 }
 
@@ -265,17 +266,21 @@ func applyMatrix3(matrix Matrix3, vector Vector3) Vector3 {
 	}
 }
 
-func planetHeliocentricNodePositionN(planetIndex int, jde float64, n int) Vector3 {
-	longitude := planet.WherePlanetN(planetIndex, 0, jde, n)
-	latitude := planet.WherePlanetN(planetIndex, 1, jde, n)
-	radius := planet.WherePlanetN(planetIndex, 2, jde, n)
+func planetHeliocentricNodePositionN(planetIndex int, jde float64, n int, instances ...*Instance) Vector3 {
+	inst := instanceValue(instances)
+
+	longitude := PlanetCoordinateNWithInstance(planetIndex, 0, jde, n, inst)
+	latitude := PlanetCoordinateNWithInstance(planetIndex, 1, jde, n, inst)
+	radius := PlanetCoordinateNWithInstance(planetIndex, 2, jde, n, inst)
 	return eclipticCartesian(longitude, latitude, radius)
 }
 
-func moonGeocentricNodePositionN(jde float64, n int) Vector3 {
-	longitude := HMoonTrueLoN(jde, n)
-	latitude := HMoonTrueBoN(jde, n)
-	radius := HMoonAwayN(jde, n)
+func moonGeocentricNodePositionN(jde float64, n int, instances ...*Instance) Vector3 {
+	inst := instanceValue(instances)
+
+	longitude := HMoonTrueLoNWithInstance(jde, n, inst)
+	latitude := HMoonTrueBoNWithInstance(jde, n, inst)
+	radius := HMoonAwayNWithInstance(jde, n, inst)
 	return eclipticCartesian(longitude, latitude, radius)
 }
 

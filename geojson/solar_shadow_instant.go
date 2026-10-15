@@ -8,7 +8,7 @@ import (
 )
 
 // MarshalSolarEclipseShadowInstant 单时刻阴影足迹的最小 GeoJSON：只含该时刻的区域与物理边界 / one instant as the smallest useful GeoJSON.
-func MarshalSolarEclipseShadowInstant(
+func (module *Generator) MarshalSolarEclipseShadowInstant(
 	instant eclipsecore.SolarEclipseShadowInstant,
 ) ([]byte, error) {
 	if instant.Empty() {
@@ -52,10 +52,10 @@ func MarshalSolarEclipseShadowInstant(
 	regionProperties["source_boundary_closed"] = false
 	regionProperties["geometry_role"] = "horizon-closed-region"
 	regionProperties["closure"] = solarHorizonClosureProperties(
-		instant.Time, instant.Time, solarHorizonClosureExact(instant.Boundaries, instant.HorizonEnds),
+		instant.Time, instant.Time, solarHorizonClosureExact(instant.Boundaries, instant.HorizonEnds), module,
 	)
 	ring, boundary := solarShadowFootprintHorizonRing(
-		instant.Time, instant.Boundaries, instant.HorizonEnds, curve,
+		instant.Time, instant.Boundaries, instant.HorizonEnds, curve, module,
 	)
 	if solarShadowRegionDegenerate(curve, ring) {
 		return marshalEmptyFeatureCollection()

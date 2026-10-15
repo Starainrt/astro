@@ -18,7 +18,7 @@ func TestMercury(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if date.Unix() != 1642636481 {
+	if date.Unix() != 1642636482 {
 		t.Fatal(date.Unix())
 	}
 }

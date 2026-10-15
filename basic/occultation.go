@@ -55,9 +55,12 @@ const (
 	// OccultationPartial 表示掩甚时有限目标盘面只有部分被覆盖。
 	// OccultationPartial means only part of a finite target disk is covered at greatest occultation.
 	OccultationPartial OccultationType = "partial"
-	// OccultationGrazing 表示两边缘相切，且没有正持续时间的重叠。
-	// OccultationGrazing means the limbs are tangent without a positive-duration overlap.
+	// OccultationGrazing 表示掠掩：圆月面下两边缘相切、无正持续时间的重叠；按月缘剖面求解时指星迹始终在月缘起伏带内，可有多段遮挡。
+	// OccultationGrazing is a graze: with a circular limb the limbs are tangent without a positive-duration overlap; with a limb profile the track stays inside the relief band and may be hidden several times.
 	OccultationGrazing OccultationType = "grazing"
+	// OccultationNone 表示月缘剖面下恒星未被遮挡，只出现在精密剖面结果中。
+	// OccultationNone means the star is never hidden by the limb profile; it only appears in precise profile results.
+	OccultationNone OccultationType = "none"
 )
 
 // OccultationPlanet 标识有限盘面的行星目标。
@@ -153,9 +156,11 @@ type Observer struct {
 // 通用 MoonSemidiameterN 使用地心距离；月掩接触使用同一站心视差修正后的观测者到月球距离。
 // moonTopocentricSemidiameterN returns the lunar angular radius as seen from the supplied site.
 // The usual MoonSemidiameterN uses geocentric distance; occultation contacts use the observer-to-Moon distance after the same topocentric parallax correction as the direction.
-func moonTopocentricSemidiameterN(tt float64, observer Observer, n int) float64 {
-	moonRA, moonDec := HMoonGeocentricApparentRaDecN(tt, n)
-	moonDistanceKM := HMoonAwayN(tt, n)
+func moonTopocentricSemidiameterN(tt float64, observer Observer, n int, instances ...*Instance) float64 {
+	inst := instanceValue(instances)
+
+	moonRA, moonDec := HMoonGeocentricApparentRaDecNWithInstance(tt, n, inst)
+	moonDistanceKM := HMoonAwayNWithInstance(tt, n, inst)
 	if !finite(moonRA) || !finite(moonDec) || !finite(moonDistanceKM) || moonDistanceKM <= 0 {
 		return math.NaN()
 	}
@@ -179,7 +184,6 @@ func topocentricDistanceKMWithSidereal(
 	observer Observer,
 	siderealDegrees float64,
 ) float64 {
-	const earthEquatorialRadius = 6378.14
 	const astronomicalUnitKM = angularDiameterAstronomicalUnitKM
 
 	distanceAU := distanceKM / astronomicalUnitKM
@@ -194,7 +198,7 @@ func topocentricDistanceKMWithSidereal(
 		distanceAU * math.Sin(decRad),
 	}
 	theta := (siderealDegrees + observer.Longitude) * math.Pi / 180
-	observerAU := earthEquatorialRadius / astronomicalUnitKM
+	observerAU := topocentricEarthRadiusKM / astronomicalUnitKM
 	observerVector := [3]float64{
 		observerAU * pcosi(observer.Latitude, observer.Height) * math.Cos(theta),
 		observerAU * pcosi(observer.Latitude, observer.Height) * math.Sin(theta),
@@ -350,6 +354,9 @@ type OccultationSearchOptions struct {
 	// MaxEvents 为正时限制返回事件数量。
 	// MaxEvents limits the number of returned events when positive.
 	MaxEvents int
+	// LunarLimb 月缘剖面，nil 为圆月面。站心恒星、行星月掩按剖面重新判定是否成掩与食型（可新增或取消圆月面事件），接触取最外侧；
+	// 恒星多段遮挡只报首次掩入与最后复现，全部区间见 StarOccultationLimbProfile。全球路径只修正界线 / lunar limb profile; local events are re-decided on the profile.
+	LunarLimb LunarLimb
 }
 
 // OccultationPathAlgorithm 选择全球月掩路径的星历求解分支。
@@ -375,7 +382,9 @@ const (
 type OccultationPathOptions struct {
 	// Algorithm 的零值等同 optimized；exact 可选择原有精确分支。此选项不影响独立的单时刻月影与事件查询接口。
 	// Algorithm defaults to optimized; exact selects the original branch. Independent instant-footprint and event-search APIs are unaffected.
-	Algorithm       OccultationPathAlgorithm
+	Algorithm OccultationPathAlgorithm
+	// LunarLimb 月缘剖面，nil 为圆月面；只修正外接触南北界（掠掩线），掩带填充与等时线仍按圆月面 / lunar limb profile for graze lines only.
+	LunarLimb       LunarLimb
 	Step            time.Duration
 	TargetSpacingKM float64
 	// RiseSetStep 独立控制六类升落阶段线的采样步长；零值使用 5 分钟。
@@ -472,6 +481,8 @@ type StarOccultationInfo struct {
 	// ContactsComplete 表示两个月缘接触时刻均已求解。
 	// ContactsComplete is true when both lunar-limb contacts were solved.
 	ContactsComplete bool
+	// LunarLimbApplied 表示接触时刻已按月缘剖面精修，否则为圆月面 / contacts refined with a lunar limb profile.
+	LunarLimbApplied bool
 
 	MinimumSeparationArcsec float64
 	PositionAngleDeg        float64
@@ -502,6 +513,8 @@ type PlanetOccultationInfo struct {
 
 	HasInternalContacts bool
 	ContactsComplete    bool
+	// LunarLimbApplied 表示接触时刻已按月缘剖面精修，否则为圆月面 / contacts refined with a lunar limb profile.
+	LunarLimbApplied bool
 
 	MinimumSeparationArcsec  float64
 	PositionAngleDeg         float64
@@ -602,6 +615,8 @@ type StarOccultationPath struct {
 	// GreatestTimeContours 是按掩甚时刻采样的等时线。
 	// GreatestTimeContours are sampled local greatest-occultation time isolines.
 	GreatestTimeContours []OccultationGreatestTimeContour
+	// LunarLimbApplied 表示南北限已按月缘剖面修正，否则为圆月面 / limits corrected with a lunar limb profile.
+	LunarLimbApplied bool
 
 	Step            time.Duration
 	TargetSpacingKM float64
@@ -733,6 +748,8 @@ type PlanetOccultationPath struct {
 	// GreatestTimeContours 是按掩甚时刻采样的等时线，判据用外接触锥，与偏掩可见域一致。
 	// GreatestTimeContours are sampled local greatest-occultation time isolines, gated by the outer-contact cone so they match the partial-occultation visibility area.
 	GreatestTimeContours []OccultationGreatestTimeContour
+	// LunarLimbApplied 表示南北限已按月缘剖面修正，否则为圆月面 / limits corrected with a lunar limb profile.
+	LunarLimbApplied bool
 
 	Step            time.Duration
 	TargetSpacingKM float64

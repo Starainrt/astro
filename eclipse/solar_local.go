@@ -16,6 +16,8 @@ const (
 type localSolarEclipseCalculator struct {
 	global func(float64) basic.SolarEclipseResult
 	local  func(float64, float64, float64, float64) basic.LocalSolarEclipseResult
+	// limb 是 local 实际使用的月缘剖面，接触点图须与之一致。
+	limb basic.LunarLimb
 }
 
 type localSolarEclipseQueryMode int
@@ -56,6 +58,8 @@ type LocalSolarEclipseInfo struct {
 	SunRadiusModel SolarEclipseSunRadiusModel
 	// Type 站心食型, local eclipse type.
 	Type SolarEclipseType
+	// LunarLimbApplied 接触时刻已按月缘剖面修正；剖面失败时为 false 且结果保持圆月面 / contacts refined with a lunar limb profile.
+	LunarLimbApplied bool
 	// HasSaros 存在沙罗序列信息（可能是锚点外推结果）, has Saros series metadata (possibly extrapolated).
 	HasSaros bool
 	// Saros 是沙罗序列信息，包括系列号、系列内序号和总成员数。
@@ -115,47 +119,46 @@ type LocalSolarEclipseInfo struct {
 }
 
 // LocalSolarEclipseOnDate 当地站心日食查询 / local topocentric solar eclipse query.
-// Determine whether a visible local solar eclipse overlaps the local date, using NASA bulletin Split-K by default.
-func LocalSolarEclipseOnDate(date time.Time, lon, lat, height float64) (LocalSolarEclipseInfo, bool) {
-	return LocalSolarEclipseOnDateNASABulletinSplitK(date, lon, lat, height)
+func (module *Eclipse) LocalSolarEclipseOnDate(date time.Time, lon, lat, height float64) (LocalSolarEclipseInfo, bool) {
+	return module.LocalSolarEclipseOnDateNASABulletinSplitK(date, lon, lat, height)
 }
 
 // LocalSolarEclipseOnDateNASABulletinSplitK 当地站心日食查询（NASA bulletin Split-K） / local topocentric solar eclipse query with NASA bulletin Split-K.
-// Determine whether a visible local solar eclipse overlaps the local date with the NASA bulletin Split-K model.
-func LocalSolarEclipseOnDateNASABulletinSplitK(date time.Time, lon, lat, height float64) (LocalSolarEclipseInfo, bool) {
-	return localSolarEclipseOnDate(date, lon, lat, height, localSolarEclipseNASABulletinSplitK, localSolarEclipseQueryVisible)
+func (module *Eclipse) LocalSolarEclipseOnDateNASABulletinSplitK(date time.Time, lon, lat, height float64) (LocalSolarEclipseInfo, bool) {
+	return localSolarEclipseOnDate(date, lon, lat, height, localSolarEclipseCalculatorForModel(SolarEclipseModelNASABulletinSplitK, module), localSolarEclipseQueryVisible, module)
 }
 
 // LocalSolarEclipseOnDateIAUSingleK 当地站心日食查询（IAU Single-K） / local topocentric solar eclipse query with IAU Single-K.
-// Determine whether a visible local solar eclipse overlaps the local date with the IAU Single-K model.
-func LocalSolarEclipseOnDateIAUSingleK(date time.Time, lon, lat, height float64) (LocalSolarEclipseInfo, bool) {
-	return localSolarEclipseOnDate(date, lon, lat, height, localSolarEclipseIAUSingleK, localSolarEclipseQueryVisible)
+func (module *Eclipse) LocalSolarEclipseOnDateIAUSingleK(date time.Time, lon, lat, height float64) (LocalSolarEclipseInfo, bool) {
+	return localSolarEclipseOnDate(date, lon, lat, height, localSolarEclipseCalculatorForModel(SolarEclipseModelIAUSingleK, module), localSolarEclipseQueryVisible, module)
 }
 
 // GeometricLocalSolarEclipseOnDate 当地站心几何日食查询 / local geometric solar eclipse query.
-// Determine whether a geometric local solar eclipse overlaps the local date, using NASA bulletin Split-K by default.
-func GeometricLocalSolarEclipseOnDate(date time.Time, lon, lat, height float64) (LocalSolarEclipseInfo, bool) {
-	return GeometricLocalSolarEclipseOnDateNASABulletinSplitK(date, lon, lat, height)
+func (module *Eclipse) GeometricLocalSolarEclipseOnDate(date time.Time, lon, lat, height float64) (LocalSolarEclipseInfo, bool) {
+	return module.GeometricLocalSolarEclipseOnDateNASABulletinSplitK(date, lon, lat, height)
 }
 
 // GeometricLocalSolarEclipseOnDateNASABulletinSplitK 当地站心几何日食查询（NASA bulletin Split-K） / local geometric solar eclipse query with NASA bulletin Split-K.
-// Determine whether a geometric local solar eclipse overlaps the local date with the NASA bulletin Split-K model.
-func GeometricLocalSolarEclipseOnDateNASABulletinSplitK(date time.Time, lon, lat, height float64) (LocalSolarEclipseInfo, bool) {
-	return localSolarEclipseOnDate(date, lon, lat, height, localSolarEclipseNASABulletinSplitK, localSolarEclipseQueryGeometric)
+func (module *Eclipse) GeometricLocalSolarEclipseOnDateNASABulletinSplitK(date time.Time, lon, lat, height float64) (LocalSolarEclipseInfo, bool) {
+	return localSolarEclipseOnDate(date, lon, lat, height, localSolarEclipseCalculatorForModel(SolarEclipseModelNASABulletinSplitK, module), localSolarEclipseQueryGeometric, module)
 }
 
 // GeometricLocalSolarEclipseOnDateIAUSingleK 当地站心几何日食查询（IAU Single-K） / local geometric solar eclipse query with IAU Single-K.
-// Determine whether a geometric local solar eclipse overlaps the local date with the IAU Single-K model.
-func GeometricLocalSolarEclipseOnDateIAUSingleK(date time.Time, lon, lat, height float64) (LocalSolarEclipseInfo, bool) {
-	return localSolarEclipseOnDate(date, lon, lat, height, localSolarEclipseIAUSingleK, localSolarEclipseQueryGeometric)
+func (module *Eclipse) GeometricLocalSolarEclipseOnDateIAUSingleK(date time.Time, lon, lat, height float64) (LocalSolarEclipseInfo, bool) {
+	return localSolarEclipseOnDate(date, lon, lat, height, localSolarEclipseCalculatorForModel(SolarEclipseModelIAUSingleK, module), localSolarEclipseQueryGeometric, module)
 }
 
 // LocalSolarEclipseOnDateWithOptions 当地站心日食查询（自定义半径口径） / local topocentric solar eclipse query with custom radius conventions.
-func LocalSolarEclipseOnDateWithOptions(date time.Time, lon, lat, height float64, options SolarEclipseOptions) (LocalSolarEclipseInfo, bool) {
-	return localSolarEclipseOnDate(date, lon, lat, height, localSolarEclipseCalculatorFor(options), localSolarEclipseQueryVisible)
+func (module *Eclipse) LocalSolarEclipseOnDateWithOptions(date time.Time, lon, lat, height float64, options SolarEclipseOptions) (LocalSolarEclipseInfo, bool) {
+	return localSolarEclipseOnDate(date, lon, lat, height, localSolarEclipseCalculatorFor(options, module), localSolarEclipseQueryVisible, module)
 }
 
-func localSolarEclipseCalculatorFor(options SolarEclipseOptions) localSolarEclipseCalculator {
+func localSolarEclipseCalculatorFor(options SolarEclipseOptions, modules ...*Eclipse) localSolarEclipseCalculator {
+	module := &defaultModule
+	if len(modules) > 0 {
+		module = modules[0]
+	}
+
 	basicOptions := basic.SolarEclipseOptions{
 		RadiusModel:    basic.SolarEclipseRadiusModel(options.RadiusModel),
 		SunRadiusModel: basic.SolarEclipseSunRadiusModel(options.SunRadiusModel),
@@ -163,12 +166,19 @@ func localSolarEclipseCalculatorFor(options SolarEclipseOptions) localSolarEclip
 	if basicOptions.RadiusModel != basic.SolarEclipseModelIAUSingleK {
 		basicOptions.RadiusModel = basic.SolarEclipseModelNASABulletinSplitK
 	}
+	// 全局食况（是否有食、食型）仍按圆月面判定，月缘只修正站心接触。
+	localOptions := basicOptions
+	localOptions.LunarLimb = options.LunarLimb
+	if localOptions.LunarLimb == nil {
+		localOptions.LunarLimb = module.lunarLimb
+	}
 	return localSolarEclipseCalculator{
+		limb: localOptions.LunarLimb,
 		global: func(seed float64) basic.SolarEclipseResult {
-			return basic.SolarEclipseWithOptions(seed, basicOptions)
+			return basic.SolarEclipseWithOptionsWithInstance(seed, basicOptions, module.inst)
 		},
 		local: func(seed, lon, lat, height float64) basic.LocalSolarEclipseResult {
-			return basic.LocalSolarEclipseWithOptions(seed, lon, lat, height, basicOptions)
+			return basic.LocalSolarEclipseWithOptionsWithInstance(seed, lon, lat, height, localOptions, module.inst)
 		},
 	}
 }
@@ -177,13 +187,17 @@ func localSolarEclipseOnDate(
 	date time.Time,
 	lon, lat, height float64,
 	calculator localSolarEclipseCalculator,
-	mode localSolarEclipseQueryMode,
-) (LocalSolarEclipseInfo, bool) {
+	mode localSolarEclipseQueryMode, modules ...*Eclipse) (LocalSolarEclipseInfo, bool) {
+	module := &defaultModule
+	if len(modules) > 0 {
+		module = modules[0]
+	}
+
 	location := date.Location()
 	dayStart, dayMid, dayEnd := solarEclipseLocalDayBounds(date)
 
-	candidateTT := basic.CalcMoonSHByJDE(solarEclipseTimeToTTJDE(dayMid), 0)
-	if !isPotentialLocalSolarEclipse(candidateTT) {
+	candidateTT := basic.CalcMoonSHByJDEWithInstance(solarEclipseTimeToTTJDE(dayMid), 0, module.inst)
+	if !isPotentialLocalSolarEclipse(candidateTT, module) {
 		return LocalSolarEclipseInfo{}, false
 	}
 
@@ -197,177 +211,153 @@ func localSolarEclipseOnDate(
 		return LocalSolarEclipseInfo{}, false
 	}
 
-	info := localSolarEclipseInfoFromBasic(result, lon, lat, height, location)
+	info := localSolarEclipseInfoFromBasic(result, lon, lat, height, location, calculator.limb, module)
 	if !localSolarEclipseOverlapsDate(info, dayStart, dayEnd) {
 		return LocalSolarEclipseInfo{}, false
 	}
-	if mode == localSolarEclipseQueryVisible && !localSolarEclipseVisibleOnDate(info, dayStart, dayEnd) {
+	if mode == localSolarEclipseQueryVisible && !localSolarEclipseVisibleOnDate(info, dayStart, dayEnd, module) {
 		return LocalSolarEclipseInfo{}, false
 	}
 	return info, true
 }
 
 // LastLocalSolarEclipse 上次站心日食 / previous local solar eclipse.
-// Previous visible local solar eclipse, using NASA bulletin Split-K by default.
-func LastLocalSolarEclipse(date time.Time, lon, lat, height float64) LocalSolarEclipseInfo {
-	return LastLocalSolarEclipseNASABulletinSplitK(date, lon, lat, height)
+func (module *Eclipse) LastLocalSolarEclipse(date time.Time, lon, lat, height float64) LocalSolarEclipseInfo {
+	return module.LastLocalSolarEclipseNASABulletinSplitK(date, lon, lat, height)
 }
 
 // LastLocalSolarEclipseNASABulletinSplitK 上次站心日食（NASA bulletin Split-K） / previous local solar eclipse with NASA bulletin Split-K.
-// Previous visible local solar eclipse with the NASA bulletin Split-K model.
-func LastLocalSolarEclipseNASABulletinSplitK(date time.Time, lon, lat, height float64) LocalSolarEclipseInfo {
-	info, _ := searchLocalSolarEclipse(date, lon, lat, height, -1, true, localSolarEclipseNASABulletinSplitK, localSolarEclipseQueryVisible)
+func (module *Eclipse) LastLocalSolarEclipseNASABulletinSplitK(date time.Time, lon, lat, height float64) LocalSolarEclipseInfo {
+	info, _ := searchLocalSolarEclipse(date, lon, lat, height, -1, true, localSolarEclipseCalculatorForModel(SolarEclipseModelNASABulletinSplitK, module), localSolarEclipseQueryVisible, module)
 	return info
 }
 
 // LastLocalSolarEclipseIAUSingleK 上次站心日食（IAU Single-K） / previous local solar eclipse with IAU Single-K.
-// Previous visible local solar eclipse with the IAU Single-K model.
-func LastLocalSolarEclipseIAUSingleK(date time.Time, lon, lat, height float64) LocalSolarEclipseInfo {
-	info, _ := searchLocalSolarEclipse(date, lon, lat, height, -1, true, localSolarEclipseIAUSingleK, localSolarEclipseQueryVisible)
+func (module *Eclipse) LastLocalSolarEclipseIAUSingleK(date time.Time, lon, lat, height float64) LocalSolarEclipseInfo {
+	info, _ := searchLocalSolarEclipse(date, lon, lat, height, -1, true, localSolarEclipseCalculatorForModel(SolarEclipseModelIAUSingleK, module), localSolarEclipseQueryVisible, module)
 	return info
 }
 
 // LastGeometricLocalSolarEclipse 上次站心几何日食 / previous geometric local solar eclipse.
-// Previous geometric local solar eclipse, using NASA bulletin Split-K by default.
-func LastGeometricLocalSolarEclipse(date time.Time, lon, lat, height float64) LocalSolarEclipseInfo {
-	return LastGeometricLocalSolarEclipseNASABulletinSplitK(date, lon, lat, height)
+func (module *Eclipse) LastGeometricLocalSolarEclipse(date time.Time, lon, lat, height float64) LocalSolarEclipseInfo {
+	return module.LastGeometricLocalSolarEclipseNASABulletinSplitK(date, lon, lat, height)
 }
 
 // LastGeometricLocalSolarEclipseNASABulletinSplitK 上次站心几何日食（NASA bulletin Split-K） / previous geometric local solar eclipse with NASA bulletin Split-K.
-// Previous geometric local solar eclipse with the NASA bulletin Split-K model.
-func LastGeometricLocalSolarEclipseNASABulletinSplitK(date time.Time, lon, lat, height float64) LocalSolarEclipseInfo {
-	info, _ := searchLocalSolarEclipse(date, lon, lat, height, -1, true, localSolarEclipseNASABulletinSplitK, localSolarEclipseQueryGeometric)
+func (module *Eclipse) LastGeometricLocalSolarEclipseNASABulletinSplitK(date time.Time, lon, lat, height float64) LocalSolarEclipseInfo {
+	info, _ := searchLocalSolarEclipse(date, lon, lat, height, -1, true, localSolarEclipseCalculatorForModel(SolarEclipseModelNASABulletinSplitK, module), localSolarEclipseQueryGeometric, module)
 	return info
 }
 
 // LastGeometricLocalSolarEclipseIAUSingleK 上次站心几何日食（IAU Single-K） / previous geometric local solar eclipse with IAU Single-K.
-// Previous geometric local solar eclipse with the IAU Single-K model.
-func LastGeometricLocalSolarEclipseIAUSingleK(date time.Time, lon, lat, height float64) LocalSolarEclipseInfo {
-	info, _ := searchLocalSolarEclipse(date, lon, lat, height, -1, true, localSolarEclipseIAUSingleK, localSolarEclipseQueryGeometric)
+func (module *Eclipse) LastGeometricLocalSolarEclipseIAUSingleK(date time.Time, lon, lat, height float64) LocalSolarEclipseInfo {
+	info, _ := searchLocalSolarEclipse(date, lon, lat, height, -1, true, localSolarEclipseCalculatorForModel(SolarEclipseModelIAUSingleK, module), localSolarEclipseQueryGeometric, module)
 	return info
 }
 
 // LastLocalTotalSolarEclipse 上次站心日全食 / previous local total solar eclipse.
-// Previous visible local total solar eclipse, using NASA bulletin Split-K by default.
-func LastLocalTotalSolarEclipse(date time.Time, lon, lat, height float64) (LocalSolarEclipseInfo, bool) {
-	return searchLocalTotalSolarEclipse(date, lon, lat, height, -1, true, localSolarEclipseNASABulletinSplitK, localSolarEclipseQueryVisible)
+func (module *Eclipse) LastLocalTotalSolarEclipse(date time.Time, lon, lat, height float64) (LocalSolarEclipseInfo, bool) {
+	return searchLocalTotalSolarEclipse(date, lon, lat, height, -1, true, localSolarEclipseCalculatorForModel(SolarEclipseModelNASABulletinSplitK, module), localSolarEclipseQueryVisible, module)
 }
 
 // LastLocalAnnularSolarEclipse 上次站心日环食 / previous local annular solar eclipse.
-// Previous visible local annular solar eclipse, using NASA bulletin Split-K by default.
-func LastLocalAnnularSolarEclipse(date time.Time, lon, lat, height float64) (LocalSolarEclipseInfo, bool) {
-	return searchLocalAnnularSolarEclipse(date, lon, lat, height, -1, true, localSolarEclipseNASABulletinSplitK, localSolarEclipseQueryVisible)
+func (module *Eclipse) LastLocalAnnularSolarEclipse(date time.Time, lon, lat, height float64) (LocalSolarEclipseInfo, bool) {
+	return searchLocalAnnularSolarEclipse(date, lon, lat, height, -1, true, localSolarEclipseCalculatorForModel(SolarEclipseModelNASABulletinSplitK, module), localSolarEclipseQueryVisible, module)
 }
 
 // NextLocalSolarEclipse 下次站心日食 / next local solar eclipse.
-// Next visible local solar eclipse, using NASA bulletin Split-K by default.
-func NextLocalSolarEclipse(date time.Time, lon, lat, height float64) LocalSolarEclipseInfo {
-	return NextLocalSolarEclipseNASABulletinSplitK(date, lon, lat, height)
+func (module *Eclipse) NextLocalSolarEclipse(date time.Time, lon, lat, height float64) LocalSolarEclipseInfo {
+	return module.NextLocalSolarEclipseNASABulletinSplitK(date, lon, lat, height)
 }
 
 // NextLocalSolarEclipseNASABulletinSplitK 下次站心日食（NASA bulletin Split-K） / next local solar eclipse with NASA bulletin Split-K.
-// Next visible local solar eclipse with the NASA bulletin Split-K model.
-func NextLocalSolarEclipseNASABulletinSplitK(date time.Time, lon, lat, height float64) LocalSolarEclipseInfo {
-	info, _ := searchLocalSolarEclipse(date, lon, lat, height, 1, false, localSolarEclipseNASABulletinSplitK, localSolarEclipseQueryVisible)
+func (module *Eclipse) NextLocalSolarEclipseNASABulletinSplitK(date time.Time, lon, lat, height float64) LocalSolarEclipseInfo {
+	info, _ := searchLocalSolarEclipse(date, lon, lat, height, 1, false, localSolarEclipseCalculatorForModel(SolarEclipseModelNASABulletinSplitK, module), localSolarEclipseQueryVisible, module)
 	return info
 }
 
 // NextLocalSolarEclipseIAUSingleK 下次站心日食（IAU Single-K） / next local solar eclipse with IAU Single-K.
-// Next visible local solar eclipse with the IAU Single-K model.
-func NextLocalSolarEclipseIAUSingleK(date time.Time, lon, lat, height float64) LocalSolarEclipseInfo {
-	info, _ := searchLocalSolarEclipse(date, lon, lat, height, 1, false, localSolarEclipseIAUSingleK, localSolarEclipseQueryVisible)
+func (module *Eclipse) NextLocalSolarEclipseIAUSingleK(date time.Time, lon, lat, height float64) LocalSolarEclipseInfo {
+	info, _ := searchLocalSolarEclipse(date, lon, lat, height, 1, false, localSolarEclipseCalculatorForModel(SolarEclipseModelIAUSingleK, module), localSolarEclipseQueryVisible, module)
 	return info
 }
 
 // NextGeometricLocalSolarEclipse 下次站心几何日食 / next geometric local solar eclipse.
-// Next geometric local solar eclipse, using NASA bulletin Split-K by default.
-func NextGeometricLocalSolarEclipse(date time.Time, lon, lat, height float64) LocalSolarEclipseInfo {
-	return NextGeometricLocalSolarEclipseNASABulletinSplitK(date, lon, lat, height)
+func (module *Eclipse) NextGeometricLocalSolarEclipse(date time.Time, lon, lat, height float64) LocalSolarEclipseInfo {
+	return module.NextGeometricLocalSolarEclipseNASABulletinSplitK(date, lon, lat, height)
 }
 
 // NextGeometricLocalSolarEclipseNASABulletinSplitK 下次站心几何日食（NASA bulletin Split-K） / next geometric local solar eclipse with NASA bulletin Split-K.
-// Next geometric local solar eclipse with the NASA bulletin Split-K model.
-func NextGeometricLocalSolarEclipseNASABulletinSplitK(date time.Time, lon, lat, height float64) LocalSolarEclipseInfo {
-	info, _ := searchLocalSolarEclipse(date, lon, lat, height, 1, false, localSolarEclipseNASABulletinSplitK, localSolarEclipseQueryGeometric)
+func (module *Eclipse) NextGeometricLocalSolarEclipseNASABulletinSplitK(date time.Time, lon, lat, height float64) LocalSolarEclipseInfo {
+	info, _ := searchLocalSolarEclipse(date, lon, lat, height, 1, false, localSolarEclipseCalculatorForModel(SolarEclipseModelNASABulletinSplitK, module), localSolarEclipseQueryGeometric, module)
 	return info
 }
 
 // NextGeometricLocalSolarEclipseIAUSingleK 下次站心几何日食（IAU Single-K） / next geometric local solar eclipse with IAU Single-K.
-// Next geometric local solar eclipse with the IAU Single-K model.
-func NextGeometricLocalSolarEclipseIAUSingleK(date time.Time, lon, lat, height float64) LocalSolarEclipseInfo {
-	info, _ := searchLocalSolarEclipse(date, lon, lat, height, 1, false, localSolarEclipseIAUSingleK, localSolarEclipseQueryGeometric)
+func (module *Eclipse) NextGeometricLocalSolarEclipseIAUSingleK(date time.Time, lon, lat, height float64) LocalSolarEclipseInfo {
+	info, _ := searchLocalSolarEclipse(date, lon, lat, height, 1, false, localSolarEclipseCalculatorForModel(SolarEclipseModelIAUSingleK, module), localSolarEclipseQueryGeometric, module)
 	return info
 }
 
 // NextLocalTotalSolarEclipse 下次站心日全食 / next local total solar eclipse.
-// Next visible local total solar eclipse, using NASA bulletin Split-K by default.
-func NextLocalTotalSolarEclipse(date time.Time, lon, lat, height float64) (LocalSolarEclipseInfo, bool) {
-	return searchLocalTotalSolarEclipse(date, lon, lat, height, 1, false, localSolarEclipseNASABulletinSplitK, localSolarEclipseQueryVisible)
+func (module *Eclipse) NextLocalTotalSolarEclipse(date time.Time, lon, lat, height float64) (LocalSolarEclipseInfo, bool) {
+	return searchLocalTotalSolarEclipse(date, lon, lat, height, 1, false, localSolarEclipseCalculatorForModel(SolarEclipseModelNASABulletinSplitK, module), localSolarEclipseQueryVisible, module)
 }
 
 // NextLocalAnnularSolarEclipse 下次站心日环食 / next local annular solar eclipse.
-// Next visible local annular solar eclipse, using NASA bulletin Split-K by default.
-func NextLocalAnnularSolarEclipse(date time.Time, lon, lat, height float64) (LocalSolarEclipseInfo, bool) {
-	return searchLocalAnnularSolarEclipse(date, lon, lat, height, 1, false, localSolarEclipseNASABulletinSplitK, localSolarEclipseQueryVisible)
+func (module *Eclipse) NextLocalAnnularSolarEclipse(date time.Time, lon, lat, height float64) (LocalSolarEclipseInfo, bool) {
+	return searchLocalAnnularSolarEclipse(date, lon, lat, height, 1, false, localSolarEclipseCalculatorForModel(SolarEclipseModelNASABulletinSplitK, module), localSolarEclipseQueryVisible, module)
 }
 
 // ClosestLocalSolarEclipse 最近一次站心日食 / closest local solar eclipse.
-// Closest visible local solar eclipse, using NASA bulletin Split-K by default.
-func ClosestLocalSolarEclipse(date time.Time, lon, lat, height float64) LocalSolarEclipseInfo {
-	return ClosestLocalSolarEclipseNASABulletinSplitK(date, lon, lat, height)
+func (module *Eclipse) ClosestLocalSolarEclipse(date time.Time, lon, lat, height float64) LocalSolarEclipseInfo {
+	return module.ClosestLocalSolarEclipseNASABulletinSplitK(date, lon, lat, height)
 }
 
 // ClosestLocalSolarEclipseNASABulletinSplitK 最近一次站心日食（NASA bulletin Split-K） / closest local solar eclipse with NASA bulletin Split-K.
-// Closest visible local solar eclipse with the NASA bulletin Split-K model.
-func ClosestLocalSolarEclipseNASABulletinSplitK(date time.Time, lon, lat, height float64) LocalSolarEclipseInfo {
-	last, hasLast := searchLocalSolarEclipse(date, lon, lat, height, -1, true, localSolarEclipseNASABulletinSplitK, localSolarEclipseQueryVisible)
-	next, hasNext := searchLocalSolarEclipse(date, lon, lat, height, 1, false, localSolarEclipseNASABulletinSplitK, localSolarEclipseQueryVisible)
+func (module *Eclipse) ClosestLocalSolarEclipseNASABulletinSplitK(date time.Time, lon, lat, height float64) LocalSolarEclipseInfo {
+	last, hasLast := searchLocalSolarEclipse(date, lon, lat, height, -1, true, localSolarEclipseCalculatorForModel(SolarEclipseModelNASABulletinSplitK, module), localSolarEclipseQueryVisible, module)
+	next, hasNext := searchLocalSolarEclipse(date, lon, lat, height, 1, false, localSolarEclipseCalculatorForModel(SolarEclipseModelNASABulletinSplitK, module), localSolarEclipseQueryVisible, module)
 	return closestLocalSolarEclipse(date, last, hasLast, next, hasNext)
 }
 
 // ClosestLocalSolarEclipseIAUSingleK 最近一次站心日食（IAU Single-K） / closest local solar eclipse with IAU Single-K.
-// Closest visible local solar eclipse with the IAU Single-K model.
-func ClosestLocalSolarEclipseIAUSingleK(date time.Time, lon, lat, height float64) LocalSolarEclipseInfo {
-	last, hasLast := searchLocalSolarEclipse(date, lon, lat, height, -1, true, localSolarEclipseIAUSingleK, localSolarEclipseQueryVisible)
-	next, hasNext := searchLocalSolarEclipse(date, lon, lat, height, 1, false, localSolarEclipseIAUSingleK, localSolarEclipseQueryVisible)
+func (module *Eclipse) ClosestLocalSolarEclipseIAUSingleK(date time.Time, lon, lat, height float64) LocalSolarEclipseInfo {
+	last, hasLast := searchLocalSolarEclipse(date, lon, lat, height, -1, true, localSolarEclipseCalculatorForModel(SolarEclipseModelIAUSingleK, module), localSolarEclipseQueryVisible, module)
+	next, hasNext := searchLocalSolarEclipse(date, lon, lat, height, 1, false, localSolarEclipseCalculatorForModel(SolarEclipseModelIAUSingleK, module), localSolarEclipseQueryVisible, module)
 	return closestLocalSolarEclipse(date, last, hasLast, next, hasNext)
 }
 
 // ClosestGeometricLocalSolarEclipse 最近一次站心几何日食 / closest geometric local solar eclipse.
-// Closest geometric local solar eclipse, using NASA bulletin Split-K by default.
-func ClosestGeometricLocalSolarEclipse(date time.Time, lon, lat, height float64) LocalSolarEclipseInfo {
-	return ClosestGeometricLocalSolarEclipseNASABulletinSplitK(date, lon, lat, height)
+func (module *Eclipse) ClosestGeometricLocalSolarEclipse(date time.Time, lon, lat, height float64) LocalSolarEclipseInfo {
+	return module.ClosestGeometricLocalSolarEclipseNASABulletinSplitK(date, lon, lat, height)
 }
 
 // ClosestGeometricLocalSolarEclipseNASABulletinSplitK 最近一次站心几何日食（NASA bulletin Split-K） / closest geometric local solar eclipse with NASA bulletin Split-K.
-// Closest geometric local solar eclipse with the NASA bulletin Split-K model.
-func ClosestGeometricLocalSolarEclipseNASABulletinSplitK(date time.Time, lon, lat, height float64) LocalSolarEclipseInfo {
-	last, hasLast := searchLocalSolarEclipse(date, lon, lat, height, -1, true, localSolarEclipseNASABulletinSplitK, localSolarEclipseQueryGeometric)
-	next, hasNext := searchLocalSolarEclipse(date, lon, lat, height, 1, false, localSolarEclipseNASABulletinSplitK, localSolarEclipseQueryGeometric)
+func (module *Eclipse) ClosestGeometricLocalSolarEclipseNASABulletinSplitK(date time.Time, lon, lat, height float64) LocalSolarEclipseInfo {
+	last, hasLast := searchLocalSolarEclipse(date, lon, lat, height, -1, true, localSolarEclipseCalculatorForModel(SolarEclipseModelNASABulletinSplitK, module), localSolarEclipseQueryGeometric, module)
+	next, hasNext := searchLocalSolarEclipse(date, lon, lat, height, 1, false, localSolarEclipseCalculatorForModel(SolarEclipseModelNASABulletinSplitK, module), localSolarEclipseQueryGeometric, module)
 	return closestLocalSolarEclipse(date, last, hasLast, next, hasNext)
 }
 
 // ClosestGeometricLocalSolarEclipseIAUSingleK 最近一次站心几何日食（IAU Single-K） / closest geometric local solar eclipse with IAU Single-K.
-// Closest geometric local solar eclipse with the IAU Single-K model.
-func ClosestGeometricLocalSolarEclipseIAUSingleK(date time.Time, lon, lat, height float64) LocalSolarEclipseInfo {
-	last, hasLast := searchLocalSolarEclipse(date, lon, lat, height, -1, true, localSolarEclipseIAUSingleK, localSolarEclipseQueryGeometric)
-	next, hasNext := searchLocalSolarEclipse(date, lon, lat, height, 1, false, localSolarEclipseIAUSingleK, localSolarEclipseQueryGeometric)
+func (module *Eclipse) ClosestGeometricLocalSolarEclipseIAUSingleK(date time.Time, lon, lat, height float64) LocalSolarEclipseInfo {
+	last, hasLast := searchLocalSolarEclipse(date, lon, lat, height, -1, true, localSolarEclipseCalculatorForModel(SolarEclipseModelIAUSingleK, module), localSolarEclipseQueryGeometric, module)
+	next, hasNext := searchLocalSolarEclipse(date, lon, lat, height, 1, false, localSolarEclipseCalculatorForModel(SolarEclipseModelIAUSingleK, module), localSolarEclipseQueryGeometric, module)
 	return closestLocalSolarEclipse(date, last, hasLast, next, hasNext)
 }
 
 // ClosestLocalTotalSolarEclipse 最近一次站心日全食 / closest local total solar eclipse.
-// Closest visible local total solar eclipse, using NASA bulletin Split-K by default.
-func ClosestLocalTotalSolarEclipse(date time.Time, lon, lat, height float64) (LocalSolarEclipseInfo, bool) {
-	last, hasLast := searchLocalTotalSolarEclipse(date, lon, lat, height, -1, true, localSolarEclipseNASABulletinSplitK, localSolarEclipseQueryVisible)
-	next, hasNext := searchLocalTotalSolarEclipse(date, lon, lat, height, 1, false, localSolarEclipseNASABulletinSplitK, localSolarEclipseQueryVisible)
+func (module *Eclipse) ClosestLocalTotalSolarEclipse(date time.Time, lon, lat, height float64) (LocalSolarEclipseInfo, bool) {
+	last, hasLast := searchLocalTotalSolarEclipse(date, lon, lat, height, -1, true, localSolarEclipseCalculatorForModel(SolarEclipseModelNASABulletinSplitK, module), localSolarEclipseQueryVisible, module)
+	next, hasNext := searchLocalTotalSolarEclipse(date, lon, lat, height, 1, false, localSolarEclipseCalculatorForModel(SolarEclipseModelNASABulletinSplitK, module), localSolarEclipseQueryVisible, module)
 	return closestLocalSolarEclipseResult(date, last, hasLast, next, hasNext)
 }
 
 // ClosestLocalAnnularSolarEclipse 最近一次站心日环食 / closest local annular solar eclipse.
-// Closest visible local annular solar eclipse, using NASA bulletin Split-K by default.
-func ClosestLocalAnnularSolarEclipse(date time.Time, lon, lat, height float64) (LocalSolarEclipseInfo, bool) {
-	last, hasLast := searchLocalAnnularSolarEclipse(date, lon, lat, height, -1, true, localSolarEclipseNASABulletinSplitK, localSolarEclipseQueryVisible)
-	next, hasNext := searchLocalAnnularSolarEclipse(date, lon, lat, height, 1, false, localSolarEclipseNASABulletinSplitK, localSolarEclipseQueryVisible)
+func (module *Eclipse) ClosestLocalAnnularSolarEclipse(date time.Time, lon, lat, height float64) (LocalSolarEclipseInfo, bool) {
+	last, hasLast := searchLocalAnnularSolarEclipse(date, lon, lat, height, -1, true, localSolarEclipseCalculatorForModel(SolarEclipseModelNASABulletinSplitK, module), localSolarEclipseQueryVisible, module)
+	next, hasNext := searchLocalAnnularSolarEclipse(date, lon, lat, height, 1, false, localSolarEclipseCalculatorForModel(SolarEclipseModelNASABulletinSplitK, module), localSolarEclipseQueryVisible, module)
 	return closestLocalSolarEclipseResult(date, last, hasLast, next, hasNext)
 }
 
@@ -412,13 +402,17 @@ func searchLocalSolarEclipse(
 	direction int,
 	includeCurrent bool,
 	calculator localSolarEclipseCalculator,
-	mode localSolarEclipseQueryMode,
-) (LocalSolarEclipseInfo, bool) {
+	mode localSolarEclipseQueryMode, modules ...*Eclipse) (LocalSolarEclipseInfo, bool) {
+	module := &defaultModule
+	if len(modules) > 0 {
+		module = modules[0]
+	}
+
 	info, _, ok := searchLocalCentralSolarEclipse(
 		solarEclipseTimeToTTJDE(date),
 		solarEclipseTimeToTTJDE(date)+float64(direction)*localSolarEclipseDefaultSearchYears*365.25,
 		direction, includeCurrent, SolarEclipseLocalSearchAny, lon, lat, height, date.Location(),
-		calculator, mode,
+		calculator, mode, module,
 	)
 	return info, ok
 }
@@ -429,13 +423,17 @@ func searchLocalTotalSolarEclipse(
 	direction int,
 	includeCurrent bool,
 	calculator localSolarEclipseCalculator,
-	mode localSolarEclipseQueryMode,
-) (LocalSolarEclipseInfo, bool) {
+	mode localSolarEclipseQueryMode, modules ...*Eclipse) (LocalSolarEclipseInfo, bool) {
+	module := &defaultModule
+	if len(modules) > 0 {
+		module = modules[0]
+	}
+
 	info, _, ok := searchLocalCentralSolarEclipse(
 		solarEclipseTimeToTTJDE(date),
 		solarEclipseTimeToTTJDE(date)+float64(direction)*localSolarEclipseDefaultSearchYears*365.25,
 		direction, includeCurrent, SolarEclipseLocalSearchTotal, lon, lat, height, date.Location(),
-		calculator, mode,
+		calculator, mode, module,
 	)
 	return info, ok
 }
@@ -446,19 +444,28 @@ func searchLocalAnnularSolarEclipse(
 	direction int,
 	includeCurrent bool,
 	calculator localSolarEclipseCalculator,
-	mode localSolarEclipseQueryMode,
-) (LocalSolarEclipseInfo, bool) {
+	mode localSolarEclipseQueryMode, modules ...*Eclipse) (LocalSolarEclipseInfo, bool) {
+	module := &defaultModule
+	if len(modules) > 0 {
+		module = modules[0]
+	}
+
 	info, _, ok := searchLocalCentralSolarEclipse(
 		solarEclipseTimeToTTJDE(date),
 		solarEclipseTimeToTTJDE(date)+float64(direction)*localSolarEclipseDefaultSearchYears*365.25,
 		direction, includeCurrent, SolarEclipseLocalSearchAnnular, lon, lat, height, date.Location(),
-		calculator, mode,
+		calculator, mode, module,
 	)
 	return info, ok
 }
 
-func isPotentialLocalSolarEclipse(newMoonTT float64) bool {
-	return math.Abs(basic.HMoonTrueBo(newMoonTT)) <= localSolarEclipseLatitudeLimitDeg
+func isPotentialLocalSolarEclipse(newMoonTT float64, modules ...*Eclipse) bool {
+	module := &defaultModule
+	if len(modules) > 0 {
+		module = modules[0]
+	}
+
+	return math.Abs(basic.HMoonTrueBoWithInstance(newMoonTT, module.inst)) <= localSolarEclipseLatitudeLimitDeg
 }
 
 func localSolarEclipseMatchesDirection(greatestTT, targetTT float64, direction int, includeCurrent bool) bool {
@@ -475,10 +482,14 @@ func localSolarEclipseMatchesDirection(greatestTT, targetTT float64, direction i
 func localSolarEclipseInfoFromBasic(
 	result basic.LocalSolarEclipseResult,
 	lon, lat, height float64,
-	location *time.Location,
-) LocalSolarEclipseInfo {
-	info := localSolarEclipseInfoFieldsFromBasic(result, lon, lat, height, location)
-	info.ContactPoints = localSolarEclipseContactPointsFromBasic(result, lon, lat, height, location)
+	location *time.Location, limb basic.LunarLimb, modules ...*Eclipse) LocalSolarEclipseInfo {
+	module := &defaultModule
+	if len(modules) > 0 {
+		module = modules[0]
+	}
+
+	info := localSolarEclipseInfoFieldsFromBasic(result, lon, lat, height, location, module)
+	info.ContactPoints = localSolarEclipseContactPointsFromBasic(result, lon, lat, height, location, limb, module)
 	return info
 }
 
@@ -495,12 +506,17 @@ func localSolarEclipseInfoFromDiagram(
 func localSolarEclipseInfoFieldsFromBasic(
 	result basic.LocalSolarEclipseResult,
 	lon, lat, height float64,
-	location *time.Location,
-) LocalSolarEclipseInfo {
+	location *time.Location, modules ...*Eclipse) LocalSolarEclipseInfo {
+	module := &defaultModule
+	if len(modules) > 0 {
+		module = modules[0]
+	}
+
 	visibleThreshold := localSolarEclipseVisibilityThreshold(height, lat)
-	saros, hasSaros := solarSarosInfo(result.GreatestEclipse)
+	saros, hasSaros := solarSarosInfo(result.GreatestEclipse, module)
 	return LocalSolarEclipseInfo{
 		Model:             mapBasicSolarEclipseModel(result.Model),
+		LunarLimbApplied:  result.LunarLimbApplied,
 		SunRadiusModel:    result.SunRadiusModel,
 		Type:              mapBasicSolarEclipseType(result.Type),
 		HasSaros:          hasSaros,
@@ -531,17 +547,21 @@ func localSolarEclipseInfoFieldsFromBasic(
 func localSolarEclipseContactPointsFromBasic(
 	result basic.LocalSolarEclipseResult,
 	lon, lat, height float64,
-	location *time.Location,
-) []LocalSolarEclipseContactPoint {
+	location *time.Location, limb basic.LunarLimb, modules ...*Eclipse) []LocalSolarEclipseContactPoint {
+	module := &defaultModule
+	if len(modules) > 0 {
+		module = modules[0]
+	}
+
 	if !result.HasPartial {
 		return nil
 	}
-	options := basic.LocalSolarEclipseDiagramOptions{StepDays: 1, SunRadiusModel: result.SunRadiusModel}
+	options := basic.LocalSolarEclipseDiagramOptions{StepDays: 1, SunRadiusModel: result.SunRadiusModel, LunarLimb: limb}
 	var diagram basic.LocalSolarEclipseDiagramResult
 	if result.Model == basic.SolarEclipseModelIAUSingleK {
-		diagram = basic.LocalSolarEclipseDiagramIAUSingleK(result.GreatestEclipse, lon, lat, height, options)
+		diagram = basic.LocalSolarEclipseDiagramIAUSingleKWithInstance(result.GreatestEclipse, lon, lat, height, options, module.inst)
 	} else {
-		diagram = basic.LocalSolarEclipseDiagramNASABulletinSplitK(result.GreatestEclipse, lon, lat, height, options)
+		diagram = basic.LocalSolarEclipseDiagramNASABulletinSplitKWithInstance(result.GreatestEclipse, lon, lat, height, options, module.inst)
 	}
 	return localSolarEclipseContactPointsFromFrames(diagram.Frames, location)
 }
@@ -597,22 +617,37 @@ func localSolarEclipseRange(info LocalSolarEclipseInfo) (time.Time, time.Time, b
 	return info.PartialStart, info.PartialEnd, true
 }
 
-func localSolarEclipseVisible(info LocalSolarEclipseInfo) bool {
+func localSolarEclipseVisible(info LocalSolarEclipseInfo, modules ...*Eclipse) bool {
+	module := &defaultModule
+	if len(modules) > 0 {
+		module = modules[0]
+	}
+
 	eventStart, eventEnd, ok := localSolarEclipseRange(info)
 	if !ok {
 		return false
 	}
-	return localSolarEclipseVisibleDuring(info, eventStart, eventEnd)
+	return localSolarEclipseVisibleDuring(info, eventStart, eventEnd, module)
 }
 
-func localCentralSolarEclipseVisible(info LocalSolarEclipseInfo) bool {
+func localCentralSolarEclipseVisible(info LocalSolarEclipseInfo, modules ...*Eclipse) bool {
+	module := &defaultModule
+	if len(modules) > 0 {
+		module = modules[0]
+	}
+
 	if !info.HasCentral || info.CentralStart.IsZero() || info.CentralEnd.IsZero() {
 		return false
 	}
-	return localSolarEclipseVisibleDuring(info, info.CentralStart, info.CentralEnd)
+	return localSolarEclipseVisibleDuring(info, info.CentralStart, info.CentralEnd, module)
 }
 
-func localSolarEclipseVisibleOnDate(info LocalSolarEclipseInfo, dayStart, dayEnd time.Time) bool {
+func localSolarEclipseVisibleOnDate(info LocalSolarEclipseInfo, dayStart, dayEnd time.Time, modules ...*Eclipse) bool {
+	module := &defaultModule
+	if len(modules) > 0 {
+		module = modules[0]
+	}
+
 	eventStart, eventEnd, ok := localSolarEclipseRange(info)
 	if !ok {
 		return false
@@ -622,25 +657,30 @@ func localSolarEclipseVisibleOnDate(info LocalSolarEclipseInfo, dayStart, dayEnd
 	if !segmentStart.Before(segmentEnd) {
 		return false
 	}
-	return localSolarEclipseVisibleDuring(info, segmentStart, segmentEnd)
+	return localSolarEclipseVisibleDuring(info, segmentStart, segmentEnd, module)
 }
 
-func localSolarEclipseVisibleDuring(info LocalSolarEclipseInfo, start, end time.Time) bool {
+func localSolarEclipseVisibleDuring(info LocalSolarEclipseInfo, start, end time.Time, modules ...*Eclipse) bool {
+	module := &defaultModule
+	if len(modules) > 0 {
+		module = modules[0]
+	}
+
 	if !start.Before(end) && !start.Equal(end) {
 		return false
 	}
 
-	if localSolarEclipseAltitudeVisible(start, info) || localSolarEclipseAltitudeVisible(end, info) {
+	if localSolarEclipseAltitudeVisible(start, info, module) || localSolarEclipseAltitudeVisible(end, info, module) {
 		return true
 	}
 
 	for dayStart, _, _ := solarEclipseLocalDayBounds(start); !dayStart.After(end); dayStart = nextSolarEclipseLocalDayStart(dayStart) {
 		_, culminationSeed, _ := solarEclipseLocalDayBounds(dayStart)
-		culmination := solarCulminationTime(culminationSeed, info.Longitude)
+		culmination := solarCulminationTime(culminationSeed, info.Longitude, module)
 		if culmination.Before(start) || culmination.After(end) {
 			continue
 		}
-		if localSolarEclipseAltitudeVisible(culmination, info) {
+		if localSolarEclipseAltitudeVisible(culmination, info, module) {
 			return true
 		}
 	}
@@ -648,8 +688,13 @@ func localSolarEclipseVisibleDuring(info LocalSolarEclipseInfo, start, end time.
 	return false
 }
 
-func localSolarEclipseAltitudeVisible(date time.Time, info LocalSolarEclipseInfo) bool {
-	return solarAltitude(date, info.Longitude, info.Latitude) > localSolarEclipseVisibilityThreshold(info.Height, info.Latitude)
+func localSolarEclipseAltitudeVisible(date time.Time, info LocalSolarEclipseInfo, modules ...*Eclipse) bool {
+	module := &defaultModule
+	if len(modules) > 0 {
+		module = modules[0]
+	}
+
+	return solarAltitude(date, info.Longitude, info.Latitude, module) > localSolarEclipseVisibilityThreshold(info.Height, info.Latitude)
 }
 
 func localSolarEclipseVisibilityThreshold(height, latitude float64) float64 {
@@ -680,14 +725,3 @@ func minLocalSolarTime(a, b time.Time) time.Time {
 	}
 	return b
 }
-
-var (
-	localSolarEclipseNASABulletinSplitK = localSolarEclipseCalculator{
-		global: basic.SolarEclipseNASABulletinSplitK,
-		local:  basic.LocalSolarEclipseNASABulletinSplitK,
-	}
-	localSolarEclipseIAUSingleK = localSolarEclipseCalculator{
-		global: basic.SolarEclipseIAUSingleK,
-		local:  basic.LocalSolarEclipseIAUSingleK,
-	}
-)

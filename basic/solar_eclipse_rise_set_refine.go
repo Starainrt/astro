@@ -1,6 +1,10 @@
 package basic
 
-import "math"
+import (
+	"math"
+
+	"github.com/starainrt/astro/internal/geodata"
+)
 
 func (solver solarEclipseSolver) refineRiseSetPhaseJunction(
 	jde, longitude, latitude float64,
@@ -46,7 +50,7 @@ func (solver solarEclipseSolver) refineRiseSetPhaseJunction(
 		if math.Abs(delta[2]) > 5.0/1440.0 {
 			delta[2] = math.Copysign(5.0/1440.0, delta[2])
 		}
-		longitude = normalizeLongitude(longitude + delta[0])
+		longitude = geodata.NormalizeLongitude(longitude + delta[0])
 		latitude += delta[1]
 		jde += delta[2]
 		if latitude <= -89.999999 || latitude >= 89.999999 {
@@ -407,7 +411,7 @@ func solarEclipseRiseSetHorizonCenter(evaluation solarEclipseRiseSetEvaluation) 
 	sun := solarEclipseXYZToLLR(
 		evaluation.center.sunXYZ[0], evaluation.center.sunXYZ[1], evaluation.center.sunXYZ[2],
 	)
-	return normalizeLongitude((sun[0] - evaluation.center.gst) / rad), sun[1] / rad
+	return geodata.NormalizeLongitude((sun[0] - evaluation.center.gst) / rad), sun[1] / rad
 }
 
 func (solver solarEclipseSolver) refineRiseSetFoldPoint(
@@ -465,7 +469,7 @@ func (solver solarEclipseSolver) refineRiseSetFoldPoint(
 		for index := range coordinates {
 			coordinates[index] += delta[index]
 		}
-		coordinates[0] = normalizeLongitude(coordinates[0])
+		coordinates[0] = geodata.NormalizeLongitude(coordinates[0])
 		if coordinates[1] <= -89.999999 || coordinates[1] >= 89.999999 {
 			return SolarEclipsePathPoint{}, false
 		}
@@ -565,7 +569,7 @@ func (solver solarEclipseSolver) appendRefinedRiseSetSegment(
 		return append(points, end)
 	}
 	jde := (start.JDE + end.JDE) / 2
-	longitude := normalizeLongitude(start.Longitude + math.Remainder(end.Longitude-start.Longitude, 360)/2)
+	longitude := geodata.NormalizeLongitude(start.Longitude + math.Remainder(end.Longitude-start.Longitude, 360)/2)
 	latitude := (start.Latitude + end.Latitude) / 2
 	// A comfortably straight candidate needs no new output vertex. Reserve
 	// half the chord budget for prediction error; every inserted vertex still
@@ -620,7 +624,7 @@ func solarEclipseRiseSetChordDeviationKM(point, start, end SolarEclipsePathPoint
 		dotSolarEclipse3(solarEclipseRiseSetCross(middle, last), normal) < 0 {
 		return math.Min(solarEclipsePathDistanceKM(point, start), solarEclipsePathDistanceKM(point, end))
 	}
-	return solarEclipseEarthEquatorialRadiusKM * math.Asin(math.Min(1, math.Abs(dotSolarEclipse3(middle, normal))/norm))
+	return geodata.EarthEquatorialRadiusKM * math.Asin(math.Min(1, math.Abs(dotSolarEclipse3(middle, normal))/norm))
 }
 
 func solarEclipseRiseSetCross(first, second [3]float64) [3]float64 {

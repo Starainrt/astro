@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-// 一秒步长请求曾经要跑满整条 18605 个瞬时足迹的扫描；夹到两分钟后应与默认请求同量级。
+// 一秒步长请求应被夹到两分钟，耗时与默认请求同量级。
 func BenchmarkSolarEclipseMapSVGPartialStepOneSecond(b *testing.B) {
 	date := time.Date(2024, time.April, 8, 0, 0, 0, 0, time.UTC)
 	options := SolarEclipseMapSVGOptions{

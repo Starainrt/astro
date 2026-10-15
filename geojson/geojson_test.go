@@ -2005,6 +2005,9 @@ func TestMarshalPlanetOccultationWithoutFootprintsUsesBands(t *testing.T) {
 }
 
 func TestMarshalPlanetOccultationCompactBandHandlesTangentBranchConvergence(t *testing.T) {
+	if testing.Short() {
+		t.Skip("slow regression")
+	}
 	for _, date := range []time.Time{
 		time.Date(1954, time.June, 30, 0, 0, 0, 0, time.UTC),
 		time.Date(1962, time.April, 1, 0, 0, 0, 0, time.UTC),

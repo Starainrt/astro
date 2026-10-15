@@ -1,6 +1,8 @@
 package basic
 
-import "math"
+import (
+	"math"
+)
 
 const (
 	angularDiameterAstronomicalUnitKM = 149597870.7
@@ -30,9 +32,9 @@ func SunSemidiameter(jde float64) float64 {
 	return SunSemidiameterN(jde, -1)
 }
 
-// SunSemidiameterN 太阳视半径（截断版），单位角秒 / truncated apparent solar semidiameter in arcseconds.
-func SunSemidiameterN(jde float64, n int) float64 {
-	return angularSemidiameterFromAU(sunEquatorialRadiusKM, EarthAwayN(jde, n))
+// SunSemidiameterNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func SunSemidiameterNWithInstance(jde float64, n int, inst *Instance) float64 {
+	return angularSemidiameterFromAU(sunEquatorialRadiusKM, EarthAwayNWithInstance(jde, n, inst))
 }
 
 // SunDiameter 太阳视直径，单位角秒 / apparent solar diameter in arcseconds.
@@ -40,19 +42,19 @@ func SunDiameter(jde float64) float64 {
 	return SunDiameterN(jde, -1)
 }
 
-// SunDiameterN 太阳视直径（截断版），单位角秒 / truncated apparent solar diameter in arcseconds.
-func SunDiameterN(jde float64, n int) float64 {
-	return 2 * SunSemidiameterN(jde, n)
+// SunDiameterNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func SunDiameterNWithInstance(jde float64, n int, inst *Instance) float64 {
+	return 2 * SunSemidiameterNWithInstance(jde, n, inst)
 }
 
-// MoonSemidiameter 月亮视半径，单位角秒 / apparent lunar semidiameter in arcseconds.
-func MoonSemidiameter(jde float64) float64 {
-	return MoonSemidiameterN(jde, -1)
+// MoonSemidiameterWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func MoonSemidiameterWithInstance(jde float64, inst *Instance) float64 {
+	return MoonSemidiameterNWithInstance(jde, -1, inst)
 }
 
-// MoonSemidiameterN 月亮视半径（截断版），单位角秒 / truncated apparent lunar semidiameter in arcseconds.
-func MoonSemidiameterN(jde float64, n int) float64 {
-	return angularSemidiameterArcsec(moonEquatorialRadiusKM, HMoonAwayN(jde, n))
+// MoonSemidiameterNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func MoonSemidiameterNWithInstance(jde float64, n int, inst *Instance) float64 {
+	return angularSemidiameterArcsec(moonEquatorialRadiusKM, HMoonAwayNWithInstance(jde, n, inst))
 }
 
 // MoonDiameter 月亮视直径，单位角秒 / apparent lunar diameter in arcseconds.
@@ -60,9 +62,9 @@ func MoonDiameter(jde float64) float64 {
 	return MoonDiameterN(jde, -1)
 }
 
-// MoonDiameterN 月亮视直径（截断版），单位角秒 / truncated apparent lunar diameter in arcseconds.
-func MoonDiameterN(jde float64, n int) float64 {
-	return 2 * MoonSemidiameterN(jde, n)
+// MoonDiameterNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func MoonDiameterNWithInstance(jde float64, n int, inst *Instance) float64 {
+	return 2 * MoonSemidiameterNWithInstance(jde, n, inst)
 }
 
 // MercurySemidiameter 水星视半径，单位角秒 / apparent Mercury semidiameter in arcseconds.
@@ -70,9 +72,9 @@ func MercurySemidiameter(jde float64) float64 {
 	return MercurySemidiameterN(jde, -1)
 }
 
-// MercurySemidiameterN 水星视半径（截断版），单位角秒 / truncated apparent Mercury semidiameter in arcseconds.
-func MercurySemidiameterN(jde float64, n int) float64 {
-	return angularSemidiameterFromAU(mercuryEquatorialRadiusKM, EarthMercuryAwayN(jde, n))
+// MercurySemidiameterNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func MercurySemidiameterNWithInstance(jde float64, n int, inst *Instance) float64 {
+	return angularSemidiameterFromAU(mercuryEquatorialRadiusKM, EarthMercuryAwayNWithInstance(jde, n, inst))
 }
 
 // MercuryDiameter 水星视直径，单位角秒 / apparent Mercury diameter in arcseconds.
@@ -80,9 +82,9 @@ func MercuryDiameter(jde float64) float64 {
 	return MercuryDiameterN(jde, -1)
 }
 
-// MercuryDiameterN 水星视直径（截断版），单位角秒 / truncated apparent Mercury diameter in arcseconds.
-func MercuryDiameterN(jde float64, n int) float64 {
-	return 2 * MercurySemidiameterN(jde, n)
+// MercuryDiameterNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func MercuryDiameterNWithInstance(jde float64, n int, inst *Instance) float64 {
+	return 2 * MercurySemidiameterNWithInstance(jde, n, inst)
 }
 
 // VenusSemidiameter 金星视半径，单位角秒 / apparent Venus semidiameter in arcseconds.
@@ -90,9 +92,9 @@ func VenusSemidiameter(jde float64) float64 {
 	return VenusSemidiameterN(jde, -1)
 }
 
-// VenusSemidiameterN 金星视半径（截断版），单位角秒 / truncated apparent Venus semidiameter in arcseconds.
-func VenusSemidiameterN(jde float64, n int) float64 {
-	return angularSemidiameterFromAU(venusEquatorialRadiusKM, EarthVenusAwayN(jde, n))
+// VenusSemidiameterNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func VenusSemidiameterNWithInstance(jde float64, n int, inst *Instance) float64 {
+	return angularSemidiameterFromAU(venusEquatorialRadiusKM, EarthVenusAwayNWithInstance(jde, n, inst))
 }
 
 // VenusDiameter 金星视直径，单位角秒 / apparent Venus diameter in arcseconds.
@@ -100,9 +102,9 @@ func VenusDiameter(jde float64) float64 {
 	return VenusDiameterN(jde, -1)
 }
 
-// VenusDiameterN 金星视直径（截断版），单位角秒 / truncated apparent Venus diameter in arcseconds.
-func VenusDiameterN(jde float64, n int) float64 {
-	return 2 * VenusSemidiameterN(jde, n)
+// VenusDiameterNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func VenusDiameterNWithInstance(jde float64, n int, inst *Instance) float64 {
+	return 2 * VenusSemidiameterNWithInstance(jde, n, inst)
 }
 
 // MarsSemidiameter 火星视半径，单位角秒 / apparent Mars semidiameter in arcseconds.
@@ -110,9 +112,9 @@ func MarsSemidiameter(jde float64) float64 {
 	return MarsSemidiameterN(jde, -1)
 }
 
-// MarsSemidiameterN 火星视半径（截断版），单位角秒 / truncated apparent Mars semidiameter in arcseconds.
-func MarsSemidiameterN(jde float64, n int) float64 {
-	return angularSemidiameterFromAU(marsEquatorialRadiusKM, EarthMarsAwayN(jde, n))
+// MarsSemidiameterNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func MarsSemidiameterNWithInstance(jde float64, n int, inst *Instance) float64 {
+	return angularSemidiameterFromAU(marsEquatorialRadiusKM, EarthMarsAwayNWithInstance(jde, n, inst))
 }
 
 // MarsDiameter 火星视直径，单位角秒 / apparent Mars diameter in arcseconds.
@@ -120,9 +122,9 @@ func MarsDiameter(jde float64) float64 {
 	return MarsDiameterN(jde, -1)
 }
 
-// MarsDiameterN 火星视直径（截断版），单位角秒 / truncated apparent Mars diameter in arcseconds.
-func MarsDiameterN(jde float64, n int) float64 {
-	return 2 * MarsSemidiameterN(jde, n)
+// MarsDiameterNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func MarsDiameterNWithInstance(jde float64, n int, inst *Instance) float64 {
+	return 2 * MarsSemidiameterNWithInstance(jde, n, inst)
 }
 
 // JupiterSemidiameter 木星视半径，单位角秒 / apparent Jupiter semidiameter in arcseconds.
@@ -130,9 +132,9 @@ func JupiterSemidiameter(jde float64) float64 {
 	return JupiterSemidiameterN(jde, -1)
 }
 
-// JupiterSemidiameterN 木星视半径（截断版），单位角秒 / truncated apparent Jupiter semidiameter in arcseconds.
-func JupiterSemidiameterN(jde float64, n int) float64 {
-	return angularSemidiameterFromAU(jupiterEquatorialRadiusKM, EarthJupiterAwayN(jde, n))
+// JupiterSemidiameterNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func JupiterSemidiameterNWithInstance(jde float64, n int, inst *Instance) float64 {
+	return angularSemidiameterFromAU(jupiterEquatorialRadiusKM, EarthJupiterAwayNWithInstance(jde, n, inst))
 }
 
 // JupiterDiameter 木星视直径，单位角秒 / apparent Jupiter diameter in arcseconds.
@@ -140,9 +142,9 @@ func JupiterDiameter(jde float64) float64 {
 	return JupiterDiameterN(jde, -1)
 }
 
-// JupiterDiameterN 木星视直径（截断版），单位角秒 / truncated apparent Jupiter diameter in arcseconds.
-func JupiterDiameterN(jde float64, n int) float64 {
-	return 2 * JupiterSemidiameterN(jde, n)
+// JupiterDiameterNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func JupiterDiameterNWithInstance(jde float64, n int, inst *Instance) float64 {
+	return 2 * JupiterSemidiameterNWithInstance(jde, n, inst)
 }
 
 // SaturnSemidiameter 土星视半径，单位角秒 / apparent Saturn semidiameter in arcseconds.
@@ -150,9 +152,9 @@ func SaturnSemidiameter(jde float64) float64 {
 	return SaturnSemidiameterN(jde, -1)
 }
 
-// SaturnSemidiameterN 土星视半径（截断版），单位角秒 / truncated apparent Saturn semidiameter in arcseconds.
-func SaturnSemidiameterN(jde float64, n int) float64 {
-	return angularSemidiameterFromAU(saturnEquatorialRadiusKM, EarthSaturnAwayN(jde, n))
+// SaturnSemidiameterNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func SaturnSemidiameterNWithInstance(jde float64, n int, inst *Instance) float64 {
+	return angularSemidiameterFromAU(saturnEquatorialRadiusKM, EarthSaturnAwayNWithInstance(jde, n, inst))
 }
 
 // SaturnDiameter 土星视直径，单位角秒 / apparent Saturn diameter in arcseconds.
@@ -160,9 +162,9 @@ func SaturnDiameter(jde float64) float64 {
 	return SaturnDiameterN(jde, -1)
 }
 
-// SaturnDiameterN 土星视直径（截断版），单位角秒 / truncated apparent Saturn diameter in arcseconds.
-func SaturnDiameterN(jde float64, n int) float64 {
-	return 2 * SaturnSemidiameterN(jde, n)
+// SaturnDiameterNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func SaturnDiameterNWithInstance(jde float64, n int, inst *Instance) float64 {
+	return 2 * SaturnSemidiameterNWithInstance(jde, n, inst)
 }
 
 // UranusSemidiameter 天王星视半径，单位角秒 / apparent Uranus semidiameter in arcseconds.
@@ -170,9 +172,9 @@ func UranusSemidiameter(jde float64) float64 {
 	return UranusSemidiameterN(jde, -1)
 }
 
-// UranusSemidiameterN 天王星视半径（截断版），单位角秒 / truncated apparent Uranus semidiameter in arcseconds.
-func UranusSemidiameterN(jde float64, n int) float64 {
-	return angularSemidiameterFromAU(uranusEquatorialRadiusKM, EarthUranusAwayN(jde, n))
+// UranusSemidiameterNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func UranusSemidiameterNWithInstance(jde float64, n int, inst *Instance) float64 {
+	return angularSemidiameterFromAU(uranusEquatorialRadiusKM, EarthUranusAwayNWithInstance(jde, n, inst))
 }
 
 // UranusDiameter 天王星视直径，单位角秒 / apparent Uranus diameter in arcseconds.
@@ -180,9 +182,9 @@ func UranusDiameter(jde float64) float64 {
 	return UranusDiameterN(jde, -1)
 }
 
-// UranusDiameterN 天王星视直径（截断版），单位角秒 / truncated apparent Uranus diameter in arcseconds.
-func UranusDiameterN(jde float64, n int) float64 {
-	return 2 * UranusSemidiameterN(jde, n)
+// UranusDiameterNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func UranusDiameterNWithInstance(jde float64, n int, inst *Instance) float64 {
+	return 2 * UranusSemidiameterNWithInstance(jde, n, inst)
 }
 
 // NeptuneSemidiameter 海王星视半径，单位角秒 / apparent Neptune semidiameter in arcseconds.
@@ -190,9 +192,9 @@ func NeptuneSemidiameter(jde float64) float64 {
 	return NeptuneSemidiameterN(jde, -1)
 }
 
-// NeptuneSemidiameterN 海王星视半径（截断版），单位角秒 / truncated apparent Neptune semidiameter in arcseconds.
-func NeptuneSemidiameterN(jde float64, n int) float64 {
-	return angularSemidiameterFromAU(neptuneEquatorialRadiusKM, EarthNeptuneAwayN(jde, n))
+// NeptuneSemidiameterNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func NeptuneSemidiameterNWithInstance(jde float64, n int, inst *Instance) float64 {
+	return angularSemidiameterFromAU(neptuneEquatorialRadiusKM, EarthNeptuneAwayNWithInstance(jde, n, inst))
 }
 
 // NeptuneDiameter 海王星视直径，单位角秒 / apparent Neptune diameter in arcseconds.
@@ -200,7 +202,7 @@ func NeptuneDiameter(jde float64) float64 {
 	return NeptuneDiameterN(jde, -1)
 }
 
-// NeptuneDiameterN 海王星视直径（截断版），单位角秒 / truncated apparent Neptune diameter in arcseconds.
-func NeptuneDiameterN(jde float64, n int) float64 {
-	return 2 * NeptuneSemidiameterN(jde, n)
+// NeptuneDiameterNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func NeptuneDiameterNWithInstance(jde float64, n int, inst *Instance) float64 {
+	return 2 * NeptuneSemidiameterNWithInstance(jde, n, inst)
 }

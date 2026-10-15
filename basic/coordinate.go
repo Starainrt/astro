@@ -68,20 +68,26 @@ func DecToBo(jde, ra, dec float64) float64 {
 /*
  * 地心坐标转站心坐标，参数分别为，地心赤经赤纬 纬度经度，jde，离地心位置au
  */
+// 站心视差沿用的旧地球椭球，与 geodata 的赤道半径不同，不可混用。
+const (
+	topocentricEarthRadiusKM      = 6378.14
+	topocentricEarthPolarRadiusKM = 6356.755
+)
+
 func pcosi(lat, h float64) float64 {
-	b := 6356.755
-	a := 6378.14
+	b := topocentricEarthPolarRadiusKM
+	a := topocentricEarthRadiusKM
 	u := ArcTan(b / a * Tan(lat))
-	//psin=b/a*Sin(u)+h/6378140*Sin(lat);
-	pcos := Cos(u) + h/6378140.0*Cos(lat)
+	//psin=b/a*Sin(u)+h/(topocentricEarthRadiusKM*1000)*Sin(lat);
+	pcos := Cos(u) + h/(topocentricEarthRadiusKM*1000)*Cos(lat)
 	return pcos
 }
 func psini(lat, h float64) float64 {
-	b := 6356.755
-	a := 6378.14
+	b := topocentricEarthPolarRadiusKM
+	a := topocentricEarthRadiusKM
 	u := ArcTan(b / a * Tan(lat))
-	psin := b/a*Sin(u) + h/6378140*Sin(lat)
-	//pcos=Cos(u)+h/6378140*Cos(lat);
+	psin := b/a*Sin(u) + h/(topocentricEarthRadiusKM*1000)*Sin(lat)
+	//pcos=Cos(u)+h/(topocentricEarthRadiusKM*1000)*Cos(lat);
 	return psin
 }
 
@@ -130,18 +136,20 @@ func TopocentricBo(lo, bo, lat, lon, jde, au, h float64) float64 {
 	return nbo
 }
 
-func GXCLo(lo, bo, jde float64) float64 { //光行差修正
+// GXCLoWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func GXCLoWithInstance(lo, bo, jde float64, inst *Instance) float64 { //光行差修正
 	k := 20.49552
-	sunlo := SunTrueLo(jde)
+	sunlo := SunTrueLoWithInstance(jde, inst)
 	e := Earthe(jde)
 	epi := EarthPI(jde)
 	tmp := (-k*Cos(sunlo-lo) + e*k*Cos(epi-lo)) / Cos(bo)
 	return tmp
 }
 
-func GXCBo(lo, bo, jde float64) float64 {
+// GXCBoWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func GXCBoWithInstance(lo, bo, jde float64, inst *Instance) float64 {
 	k := 20.49552
-	sunlo := SunTrueLo(jde)
+	sunlo := SunTrueLoWithInstance(jde, inst)
 	e := Earthe(jde)
 	epi := EarthPI(jde)
 	tmp := -k * Sin(bo) * (Sin(sunlo-lo) - e*Sin(epi-lo))

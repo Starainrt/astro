@@ -383,7 +383,7 @@ func closestSolarEclipseBandApproach(
 	}
 	return SolarEclipsePathPoint{
 		JDE:       horizonFirst.JDE + bestFraction*(horizonSecond.JDE-horizonFirst.JDE),
-		Longitude: normalizeLongitude(horizonFirst.Longitude + bestFraction*math.Remainder(horizonSecond.Longitude-horizonFirst.Longitude, 360)),
+		Longitude: geodata.NormalizeLongitude(horizonFirst.Longitude + bestFraction*math.Remainder(horizonSecond.Longitude-horizonFirst.Longitude, 360)),
 		Latitude:  horizonFirst.Latitude + bestFraction*(horizonSecond.Latitude-horizonFirst.Latitude),
 	}, true
 }
@@ -644,7 +644,7 @@ func solveSolarEclipseCentralLimitHorizonRoot(
 			if evaluation.centralContactSecondDerivative(coordinates[0], coordinates[1]) <= 0 {
 				return SolarEclipsePathPoint{}, false
 			}
-			return SolarEclipsePathPoint{JDE: coordinates[2], Longitude: normalizeLongitude(coordinates[0]), Latitude: coordinates[1], SunAltitude: state.sunAltitudeRad / rad}, true
+			return SolarEclipsePathPoint{JDE: coordinates[2], Longitude: geodata.NormalizeLongitude(coordinates[0]), Latitude: coordinates[1], SunAltitude: state.sunAltitudeRad / rad}, true
 		}
 		delta, ok := solveSolarEclipse3x3(jacobian, [3]float64{-residual[0], -residual[1], -residual[2]})
 		if !ok {
@@ -653,7 +653,7 @@ func solveSolarEclipseCentralLimitHorizonRoot(
 		for index := range coordinates {
 			coordinates[index] += delta[index]
 		}
-		coordinates[0] = normalizeLongitude(coordinates[0])
+		coordinates[0] = geodata.NormalizeLongitude(coordinates[0])
 	}
 	return SolarEclipsePathPoint{}, false
 }
@@ -814,7 +814,7 @@ func solarEclipseRingCenter(ring []geodata.GeoPoint) geodata.GeoPoint {
 	}
 	total := float64(len(ring))
 	return geodata.GeoPoint{
-		Longitude: normalizeLongitude(longitude / total),
+		Longitude: geodata.NormalizeLongitude(longitude / total),
 		Latitude:  latitude / total,
 	}
 }
@@ -1024,7 +1024,7 @@ func dedupeSolarEclipseClosedRing(
 		return points, times
 	}
 	open, openTimes := points, times
-	if pointDistanceKM(points[len(points)-1], points[0]) < minimumKM {
+	if geodata.EquatorialDistanceKM(points[len(points)-1], points[0]) < minimumKM {
 		open, openTimes = points[:len(points)-1], times[:len(times)-1]
 	}
 	if len(open) < 3 {
@@ -1035,7 +1035,7 @@ func dedupeSolarEclipseClosedRing(
 	result = append(result, open[0])
 	resultTimes = append(resultTimes, openTimes[0])
 	for index, point := range open[1:] {
-		if pointDistanceKM(result[len(result)-1], point) >= minimumKM {
+		if geodata.EquatorialDistanceKM(result[len(result)-1], point) >= minimumKM {
 			result = append(result, point)
 			resultTimes = append(resultTimes, openTimes[index+1])
 		}
@@ -1085,7 +1085,7 @@ func solarEclipseRingVertexTimes(
 		backIndex, backDistance := offset, 0.0
 		for steps := 0; steps < count; steps++ {
 			previous := (backIndex - 1 + count) % count
-			backDistance += pointDistanceKM(ring[previous], ring[backIndex])
+			backDistance += geodata.EquatorialDistanceKM(ring[previous], ring[backIndex])
 			backIndex = previous
 			if known[backIndex] {
 				break
@@ -1094,7 +1094,7 @@ func solarEclipseRingVertexTimes(
 		forwardIndex, forwardDistance := offset, 0.0
 		for steps := 0; steps < count; steps++ {
 			next := (forwardIndex + 1) % count
-			forwardDistance += pointDistanceKM(ring[forwardIndex], ring[next])
+			forwardDistance += geodata.EquatorialDistanceKM(ring[forwardIndex], ring[next])
 			forwardIndex = next
 			if known[forwardIndex] {
 				break
@@ -1167,7 +1167,7 @@ func smoothSolarEclipseClosedRing(
 	ringTimes := make([]float64, 0, count+1)
 	for index := 0; index < count; index++ {
 		ring = append(ring, geodata.GeoPoint{
-			Longitude: normalizeLongitude(longitudes[index]),
+			Longitude: geodata.NormalizeLongitude(longitudes[index]),
 			Latitude:  latitudes[index],
 		})
 		ringTimes = append(ringTimes, vertexTimes[index])
@@ -1175,17 +1175,6 @@ func smoothSolarEclipseClosedRing(
 	ring = append(ring, ring[0])
 	ringTimes = append(ringTimes, ringTimes[0])
 	return ring, ringTimes
-}
-
-// pointDistanceKM is the great-circle distance between two geographic points.
-func pointDistanceKM(first, second geodata.GeoPoint) float64 {
-	firstLatitude := first.Latitude * rad
-	secondLatitude := second.Latitude * rad
-	deltaLatitude := secondLatitude - firstLatitude
-	deltaLongitude := math.Remainder((second.Longitude-first.Longitude)*rad, 2*math.Pi)
-	haversine := math.Sin(deltaLatitude/2)*math.Sin(deltaLatitude/2) +
-		math.Cos(firstLatitude)*math.Cos(secondLatitude)*math.Sin(deltaLongitude/2)*math.Sin(deltaLongitude/2)
-	return 2 * 6378.1366 * math.Asin(math.Sqrt(math.Min(1, haversine)))
 }
 
 // decimateSolarEclipseClosedRing thins one closed ring to the requested

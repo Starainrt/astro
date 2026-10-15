@@ -1,6 +1,7 @@
 package svg
 
 import (
+	"github.com/starainrt/astro/internal/limbnote"
 	"github.com/starainrt/astro/internal/timenote"
 	"fmt"
 	"html"
@@ -71,6 +72,8 @@ type LocalSolarEclipseSVGOptions struct {
 	// TimeScale selects the label scale: the zero value is UTC; TimeScaleUT1 uses UT1 labels, requires
 	// Location to be nil or UTC (otherwise the renderer returns false) and declares the scale in the footer.
 	TimeScale astro.TimeScale
+	// LunarLimb 月缘剖面，nil 为圆月面；精修接触时刻与食甚时的食分、遮蔽率，食甚时刻不变、月盘仍按圆面绘制 / lunar limb profile for contacts, magnitude and obscuration.
+	LunarLimb basic.LunarLimb
 }
 
 type localSolarEclipseSVGCalculator func(float64, float64, float64, float64, basic.LocalSolarEclipseDiagramOptions) basic.LocalSolarEclipseDiagramResult
@@ -125,7 +128,7 @@ func localSolarEclipseSVG(
 		lon,
 		lat,
 		height,
-		basic.LocalSolarEclipseDiagramOptions{StepDays: solarEclipseDurationToDays(options.Step)},
+		basic.LocalSolarEclipseDiagramOptions{StepDays: solarEclipseDurationToDays(options.Step), LunarLimb: options.LunarLimb},
 	)
 	if diagram.Eclipse.Type == basic.SolarEclipseNone || len(diagram.Frames) == 0 {
 		return "", false
@@ -170,7 +173,8 @@ func renderLocalSolarEclipseSVG(
 	if options.DirectionText != "" {
 		direction = svgchart.EllipsizeText(direction, width-80, 12)
 	}
-	scaleNote := timenote.Scale(options.TimeScale, info.GreatestEclipse, options.Location, options.Language)
+	scaleNote := limbnote.Join(timenote.Scale(options.TimeScale, info.GreatestEclipse, options.Location, options.Language),
+		limbnote.Contacts(info.LunarLimbApplied, options.Language), options.Language)
 	footerLines := localSolarEclipseSVGFooterLines(direction, localSolarEclipseSVGFooterNoteText(options), scaleNote, width, height, headerBottom)
 	footerBaselines, footerOccupied := svgchart.FooterBlock(len(footerLines), height, 12,
 		svgchart.FooterLineHeight(12), localDiagramFooterBottomPadding)

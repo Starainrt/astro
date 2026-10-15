@@ -46,7 +46,7 @@ func TestSunRiseSetDynamicResidual(t *testing.T) {
 func TestSunApparentStateReusesDistanceWithoutChangingCoordinates(t *testing.T) {
 	const jd = 2460827.5
 	ra, dec, distanceAU := hSunApparentRaDecDistanceN(jd, -1)
-	wantRA, wantDec := LoBoToRaDec(jd, HSunApparentLoN(jd, -1), HSunTrueBoN(jd, -1))
+	wantRA, wantDec := HSunApparentRaDec(jd)
 	assertClose(t, "sun state RA", ra, wantRA, 1e-12)
 	assertClose(t, "sun state Dec", dec, wantDec, 1e-12)
 	assertClose(t, "sun state distance", distanceAU, EarthAwayN(jd, -1), 1e-15)

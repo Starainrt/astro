@@ -1,6 +1,7 @@
 package svg
 
 import (
+	"github.com/starainrt/astro/internal/limbnote"
 	"github.com/starainrt/astro/internal/timenote"
 	"errors"
 	"fmt"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/starainrt/astro"
 	"github.com/starainrt/astro/basic"
+	"github.com/starainrt/astro/internal/geodata"
 	"github.com/starainrt/astro/internal/svgchart"
 	"github.com/starainrt/astro/internal/svgmap"
 	"github.com/starainrt/astro/moon"
@@ -217,7 +219,7 @@ func occultationDetailedMoonRows(at time.Time, language string) []svgchart.Panel
 	jde := basic.UTC2TT(basic.Date2JD(at.UTC()))
 	ra, dec := basic.HMoonTrueRaDec(jde)
 	sd := basic.MoonSemidiameter(jde)
-	hp := math.Asin(math.Sin(sd/3600*math.Pi/180)*6378.137/1737.4) * 180 / math.Pi * 3600
+	hp := math.Asin(math.Sin(sd/3600*math.Pi/180)*geodata.EarthWGS84RadiusKM/1737.4) * 180 / math.Pi * 3600
 	rows := []svgchart.PanelRow{
 		{Label: "赤经 R.A.", Value: occultationDetailedRA(ra)},
 		{Label: "赤纬 Dec.", Value: occultationDetailedDec(dec)},
@@ -363,7 +365,8 @@ func renderOccultationDetailedSVG(
 		return "", err
 	}
 	writeOccultationDetailedGrid(&b, view, blocks)
-	writeOccultationDetailedFooter(&b, view, options, occultationScaleInstant(path, planetPath))
+	writeOccultationDetailedFooter(&b, view, options, occultationScaleInstant(path, planetPath),
+		occultationLimbApplied(path, planetPath))
 	b.WriteString(`</svg>`)
 	return b.String(), nil
 }
@@ -433,7 +436,7 @@ func writeOccultationDetailedSummary(
 	}
 }
 
-func writeOccultationDetailedFooter(b *strings.Builder, view occultationDetailedView, options OccultationDetailedSVGOptions, instant time.Time) {
+func writeOccultationDetailedFooter(b *strings.Builder, view occultationDetailedView, options OccultationDetailedSVGOptions, instant time.Time, limbApplied bool) {
 	text := options.FooterNote
 	if text == "" {
 		if options.Language == starOccultationSVGLanguageEnglish {
@@ -448,7 +451,8 @@ func writeOccultationDetailedFooter(b *strings.Builder, view occultationDetailed
 	if options.FooterNote != "" {
 		lines = svgchart.WrapText(text, maxWidth, 11)
 	}
-	lines = svgchart.FooterLinesWithScale(lines, timenote.Scale(options.TimeScale, instant, options.Location, options.Language),
+	lines = svgchart.FooterLinesWithScale(lines, limbnote.Join(timenote.Scale(options.TimeScale, instant, options.Location, options.Language),
+		limbnote.Limits(limbApplied, options.Language), options.Language),
 		maxWidth, 11,
 		svgchart.BaselineLineLimit(11, svgchart.FooterLineHeight(11), view.footerY,
 			view.height-svgchart.FooterBottomPadding(11)))

@@ -3,6 +3,8 @@ package basic
 import (
 	"math"
 	"time"
+
+	"github.com/starainrt/astro/internal/geodata"
 )
 
 const (
@@ -80,7 +82,7 @@ func (arc occultationGreatestTimeArc) residual(longitude, latitude float64) floa
 func (arc occultationGreatestTimeArc) point(longitude, latitude float64, state occultationRiseSetState) OccultationPathPoint {
 	return OccultationPathPoint{
 		Time:         occultationTTToLocation(arc.evaluation.tt, arc.location),
-		Longitude:    normalizeLongitude(longitude),
+		Longitude:    geodata.NormalizeLongitude(longitude),
 		Latitude:     latitude,
 		MoonAltitude: state.moonAltitude,
 	}
@@ -219,7 +221,7 @@ func traceOccultationGreatestTimeArc(
 		next := arc.point(nextLongitude, nextLatitude, nextState)
 		distance := occultationPathDistanceKM(points[len(points)-1], next)
 		// 校正回到原点说明该方向已经走到支路端点，继续只会原地打转。
-		if distance < 1e-9 || distance > 4*step*greatestTimeContourKMPerDegree {
+		if distance < 1e-9 || distance > 4*step*geodata.EarthKMPerDegree {
 			break
 		}
 		points = append(points, next)

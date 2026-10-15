@@ -4,6 +4,8 @@ import (
 	"math"
 	"sort"
 	"time"
+
+	"github.com/starainrt/astro/internal/geodata"
 )
 
 //哦~我是一颗小地球~~
@@ -19,7 +21,7 @@ const (
 	solarEclipsePathDurationHorizonToleranceDegrees = 0.1
 	// 地球表面上的影锥足迹不可能比地球本身更宽。
 	// No shadow footprint on the Earth can be wider than the Earth itself.
-	solarEclipsePathMaxPossibleWidthKM = 2 * 6371.0088
+	solarEclipsePathMaxPossibleWidthKM = 2 * geodata.EarthMeanRadiusKM
 	solarEclipsePathDuplicateTimeDays  = 1e-10
 	// A short segment can still hide a large directional change at high
 	// latitude.  Use a small relative sagitta tolerance so refinement follows
@@ -120,6 +122,8 @@ type SolarEclipsePathOptions struct {
 	// most expensive stage of the pipeline and would otherwise be computed twice
 	// by callers that ask for both products.
 	SkipCentralBand bool
+	// LunarLimb 月缘剖面，nil 为圆月面；修正南北界、带宽、中心带足迹、最长中心食时长与全球始末，中心线不变 / lunar limb profile for limits, widths, band, longest duration and P1/P4.
+	LunarLimb LunarLimb
 }
 
 // SolarEclipsePathPoint 表示日食路径上的一个地理点。
@@ -173,6 +177,8 @@ type SolarEclipsePathResult struct {
 	// the sampled instantaneous footprints because no analytic envelope
 	// described this event.
 	CentralBandSampled bool
+	// CentralLimitsLimbApplied 南北界至少一点按月缘剖面平移，带宽随之修正 / the central limits were moved by the lunar limb.
+	CentralLimitsLimbApplied bool
 	// StepDays 是实际采用的基础时间采样步长，单位为日。
 	// StepDays is the effective base time step in days.
 	StepDays float64
@@ -224,6 +230,9 @@ type SolarEclipsePartialFootprintOptions struct {
 	// SunRadiusModel 太阳半径口径，零值为标准档。
 	// SunRadiusModel is the solar radius convention; the zero value is the standard one.
 	SunRadiusModel SolarEclipseSunRadiusModel
+	// LunarLimb 月缘剖面，nil 为圆月面；修正偏食可见域外边界（零食分包络与初亏/复圆升落曲线），
+	// 内嵌全球结果与 P1/P4 也与全球日食接口同源地修正；食分线与等时线仍按圆月面 / lunar limb profile for the outer partial boundary, embedded global result and P1/P4.
+	LunarLimb LunarLimb
 }
 
 // SolarEclipsePartialAreaOptions 是 SolarEclipsePartialFootprintOptions 的兼容别名。
@@ -295,6 +304,8 @@ type SolarEclipsePartialFootprintsResult struct {
 	// topology audit (the 16-segment per-curve and 32-segment total caps, shared
 	// endpoints and monotonic times), so RiseSetCurves is a truncated result.
 	RiseSetTopologyDegraded bool
+	// PartialBoundaryLimbApplied 表示偏食可见域外边界至少有一点按月缘剖面平移 / the outer partial boundary was moved by the lunar limb.
+	PartialBoundaryLimbApplied bool
 	// P1-P4 是半影与地球的外切/内切接触点；不存在的内切点保持零值。
 	// P1-P4 are external/internal penumbral contacts; absent internal contacts remain zero.
 	P1 SolarEclipsePathPoint
@@ -371,16 +382,14 @@ func SolarEclipseCentralPath(seedJDE float64, options SolarEclipsePathOptions) S
 	return SolarEclipseCentralPathNASABulletinSplitK(seedJDE, options)
 }
 
-// SolarEclipseCentralPathIAUSingleK 计算日食中心路径，使用 IAU Single-K 模型。
-// SolarEclipseCentralPathIAUSingleK computes the central path with the IAU Single-K model.
-func SolarEclipseCentralPathIAUSingleK(seedJDE float64, options SolarEclipsePathOptions) SolarEclipsePathResult {
-	return solarEclipseCentralPath(seedJDE, SolarEclipseModelIAUSingleK, options)
+// SolarEclipseCentralPathIAUSingleKWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func SolarEclipseCentralPathIAUSingleKWithInstance(seedJDE float64, options SolarEclipsePathOptions, inst *Instance) SolarEclipsePathResult {
+	return solarEclipseCentralPath(seedJDE, SolarEclipseModelIAUSingleK, options, inst)
 }
 
-// SolarEclipseCentralPathNASABulletinSplitK 计算日食中心路径，使用 NASA bulletin Split-K 模型。
-// SolarEclipseCentralPathNASABulletinSplitK computes the central path with the NASA bulletin Split-K model.
-func SolarEclipseCentralPathNASABulletinSplitK(seedJDE float64, options SolarEclipsePathOptions) SolarEclipsePathResult {
-	return solarEclipseCentralPath(seedJDE, SolarEclipseModelNASABulletinSplitK, options)
+// SolarEclipseCentralPathNASABulletinSplitKWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func SolarEclipseCentralPathNASABulletinSplitKWithInstance(seedJDE float64, options SolarEclipsePathOptions, inst *Instance) SolarEclipsePathResult {
+	return solarEclipseCentralPath(seedJDE, SolarEclipseModelNASABulletinSplitK, options, inst)
 }
 
 // SolarEclipsePartialFootprints 计算给定近朔时刻附近的日食偏食半影足迹序列，默认使用 NASA bulletin Split-K 模型。
@@ -389,16 +398,14 @@ func SolarEclipsePartialFootprints(seedJDE float64, options SolarEclipsePartialF
 	return SolarEclipsePartialFootprintsNASABulletinSplitK(seedJDE, options)
 }
 
-// SolarEclipsePartialFootprintsIAUSingleK 计算日食偏食半影足迹序列，使用 IAU Single-K 模型。
-// SolarEclipsePartialFootprintsIAUSingleK computes penumbral footprint samples with the IAU Single-K model.
-func SolarEclipsePartialFootprintsIAUSingleK(seedJDE float64, options SolarEclipsePartialFootprintOptions) SolarEclipsePartialFootprintsResult {
-	return solarEclipsePartialFootprints(seedJDE, SolarEclipseModelIAUSingleK, options)
+// SolarEclipsePartialFootprintsIAUSingleKWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func SolarEclipsePartialFootprintsIAUSingleKWithInstance(seedJDE float64, options SolarEclipsePartialFootprintOptions, inst *Instance) SolarEclipsePartialFootprintsResult {
+	return solarEclipsePartialFootprints(seedJDE, SolarEclipseModelIAUSingleK, options, inst)
 }
 
-// SolarEclipsePartialFootprintsNASABulletinSplitK 计算日食偏食半影足迹序列，使用 NASA bulletin Split-K 模型。
-// SolarEclipsePartialFootprintsNASABulletinSplitK computes penumbral footprint samples with the NASA bulletin Split-K model.
-func SolarEclipsePartialFootprintsNASABulletinSplitK(seedJDE float64, options SolarEclipsePartialFootprintOptions) SolarEclipsePartialFootprintsResult {
-	return solarEclipsePartialFootprints(seedJDE, SolarEclipseModelNASABulletinSplitK, options)
+// SolarEclipsePartialFootprintsNASABulletinSplitKWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func SolarEclipsePartialFootprintsNASABulletinSplitKWithInstance(seedJDE float64, options SolarEclipsePartialFootprintOptions, inst *Instance) SolarEclipsePartialFootprintsResult {
+	return solarEclipsePartialFootprints(seedJDE, SolarEclipseModelNASABulletinSplitK, options, inst)
 }
 
 // SolarEclipsePartialArea 计算日食偏食半影足迹序列，是 SolarEclipsePartialFootprints 的兼容包装。
@@ -419,13 +426,15 @@ func SolarEclipsePartialAreaNASABulletinSplitK(seedJDE float64, options SolarEcl
 	return SolarEclipsePartialFootprintsNASABulletinSplitK(seedJDE, options)
 }
 
-func solarEclipseCentralPath(seedJDE float64, model SolarEclipseRadiusModel, options SolarEclipsePathOptions) SolarEclipsePathResult {
+func solarEclipseCentralPath(seedJDE float64, model SolarEclipseRadiusModel, options SolarEclipsePathOptions, instances ...*Instance) SolarEclipsePathResult {
+	inst := instanceValue(instances)
+
 	options = normalizeSolarEclipsePathOptions(options)
-	newMoonJDE := CalcMoonSHByJDE(seedJDE, 0)
+	newMoonJDE := solarEclipseAnchorNewMoon(seedJDE, inst)
 	solver := newSolarEclipseSolverWithOptions(newMoonJDE, SolarEclipseOptions{
 		RadiusModel:    model,
 		SunRadiusModel: options.SunRadiusModel,
-	}).withDeltaTSeconds(options.DeltaTSeconds)
+	}, inst).withDeltaTSeconds(options.DeltaTSeconds)
 	result := solver.eclipseResult()
 	path := SolarEclipsePathResult{
 		Eclipse:         result,
@@ -447,7 +456,7 @@ func solarEclipseCentralPath(seedJDE float64, model SolarEclipseRadiusModel, opt
 				result.GreatestEclipse,
 				result.GreatestLongitude,
 				result.GreatestLatitude,
-				solver.besselAxisAt(result.GreatestEclipse).gst,
+				solver.besselAxisAt(result.GreatestEclipse).gst, inst,
 			) / rad,
 		}
 	}
@@ -486,14 +495,33 @@ func solarEclipseCentralPath(seedJDE float64, model SolarEclipseRadiusModel, opt
 	solver.setCenterLinePairWidths(
 		centerLine, result.Centrality, northernLimit, southernLimit, pairedLimits,
 	)
+	limb := options.LunarLimb
+	if limb != nil {
+		path.Eclipse = solver.withLunarLimb(path.Eclipse, limb)
+		greatestIndex, circularWidth := solarEclipseNearestCenterWidth(centerLine, result.GreatestEclipse)
+		northernLimb, northWidthApplied := solver.limbCorrectCentralLimits(northernLimit, limb)
+		southernLimb, southWidthApplied := solver.limbCorrectCentralLimits(southernLimit, limb)
+		path.CentralLimitsLimbApplied = northWidthApplied || southWidthApplied
+		solver.setCenterLinePairWidths(centerLine, result.Centrality, northernLimb, southernLimb, pairedLimits)
+		// 目录带宽沿用解析口径，只叠加食甚附近成对横截面上的月缘增量。
+		if greatestIndex >= 0 && circularWidth > 0 && centerLine[greatestIndex].WidthKM > 0 {
+			delta := centerLine[greatestIndex].WidthKM - circularWidth
+			path.Eclipse.PathWidthKM += delta
+			path.Greatest.WidthKM += delta
+		}
+	}
 	if result.Centrality == SolarEclipseCentralTwoLimits {
 		// A one-limit event has no paired cross-section at all, so every sample
 		// keeps the 0 that the catalogues also print for it.
 		setSolarEclipseCentralContactWidths(centerLine, path.NorthernLimit, path.SouthernLimit)
 	}
 	path.CenterLine = centerLine
+	durationSolver := solver
+	if limb != nil {
+		durationSolver = solver.withLimbParams(limb)
+	}
 	path.MaxCentralDurationDays, path.MaxCentralDurationLongitude, path.MaxCentralDurationLatitude =
-		solver.centralPathMaxCentralDuration(centerLine)
+		durationSolver.centralPathMaxCentralDuration(centerLine)
 	// A two-limit central eclipse starts and ends at the external umbral
 	// contacts, where the northern and southern limits meet.  The center line
 	// begins later because its Earth-axis intersection is undefined before the
@@ -523,6 +551,10 @@ func solarEclipseCentralPath(seedJDE float64, model SolarEclipseRadiusModel, opt
 		result.CentralEndOnEarth,
 		solarEclipseCentralLimitTargetSpacingKM,
 	)
+	var northApplied, southApplied bool
+	path.NorthernLimit, northApplied = solver.limbCorrectCentralLimits(path.NorthernLimit, limb)
+	path.SouthernLimit, southApplied = solver.limbCorrectCentralLimits(path.SouthernLimit, limb)
+	path.CentralLimitsLimbApplied = path.CentralLimitsLimbApplied || northApplied || southApplied
 	path.PathWidthDefined = result.Centrality == SolarEclipseCentralTwoLimits &&
 		len(path.NorthernLimit) > 0 && len(path.SouthernLimit) > 0
 	if !path.PathWidthDefined {
@@ -542,8 +574,27 @@ func solarEclipseCentralPath(seedJDE float64, model SolarEclipseRadiusModel, opt
 		StepDays: options.StepDays, BoundaryPoints: 96, DisableRiseSetCurves: true,
 	}))
 	path.CentralBandSegments = band.CentralBandSegments
+	if limb != nil {
+		for index, segment := range path.CentralBandSegments {
+			path.CentralBandSegments[index], _ = solver.limbCorrectCentralLimits(segment, limb)
+		}
+	}
 	path.CentralBandSampled = band.CentralBandSampled
 	return path
+}
+
+// solarEclipseNearestCenterWidth 返回最接近 jde 的中心线样本序号与其带宽，没有样本时序号为 −1。
+func solarEclipseNearestCenterWidth(centerLine []SolarEclipsePathPoint, jde float64) (int, float64) {
+	best, bestDelta := -1, math.Inf(1)
+	for index, point := range centerLine {
+		if delta := math.Abs(point.JDE - jde); delta < bestDelta {
+			best, bestDelta = index, delta
+		}
+	}
+	if best < 0 {
+		return -1, 0
+	}
+	return best, centerLine[best].WidthKM
 }
 
 func (solver solarEclipseSolver) attachCentralMagnitudeOneTransitions(
@@ -581,13 +632,14 @@ func normalizeSolarEclipsePathOptions(options SolarEclipsePathOptions) SolarEcli
 func solarEclipsePartialFootprints(
 	seedJDE float64,
 	model SolarEclipseRadiusModel,
-	options SolarEclipsePartialFootprintOptions,
-) SolarEclipsePartialFootprintsResult {
+	options SolarEclipsePartialFootprintOptions, instances ...*Instance) SolarEclipsePartialFootprintsResult {
+	inst := instanceValue(instances)
+
 	return solarEclipsePartialFootprintsWithResult(
 		seedJDE, model, options, solarEclipseWithDeltaT(seedJDE, SolarEclipseOptions{
 			RadiusModel:    model,
 			SunRadiusModel: options.SunRadiusModel,
-		}, options.DeltaTSeconds),
+		}, options.DeltaTSeconds, inst), inst,
 	)
 }
 
@@ -595,8 +647,9 @@ func solarEclipsePartialFootprintsWithResult(
 	seedJDE float64,
 	model SolarEclipseRadiusModel,
 	options SolarEclipsePartialFootprintOptions,
-	result SolarEclipseResult,
-) SolarEclipsePartialFootprintsResult {
+	result SolarEclipseResult, instances ...*Instance) SolarEclipsePartialFootprintsResult {
+	inst := instanceValue(instances)
+
 	options = normalizeSolarEclipsePartialFootprintOptions(options)
 	footprintsResult := SolarEclipsePartialFootprintsResult{
 		Eclipse:               result,
@@ -608,20 +661,28 @@ func solarEclipsePartialFootprintsWithResult(
 		return footprintsResult
 	}
 
-	newMoonJDE := CalcMoonSHByJDE(seedJDE, 0)
+	newMoonJDE := solarEclipseAnchorNewMoon(seedJDE, inst)
 	solver := newSolarEclipseSolverWithOptions(newMoonJDE, SolarEclipseOptions{
 		RadiusModel:    model,
 		SunRadiusModel: options.SunRadiusModel,
-	}).withDeltaTSeconds(options.DeltaTSeconds)
+	}, inst).withDeltaTSeconds(options.DeltaTSeconds)
 	footprintsResult, totalMagnitudeOneSegments := solver.centralBandWithResult(result, options)
+	// 有月缘时先求全球月缘结果：偏食足迹与食甚等时线必须落在最终报告的 P1–P4 之内。
+	global, window := result, result
+	if options.LunarLimb != nil {
+		global = solver.withLunarLimb(result, options.LunarLimb)
+		if global.PartialBeginOnEarth < result.GreatestEclipse && result.GreatestEclipse < global.PartialEndOnEarth {
+			window = global
+		}
+	}
 	// Partial and central-shadow sweeps used to enforce the point budget
 	// independently. A high-resolution request could therefore allocate
 	// nearly two budgets for each sweep before the caller saw the result.
 	// Reserve the already-built central-band samples and share the remaining
 	// budget between the main time series before either sweep is generated.
 	partialTimes, _ := solarEclipseMovingDiskEngine().sampleTimes(
-		result.PartialBeginOnEarth,
-		result.PartialEndOnEarth,
+		window.PartialBeginOnEarth,
+		window.PartialEndOnEarth,
 		result.GreatestEclipse,
 		options.StepDays,
 	)
@@ -654,9 +715,12 @@ func solarEclipsePartialFootprintsWithResult(
 			false,
 		)
 	}
+	if options.LunarLimb != nil && !options.DisableRiseSetCurves {
+		footprintsResult.PartialBoundaryLimbApplied = solver.limbCorrectPartialBoundary(&footprintsResult, options.LunarLimb)
+	}
 	footprints, stepDays, effectiveBoundaryPoints := solver.partialFootprints(
-		result.PartialBeginOnEarth,
-		result.PartialEndOnEarth,
+		window.PartialBeginOnEarth,
+		window.PartialEndOnEarth,
 		result.GreatestEclipse,
 		options,
 	)
@@ -694,7 +758,7 @@ func solarEclipsePartialFootprintsWithResult(
 	greatestTimeOptions := options
 	if len(greatestTimeOptions.GreatestTimeValues) == 0 && greatestTimeOptions.GreatestTimeStep > 0 {
 		levels := greatestTimeContourAlignedLevels(
-			result.PartialBeginOnEarth, result.PartialEndOnEarth,
+			window.PartialBeginOnEarth, window.PartialEndOnEarth,
 			greatestTimeOptions.GreatestTimeStep, greatestTimeContourMaxLevels,
 		)
 		greatestTimeOptions.GreatestTimeValues = make([]float64, 0, len(levels))
@@ -703,11 +767,34 @@ func solarEclipsePartialFootprintsWithResult(
 		}
 	}
 	footprintsResult.GreatestTimeContours = solver.greatestTimeContours(
-		result.PartialBeginOnEarth,
-		result.PartialEndOnEarth,
+		window.PartialBeginOnEarth,
+		window.PartialEndOnEarth,
 		greatestTimeOptions,
 	)
+	if options.LunarLimb != nil {
+		applyFootprintsGlobalLimb(&footprintsResult, global)
+	}
 	return footprintsResult
+}
+
+// applyFootprintsGlobalLimb 让足迹里的全球结果与 P1/P4 和全球日食接口同源：换上月缘修正后的偏食始末、
+// 食甚点中心食时长与接触点位置；偏食足迹与食甚等时线须已按同一时间窗采样。
+func applyFootprintsGlobalLimb(footprintsResult *SolarEclipsePartialFootprintsResult, global SolarEclipseResult) {
+	footprintsResult.Eclipse = global
+	if !global.LunarLimbApplied {
+		return
+	}
+	// 时刻与位置必须同源：月缘解给出接触点时一并替换，否则保留整套圆月面接触点。
+	if footprintsResult.P1.JDE != 0 && global.PartialBeginContact.Defined {
+		footprintsResult.P1.JDE = global.PartialBeginOnEarth
+		footprintsResult.P1.Longitude = global.PartialBeginContact.Longitude
+		footprintsResult.P1.Latitude = global.PartialBeginContact.Latitude
+	}
+	if footprintsResult.P4.JDE != 0 && global.PartialEndContact.Defined {
+		footprintsResult.P4.JDE = global.PartialEndOnEarth
+		footprintsResult.P4.Longitude = global.PartialEndContact.Longitude
+		footprintsResult.P4.Latitude = global.PartialEndContact.Latitude
+	}
 }
 
 func (solver solarEclipseSolver) centralBandWithResult(
@@ -1337,6 +1424,8 @@ func (solver solarEclipseSolver) centralPathMaxCentralDuration(
 	centerLine []SolarEclipsePathPoint,
 ) (float64, float64, float64) {
 	bestDays, bestLongitude, bestLatitude := 0.0, 0.0, 0.0
+	// 局部星历只建一次；逐点各建一次会让整段扫描的星历开销翻上百倍。
+	solver = solver.withLocalEphemeris()
 	for _, point := range centerLine {
 		if point.SunAltitude < -solarEclipsePathDurationHorizonToleranceDegrees {
 			continue

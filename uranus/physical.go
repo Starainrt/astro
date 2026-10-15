@@ -21,14 +21,14 @@ type PhysicalInfo struct {
 }
 
 // Physical 天王星物理观测参数 / physical observing parameters of Uranus.
-func Physical(date time.Time) PhysicalInfo {
-	return PhysicalN(date, -1)
+func (module *Uranus) Physical(date time.Time) PhysicalInfo {
+	return module.PhysicalN(date, -1)
 }
 
-// PhysicalN 天王星物理观测参数（截断版） / truncated physical observing parameters of Uranus.
-func PhysicalN(date time.Time, n int) PhysicalInfo {
+// PhysicalN 天王星物理观测参数（n 变体） / n-parameterised physical observing parameters of Uranus.
+func (module *Uranus) PhysicalN(date time.Time, n int) PhysicalInfo {
 	jd := basic.Date2JD(date.UTC())
-	info := basic.UranusPhysicalN(basic.UTC2TT(jd), n)
+	info := basic.UranusPhysicalNWithInstance(basic.UTC2TT(jd), n, module.inst)
 	return PhysicalInfo{
 		SubEarthLongitude:      info.SubEarthLongitude,
 		SubEarthLatitude:       info.SubEarthLatitude,
@@ -39,11 +39,11 @@ func PhysicalN(date time.Time, n int) PhysicalInfo {
 }
 
 // PhysicalSystemIII 天王星 System III 物理观测参数 / Uranus System III physical observing parameters.
-func PhysicalSystemIII(date time.Time) PhysicalInfo {
-	return Physical(date)
+func (module *Uranus) PhysicalSystemIII(date time.Time) PhysicalInfo {
+	return module.Physical(date)
 }
 
-// PhysicalSystemIIIN 天王星 System III 物理观测参数（截断版） / truncated Uranus System III physical observing parameters.
-func PhysicalSystemIIIN(date time.Time, n int) PhysicalInfo {
-	return PhysicalN(date, n)
+// PhysicalSystemIIIN 天王星 System III 物理观测参数（n 变体） / n-parameterised Uranus System III physical observing parameters.
+func (module *Uranus) PhysicalSystemIIIN(date time.Time, n int) PhysicalInfo {
+	return module.PhysicalN(date, n)
 }

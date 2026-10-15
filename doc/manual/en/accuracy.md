@@ -1,99 +1,158 @@
-# Accuracy and performance
+# Accuracy and Performance
 
-[中文](../accuracy.md) | [README](../../../README.en.md)
+[中文](../accuracy.md) | [Back to README](../../../README.en.md)
 
-These tables describe the built-in models and previously measured comparisons. A sampled maximum is not an error bound for every date or site.
-
-External comparisons require matching the time scale, coordinate frame, observer height and refraction model.
-
-See [Time scales](timescale.md) for UTC, UT1 and TT.
+Two ephemerides are built in, and their errors vary with model, epoch and calculated quantity. Values do not apply outside the model and range stated in each table header.
 
 ## Contents
 
-- [Sun and planets](#sun-and-planets)
-- [Moon](#moon)
+- [Ephemeris models](#ephemeris-models)
+- [Model selection](#model-selection)
+- [Measurement conventions](#measurement-conventions)
+- [Geocentric apparent direction](#geocentric-apparent-direction)
+- [Fixed-ICRF geometric directions](#fixed-icrf-geometric-directions)
+- [Geometric lunar distance](#geometric-lunar-distance)
+- [Legacy truncation error](#legacy-truncation-error)
 - [Lite lightweight chains](#lite-lightweight-chains)
-- [Accuracy references](#accuracy-references)
+- [Performance](#performance)
+- [Conversions and caveats](#conversions-and-caveats)
 
-## Sun and planets
+## Ephemeris models
 
-The Sun and planets use built-in VSOP87 analytical terms. The current table entries cover roughly 4000 years around J2000. The table below lists truncation errors relative to the complete VSOP87 tables:
+The library ships two ephemerides; the default is a **semianalytic model** (`ModelSemianalytic`): it keeps the argument structure (integer multipliers) and initial amplitudes of the planetary theories, then refits the amplitudes, fundamental-argument polynomials and a small number of correction terms to DE441, folding everything into a single series table. No residual layer is attached at runtime and no external ephemeris file is needed.
+
+- **Base theories**: VSOP2013 for Mercury, Venus, Earth and Mars; TOP2013 for Jupiter, Saturn, Uranus and Neptune; ELP/MPP02 for the Moon.
+- **Fitting truth**: DE441 for the long range; DE440 for the planetary modern segment.
+- **Coverage**: TT JD `-1931455.0 … 5373545.0` (12000 Julian years before and 8000 after J2000); values outside it are extrapolated with no accuracy guarantee.
+- **Modern segment** (planets only): a separate table fitted over J2000 ±1000 Julian years (TT JD `2086295.0 … 2816795.0`) against DE440, blended with the long-range table over 100 years at each end; use it for refinement at recent epochs.
+- **Evaluation scale**: `n < 0` uses the full series, matching the APIs without an `N`; every `n >= 0` shares one fast table intended for coarse searches. Only Legacy truncates its series according to `n`.
+- **Data size**: the planetary table is about 452 KiB and the lunar table about 42 KiB, compiled into the program; both are linked even when only some bodies are used, and explicit instances do not reduce the binary size.
+- **Frame**: the tables hold geometric positions in the J2000 mean ecliptic; at evaluation they are rotated to the mean ecliptic of date and then follow the same apparent-place chain as Legacy (light time, aberration, precession and nutation).
+
+`ModelLegacy` uses truncated VSOP87/ELP2000-82 series with correction terms added on top: a cubic polynomial for Earth and constant offsets for the other planets, and for the Moon an extra polynomial, a precession term and a fit for 3000–5000 CE. `lite/sun` and `lite/moon` use a different set of simplified formulas; do not mix the two.
+
+## Model selection
+
+| Model | Content | Use |
+| --- | --- | --- |
+| `ModelSemianalytic` | Built-in semianalytic tables, the model in default builds (without the `astro_legacy` tag) | Everyday positions, calendars, observing and event calculations |
+| `ModelLegacy` | Truncated VSOP87/ELP2000-82 series with long-term and per-body corrections, `n` truncating by term count | Reproducing old values and comparing models; the default under an `astro_legacy` build |
+| `ModelCustom` | SPK or a caller-supplied read-only engine | Accuracy determined jointly by the external kernel, its usable interval and the upper-level transforms |
+| `lite/sun`, `lite/moon` | Independent approximation chains | Resource-constrained environments; do not follow model switches |
+
+An explicit `Context`/`Instance` fixes the ephemeris, but ΔT, TT−UTC and civil time-scale policy remain process-wide settings. Signatures are unchanged while default values may change, which differs from older versions; select Legacy explicitly when old model values are needed. See [Explicit ephemeris instances](ephemeris.md).
+
+## Measurement conventions
+
+Unless stated otherwise, the data below are comparisons against DE440/DE441 on TT grid points, in arcseconds:
+
+- The reference side uses Skyfield 1.55 and converts only TT to TDB, introducing no UTC, UT1 or ΔT differences. "Semianalytic full" in the tables means `n < 0`, and "semianalytic fast" means `n >= 0`.
+- Modern range: TT JD `2415020.5 … 2488434.25`, step 0.25 day, `293656` points, approximately 1900–2100.
+- Long range: TT JD `990545.0 … 3912545.0`, J2000 ±4000 Julian years, `365252` points; the two DE441 kernel segments switch at JD `2440416.5`.
+- Geometric quantities use the mean ecliptic/equinox of date; apparent RA/Dec use the true equator/equinox of date.
+- In the tables MAE is the mean absolute error, RMS the root-mean-square error, P95 the 95th percentile of the absolute error and Max the sampled maximum; angles are geocentric apparent direction angles, not errors in a single coordinate component. The maxima are sampled maxima, not continuous-time error bounds.
+
+## Geocentric apparent direction
+
+Sun:
+
+| Range / model | MAE | RMS | P95 | Max |
+| --- | --- | --- | --- | --- |
+| Modern DE440 / Legacy | `0.03895` | `0.04475` | `0.08013` | `0.1372` |
+| Modern DE440 / semianalytic full | `0.00556` | `0.00682` | `0.01329` | `0.02680` |
+| Modern DE440 / semianalytic fast | `0.1783` | `0.2219` | `0.4415` | `0.9675` |
+| Long DE441 / Legacy | `2.659` | `4.171` | `9.751` | `16.68` |
+| Long DE441 / semianalytic full | `1.774` | `3.187` | `7.908` | `14.08` |
+| Long DE441 / semianalytic fast | `2.431` | `4.050` | `9.878` | `17.15` |
+
+Moon:
+
+| Range / model | MAE | RMS | P95 | Max |
+| --- | --- | --- | --- | --- |
+| Modern DE440 / Legacy | `0.7431` | `0.7499` | `0.9171` | `1.3297` |
+| Modern DE440 / semianalytic full | `0.06302` | `0.07591` | `0.1437` | `0.4418` |
+| Modern DE440 / semianalytic fast | `3.455` | `3.991` | `7.092` | `18.18` |
+| Long DE441 / Legacy | `42.16` | `67.10` | `156.35` | `233.58` |
+| Long DE441 / semianalytic full | `1.788` | `3.182` | `7.920` | `14.08` |
+| Long DE441 / semianalytic fast | `6.098` | `7.359` | `14.30` | `39.74` |
+
+In the modern samples the semianalytic full series has an apparent-direction RMS of `0.00682″` (Sun) and `0.07591″` (Moon), below the Legacy `0.04475″` and `0.7499″`; the fast table gives `0.2219″` and `3.991″`, worse than Legacy, especially for the Moon. Long-range results include the whole upper-level transformation chain and reference-frame differences, so they cannot be attributed entirely to the series themselves.
+
+## Fixed-ICRF geometric directions
+
+The following table compares the semianalytic full `Instance.State(target, BodyEarth, jd)` against DE geocentric ICRF geometric vectors directly, without date precession/nutation transforms. The library approximates TDB numerically with TT, and the reference also converts the same TT to TDB, so this set is a comparison under approximate TDB. Values are arcseconds:
+
+| Range / body | MAE | RMS | P95 | Sample maximum |
+| --- | --- | --- | --- | --- |
+| Modern DE440 / Sun | `0.00551` | `0.00677` | `0.01320` | `0.02655` |
+| Modern DE440 / Moon | `0.06301` | `0.07591` | `0.1437` | `0.4414` |
+| Long DE441 / Sun | `0.04100` | `0.05754` | `0.1214` | `0.3613` |
+| Long DE441 / Moon | `0.09163` | `0.1129` | `0.2170` | `0.8825` |
+
+In the long range the fixed-frame errors are much smaller than the upper-level apparent date-frame differences, showing that the error of the whole calculation chain cannot be summarized by a single "model accuracy" number. Legacy has no geometric engine and is not listed in this table.
+
+## Geometric lunar distance
+
+Values are km, as geocentric distances:
+
+| Range / model | MAE | P95 | Max |
+| --- | --- | --- | --- |
+| Modern DE440 / Legacy | `0.1434` | `0.3633` | `0.9143` |
+| Modern DE440 / semianalytic full | `0.04674` | `0.1172` | `0.3312` |
+| Modern DE440 / semianalytic fast | `1.730` | `4.356` | `9.818` |
+| Long DE441 / Legacy | `2.204` | `9.834` | `26.90` |
+| Long DE441 / semianalytic full | `0.06496` | `0.1669` | `0.5576` |
+| Long DE441 / semianalytic fast | `2.005` | `5.160` | `16.10` |
+
+## Legacy truncation error
+
+The table below is a truncation-error reference for Legacy against complete VSOP87; it is neither semianalytic accuracy nor total error against DE440/DE441:
 
 | Target | Longitude / latitude | Distance |
 | --- | --- | --- |
-| Sun / Earth | about `0.1"` | about `0.1 x 10^-6 AU` |
-| Mercury, Venus | about `0.2"` | about `0.2 x 10^-6 AU` |
-| Mars | about `0.5"` | about `1 x 10^-6 AU` |
-| Jupiter | about `0.5"` | about `3 x 10^-6 AU` |
-| Saturn | about `0.5"` | about `5 x 10^-6 AU` |
-| Uranus | about `1"` | about `20 x 10^-6 AU` |
-| Neptune | about `1"` | about `40 x 10^-6 AU` |
-
-This is suitable for ordinary calendrical work, observing support, outreach, and personal research; spacecraft navigation, precise occultation prediction, and strict dynamical integration fall outside that range and usually need a professional ephemeris such as JPL DE.
-
-## Moon
-
-The Moon uses a built-in truncated ELP2000/82-style analytical series. The package stays lightweight and does not require external ephemeris files.
-
-It is suitable for Chinese-calendar new moons, lunar phases, rise/set, lunar eclipses, amateur occultation prediction, and ordinary positional work; extremely high-precision lunar laser ranging, long-term physical libration, and professional occultation work fall outside that range and are best served by JPL or a dedicated lunar ephemeris.
+| Sun / Earth | about `0.1″` | about `0.1 × 10^-6 AU` |
+| Mercury, Venus | about `0.2″` | about `0.2 × 10^-6 AU` |
+| Mars | about `0.5″` | about `1 × 10^-6 AU` |
+| Jupiter | about `0.5″` | about `3 × 10^-6 AU` |
+| Saturn | about `0.5″` | about `5 × 10^-6 AU` |
+| Uranus | about `1″` | about `20 × 10^-6 AU` |
+| Neptune | about `1″` | about `40 × 10^-6 AU` |
 
 ## Lite lightweight chains
 
-`lite/sun` and `lite/moon` are independent approximation chains. They do not depend on the VSOP87 or ELP2000/82 series used by `sun` / `moon`, and are intended for CPU- or memory-constrained environments.
+`lite/sun` uses simplified solar formulas and `lite/moon` an approximate lunar chain with a small number of perturbation terms; their rise/set searches use a fixed-step scan plus bisection, 30 minutes for the Sun and 15 minutes for the Moon. Neither uses the main-chain tables and neither follows model switches. The following are errors over all of 2026 at 8 sites relative to the Legacy main chain (statistics as in [Measurement conventions](#measurement-conventions)):
 
-- `lite/sun`: simplified true/apparent solar longitude formulas plus lightweight equatorial conversion
-- `lite/moon`: Schlyter-style lunar approximation with about 15 perturbation terms plus lightweight topocentric correction
-- rise/set search: fixed-step scanning plus bisection, without the high-precision nutation iteration used by the main chain
-- zero heap allocation in the computation path (0 allocs/op); against the main chain, pure evaluation entry points such as position and phase run about `7.5-27.1x` faster, and rise/set entry points about `0.9-3.5x`
-
-Capability boundaries:
-
-| Package | Position model | Rise/set search | Main use |
+| Quantity | Mean absolute error | P95 | Max |
 | --- | --- | --- | --- |
-| `lite/sun` | simplified true/apparent solar longitude plus lightweight equatorial conversion | `30 min` scan plus bisection | sunrise/sunset, solar altitude, watch faces, frontend refresh loops |
-| `lite/moon` | Schlyter / vFPS lunar approximation plus lightweight topocentric correction | `15 min` scan plus bisection | moonrise/moonset, lunar phase, lunar age, lightweight lunar observing helpers |
+| Sunrise / sunset | `0.02 / 0.02 min` | `0.04 / 0.06 min` | `0.31 / 0.35 min` |
+| Moonrise / moonset | `0.28 / 0.36 min` | `0.57 / 0.86 min` | `1.44 / 1.24 min` |
+| `Phase()` | `0.00089` | `0.00185` | `0.00243` |
+| `PhaseAge()` | `0.003 d` | `0.010 d` | `0.014 d` |
 
-Error against the `sun` / `moon` packages (year 2026, 8 observing sites; rise/set sampled every 7 or 15 days, phase/age every 6 hours):
+These samples are not all semantically identical in their events: sunsets have 2 high-latitude date-attribution differences across midnight and moonset has 1 high-latitude disagreement about whether the event occurs that day. Rise/set are sampled every 7 or 15 days and phase/age every 6 hours. The time differences in the table only indicate agreement for events that do occur; they cannot be used to decide whether an event exists. Eclipses, physical libration and high-latitude event boundaries are computed by the main chain, not by the lite chains.
 
-| Capability | Mean absolute error | P95 | Max absolute error | Notes |
-| --- | --- | --- | --- | --- |
-| `lite/sun` sunrise | `0.02 min` | `0.04 min` | `0.31 min` | no event-existence mismatch in the sample set |
-| `lite/sun` sunset | `0.02 min` | `0.06 min` | `0.35 min` | `2` high-latitude samples differ only in day-attribution semantics across midnight |
-| `lite/moon` moonrise | `0.28 min` | `0.57 min` | `1.44 min` | no event-existence mismatch in the sample set |
-| `lite/moon` moonset | `0.36 min` | `0.86 min` | `1.24 min` | `1` high-latitude sample differs on whether the moonset belongs to the same civil day |
-| `lite/moon` `Phase()` | `0.00089` | `0.00185` | `0.00243` | compared with `moon.Phase` |
-| `lite/moon` `PhaseAge()` | `0.003 d` | `0.010 d` | `0.014 d` | about 4.3 min mean, 14.4 min P95, 20.2 min max |
-| `lite/moon` geocentric longitude | `2.41'` | `6.82'` | `9.91'` | relative to the main lunar chain |
-| `lite/moon` geocentric latitude | `0.87'` | `1.83'` | `2.92'` | relative to the main lunar chain |
+## Performance
 
-`Go testing.Benchmark` reference values (single-machine measurements for comparison; absolute values vary with hardware):
+Linux/WSL, Intel i7-12700, Go 1.25.9, benchmark concurrency 20, 300 ms per benchmark. Calls repeat the same instant and site, so these are warm-cache measurements and exclude first-load cost:
 
-| Entry point | Main chain | `lite` | Speedup | Main-chain allocation | `lite` allocation |
-| --- | --- | --- | --- | --- | --- |
-| `Sun ApparentRaDec` | `6.031 µs/op` | `222.4 ns/op` | `27.1x` | `0 B/op, 0 allocs/op` | `0 B/op, 0 allocs/op` |
-| `Sun Altitude` | `6.127 µs/op` | `672.3 ns/op` | `9.1x` | `0 B/op, 0 allocs/op` | `0 B/op, 0 allocs/op` |
-| `Sun RiseTime` | `101.874 µs/op` | `29.168 µs/op` | `3.5x` | `0 B/op, 0 allocs/op` | `0 B/op, 0 allocs/op` |
-| `Moon ApparentRaDec` | `16.897 µs/op` | `1.070 µs/op` | `15.8x` | `0 B/op, 0 allocs/op` | `0 B/op, 0 allocs/op` |
-| `Moon Phase` | `15.441 µs/op` | `935.6 ns/op` | `16.5x` | `0 B/op, 0 allocs/op` | `0 B/op, 0 allocs/op` |
-| `Moon Altitude` | `9.714 µs/op` | `1.294 µs/op` | `7.5x` | `0 B/op, 0 allocs/op` | `0 B/op, 0 allocs/op` |
-| `Moon RiseTime` | `121.772 µs/op` | `132.312 µs/op` | `0.9x` | `0 B/op, 0 allocs/op` | `0 B/op, 0 allocs/op` |
+| Entry point | Semianalytic full | Legacy full | Lite |
+| --- | --- | --- | --- |
+| Sun `ApparentRaDec` | `0.606 µs` | `8.988 µs` | `0.213 µs` |
+| Sun `Altitude` | `0.770 µs` | `9.134 µs` | `0.627 µs` |
+| Sun `RiseTime` | `628.6 µs` | `144.8 µs` | `25.88 µs` |
+| Moon `ApparentRaDec` | `0.855 µs` | `9.373 µs` | `1.003 µs` |
+| Moon `Phase` | `1.171 µs` | `14.81 µs` | `0.914 µs` |
+| Moon `Altitude` | `1.006 µs` | `9.520 µs` | `1.136 µs` |
+| Moon `RiseTime` | `487.4 µs` | `135.0 µs` | `117.4 µs` |
 
-The main-chain/`lite` gap depends on the scenario: pure evaluation entry points (position, phase) run about `7.5-27.1x` faster in `lite`, while rise/set entry points narrow to `0.9-3.5x` because both sides perform a time search; `Moon RiseTime` is close to parity.
+The warm-cache semianalytic position APIs are faster than Lite in some cases and slower in others; rise/set searches evaluate at a new epoch each time and therefore run slower, while Legacy is in fact faster for some rise/set entry points. These are absolute single-run values and vary with machine and call shape.
 
-Use the main `sun` / `moon` chains for eclipses, physical libration, or high-latitude edge cases.
+Semianalytic Sun/Moon `RiseTime` allocate 60/36 times respectively, and the remaining evaluation APIs in the table allocate 0 times. Zero allocations cover only these paths and are not guaranteed for other APIs.
 
-## Accuracy references
+## Conversions and caveats
 
-The following entry points have been checked against JPL Horizons, NASA GSFC, and other public references; use them to judge the order of magnitude to expect:
-
-- apparent diameters of the Sun, planets, and Moon: maximum differences from the external baseline range from `0.000002"` to `0.194598"` depending on the body; the Moon is the most sensitive because of parallax and distance changes
-- solar physical ephemerides `P/B0/L0`: maximum differences are about `0.003349° / 0.003986° / 0.047394°`
-- planetary rise, transit, and set: checked against JPL Horizons rise/transit/set events; that baseline is generated at a 1-minute step, and current results align with the Horizons event times at the minute level
-- Moon rise/set: `aero=true` uses dynamic standard refraction and the instantaneous lunar semidiameter for an upper-limb crossing.
-
-  Across 14 sea-level events at 7 sites, the current mean/maximum differences against JPL Horizons DE441 are about `0.30s / 0.75s`.
-- Moon rise/set with other conventions: mean/maximum differences are about `38.77s / 76.22s` against MET Norway's fixed `-0.8333°` convention (Skyfield 1.53 + DE440s). Against IMCCE Miriade, whose horizon convention is not exposed, the mean is about `2m13.46s`; the low-elevation `61°N` sample reaches about `6m41.82s`.
-- Earth perihelion and aphelion: maximum time difference about `1m28.84s`, maximum distance difference about `0.000000039837 AU`
-- main-chain lunar position: the current algorithm is a truncated ELP2000/82-style analytical series; across four JPL/Horizons `JDTT` samples in year `-2000`, the maximum difference from JPL/Horizons is about `219.6"` in longitude, `25.8"` in latitude, and `34.3 km` in distance
-- Moon perigee and apogee: maximum time difference about `15m53.45s`, maximum distance difference about `39.758 km`
-- maximum lunar declination: maximum time difference about `2.43s`, maximum declination difference about `0.00006431°`
+- Before comparing rise/set differences, align the refraction model, apparent-radius convention, observer height and local day attribution; the horizon definition often matters more than the ephemeris difference.
+- Compare solar terms, syzygies and eclipse contacts directly as TT event instants; before turning positional arcseconds into a time error, divide by the local angular rate at that point.
+- Civil dates also depend on the time zone and time-scale policy, and events near midnight are especially sensitive.
+- Custom SPK geometric states use ICRF, km, km/day and TDB; high-level scalar and apparent-place entry points accept TT and currently approximate TDB with TT. Call `Instance.State` directly when strict TDB is required; switching to a more accurate kernel does not automatically improve the upper-level coordinate frame, atmosphere or terrain models.
+- IAU 2006/2000A, polar motion, CPO and the lunar limb profile all require explicit calls or explicit settings and are not enabled automatically in the default chain; see [Coordinate tools](coord.md), [Formula helpers](formula.md) and [Eclipses and transits](eclipse.md#lunar-limb-correction).

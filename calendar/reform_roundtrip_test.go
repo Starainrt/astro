@@ -58,10 +58,7 @@ func TestGregorianReformReverseMatchesForward(t *testing.T) {
 }
 
 // 先秦岁首跨界：正向按公历年选默认古历、反向按农历年选，交界处必须自洽。
-// 农历 -479 年正月落在公历 -480 年 12 月（春秋历），此前反向按农历年选了周历，整体差 1 天。
-// The pre-Qin year-start crossing: the forward picks the default ancient calendar by civil
-// year while the reverse picks by lunar year. Lunar year -479 month 1 falls in civil December
-// -480 (Chunqiu calendar); the reverse used to pick Zhou and shift those 20 days by one day.
+// 农历 -479 年正月落在公历 -480 年 12 月（春秋历），反向不得选成周历。
 func TestAncientYearStartCrossingRoundTrips(t *testing.T) {
 	cases := []struct {
 		ly, lm, ld int

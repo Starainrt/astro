@@ -1,0 +1,160 @@
+本文件是第三方数据与条款声明。代码与文档采用 Apache-2.0；下列数据文件**不适用** Apache-2.0，各自遵循其来源条款。分发内嵌了这些数据的二进制（含 c-shared DLL/SO）时，须一并附上对应署名。
+This file is the per-component licence and attribution notice. The code and documentation are Apache-2.0; the data files listed below are not, and each follows the terms of its own source. Distributing a binary that embeds them — including the c-shared DLL/SO build — requires carrying the corresponding attribution.
+
+================================================================================
+1. SELENE (KAGUYA) lunar limb profile — moon/limb/kaguya_lalt.bin
+================================================================================
+
+Source data
+  SELENE Global Grid Topographic Data of the Moon (LALT_GGT_NUM), dataset
+  sln-l-lalt-5-topo-ggt-num-v2.0, version 2.0, published 2017.
+  Origin of the data: ISAS/JAXA.
+  Provided by the SELENE (KAGUYA) Data Archive (DARTS), ISAS/JAXA:
+    https://darts.isas.jaxa.jp/datasets/darts:sln-l-lalt-5-topo-ggt-num-v2.0
+    https://data.darts.isas.jaxa.jp/pub/pds3/sln-l-lalt-5-topo-ggt-num-v2.0/
+
+Acknowledgement, as requested by the SELENE Data Archive
+  "We thank the SELENE(KAGUYA) LALT team and the SELENE Data Archive for
+   providing the SELENE(KAGUYA) data. SELENE is a Japanese mission developed
+   and operated by JAXA."
+
+Modifications
+  The original PDS3 fixed-width table (1/16 degree global grid, 2880 x 5760
+  samples) was converted to a float32 elevation grid and then resampled into a
+  limb-radius profile table: the limb height is tabulated on a 1 degree grid of
+  selenographic (libration) longitude and latitude and on a 0.1 degree grid of
+  position angle, taking max (R + h) cos(alpha) over a +/-9 degree arc for each
+  direction. Values are quantized to 4 m, delta-encoded along longitude and
+  latitude, and then stored in this project's own zlib-compressed LLB1
+  container. No other changes were made.
+
+Licence
+  The source data are provided under the ISAS Data Policy,
+    https://www.isas.jaxa.jp/en/researchers/data-policy/
+  which states that its rules are compatible with Creative Commons Attribution
+  4.0 International, https://creativecommons.org/licenses/by/4.0/
+  This file is redistributed under the ISAS Data Policy. It is provided "as
+  is", without warranties of any kind. ISAS/JAXA is not responsible for the
+  actions of data users and does not endorse this project.
+
+Embedding
+  Compiled into the moon/limb package with //go:embed, and linked only when
+  that package is imported. A copy of this section ships as moon/limb/NOTICE
+  so that vendored copies of the package keep the attribution.
+
+================================================================================
+2. Planetary and lunar theories — planet/internal/semianalytic/**/*.bin
+================================================================================
+
+Upstream theories and authors
+  VSOP2013 — planetary theory, Simon, Francou, Fienga & Manche (2013),
+  distributed by IMCCE at https://ftp.imcce.fr/pub/ephem/planets/vsop2013/
+  TOP2013 — planetary theory for the outer planets, IMCCE, distributed at
+  https://ftp.imcce.fr/pub/ephem/planets/top2013/
+  ELP/MPP02 — lunar theory, J. Chapront, M. Chapront & G. Francou, 2003,
+  distributed by SYRTE, Observatoire de Paris (not through IMCCE's ftp server)
+  at ftp://cyrano-se.obspm.fr/pub/2_lunar_solutions/2_elpmpp02/
+  Its distribution README.TXT (December 2002) is purely scientific — authors,
+  description, file list and references — and states no licence and no terms
+  of use.
+  Used by the legacy model as well:
+  ELP2000-82B — earlier lunar solution, Chapront-Touzé & Chapront, distributed
+  by IMCCE at https://ftp.imcce.fr/pub/ephem/moon/elp82b/
+  VSOP87 — earlier planetary series, Bretagnon & Francou (1988).
+
+What this project distributes
+  Its own numerical refits of those theories' argument structure to the JPL
+  DE440/DE441 ephemerides. The amplitudes in the *.bin tables are produced by
+  this project's fitting pipeline; the upstream coefficient files are not
+  redistributed here. Relative to the upstream theories the tables are
+  modified in two ways: (1) the argument structure is truncated to the terms
+  the fit retains, and (2) every amplitude is re-fitted to DE440/DE441 instead
+  of being taken from the published series.
+
+Published constants
+  The argument phases and frequencies (the VSOP2013 "ll(1..17)" set) and the
+  GM constants used by the generator are published in the VSOP2013 README.pdf
+  distributed by IMCCE and in Simon, Francou, Fienga & Manche, A&A 557, A49
+  (2013); for the Moon, in Chapront & Francou, A&A 404, 735 (2003).
+
+Rights in the underlying theories
+  This project can neither allow nor forbid the use of the VSOP2013, TOP2013,
+  ELP/MPP02, ELP2000-82B or VSOP87 theories. Apache-2.0 covers only this
+  project's own work — its code, and its compilation and rearrangement of the
+  published series — and not the theories themselves. Downstream users who
+  need to rely on the terms of the underlying theories should consult the IMCCE
+  legal notice,
+    https://www.imcce.fr/mentions-legales
+  which restricts reproduction and makes commercial or professional use
+  subject to IMCCE authorisation.
+
+ELP/MPP02 terms
+  The official ELP/MPP02 distribution ships README.TXT (December 2002) and the
+  explanatory note elpmpp02.pdf; neither states a licence or terms of use, and
+  no separate terms file is included. This project therefore treats ELP/MPP02
+  as carrying no stated terms and relies on the disclaimer under "Rights in
+  the underlying theories" above. Note also that IMCCE's ftp server carries
+  only ELP2000-82B, not ELP/MPP02. Downstream users who need a formal position
+  should consult SYRTE, https://syrte.obspm.fr/, and the IMCCE legal notice.
+
+================================================================================
+3. JPL ephemerides — DE440 / DE441 and Horizons kernels
+================================================================================
+
+Files
+  basic/testdata/semianalytic/planet_apparent_de441.csv
+  planet/internal/semianalytic/testdata/de441-states.csv
+  planet/spk/testdata/de441_ref.csv
+  planet/spk/testdata/ceres.bsp
+
+Source
+  JPL DE440/DE441 planetary ephemerides via NAIF,
+    https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/planets/
+  and JPL Horizons, https://ssd.jpl.nasa.gov/horizons/
+  The DE440/DE441 data are also the fitting target of the tables in section 2.
+
+Terms
+  Produced by the United States Government (NASA/JPL); not subject to
+  copyright protection in the United States. NAIF and PDS ask that the source
+  be credited, as done here.
+
+================================================================================
+4. Natural Earth land polygons — internal/svgmap/land_*.path
+================================================================================
+
+Source
+  Natural Earth 1:50m physical land, without administrative boundaries,
+    https://www.naturalearthdata.com/
+
+Terms
+  Public domain. Natural Earth states that the data may be used for any
+  purpose without permission. Credit is given here as good practice, and the
+  rendered charts carry the "Natural Earth 1:50m physical land" label.
+
+================================================================================
+5. Star catalogue data — basic/star_catalog.dat
+================================================================================
+
+Astrometry
+  The built-in catalogue carries Bright Star Catalogue / Harvard (HR) numbers
+  1..9110 with J2000 positions, proper motions and magnitudes. Its astrometric
+  content derives from the Yale Bright Star Catalogue (Hoffleit & Warren),
+  distributed by CDS as V/50,
+    https://cdsarc.cds.unistra.fr/viz-bin/cat/V/50
+  Catalogue data from CDS is distributed free of charge subject to the CDS
+  general terms of use and to citation of the source.
+
+================================================================================
+References
+================================================================================
+
+  ISAS Data Policy ...... https://www.isas.jaxa.jp/en/researchers/data-policy/
+  CC BY 4.0 ............. https://creativecommons.org/licenses/by/4.0/
+  SELENE Data Archive ... https://darts.isas.jaxa.jp/
+  IMCCE legal notice .... https://www.imcce.fr/mentions-legales
+  Natural Earth ......... https://www.naturalearthdata.com/
+  NAIF SPK kernels ...... https://naif.jpl.nasa.gov/pub/naif/generic_kernels/
+  JPL Horizons .......... https://ssd.jpl.nasa.gov/horizons/
+  CDS VizieR V/50 ....... https://cdsarc.cds.unistra.fr/viz-bin/cat/V/50
+  SYRTE (Observatoire de Paris) ... https://syrte.obspm.fr/
+  ELP/MPP02 distribution .......... ftp://cyrano-se.obspm.fr/pub/2_lunar_solutions/2_elpmpp02/

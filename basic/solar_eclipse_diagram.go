@@ -3,6 +3,8 @@ package basic
 import (
 	"math"
 	"sort"
+
+	"github.com/starainrt/astro/internal/geodata"
 )
 
 const (
@@ -20,6 +22,8 @@ type LocalSolarEclipseDiagramOptions struct {
 	StepDays float64
 	// SunRadiusModel 太阳半径口径，零值为标准档 / solar radius convention, standard when zero.
 	SunRadiusModel SolarEclipseSunRadiusModel
+	// LunarLimb 月缘剖面，nil 为圆月面；修正接触时刻、站心食分与遮蔽率，食甚时刻不变，月盘仍按圆面采样 / lunar limb profile for contacts, magnitude and obscuration.
+	LunarLimb LunarLimb
 }
 
 // LocalSolarEclipseDiagramFrame 表示一个时刻的站心日月视圆几何。
@@ -80,28 +84,28 @@ func LocalSolarEclipseDiagram(seedJDE, lon, lat, height float64, options LocalSo
 	return LocalSolarEclipseDiagramNASABulletinSplitK(seedJDE, lon, lat, height, options)
 }
 
-// LocalSolarEclipseDiagramIAUSingleK 计算站心日食视圆图几何数据，使用 IAU Single-K 模型。
-// LocalSolarEclipseDiagramIAUSingleK computes local solar eclipse disk diagram geometry with the IAU Single-K model.
-func LocalSolarEclipseDiagramIAUSingleK(seedJDE, lon, lat, height float64, options LocalSolarEclipseDiagramOptions) LocalSolarEclipseDiagramResult {
-	return localSolarEclipseDiagram(seedJDE, lon, lat, height, SolarEclipseModelIAUSingleK, options)
+// LocalSolarEclipseDiagramIAUSingleKWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func LocalSolarEclipseDiagramIAUSingleKWithInstance(seedJDE, lon, lat, height float64, options LocalSolarEclipseDiagramOptions, inst *Instance) LocalSolarEclipseDiagramResult {
+	return localSolarEclipseDiagram(seedJDE, lon, lat, height, SolarEclipseModelIAUSingleK, options, inst)
 }
 
-// LocalSolarEclipseDiagramNASABulletinSplitK 计算站心日食视圆图几何数据，使用 NASA bulletin Split-K 模型。
-// LocalSolarEclipseDiagramNASABulletinSplitK computes local solar eclipse disk diagram geometry with the NASA bulletin Split-K model.
-func LocalSolarEclipseDiagramNASABulletinSplitK(seedJDE, lon, lat, height float64, options LocalSolarEclipseDiagramOptions) LocalSolarEclipseDiagramResult {
-	return localSolarEclipseDiagram(seedJDE, lon, lat, height, SolarEclipseModelNASABulletinSplitK, options)
+// LocalSolarEclipseDiagramNASABulletinSplitKWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func LocalSolarEclipseDiagramNASABulletinSplitKWithInstance(seedJDE, lon, lat, height float64, options LocalSolarEclipseDiagramOptions, inst *Instance) LocalSolarEclipseDiagramResult {
+	return localSolarEclipseDiagram(seedJDE, lon, lat, height, SolarEclipseModelNASABulletinSplitK, options, inst)
 }
 
 func localSolarEclipseDiagram(
 	seedJDE, lonDeg, latDeg, heightMeters float64,
 	model SolarEclipseRadiusModel,
-	options LocalSolarEclipseDiagramOptions,
-) LocalSolarEclipseDiagramResult {
+	options LocalSolarEclipseDiagramOptions, instances ...*Instance) LocalSolarEclipseDiagramResult {
+	inst := instanceValue(instances)
+
 	options = normalizeLocalSolarEclipseDiagramOptions(options)
 	eclipse := localSolarEclipse(seedJDE, lonDeg, latDeg, heightMeters, SolarEclipseOptions{
 		RadiusModel:    model,
 		SunRadiusModel: options.SunRadiusModel,
-	})
+		LunarLimb:      options.LunarLimb,
+	}, inst)
 	result := LocalSolarEclipseDiagramResult{
 		Eclipse:  eclipse,
 		StepDays: options.StepDays,
@@ -118,7 +122,7 @@ func localSolarEclipseDiagram(
 	result.StepDays = stepDays
 	result.Frames = make([]LocalSolarEclipseDiagramFrame, 0, len(times))
 	for _, item := range times {
-		frame := localSolarEclipseDiagramFrameAt(item.jde, lonRad, latRad, heightKM, params)
+		frame := localSolarEclipseDiagramFrameAt(item.jde, lonRad, latRad, heightKM, params, inst)
 		frame.Label = localSolarEclipseDiagramPrimaryLabel(item.labels)
 		frame.Labels = append([]string(nil), item.labels...)
 		result.Frames = append(result.Frames, frame)
@@ -250,9 +254,10 @@ func localSolarEclipseDiagramLabelPriority(labels []string) int {
 
 func localSolarEclipseDiagramFrameAt(
 	jdTT, lonRad, latRad, heightKM float64,
-	params solarEclipseModelParameters,
-) LocalSolarEclipseDiagramFrame {
-	sunEquatorial, moonEquatorial := solarEclipseSunMoonEquatorial(jdTT)
+	params solarEclipseModelParameters, instances ...*Instance) LocalSolarEclipseDiagramFrame {
+	inst := instanceValue(instances)
+
+	sunEquatorial, moonEquatorial := solarEclipseSunMoonEquatorial(jdTT, inst)
 	sunXYZ := solarEclipseLLRToXYZ(sunEquatorial[0], sunEquatorial[1], sunEquatorial[2])
 	moonXYZ := solarEclipseLLRToXYZ(moonEquatorial[0], moonEquatorial[1], moonEquatorial[2])
 
@@ -278,14 +283,14 @@ func localSolarEclipseDiagramFrameAt(
 	)
 
 	sunRadiusRad := math.Asin(localSolarEclipseClampUnit(
-		solarEclipseEarthEquatorialRadiusKM * params.sunRadiusRatio / sunTopocentric[2],
+		geodata.EarthEquatorialRadiusKM * params.sunRadiusRatio / sunTopocentric[2],
 	))
 	moonRadiusRad := math.Asin(localSolarEclipseClampUnit(
 		solarEclipsePenumbralRadiusNumerator(params) / moonTopocentric[2],
 	))
 	if params.umbralK > params.penumbralK {
 		moonRadiusRad = math.Asin(localSolarEclipseClampUnit(
-			solarEclipseEarthEquatorialRadiusKM * params.umbralK * localSolarMoonRadiusScale / moonTopocentric[2],
+			geodata.EarthEquatorialRadiusKM * params.umbralK * localSolarMoonRadiusScale / moonTopocentric[2],
 		))
 	}
 

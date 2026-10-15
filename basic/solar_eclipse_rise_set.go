@@ -3,6 +3,8 @@ package basic
 import (
 	"math"
 	"sort"
+
+	"github.com/starainrt/astro/internal/geodata"
 )
 
 func solarEclipsePathSampleTimes(startJDE, endJDE, greatestJDE, requestedStepDays float64) ([]float64, float64) {
@@ -446,7 +448,7 @@ func (solver solarEclipseSolver) riseSetPointsAtEvaluation(
 	sun := solarEclipseXYZToLLR(
 		evaluation.center.sunXYZ[0], evaluation.center.sunXYZ[1], evaluation.center.sunXYZ[2],
 	)
-	centerLongitude := normalizeLongitude((sun[0] - evaluation.center.gst) / rad)
+	centerLongitude := geodata.NormalizeLongitude((sun[0] - evaluation.center.gst) / rad)
 	centerLatitude := sun[1] / rad
 
 	appendRoots := func(greatest bool) {

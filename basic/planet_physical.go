@@ -3,7 +3,6 @@ package basic
 import (
 	"math"
 
-	"github.com/starainrt/astro/planet"
 	. "github.com/starainrt/astro/tools"
 )
 
@@ -94,9 +93,9 @@ func MercuryPhysical(jd float64) PlanetPhysicalInfo {
 	return MercuryPhysicalN(jd, -1)
 }
 
-// MercuryPhysicalN 水星物理观测参数（截断版） / truncated physical observing parameters of Mercury.
-func MercuryPhysicalN(jd float64, n int) PlanetPhysicalInfo {
-	return planetPhysicalN(jd, n, mercuryPhysicalModel)
+// MercuryPhysicalNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func MercuryPhysicalNWithInstance(jd float64, n int, inst *Instance) PlanetPhysicalInfo {
+	return planetPhysicalN(jd, n, mercuryPhysicalModel, inst)
 }
 
 // VenusPhysical 金星物理观测参数 / physical observing parameters of Venus.
@@ -104,9 +103,9 @@ func VenusPhysical(jd float64) PlanetPhysicalInfo {
 	return VenusPhysicalN(jd, -1)
 }
 
-// VenusPhysicalN 金星物理观测参数（截断版） / truncated physical observing parameters of Venus.
-func VenusPhysicalN(jd float64, n int) PlanetPhysicalInfo {
-	return planetPhysicalN(jd, n, venusPhysicalModel)
+// VenusPhysicalNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func VenusPhysicalNWithInstance(jd float64, n int, inst *Instance) PlanetPhysicalInfo {
+	return planetPhysicalN(jd, n, venusPhysicalModel, inst)
 }
 
 // MarsPhysical 火星物理观测参数 / physical observing parameters of Mars.
@@ -114,9 +113,9 @@ func MarsPhysical(jd float64) PlanetPhysicalInfo {
 	return MarsPhysicalN(jd, -1)
 }
 
-// MarsPhysicalN 火星物理观测参数（截断版） / truncated physical observing parameters of Mars.
-func MarsPhysicalN(jd float64, n int) PlanetPhysicalInfo {
-	return planetPhysicalN(jd, n, marsPhysicalModel)
+// MarsPhysicalNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func MarsPhysicalNWithInstance(jd float64, n int, inst *Instance) PlanetPhysicalInfo {
+	return planetPhysicalN(jd, n, marsPhysicalModel, inst)
 }
 
 // JupiterPhysical 木星物理观测参数 / physical observing parameters of Jupiter.
@@ -124,9 +123,9 @@ func JupiterPhysical(jd float64) PlanetPhysicalInfo {
 	return JupiterPhysicalN(jd, -1)
 }
 
-// JupiterPhysicalN 木星物理观测参数（截断版） / truncated physical observing parameters of Jupiter.
-func JupiterPhysicalN(jd float64, n int) PlanetPhysicalInfo {
-	return planetPhysicalN(jd, n, jupiterPhysicalModel)
+// JupiterPhysicalNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func JupiterPhysicalNWithInstance(jd float64, n int, inst *Instance) PlanetPhysicalInfo {
+	return planetPhysicalN(jd, n, jupiterPhysicalModel, inst)
 }
 
 // SaturnPhysical 土星物理观测参数 / physical observing parameters of Saturn.
@@ -134,9 +133,9 @@ func SaturnPhysical(jd float64) PlanetPhysicalInfo {
 	return SaturnPhysicalN(jd, -1)
 }
 
-// SaturnPhysicalN 土星物理观测参数（截断版） / truncated physical observing parameters of Saturn.
-func SaturnPhysicalN(jd float64, n int) PlanetPhysicalInfo {
-	return planetPhysicalN(jd, n, saturnPhysicalModel)
+// SaturnPhysicalNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func SaturnPhysicalNWithInstance(jd float64, n int, inst *Instance) PlanetPhysicalInfo {
+	return planetPhysicalN(jd, n, saturnPhysicalModel, inst)
 }
 
 // UranusPhysical 天王星物理观测参数 / physical observing parameters of Uranus.
@@ -144,9 +143,9 @@ func UranusPhysical(jd float64) PlanetPhysicalInfo {
 	return UranusPhysicalN(jd, -1)
 }
 
-// UranusPhysicalN 天王星物理观测参数（截断版） / truncated physical observing parameters of Uranus.
-func UranusPhysicalN(jd float64, n int) PlanetPhysicalInfo {
-	return planetPhysicalN(jd, n, uranusPhysicalModel)
+// UranusPhysicalNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func UranusPhysicalNWithInstance(jd float64, n int, inst *Instance) PlanetPhysicalInfo {
+	return planetPhysicalN(jd, n, uranusPhysicalModel, inst)
 }
 
 // NeptunePhysical 海王星物理观测参数 / physical observing parameters of Neptune.
@@ -154,23 +153,25 @@ func NeptunePhysical(jd float64) PlanetPhysicalInfo {
 	return NeptunePhysicalN(jd, -1)
 }
 
-// NeptunePhysicalN 海王星物理观测参数（截断版） / truncated physical observing parameters of Neptune.
-func NeptunePhysicalN(jd float64, n int) PlanetPhysicalInfo {
-	return planetPhysicalN(jd, n, neptunePhysicalModel)
+// NeptunePhysicalNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func NeptunePhysicalNWithInstance(jd float64, n int, inst *Instance) PlanetPhysicalInfo {
+	return planetPhysicalN(jd, n, neptunePhysicalModel, inst)
 }
 
-func planetPhysicalN(jd float64, n int, model planetPhysicalModel) PlanetPhysicalInfo {
-	initialX, initialY, initialZ := planetXYZN(model.planetIndex, jd, n)
+func planetPhysicalN(jd float64, n int, model planetPhysicalModel, instances ...*Instance) PlanetPhysicalInfo {
+	inst := instanceValue(instances)
+
+	initialX, initialY, initialZ := planetXYZN(model.planetIndex, jd, n, inst)
 	targetVector := Vector3{initialX, initialY, initialZ}
 	lightTimeDays := astronomicalUnitLightTimeDays * vectorMagnitude(targetVector)
 	targetJDE := jd - lightTimeDays
 
-	geoX, geoY, geoZ := planetXYZN(model.planetIndex, targetJDE, n)
+	geoX, geoY, geoZ := planetXYZN(model.planetIndex, targetJDE, n, inst)
 	geocentricVector := Vector3{geoX, geoY, geoZ}
 	observerDirection := normalizeVector(Vector3{-geocentricVector[0], -geocentricVector[1], -geocentricVector[2]})
 
-	heliocentricLongitude := planet.WherePlanetN(model.planetIndex, 0, targetJDE, n)
-	heliocentricLatitude := planet.WherePlanetN(model.planetIndex, 1, targetJDE, n)
+	heliocentricLongitude := PlanetCoordinateNWithInstance(model.planetIndex, 0, targetJDE, n, inst)
+	heliocentricLatitude := PlanetCoordinateNWithInstance(model.planetIndex, 1, targetJDE, n, inst)
 	solarDirection := normalizeVector(eclipticCartesian(heliocentricLongitude+180, -heliocentricLatitude, 1))
 
 	obliquity := EclipticObliquity(targetJDE, false)

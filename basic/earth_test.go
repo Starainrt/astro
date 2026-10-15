@@ -27,7 +27,7 @@ func TestHeightDegreeByLatMatchesSphericalArc(t *testing.T) {
 
 func TestHeightDegreeReferenceValue(t *testing.T) {
 	got := HeightDegree(10000)
-	want := 3.20801665537668
+	want := 3.208113256367627
 	if math.Abs(got-want) > 1e-12 {
 		t.Fatalf("HeightDegree(10000) = %.15f want %.15f", got, want)
 	}

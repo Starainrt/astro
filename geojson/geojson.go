@@ -21,7 +21,7 @@ import (
 	"math"
 	"time"
 
-	"github.com/starainrt/astro"
+	"github.com/starainrt/astro/basic"
 	"github.com/starainrt/astro/internal/geodata"
 )
 
@@ -75,7 +75,7 @@ type TimeMarkerOptions struct {
 	// 并在集合上输出 time_scale 成员消歧（RFC 3339 的 Z 后缀严格说不等于 UT1）。此时 Location 必须是 nil 或 UTC。
 	// TimeScale selects the scale of time properties: the zero value is UTC; TimeScaleUT1 writes UT1 labels
 	// and adds a time_scale member (a RFC 3339 Z suffix is not exactly UT1). Location must then be nil or UTC.
-	TimeScale astro.TimeScale
+	TimeScale basic.TimeScale
 }
 
 // dropFeaturesByRole 按 role 属性丢弃要素；空列表原样返回。
@@ -108,7 +108,7 @@ func marshalEmptyFeatureCollection() ([]byte, error) {
 	return encodeFeatureCollection(make([]feature, 0))
 }
 
-func marshalFeatureCollectionWithTimeScale(features []feature, scale astro.TimeScale) ([]byte, error) {
+func marshalFeatureCollectionWithTimeScale(features []feature, scale basic.TimeScale) ([]byte, error) {
 	if len(features) == 0 {
 		return nil, fmt.Errorf("geojson: no geographic features")
 	}
@@ -116,12 +116,12 @@ func marshalFeatureCollectionWithTimeScale(features []feature, scale astro.TimeS
 }
 
 func encodeFeatureCollection(features []feature) ([]byte, error) {
-	return encodeFeatureCollectionWithTimeScale(features, astro.TimeScaleUTC)
+	return encodeFeatureCollectionWithTimeScale(features, basic.TimeScaleUTC)
 }
 
-func encodeFeatureCollectionWithTimeScale(features []feature, scale astro.TimeScale) ([]byte, error) {
+func encodeFeatureCollectionWithTimeScale(features []feature, scale basic.TimeScale) ([]byte, error) {
 	member := ""
-	if scale == astro.TimeScaleUT1 {
+	if scale == basic.TimeScaleUT1 {
 		member = "UT1"
 	}
 	value, err := json.Marshal(featureCollection{Type: featureCollectionType, Features: features, TimeScale: member})
@@ -304,7 +304,7 @@ func interpolateTimeMarker(a, b pathSample, fraction float64, value time.Time) p
 	}
 	return pathSample{
 		Time:      value,
-		Longitude: normalizeLongitude(a.Longitude + fraction*deltaLongitude),
+		Longitude: geodata.NormalizeLongitude(a.Longitude + fraction*deltaLongitude),
 		Latitude:  a.Latitude + fraction*(b.Latitude-a.Latitude),
 	}
 }
@@ -612,12 +612,4 @@ func formatTime(value time.Time) string {
 		return ""
 	}
 	return value.UTC().Format(time.RFC3339Nano)
-}
-
-func normalizeLongitude(value float64) float64 {
-	value = math.Mod(value+180, 360)
-	if value < 0 {
-		value += 360
-	}
-	return value - 180
 }

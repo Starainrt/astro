@@ -8,23 +8,23 @@ import (
 )
 
 // AscendingNode 水星升交点黄经 / ascending node longitude of Mercury.
-func AscendingNode(date time.Time) float64 {
-	return AscendingNodeN(date, -1)
+func (module *Mercury) AscendingNode(date time.Time) float64 {
+	return module.AscendingNodeN(date, -1)
 }
 
-// AscendingNodeN 水星升交点黄经（截断版） / truncated ascending node longitude of Mercury.
-func AscendingNodeN(date time.Time, n int) float64 {
+// AscendingNodeN 水星升交点黄经（n 变体） / n-parameterised ascending node longitude of Mercury.
+func (module *Mercury) AscendingNodeN(date time.Time, n int) float64 {
 	jd := calendar.Date2JD(date.UTC())
-	return basic.MercuryAscendingNodeN(basic.UTC2TT(jd), n)
+	return basic.MercuryAscendingNodeNWithInstance(basic.UTC2TT(jd), n, module.inst)
 }
 
 // DescendingNode 水星降交点黄经 / descending node longitude of Mercury.
-func DescendingNode(date time.Time) float64 {
-	return DescendingNodeN(date, -1)
+func (module *Mercury) DescendingNode(date time.Time) float64 {
+	return module.DescendingNodeN(date, -1)
 }
 
-// DescendingNodeN 水星降交点黄经（截断版） / truncated descending node longitude of Mercury.
-func DescendingNodeN(date time.Time, n int) float64 {
+// DescendingNodeN 水星降交点黄经（n 变体） / n-parameterised descending node longitude of Mercury.
+func (module *Mercury) DescendingNodeN(date time.Time, n int) float64 {
 	jd := calendar.Date2JD(date.UTC())
-	return basic.MercuryDescendingNodeN(basic.UTC2TT(jd), n)
+	return basic.MercuryDescendingNodeNWithInstance(basic.UTC2TT(jd), n, module.inst)
 }

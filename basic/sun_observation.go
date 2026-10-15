@@ -18,7 +18,7 @@ func CulminationTime(localJD, lon, tz float64) float64 { //实际中天时间
 	return localJD + tmp/24.0 - SunTime(localJD)/24.0
 }
 
-// CulminationTimeN 截断项太阳中天时刻 / truncated solar culmination time.
+// CulminationTimeN 太阳中天时刻（n 变体） / n-parameterised solar culmination time.
 func CulminationTimeN(localJD, lon, tz float64, n int) float64 { //实际中天时间
 	localJD = math.Floor(localJD)
 	tmp := longitudeOffsetDegrees(tz*15-lon) * 4 / 60
@@ -35,18 +35,18 @@ func longitudeOffsetDegrees(offset float64) float64 {
 	return offset
 }
 
-// EveningTwilight 昏朦影；localJD 是本地民用日锚点（当地 0 时），只取整数日。
-func EveningTwilight(localJD, lon, lat, tz, targetAltitude float64) (float64, error) {
+// EveningTwilightWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func EveningTwilightWithInstance(localJD, lon, lat, tz, targetAltitude float64, inst *Instance) (float64, error) {
 	localJD = math.Floor(localJD) + 1.5
 	localTimeZone := math.Round(lon / 15)
-	culminationTime := CulminationTime(localJD, lon, localTimeZone)
-	if SunHeight(culminationTime, lon, lat, localTimeZone) < targetAltitude {
+	culminationTime := CulminationTimeWithInstance(localJD, lon, localTimeZone, inst)
+	if SunHeightWithInstance(culminationTime, lon, lat, localTimeZone, inst) < targetAltitude {
 		return 0, ErrNeverRise
 	}
-	if SunHeight(culminationTime+0.5, lon, lat, localTimeZone) > targetAltitude {
+	if SunHeightWithInstance(culminationTime+0.5, lon, lat, localTimeZone, inst) > targetAltitude {
 		return 0, ErrNeverSet
 	}
-	tmp := (Sin(targetAltitude) - Sin(HSunApparentDec(culminationTime))*Sin(lat)) / (Cos(HSunApparentDec(culminationTime)) * Cos(lat))
+	tmp := (Sin(targetAltitude) - Sin(HSunApparentDecWithInstance(culminationTime, inst))*Sin(lat)) / (Cos(HSunApparentDecWithInstance(culminationTime, inst)) * Cos(lat))
 	var sundown float64
 	if math.Abs(tmp) <= 1 && lat < 85 {
 		hourOffset := ArcCos(tmp) / 15
@@ -54,7 +54,7 @@ func EveningTwilight(localJD, lon, lat, tz, targetAltitude float64) (float64, er
 	} else {
 		sundown = culminationTime
 		i := 0
-		for LowSunHeight(sundown, lon, lat, localTimeZone) > targetAltitude {
+		for LowSunHeightWithInstance(sundown, lon, lat, localTimeZone, inst) > targetAltitude {
 			i++
 			sundown += 15.0 / 60.0 / 24.0
 			if i > 48 {
@@ -65,8 +65,8 @@ func EveningTwilight(localJD, lon, lat, tz, targetAltitude float64) (float64, er
 	estimateJD := sundown - 5.00/24.00/60.00
 	var ok bool
 	estimateJD, ok = eventNewtonRefine(estimateJD, 0.00001, func(prevJD float64) float64 {
-		stDegree := SunHeight(prevJD, lon, lat, localTimeZone) - targetAltitude
-		stDegreep := (SunHeight(prevJD+0.000005, lon, lat, localTimeZone) - SunHeight(prevJD-0.000005, lon, lat, localTimeZone)) / 0.00001
+		stDegree := SunHeightWithInstance(prevJD, lon, lat, localTimeZone, inst) - targetAltitude
+		stDegreep := (SunHeightWithInstance(prevJD+0.000005, lon, lat, localTimeZone, inst) - SunHeightWithInstance(prevJD-0.000005, lon, lat, localTimeZone, inst)) / 0.00001
 		return stDegree / stDegreep
 	})
 	if !ok {
@@ -75,17 +75,18 @@ func EveningTwilight(localJD, lon, lat, tz, targetAltitude float64) (float64, er
 	return estimateJD - localTimeZone/24 + tz/24, nil
 }
 
-func EveningTwilightN(localJD, lon, lat, tz, targetAltitude float64, n int) (float64, error) {
+// EveningTwilightNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func EveningTwilightNWithInstance(localJD, lon, lat, tz, targetAltitude float64, n int, inst *Instance) (float64, error) {
 	localJD = math.Floor(localJD) + 1.5
 	localTimeZone := math.Round(lon / 15)
-	culminationTime := CulminationTimeN(localJD, lon, localTimeZone, n)
-	if SunHeightN(culminationTime, lon, lat, localTimeZone, n) < targetAltitude {
+	culminationTime := CulminationTimeNWithInstance(localJD, lon, localTimeZone, n, inst)
+	if SunHeightNWithInstance(culminationTime, lon, lat, localTimeZone, n, inst) < targetAltitude {
 		return 0, ErrNeverRise
 	}
-	if SunHeightN(culminationTime+0.5, lon, lat, localTimeZone, n) > targetAltitude {
+	if SunHeightNWithInstance(culminationTime+0.5, lon, lat, localTimeZone, n, inst) > targetAltitude {
 		return 0, ErrNeverSet
 	}
-	tmp := (Sin(targetAltitude) - Sin(HSunApparentDecN(culminationTime, n))*Sin(lat)) / (Cos(HSunApparentDecN(culminationTime, n)) * Cos(lat))
+	tmp := (Sin(targetAltitude) - Sin(HSunApparentDecNWithInstance(culminationTime, n, inst))*Sin(lat)) / (Cos(HSunApparentDecNWithInstance(culminationTime, n, inst)) * Cos(lat))
 	var sundown float64
 	if math.Abs(tmp) <= 1 && lat < 85 {
 		hourOffset := ArcCos(tmp) / 15
@@ -93,7 +94,7 @@ func EveningTwilightN(localJD, lon, lat, tz, targetAltitude float64, n int) (flo
 	} else {
 		sundown = culminationTime
 		i := 0
-		for lowSunHeightForN(sundown, lon, lat, localTimeZone, n) > targetAltitude {
+		for lowSunHeightForN(sundown, lon, lat, localTimeZone, n, inst) > targetAltitude {
 			i++
 			sundown += 15.0 / 60.0 / 24.0
 			if i > 48 {
@@ -104,8 +105,8 @@ func EveningTwilightN(localJD, lon, lat, tz, targetAltitude float64, n int) (flo
 	estimateJD := sundown - 5.00/24.00/60.00
 	var ok bool
 	estimateJD, ok = eventNewtonRefine(estimateJD, 0.00001, func(prevJD float64) float64 {
-		stDegree := SunHeightN(prevJD, lon, lat, localTimeZone, n) - targetAltitude
-		stDegreep := (SunHeightN(prevJD+0.000005, lon, lat, localTimeZone, n) - SunHeightN(prevJD-0.000005, lon, lat, localTimeZone, n)) / 0.00001
+		stDegree := SunHeightNWithInstance(prevJD, lon, lat, localTimeZone, n, inst) - targetAltitude
+		stDegreep := (SunHeightNWithInstance(prevJD+0.000005, lon, lat, localTimeZone, n, inst) - SunHeightNWithInstance(prevJD-0.000005, lon, lat, localTimeZone, n, inst)) / 0.00001
 		return stDegree / stDegreep
 	})
 	if !ok {
@@ -114,7 +115,8 @@ func EveningTwilightN(localJD, lon, lat, tz, targetAltitude float64, n int) (flo
 	return estimateJD - localTimeZone/24 + tz/24, nil
 }
 
-func MorningTwilight(localJD, lon, lat, tz, targetAltitude float64) (float64, error) {
+// MorningTwilightWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func MorningTwilightWithInstance(localJD, lon, lat, tz, targetAltitude float64, inst *Instance) (float64, error) {
 	// 调整到中午12点
 	localJD = math.Floor(localJD) + 1.5
 
@@ -122,18 +124,18 @@ func MorningTwilight(localJD, lon, lat, tz, targetAltitude float64) (float64, er
 	localTimeZone := math.Round(lon / 15)
 
 	// 计算太阳上中天时间
-	culminationTime := CulminationTime(localJD, lon, localTimeZone)
+	culminationTime := CulminationTimeWithInstance(localJD, lon, localTimeZone, inst)
 
 	// 检查极夜和极昼条件
-	if SunHeight(culminationTime, lon, lat, localTimeZone) < targetAltitude {
+	if SunHeightWithInstance(culminationTime, lon, lat, localTimeZone, inst) < targetAltitude {
 		return 0, ErrNeverRise
 	}
-	if SunHeight(culminationTime-0.5, lon, lat, localTimeZone) > targetAltitude {
+	if SunHeightWithInstance(culminationTime-0.5, lon, lat, localTimeZone, inst) > targetAltitude {
 		return 0, ErrNeverSet
 	}
 
 	// 计算日出时间
-	sunDec := HSunApparentDec(culminationTime)
+	sunDec := HSunApparentDecWithInstance(culminationTime, inst)
 	tmp := (Sin(targetAltitude) - Sin(sunDec)*Sin(lat)) / (Cos(sunDec) * Cos(lat))
 
 	var sunrise float64
@@ -142,7 +144,7 @@ func MorningTwilight(localJD, lon, lat, tz, targetAltitude float64) (float64, er
 		sunrise = culminationTime - hourAngle/24 - 25.0/(24.0*60.0)
 	} else {
 		sunrise = culminationTime
-		for i := 0; i < 48 && LowSunHeight(sunrise, lon, lat, localTimeZone) > targetAltitude; i++ {
+		for i := 0; i < 48 && LowSunHeightWithInstance(sunrise, lon, lat, localTimeZone, inst) > targetAltitude; i++ {
 			sunrise -= 15.0 / (60.0 * 24.0) // 每次减少15分钟
 		}
 	}
@@ -150,8 +152,8 @@ func MorningTwilight(localJD, lon, lat, tz, targetAltitude float64) (float64, er
 	estimateJD := sunrise - 5.0/(24.0*60.0)
 	var ok bool
 	estimateJD, ok = eventNewtonRefine(estimateJD, 0.00001, func(prevJD float64) float64 {
-		heightDiff := SunHeight(prevJD, lon, lat, localTimeZone) - targetAltitude
-		heightDerivative := (SunHeight(prevJD+0.000005, lon, lat, localTimeZone) - SunHeight(prevJD-0.000005, lon, lat, localTimeZone)) / 0.00001
+		heightDiff := SunHeightWithInstance(prevJD, lon, lat, localTimeZone, inst) - targetAltitude
+		heightDerivative := (SunHeightWithInstance(prevJD+0.000005, lon, lat, localTimeZone, inst) - SunHeightWithInstance(prevJD-0.000005, lon, lat, localTimeZone, inst)) / 0.00001
 		return heightDiff / heightDerivative
 	})
 	if !ok {
@@ -161,18 +163,19 @@ func MorningTwilight(localJD, lon, lat, tz, targetAltitude float64) (float64, er
 	return estimateJD - localTimeZone/24 + tz/24, nil
 }
 
-func MorningTwilightN(localJD, lon, lat, tz, targetAltitude float64, n int) (float64, error) {
+// MorningTwilightNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func MorningTwilightNWithInstance(localJD, lon, lat, tz, targetAltitude float64, n int, inst *Instance) (float64, error) {
 	localJD = math.Floor(localJD) + 1.5
 	localTimeZone := math.Round(lon / 15)
-	culminationTime := CulminationTimeN(localJD, lon, localTimeZone, n)
-	if SunHeightN(culminationTime, lon, lat, localTimeZone, n) < targetAltitude {
+	culminationTime := CulminationTimeNWithInstance(localJD, lon, localTimeZone, n, inst)
+	if SunHeightNWithInstance(culminationTime, lon, lat, localTimeZone, n, inst) < targetAltitude {
 		return 0, ErrNeverRise
 	}
-	if SunHeightN(culminationTime-0.5, lon, lat, localTimeZone, n) > targetAltitude {
+	if SunHeightNWithInstance(culminationTime-0.5, lon, lat, localTimeZone, n, inst) > targetAltitude {
 		return 0, ErrNeverSet
 	}
 
-	sunDec := HSunApparentDecN(culminationTime, n)
+	sunDec := HSunApparentDecNWithInstance(culminationTime, n, inst)
 	tmp := (Sin(targetAltitude) - Sin(sunDec)*Sin(lat)) / (Cos(sunDec) * Cos(lat))
 
 	var sunrise float64
@@ -181,7 +184,7 @@ func MorningTwilightN(localJD, lon, lat, tz, targetAltitude float64, n int) (flo
 		sunrise = culminationTime - hourAngle/24 - 25.0/(24.0*60.0)
 	} else {
 		sunrise = culminationTime
-		for i := 0; i < 48 && lowSunHeightForN(sunrise, lon, lat, localTimeZone, n) > targetAltitude; i++ {
+		for i := 0; i < 48 && lowSunHeightForN(sunrise, lon, lat, localTimeZone, n, inst) > targetAltitude; i++ {
 			sunrise -= 15.0 / (60.0 * 24.0)
 		}
 	}
@@ -189,8 +192,8 @@ func MorningTwilightN(localJD, lon, lat, tz, targetAltitude float64, n int) (flo
 	estimateJD := sunrise - 5.0/(24.0*60.0)
 	var ok bool
 	estimateJD, ok = eventNewtonRefine(estimateJD, 0.00001, func(prevJD float64) float64 {
-		heightDiff := SunHeightN(prevJD, lon, lat, localTimeZone, n) - targetAltitude
-		heightDerivative := (SunHeightN(prevJD+0.000005, lon, lat, localTimeZone, n) - SunHeightN(prevJD-0.000005, lon, lat, localTimeZone, n)) / 0.00001
+		heightDiff := SunHeightNWithInstance(prevJD, lon, lat, localTimeZone, n, inst) - targetAltitude
+		heightDerivative := (SunHeightNWithInstance(prevJD+0.000005, lon, lat, localTimeZone, n, inst) - SunHeightNWithInstance(prevJD-0.000005, lon, lat, localTimeZone, n, inst)) / 0.00001
 		return heightDiff / heightDerivative
 	})
 	if !ok {
@@ -226,61 +229,67 @@ type sunObservationState struct {
 	distanceAU float64
 }
 
-func sunObservationStateN(jd, lon, lat, tz float64, n int) sunObservationState {
-	calculationJD := jd - tz/24.0
-	tt := UTC2TT(calculationJD)
-	siderealTime := Limit360(ApparentSiderealTime(UTC2UT1(calculationJD))*15 + lon)
-	ra, dec, distanceAU := hSunApparentRaDecDistanceN(tt, n)
-	hourAngle := Limit360(siderealTime - ra)
-	altitudeSine := Sin(lat)*Sin(dec) + Cos(dec)*Cos(lat)*Cos(hourAngle)
+func sunObservationStateN(jd, lon, lat, tz float64, n int, instances ...*Instance) sunObservationState {
+	hourAngle, dec, distanceAU := sunTopocentricHourAngleDecN(jd, lon, lat, tz, n, instanceValue(instances))
 	return sunObservationState{
-		altitude:   ArcSin(altitudeSine),
+		altitude:   horizontalAltitude(hourAngle, dec, lat),
 		distanceAU: distanceAU,
 	}
 }
 
-func sunRiseSetResidual(jd, longitude, latitude, timeZone, zenithShift, height float64, n int) float64 {
-	state := sunObservationStateN(jd, longitude, latitude, timeZone, n)
+func sunRiseSetResidual(jd, longitude, latitude, timeZone, zenithShift, height float64, n int, instances ...*Instance) float64 {
+	return sunRiseSetResidualWeather(jd, longitude, latitude, timeZone, zenithShift, height,
+		refractionStandardPressureHPa, refractionStandardTemperatureC, n, instanceValue(instances))
+}
+
+func sunRiseSetResidualWeather(jd, longitude, latitude, timeZone, zenithShift, height, pressureHPa, temperatureC float64, n int, inst *Instance) float64 {
+	state := sunObservationStateN(jd, longitude, latitude, timeZone, n, inst)
 	// 相对观测者下沉地平线的视上缘高度角 / Apparent upper-limb altitude relative to the observer's depressed horizon.
 	residual := state.altitude + HeightDegreeByLat(height, latitude)
 	if zenithShift != 0 {
-		residual += RefractionFromTrueAltitude(state.altitude, refractionStandardPressureHPa, refractionStandardTemperatureC)
+		residual += RefractionFromTrueAltitude(state.altitude, pressureHPa, temperatureC)
 		residual += angularSemidiameterFromAU(sunEquatorialRadiusKM, state.distanceAU) / 3600
 	}
 	return residual
 }
 
 func sunRiseSetOnCivilDay(candidate, slope, civilDayStart, longitude, latitude, requestedTimeZone,
-	localTimeZone, zenithShift, height float64, isSunrise bool, n int, fallbackErr error) (float64, error) {
+	localTimeZone, zenithShift, height float64, isSunrise bool, n int, fallbackErr error, instances ...*Instance) (float64, error) {
+	inst := instanceValue(instances)
+
 	if eventRiseSetCandidateValid(candidate, civilDayStart, slope, isSunrise) {
 		return candidate, nil
 	}
 	return eventDirectionalRiseSetSearch(civilDayStart, isSunrise, fallbackErr, func(outputJD float64) float64 {
 		localJD := outputJD + localTimeZone/24 - requestedTimeZone/24
-		return sunRiseSetResidual(localJD, longitude, latitude, localTimeZone, zenithShift, height, n)
+		return sunRiseSetResidual(localJD, longitude, latitude, localTimeZone, zenithShift, height, n, inst)
 	})
 }
 
-// GetSunRiseTime 精确计算日出时间，传入本地民用日 0 时锚点
-func GetSunRiseTime(julianDay, longitude, latitude, timeZone, zenithShift, height float64) (float64, error) {
-	return calculateSunRiseSetTime(julianDay, longitude, latitude, timeZone, zenithShift, height, true)
+// GetSunRiseTimeWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func GetSunRiseTimeWithInstance(julianDay, longitude, latitude, timeZone, zenithShift, height float64, inst *Instance) (float64, error) {
+	return calculateSunRiseSetTime(julianDay, longitude, latitude, timeZone, zenithShift, height, true, inst)
 }
 
-func GetSunRiseTimeN(julianDay, longitude, latitude, timeZone, zenithShift, height float64, n int) (float64, error) {
-	return calculateSunRiseSetTimeN(julianDay, longitude, latitude, timeZone, zenithShift, height, true, n)
+// GetSunRiseTimeNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func GetSunRiseTimeNWithInstance(julianDay, longitude, latitude, timeZone, zenithShift, height float64, n int, inst *Instance) (float64, error) {
+	return calculateSunRiseSetTimeN(julianDay, longitude, latitude, timeZone, zenithShift, height, true, n, inst)
 }
 
-// GetSunSetTime 精确计算日落时间，传入本地民用日 0 时锚点
-func GetSunSetTime(julianDay, longitude, latitude, timeZone, zenithShift, height float64) (float64, error) {
-	return calculateSunRiseSetTime(julianDay, longitude, latitude, timeZone, zenithShift, height, false)
+// GetSunSetTimeWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func GetSunSetTimeWithInstance(julianDay, longitude, latitude, timeZone, zenithShift, height float64, inst *Instance) (float64, error) {
+	return calculateSunRiseSetTime(julianDay, longitude, latitude, timeZone, zenithShift, height, false, inst)
 }
 
-func GetSunSetTimeN(julianDay, longitude, latitude, timeZone, zenithShift, height float64, n int) (float64, error) {
-	return calculateSunRiseSetTimeN(julianDay, longitude, latitude, timeZone, zenithShift, height, false, n)
+// GetSunSetTimeNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func GetSunSetTimeNWithInstance(julianDay, longitude, latitude, timeZone, zenithShift, height float64, n int, inst *Instance) (float64, error) {
+	return calculateSunRiseSetTimeN(julianDay, longitude, latitude, timeZone, zenithShift, height, false, n, inst)
 }
 
 // calculateSunRiseSetTime 统一的日出日落计算函数
-func calculateSunRiseSetTime(julianDay, longitude, latitude, timeZone, zenithShift, height float64, isSunrise bool) (float64, error) {
+func calculateSunRiseSetTime(julianDay, longitude, latitude, timeZone, zenithShift, height float64, isSunrise bool, instances ...*Instance) (float64, error) {
+	inst := instanceValue(instances)
+
 	if !isFiniteFloat(julianDay) || !isFiniteFloat(longitude) || !isFiniteFloat(latitude) || !isFiniteFloat(timeZone) || !isFiniteFloat(zenithShift) || !isFiniteFloat(height) {
 		return 0, ErrInvalidObservationInput
 	}
@@ -290,24 +299,26 @@ func calculateSunRiseSetTime(julianDay, longitude, latitude, timeZone, zenithShi
 	sunAngle := StandardAltitudeSun(zenithShift, height, latitude)
 
 	// 获取太阳上中天时间
-	solarNoonTime := CulminationTime(julianDay, longitude, naturalTimeZone)
+	solarNoonTime := CulminationTimeWithInstance(julianDay, longitude, naturalTimeZone, inst)
 
 	// 检查极夜极昼条件
-	if err := checkPolarConditions(solarNoonTime, longitude, latitude, naturalTimeZone, zenithShift, height, isSunrise); err != nil {
+	if err := checkPolarConditions(solarNoonTime, longitude, latitude, naturalTimeZone, zenithShift, height, isSunrise, inst); err != nil {
 		return sunRiseSetOnCivilDay(math.NaN(), math.NaN(), civilDayStart, longitude, latitude, timeZone,
-			naturalTimeZone, zenithShift, height, isSunrise, -1, err)
+			naturalTimeZone, zenithShift, height, isSunrise, -1, err, inst)
 	}
 
 	// 计算初始估算时间
-	initialTime := calculateInitialSunTime(solarNoonTime, longitude, latitude, naturalTimeZone, sunAngle, zenithShift, height, isSunrise)
+	initialTime := calculateInitialSunTime(solarNoonTime, longitude, latitude, naturalTimeZone, sunAngle, zenithShift, height, isSunrise, inst)
 
 	// 牛顿-拉夫逊迭代求精确解
-	result, slope := sunRiseSetNewtonRaphsonIteration(initialTime, longitude, latitude, naturalTimeZone, zenithShift, height, timeZone)
+	result, slope := sunRiseSetNewtonRaphsonIteration(initialTime, longitude, latitude, naturalTimeZone, zenithShift, height, timeZone, inst)
 	return sunRiseSetOnCivilDay(result, slope, civilDayStart, longitude, latitude, timeZone,
-		naturalTimeZone, zenithShift, height, isSunrise, -1, nil)
+		naturalTimeZone, zenithShift, height, isSunrise, -1, nil, inst)
 }
 
-func calculateSunRiseSetTimeN(julianDay, longitude, latitude, timeZone, zenithShift, height float64, isSunrise bool, n int) (float64, error) {
+func calculateSunRiseSetTimeN(julianDay, longitude, latitude, timeZone, zenithShift, height float64, isSunrise bool, n int, instances ...*Instance) (float64, error) {
+	inst := instanceValue(instances)
+
 	if !isFiniteFloat(julianDay) || !isFiniteFloat(longitude) || !isFiniteFloat(latitude) || !isFiniteFloat(timeZone) || !isFiniteFloat(zenithShift) || !isFiniteFloat(height) {
 		return 0, ErrInvalidObservationInput
 	}
@@ -316,21 +327,23 @@ func calculateSunRiseSetTimeN(julianDay, longitude, latitude, timeZone, zenithSh
 	naturalTimeZone := math.Round(longitude / 15)
 	sunAngle := StandardAltitudeSun(zenithShift, height, latitude)
 
-	solarNoonTime := CulminationTimeN(julianDay, longitude, naturalTimeZone, n)
-	if err := checkPolarConditionsN(solarNoonTime, longitude, latitude, naturalTimeZone, zenithShift, height, isSunrise, n); err != nil {
+	solarNoonTime := CulminationTimeNWithInstance(julianDay, longitude, naturalTimeZone, n, inst)
+	if err := checkPolarConditionsN(solarNoonTime, longitude, latitude, naturalTimeZone, zenithShift, height, isSunrise, n, inst); err != nil {
 		return sunRiseSetOnCivilDay(math.NaN(), math.NaN(), civilDayStart, longitude, latitude, timeZone,
-			naturalTimeZone, zenithShift, height, isSunrise, n, err)
+			naturalTimeZone, zenithShift, height, isSunrise, n, err, inst)
 	}
 
-	initialTime := calculateInitialSunTimeN(solarNoonTime, longitude, latitude, naturalTimeZone, sunAngle, zenithShift, height, isSunrise, n)
-	result, slope := sunRiseSetNewtonRaphsonIterationN(initialTime, longitude, latitude, naturalTimeZone, zenithShift, height, timeZone, n)
+	initialTime := calculateInitialSunTimeN(solarNoonTime, longitude, latitude, naturalTimeZone, sunAngle, zenithShift, height, isSunrise, n, inst)
+	result, slope := sunRiseSetNewtonRaphsonIterationN(initialTime, longitude, latitude, naturalTimeZone, zenithShift, height, timeZone, n, inst)
 	return sunRiseSetOnCivilDay(result, slope, civilDayStart, longitude, latitude, timeZone,
-		naturalTimeZone, zenithShift, height, isSunrise, n, nil)
+		naturalTimeZone, zenithShift, height, isSunrise, n, nil, inst)
 }
 
 // checkPolarConditions 检查极夜极昼条件
-func checkPolarConditions(solarNoonTime, longitude, latitude, naturalTimeZone, zenithShift, height float64, isSunrise bool) error {
-	if sunRiseSetResidual(solarNoonTime, longitude, latitude, naturalTimeZone, zenithShift, height, -1) < 0 {
+func checkPolarConditions(solarNoonTime, longitude, latitude, naturalTimeZone, zenithShift, height float64, isSunrise bool, instances ...*Instance) error {
+	inst := instanceValue(instances)
+
+	if sunRiseSetResidual(solarNoonTime, longitude, latitude, naturalTimeZone, zenithShift, height, -1, inst) < 0 {
 		return ErrNeverRise
 	}
 
@@ -339,15 +352,17 @@ func checkPolarConditions(solarNoonTime, longitude, latitude, naturalTimeZone, z
 		checkTime = solarNoonTime - 0.5
 	}
 
-	if sunRiseSetResidual(checkTime, longitude, latitude, naturalTimeZone, zenithShift, height, -1) > 0 {
+	if sunRiseSetResidual(checkTime, longitude, latitude, naturalTimeZone, zenithShift, height, -1, inst) > 0 {
 		return ErrNeverSet
 	}
 
 	return nil
 }
 
-func checkPolarConditionsN(solarNoonTime, longitude, latitude, naturalTimeZone, zenithShift, height float64, isSunrise bool, n int) error {
-	if sunRiseSetResidual(solarNoonTime, longitude, latitude, naturalTimeZone, zenithShift, height, n) < 0 {
+func checkPolarConditionsN(solarNoonTime, longitude, latitude, naturalTimeZone, zenithShift, height float64, isSunrise bool, n int, instances ...*Instance) error {
+	inst := instanceValue(instances)
+
+	if sunRiseSetResidual(solarNoonTime, longitude, latitude, naturalTimeZone, zenithShift, height, n, inst) < 0 {
 		return ErrNeverRise
 	}
 
@@ -356,7 +371,7 @@ func checkPolarConditionsN(solarNoonTime, longitude, latitude, naturalTimeZone, 
 		checkTime = solarNoonTime - 0.5
 	}
 
-	if sunRiseSetResidual(checkTime, longitude, latitude, naturalTimeZone, zenithShift, height, n) > 0 {
+	if sunRiseSetResidual(checkTime, longitude, latitude, naturalTimeZone, zenithShift, height, n, inst) > 0 {
 		return ErrNeverSet
 	}
 
@@ -364,9 +379,11 @@ func checkPolarConditionsN(solarNoonTime, longitude, latitude, naturalTimeZone, 
 }
 
 // calculateInitialSunTime 计算日出日落的初始估算时间
-func calculateInitialSunTime(solarNoonTime, longitude, latitude, naturalTimeZone, sunAngle, zenithShift, height float64, isSunrise bool) float64 {
+func calculateInitialSunTime(solarNoonTime, longitude, latitude, naturalTimeZone, sunAngle, zenithShift, height float64, isSunrise bool, instances ...*Instance) float64 {
+	inst := instanceValue(instances)
+
 	// 使用球面三角法计算: (sin(ho)-sin(φ)*sin(δ))/(cos(φ)*cos(δ))
-	apparentDeclination := HSunApparentDec(solarNoonTime)
+	apparentDeclination := HSunApparentDecWithInstance(solarNoonTime, inst)
 	cosHourAngle := (Sin(sunAngle) - Sin(apparentDeclination)*Sin(latitude)) / (Cos(apparentDeclination) * Cos(latitude))
 
 	if math.Abs(cosHourAngle) <= 1 && latitude < 85 {
@@ -384,12 +401,14 @@ func calculateInitialSunTime(solarNoonTime, longitude, latitude, naturalTimeZone
 		}
 	} else {
 		// 使用迭代逼近法（极地条件）
-		return iterativeApproach(solarNoonTime, longitude, latitude, naturalTimeZone, zenithShift, height, isSunrise)
+		return iterativeApproach(solarNoonTime, longitude, latitude, naturalTimeZone, zenithShift, height, isSunrise, inst)
 	}
 }
 
-func calculateInitialSunTimeN(solarNoonTime, longitude, latitude, naturalTimeZone, sunAngle, zenithShift, height float64, isSunrise bool, n int) float64 {
-	apparentDeclination := HSunApparentDecN(solarNoonTime, n)
+func calculateInitialSunTimeN(solarNoonTime, longitude, latitude, naturalTimeZone, sunAngle, zenithShift, height float64, isSunrise bool, n int, instances ...*Instance) float64 {
+	inst := instanceValue(instances)
+
+	apparentDeclination := HSunApparentDecNWithInstance(solarNoonTime, n, inst)
 	cosHourAngle := (Sin(sunAngle) - Sin(apparentDeclination)*Sin(latitude)) / (Cos(apparentDeclination) * Cos(latitude))
 
 	if math.Abs(cosHourAngle) <= 1 && latitude < 85 {
@@ -405,11 +424,13 @@ func calculateInitialSunTimeN(solarNoonTime, longitude, latitude, naturalTimeZon
 		return solarNoonTime + hourAngle/24 + timeOffset
 	}
 
-	return iterativeApproachN(solarNoonTime, longitude, latitude, naturalTimeZone, zenithShift, height, isSunrise, n)
+	return iterativeApproachN(solarNoonTime, longitude, latitude, naturalTimeZone, zenithShift, height, isSunrise, n, inst)
 }
 
 // iterativeApproach 迭代逼近法计算（用于极地等特殊条件）
-func iterativeApproach(solarNoonTime, longitude, latitude, naturalTimeZone, zenithShift, height float64, isSunrise bool) float64 {
+func iterativeApproach(solarNoonTime, longitude, latitude, naturalTimeZone, zenithShift, height float64, isSunrise bool, instances ...*Instance) float64 {
+	inst := instanceValue(instances)
+
 	estimatedTime := solarNoonTime
 	stepSize := 15.0 / 60.0 / 24.0 // 15分钟步长
 	if isSunrise {
@@ -417,14 +438,16 @@ func iterativeApproach(solarNoonTime, longitude, latitude, naturalTimeZone, zeni
 	}
 
 	const maxIterations = 48
-	for i := 0; i < maxIterations && sunRiseSetResidual(estimatedTime, longitude, latitude, naturalTimeZone, zenithShift, height, -1) > 0; i++ {
+	for i := 0; i < maxIterations && sunRiseSetResidual(estimatedTime, longitude, latitude, naturalTimeZone, zenithShift, height, -1, inst) > 0; i++ {
 		estimatedTime += stepSize
 	}
 
 	return estimatedTime
 }
 
-func iterativeApproachN(solarNoonTime, longitude, latitude, naturalTimeZone, zenithShift, height float64, isSunrise bool, n int) float64 {
+func iterativeApproachN(solarNoonTime, longitude, latitude, naturalTimeZone, zenithShift, height float64, isSunrise bool, n int, instances ...*Instance) float64 {
+	inst := instanceValue(instances)
+
 	estimatedTime := solarNoonTime
 	stepSize := 15.0 / 60.0 / 24.0
 	if isSunrise {
@@ -432,7 +455,7 @@ func iterativeApproachN(solarNoonTime, longitude, latitude, naturalTimeZone, zen
 	}
 
 	const maxIterations = 48
-	for i := 0; i < maxIterations && sunRiseSetResidual(estimatedTime, longitude, latitude, naturalTimeZone, zenithShift, height, n) > 0; i++ {
+	for i := 0; i < maxIterations && sunRiseSetResidual(estimatedTime, longitude, latitude, naturalTimeZone, zenithShift, height, n, inst) > 0; i++ {
 		estimatedTime += stepSize
 	}
 
@@ -440,7 +463,9 @@ func iterativeApproachN(solarNoonTime, longitude, latitude, naturalTimeZone, zen
 }
 
 // sunRiseSetNewtonRaphsonIteration 牛顿-拉夫逊迭代法求精确解
-func sunRiseSetNewtonRaphsonIteration(initialTime, longitude, latitude, naturalTimeZone, zenithShift, height, timeZone float64) (float64, float64) {
+func sunRiseSetNewtonRaphsonIteration(initialTime, longitude, latitude, naturalTimeZone, zenithShift, height, timeZone float64, instances ...*Instance) (float64, float64) {
+	inst := instanceValue(instances)
+
 	const (
 		convergenceThreshold = 0.00001
 		derivativeStep       = 0.000005
@@ -450,9 +475,9 @@ func sunRiseSetNewtonRaphsonIteration(initialTime, longitude, latitude, naturalT
 	slope := math.NaN()
 	var ok bool
 	currentTime, ok = eventNewtonRefine(currentTime, convergenceThreshold, func(previousTime float64) float64 {
-		functionValue := sunRiseSetResidual(previousTime, longitude, latitude, naturalTimeZone, zenithShift, height, -1)
-		slope = (sunRiseSetResidual(previousTime+derivativeStep, longitude, latitude, naturalTimeZone, zenithShift, height, -1) -
-			sunRiseSetResidual(previousTime-derivativeStep, longitude, latitude, naturalTimeZone, zenithShift, height, -1)) / (2 * derivativeStep)
+		functionValue := sunRiseSetResidual(previousTime, longitude, latitude, naturalTimeZone, zenithShift, height, -1, inst)
+		slope = (sunRiseSetResidual(previousTime+derivativeStep, longitude, latitude, naturalTimeZone, zenithShift, height, -1, inst) -
+			sunRiseSetResidual(previousTime-derivativeStep, longitude, latitude, naturalTimeZone, zenithShift, height, -1, inst)) / (2 * derivativeStep)
 		return functionValue / slope
 	})
 	if !ok {
@@ -463,7 +488,9 @@ func sunRiseSetNewtonRaphsonIteration(initialTime, longitude, latitude, naturalT
 	return currentTime - naturalTimeZone/24 + timeZone/24, slope
 }
 
-func sunRiseSetNewtonRaphsonIterationN(initialTime, longitude, latitude, naturalTimeZone, zenithShift, height, timeZone float64, n int) (float64, float64) {
+func sunRiseSetNewtonRaphsonIterationN(initialTime, longitude, latitude, naturalTimeZone, zenithShift, height, timeZone float64, n int, instances ...*Instance) (float64, float64) {
+	inst := instanceValue(instances)
+
 	const (
 		convergenceThreshold = 0.00001
 		derivativeStep       = 0.000005
@@ -473,9 +500,9 @@ func sunRiseSetNewtonRaphsonIterationN(initialTime, longitude, latitude, natural
 	slope := math.NaN()
 	var ok bool
 	currentTime, ok = eventNewtonRefine(currentTime, convergenceThreshold, func(previousTime float64) float64 {
-		functionValue := sunRiseSetResidual(previousTime, longitude, latitude, naturalTimeZone, zenithShift, height, n)
-		slope = (sunRiseSetResidual(previousTime+derivativeStep, longitude, latitude, naturalTimeZone, zenithShift, height, n) -
-			sunRiseSetResidual(previousTime-derivativeStep, longitude, latitude, naturalTimeZone, zenithShift, height, n)) / (2 * derivativeStep)
+		functionValue := sunRiseSetResidual(previousTime, longitude, latitude, naturalTimeZone, zenithShift, height, n, inst)
+		slope = (sunRiseSetResidual(previousTime+derivativeStep, longitude, latitude, naturalTimeZone, zenithShift, height, n, inst) -
+			sunRiseSetResidual(previousTime-derivativeStep, longitude, latitude, naturalTimeZone, zenithShift, height, n, inst)) / (2 * derivativeStep)
 		return functionValue / slope
 	})
 	if !ok {
@@ -507,47 +534,19 @@ func LowSunHeight(jd, lon, lat, tz float64) float64 {
 	return ArcSin(tmp2)
 }
 
-func lowSunHeightForN(jd, lon, lat, tz float64, n int) float64 {
+func lowSunHeightForN(jd, lon, lat, tz float64, n int, instances ...*Instance) float64 {
+	inst := instanceValue(instances)
+
 	if n < 0 {
-		return LowSunHeight(jd, lon, lat, tz)
+		return LowSunHeightWithInstance(jd, lon, lat, tz, inst)
 	}
-	return SunHeightN(jd, lon, lat, tz, n)
+	return SunHeightNWithInstance(jd, lon, lat, tz, n, inst)
 }
 
 func SunAzimuth(jd, lon, lat, tz float64) float64 {
-	//tmp := (tz*15 - lon) * 4 / 60
-	//truejd := jd - tmp/24
-	calcjd := jd - tz/24
-	st := Limit360(ApparentSiderealTime(UTC2UT1(calcjd))*15 + lon)
-	hourAngle := Limit360(st - HSunApparentRa(UTC2TT(calcjd)))
-	tmp2 := Sin(hourAngle) / (Cos(hourAngle)*Sin(lat) - Tan(HSunApparentDec(UTC2TT(calcjd)))*Cos(lat))
-	azimuth := ArcTan(tmp2)
-	if azimuth < 0 {
-		if hourAngle/15 < 12 {
-			return azimuth + 360
-		}
-		return azimuth + 180
-	}
-	if hourAngle/15 < 12 {
-		return azimuth + 180
-	}
-	return azimuth
+	return sunAzimuthN(jd, lon, lat, tz, -1, nil)
 }
 
 func SunAzimuthN(jd, lon, lat, tz float64, n int) float64 {
-	calcjd := jd - tz/24
-	st := Limit360(ApparentSiderealTime(UTC2UT1(calcjd))*15 + lon)
-	hourAngle := Limit360(st - HSunApparentRaN(UTC2TT(calcjd), n))
-	tmp2 := Sin(hourAngle) / (Cos(hourAngle)*Sin(lat) - Tan(HSunApparentDecN(UTC2TT(calcjd), n))*Cos(lat))
-	azimuth := ArcTan(tmp2)
-	if azimuth < 0 {
-		if hourAngle/15 < 12 {
-			return azimuth + 360
-		}
-		return azimuth + 180
-	}
-	if hourAngle/15 < 12 {
-		return azimuth + 180
-	}
-	return azimuth
+	return sunAzimuthN(jd, lon, lat, tz, n, nil)
 }

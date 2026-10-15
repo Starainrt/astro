@@ -176,14 +176,7 @@ func TestMarshalPlanetOccultationVisibilityBoundaryStaysInsidePartialBand(t *tes
 
 // TestMarshalPlanetOccultationHorizonConnectorsFollowBandFootprintSource 固定连接线与掩带同源的
 // 契约：紧凑模式下两者都由紧凑足迹给出，连接线存在；默认（密集瞬时足迹）模式下瞬时足迹没有
-// 可与相位端点配对的开放地平边界，因此不产生连接线。此前掩带会走解析回退、连接线却按空的
-// 原始紧凑足迹生成，两种模式的连接线来源不一致。
-// TestMarshalPlanetOccultationHorizonConnectorsFollowBandFootprintSource pins the contract that
-// connectors and band share one footprint source: in compact mode both come from the compact
-// footprints and connectors exist, while dense instantaneous footprints carry no open horizon
-// boundary to pair with phase endpoints and therefore yield none. Previously a band built from
-// the analytic fallback still asked for connectors from the empty compact footprints, so the two
-// modes disagreed about the connector source.
+// 可与相位端点配对的开放地平边界，因此不产生连接线。
 func TestMarshalPlanetOccultationHorizonConnectorsFollowBandFootprintSource(t *testing.T) {
 	start := time.Date(2025, time.February, 1, 0, 0, 0, 0, time.UTC)
 	for _, test := range []struct {

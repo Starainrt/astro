@@ -8,6 +8,7 @@
 
 ## 目录
 
+- [外挂星表](#外挂星表)
 - [查询天狼星的位置与升起时刻](#查询天狼星的位置与升起时刻)
 - [API 参考](#api-参考)
   - [星座判定](#星座判定)
@@ -25,6 +26,55 @@
   - [极区边界与星表口径](#极区边界与星表口径)
 - [参数与返回值约定](#参数与返回值约定)
 - [相关手册](#相关手册)
+
+## 外挂星表
+
+`star/catalog` 与内置 9100 星数据库独立，不自动下载或加载大型星表。读入的 `Entry.Coordinate` 是带历元、坐标框架和自行的 `basic.StarCoordinate`，可直接用于 `moon.FindStarOccultations` 或 `phenomena.StarApproaches`。
+
+| 入口 | 输入与用途 |
+| --- | --- |
+| `ReadCSV` | 带表头的 CSV/TSV，使用 `ColumnMap` 指定列名、历元与框架；`Delimiter` 为 0 时自动识别 |
+| `ReadHipparcos2007` / `ReadBSC5` | 读取对应的固定宽度文本星表 |
+| `ReadStellariumStars` / `ReadStellariumDir` | 单个二进制分片或 `fs.FS` 目录；目录选项可加载名称及交叉 ID，按 `MaxMagnitude` 过滤 |
+| `Lookup` / `Entries` / `Len` | 按主 ID 或别名查询，取得记录副本或数量 |
+| `Near` / `Band` | 星表自身历元下的锥形搜索/赤纬带搜索，不自动传播到观测日期 |
+| `Merge` / `WithNames` | 返回新星表；合并时后者覆盖同主 ID、同分量记录，名称文件使用 `id\|name` 行 |
+
+```go
+import (
+	"strings"
+	"time"
+
+	"github.com/starainrt/astro/basic"
+	"github.com/starainrt/astro/star/catalog"
+)
+
+input := strings.NewReader("id,ra,dec,pmra,pmdec,V\nSirius,101.28715533,-16.71611586,-546.01,-1223.07,-1.46\n")
+stars, err := catalog.ReadCSV(input, catalog.ColumnMap{
+	ID: "id", RA: "ra", Dec: "dec", PMRA: "pmra", PMDec: "pmdec", Magnitude: "V",
+	PMRAIncludesCosDec: true, Band: catalog.BandV,
+	Epoch: time.Date(2000, 1, 1, 12, 0, 0, 0, time.UTC), Frame: basic.CoordinateFrameJ2000,
+}, catalog.ReadOptions{Strict: true})
+if err != nil {
+	panic(err)
+}
+entry, found := stars.Lookup("Sirius")
+_ = entry.Coordinate
+_ = found
+```
+
+单位与必填项：
+
+- `RA`、`Dec` 默认是度，`AnglesInRadians` 可改为弧度；自行是 mas/年，视差是 mas，径向速度是 km/s。
+- 若 `PMRA` 已经是 `dRA·cos(Dec)`，设置 `PMRAIncludesCosDec: true`，否则读入器补乘余弦。
+- 必须给出 `Epoch` 或 `EpochColumn`（儒略年）以及正确的 `Frame`，不得用零历元代替未知历元。
+
+读取行为：
+
+- `ReadOptions.Strict` 为 true 时坏记录返回错误，否则跳过并计入 `Skipped()`；缺少必需表头这类结构错误始终返回错误。
+- `Filter` 只控制入选，不计为坏记录。
+- 未提供星等时 `Magnitude` 为 `NaN`；`BandV`、`BandG`、`BandHp` 不应不经换算就用于同一 V 波段可见性阈值。
+- `Catalog.Near` 在各记录自身历元搜索；混合历元或框架的数据应先统一，观测日期的精确筛选仍需自行传播。
 
 ## 查询天狼星的位置与升起时刻
 
@@ -60,7 +110,7 @@ func main() {
 
 星表坐标的历元是 J2000。`RaDecByDate` 加入自行、岁差与章动后，才用于指定日期的升落、高度角和星座判定。
 
-自行归算按**儒略年**（365.25 日）计，`RaDecByDate` 先把民用时刻换算成 TT 再取历元差。只要记录带距离（`Pc > 0`），`RaDecByJde` 就按**三维空间运动**推进：自行给出切向速度、`RadVel` 给出视向分量，位置矢量线性外推后取方向；没有距离的记录退回二维，即只推进赤经赤纬两个角分量，等价于把恒星当作无穷远。两者的差别是二阶项——大圆路径的曲率和径向运动改变距离后对视角尺度的拉伸，26 年内最亮的高自行星也只有约 0.09 角秒。
+自行归算按**儒略年**（365.25 日）计，`RaDecByDate` 先把民用时刻换算成 TT 再取历元差。只要记录带距离（`Pc > 0`），`RaDecByJde` 就按**三维空间运动**推进：自行给出切向速度、`RadVel` 给出视向分量，位置矢量线性外推后取方向；没有距离的记录退回二维，即只推进赤经赤纬两个角分量，等价于把恒星当作无穷远。两者的差别是二阶项：三维推进同时改变恒星距离，视位置比二维推进略小，26 年内最亮的高自行星也只有约 0.09 角秒。
 
 ## API 参考
 
@@ -70,11 +120,12 @@ func main() {
 | 恒星库 | `InitStarDatabase` / `StarDataByHR` / `StarDataByName` / `TopBrightStars` | 初始化内置星表、按 HR 编号或中文名取星、取最亮恒星样本 | HR `1–9110`；`Mag` 为视星等 |
 | 坐标修正 | `StarData.RaDecByDate`（`basic` 侧对应 `RaDecByJde`） | 把 J2000 位置修正到指定时刻 | 返回赤经赤纬，单位度 |
 | 升落与中天 | `RiseTime` / `SetTime` / `CulminationTime`（`DownTime` 是 `SetTime` 的废弃别名） | 升起、落下、中天时刻 | 返回民用时刻；极区返回哨兵错误 |
+| 带气象升落 | `RiseTimeWithAtmosphere` / `SetTimeWithAtmosphere` | 按实测气压（hPa）、气温（℃）计算升落 | 恒带大气折射 |
 | 站心量 | `Altitude` / `ApparentAltitude` / `Azimuth` / `Zenith` / `ApparentZenith` | （视）高度角、方位角、（视）天顶距 | 度 |
 | 时角与视差角 | `HourAngle` / `ParallacticAngle` | 恒星时角、天顶方向视差角 | 度 |
 | 恒星时 | `MeanSiderealTime` / `ApparentSiderealTime` | 平恒星时、真恒星时 | 小时 |
 
-`star` 包没有 `...N` 截断入口；需要截断解析项的场合在 `sun`、`moon`、行星与 `coord` 的对应函数上，语义是 `n < 0` 用本仓库内置的全部解析项、`n >= 0` 截断（见各自手册）。
+`star` 包没有 `...N` 入口；带 `n` 参数的求值接口在 `sun`、`moon`、行星与 `coord` 的对应函数上，语义见各自手册（`n < 0` 用完整级数；半解析模型下 `n >= 0` 用快速表，Legacy 按 `n` 截断）。
 
 以下片段省略公共前置变量：`date`（观测时刻，民用时标）、`lon`/`lat`（观测点经纬度，东经/北纬为正，度）、`height`（观测点高度，**椭球高**，米）、`aero`（是否计入蒙气差与视半径修正）。
 
@@ -100,7 +151,7 @@ bright, _ := star.TopBrightStars()
 fmt.Println(len(bright), bright[0].HR) // 最亮恒星样本条数与首项 HR
 ```
 
-数据库走 `sync.Once` 懒加载，`InitStarDatabase()` 只是提前预热：它幂等，并且能把首次加载的错误显式暴露出来，不调用也会在第一次查询时自动加载。`TopBrightStars()` 返回 169 颗视星等约不高于 3、按亮到暗大致排列的内置样本。
+星表在首次查询时自动加载，`InitStarDatabase()` 只是提前预热：它幂等，并且能把首次加载的错误显式暴露出来，不调用也会在第一次查询时自动加载。`TopBrightStars()` 返回 169 颗视星等约不高于 3、按亮到暗大致排列的内置样本。
 
 `basic.StarData` 在 `InnerStarData` 之上补了名称字段；字段口径如下：
 
@@ -214,11 +265,11 @@ func main() {
 输出结果：
 
 ```text
-2019-12-31 19:22:56.144202053 +0800 CST // 天狼星升起时刻
-2020-01-01 05:30:39.802506566 +0800 CST // 天狼星落下时刻
+2019-12-31 19:22:56.32125467 +0800 CST // 天狼星升起时刻
+2020-01-01 05:30:39.979518949 +0800 CST // 天狼星落下时刻
 大犬座 // 天狼星所在星座
-6h3m46.61s // 织女一在公元 13600 年的赤经
-84°18′27.15″ // 织女一在公元 13600 年的赤纬
+6h4m44.89s // 织女一在公元 13600 年的赤经
+84°19′13.71″ // 织女一在公元 13600 年的赤纬
 天狼 Sirius -1.46 // 最亮恒星表第一项：中文名、英文常用名、视星等
 ```
 
@@ -298,7 +349,6 @@ if errors.Is(err, star.ERR_STAR_NEVER_RISE) || errors.Is(err, star.ERR_STAR_NEVE
 - **单位**：赤经、赤纬、高度角、天顶距、方位角、时角、视差角均为**度**，恒星时为**小时**；`tools.Format` 负责把它们格式化成度分秒或时分秒展示。星表里的 `PmRA`/`PmDec` 是角秒/年，`RadVel`/`RotVel` 是 km/s，`Pc` 是秒差距。
 - **时标**：所有公开 API 的时间参数与返回值都是民用时刻（UTC 标签，1972-01-01 之前等于 UT1），约定见[时标声明](map-geojson.md#时标声明)。
 - **坐标口径**：星表是 J2000；`RaDecByDate` 叠加自行、岁差与章动。直接用 `InnerStarData.Ra`/`Dec` 会让升落与星座判定出现可观偏差（百年量级的岁差就是度级）。
-- **极区哨兵错误**：`RiseTime` 在极夜返回 `star.ERR_STAR_NEVER_RISE`（该日永远在地平线下），`SetTime` 在极昼返回 `star.ERR_STAR_NEVER_SET`（该日永远在地平线上），用 `errors.Is` 判定；`ERR_STAR_NEVER_DOWN` 是 `ERR_STAR_NEVER_SET` 的废弃别名。
 - **观测点高度**：`height` 是椭球高（大地高），单位米；手上只有海拔正高时要先加大地水准面差距，约定见「观测点高度约定」。
 - **蒙气差模型的有效区间**：`ApparentAltitude`/`ApparentZenith` 用的 Saemundsson 近似只在真高度角 `(-5°, 90°)` 内生效，区间外修正量为 0——所以深在地平线以下时视高度角与几何高度角完全相等（示例里天狼星 `alt=-30.180` 与 `Altitude` 同值就是这个原因）。气压必须为正、气温必须高于绝对零度，否则返回 `NaN`。
 - **`aero` 语义**：真值按标准蒙气差修正后的地平求升落，假值走几何地平；两者的差值在低纬度约 2–3 分钟，高纬度会明显放大。

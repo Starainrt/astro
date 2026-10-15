@@ -4,6 +4,8 @@ import (
 	"math"
 	"sort"
 	"time"
+
+	"github.com/starainrt/astro/internal/geodata"
 )
 
 const (
@@ -730,9 +732,9 @@ func planetOccultationHorizonArc(
 	from, to := segment[len(segment)-1], segment[0]
 	unitAt := func(point OccultationPathPoint) occultationPathVector {
 		fixed := occultationStationSurfaceVector(point.Longitude, point.Latitude)
-		return occultationPathVector{x: fixed.x / occultationPathEarthEquatorialRadiusKM,
-			y: fixed.y / occultationPathEarthEquatorialRadiusKM,
-			z: fixed.z / (occultationPathEarthEquatorialRadiusKM * occultationPathEarthPolarRatio)}
+		return occultationPathVector{x: fixed.x / geodata.EarthEquatorialRadiusKM,
+			y: fixed.y / geodata.EarthEquatorialRadiusKM,
+			z: fixed.z / (geodata.EarthEquatorialRadiusKM * occultationPathEarthPolarRatio)}
 	}
 	moonFixed := occultationPathEarthFixedVector(tt, frame.moon)
 	normal := occultationPathUnit(occultationPathVector{x: moonFixed.x, y: moonFixed.y, z: moonFixed.z / occultationPathEarthPolarRatio})
@@ -772,7 +774,7 @@ func planetOccultationHorizonArc(
 		unit := occultationPathAdd(occultationPathScale(normal, centerDistance),
 			occultationPathScale(occultationPathAdd(occultationPathScale(first, math.Cos(angle)),
 				occultationPathScale(second, math.Sin(angle))), radius))
-		fixed := occultationPathScale(unit, occultationPathEarthEquatorialRadiusKM)
+		fixed := occultationPathScale(unit, geodata.EarthEquatorialRadiusKM)
 		fixed.z *= occultationPathEarthPolarRatio
 		middle := from
 		middle.Longitude, middle.Latitude = occultationStationGeodetic(fixed)
@@ -822,13 +824,13 @@ func planetOccultationCenterCap(
 	if math.Abs(cosine) < 1e-6 {
 		cosine = 1e-6
 	}
-	latitudeOffset := radiusKM / occultationPathEarthEquatorialRadiusKM * degreesPerRadian
+	latitudeOffset := radiusKM / geodata.EarthEquatorialRadiusKM * degreesPerRadian
 	longitudeOffset := latitudeOffset / cosine
 	cap := make([]OccultationPathPoint, pointCount+1)
 	for index := 0; index < pointCount; index++ {
 		angle := 2 * math.Pi * float64(index) / float64(pointCount)
 		cap[index] = center
-		cap[index].Longitude = normalizeLongitude(center.Longitude + longitudeOffset*math.Cos(angle))
+		cap[index].Longitude = geodata.NormalizeLongitude(center.Longitude + longitudeOffset*math.Cos(angle))
 		cap[index].Latitude = math.Max(-90, math.Min(90, center.Latitude+latitudeOffset*math.Sin(angle)))
 		cap[index].MoonAltitude = center.MoonAltitude
 		cap[index].WidthKM = 0
@@ -872,8 +874,8 @@ func planetOccultationPointSegmentDistanceKM(
 	point, start, end OccultationPathPoint,
 ) float64 {
 	latitude := point.Latitude * math.Pi / 180
-	scaleX := math.Cos(latitude) * occultationPathEarthEquatorialRadiusKM * math.Pi / 180
-	scaleY := occultationPathEarthEquatorialRadiusKM * math.Pi / 180
+	scaleX := math.Cos(latitude) * geodata.EarthEquatorialRadiusKM * math.Pi / 180
+	scaleY := geodata.EarthEquatorialRadiusKM * math.Pi / 180
 	x := func(value OccultationPathPoint) float64 {
 		return math.Remainder(value.Longitude-point.Longitude, 360) * scaleX
 	}
@@ -934,7 +936,7 @@ func planetOccultationHorizonCircle(
 	if count < 3 {
 		return nil
 	}
-	equatorialRadius := occultationPathEarthEquatorialRadiusKM
+	equatorialRadius := geodata.EarthEquatorialRadiusKM
 	polarRadius := equatorialRadius * occultationPathEarthPolarRatio
 	scaledMoon := occultationPathVector{
 		x: frame.moon.x / equatorialRadius,

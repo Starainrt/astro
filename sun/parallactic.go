@@ -7,18 +7,16 @@ import (
 )
 
 // ParallacticAngle 太阳视差角（天顶方向角） / solar parallactic angle.
-//
-// lon/lat 为观测者经纬度，东正西负、北正南负；返回值为有符号视差角，单位度。
-func ParallacticAngle(date time.Time, lon, lat float64) float64 {
-	return basic.ParallacticAngleByHourAngle(HourAngle(date, lon, lat), ApparentDec(date), lat)
+func (module *Sun) ParallacticAngle(date time.Time, lon, lat float64) float64 {
+	return basic.ParallacticAngleByHourAngle(module.HourAngle(date, lon, lat), module.ApparentDec(date), lat)
 }
 
-// ParallacticAngleN 截断项太阳视差角（天顶方向角） / truncated solar parallactic angle.
-func ParallacticAngleN(date time.Time, lon, lat float64, n int) float64 {
+// ParallacticAngleN 太阳视差角（天顶方向角）（n 变体） / n-parameterised solar parallactic angle.
+func (module *Sun) ParallacticAngleN(date time.Time, lon, lat float64, n int) float64 {
 	jd := basic.Date2JD(date.UTC())
 	return basic.ParallacticAngleByHourAngle(
-		HourAngleN(date, lon, lat, n),
-		basic.HSunApparentDecN(basic.UTC2TT(jd), n),
+		module.HourAngleN(date, lon, lat, n),
+		basic.HSunApparentDecNWithInstance(basic.UTC2TT(jd), n, module.inst),
 		lat,
 	)
 }

@@ -62,7 +62,7 @@ func absoluteLongitude(value float64) float64 {
 func TestSphericalContainmentRejectsAntipodalInterior(t *testing.T) {
 	for _, center := range []GeoPoint{{}, {Longitude: 179, Latitude: 70}, {Latitude: -90}} {
 		polygon := SphericalCircle(center, 12, 48)
-		antipode := GeoPoint{Longitude: normalizeLongitude(center.Longitude + 180), Latitude: -center.Latitude}
+		antipode := GeoPoint{Longitude: NormalizeLongitude(center.Longitude + 180), Latitude: -center.Latitude}
 		for _, reversed := range []bool{false, true} {
 			if reversed {
 				for first, last := 0, len(polygon)-1; first < last; first, last = first+1, last-1 {
@@ -73,7 +73,7 @@ func TestSphericalContainmentRejectsAntipodalInterior(t *testing.T) {
 				t.Errorf("center=%+v reversed=%v: direct containment must distinguish the antipode", center, reversed)
 			}
 			points := []GeoPoint{center, antipode, polygon[0], {
-				Longitude: normalizeLongitude(polygon[0].Longitude + 180), Latitude: -polygon[0].Latitude,
+				Longitude: NormalizeLongitude(polygon[0].Longitude + 180), Latitude: -polygon[0].Latitude,
 			}}
 			got := SphericalPolygonsContainPoints([][]GeoPoint{polygon}, points)
 			for index, want := range []bool{true, false, true, false} {

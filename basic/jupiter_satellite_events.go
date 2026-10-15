@@ -1,6 +1,8 @@
 package basic
 
-import "math"
+import (
+	"math"
+)
 
 const (
 	jupiterGalileanEventSearchSpanDays = 8 * 365.25
@@ -56,28 +58,22 @@ type jupiterGalileanShadowPoint struct {
 	yJupiterRadii   float64
 }
 
-// LastJupiterGalileanPhenomenonEvent 上一次伽利略卫星现象 / previous Galilean-satellite event.
-//
-// jd 与返回时刻都是民用儒略日；需要瞬时状态时先用 UTC2TT(jd) 换成 TT。
-func LastJupiterGalileanPhenomenonEvent(jd float64, satellite int, phenomenonType JupiterGalileanPhenomenonType) JupiterGalileanPhenomenonEvent {
-	event, _ := searchJupiterGalileanPhenomenonEvent(jd, satellite, phenomenonType, -1, true)
+// LastJupiterGalileanPhenomenonEventWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func LastJupiterGalileanPhenomenonEventWithInstance(jd float64, satellite int, phenomenonType JupiterGalileanPhenomenonType, inst *Instance) JupiterGalileanPhenomenonEvent {
+	event, _ := searchJupiterGalileanPhenomenonEvent(jd, satellite, phenomenonType, -1, true, inst)
 	return event
 }
 
-// NextJupiterGalileanPhenomenonEvent 下一次伽利略卫星现象 / next Galilean-satellite event.
-//
-// jd 与返回时刻都是民用儒略日；需要瞬时状态时先用 UTC2TT(jd) 换成 TT。
-func NextJupiterGalileanPhenomenonEvent(jd float64, satellite int, phenomenonType JupiterGalileanPhenomenonType) JupiterGalileanPhenomenonEvent {
-	event, _ := searchJupiterGalileanPhenomenonEvent(jd, satellite, phenomenonType, 1, false)
+// NextJupiterGalileanPhenomenonEventWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func NextJupiterGalileanPhenomenonEventWithInstance(jd float64, satellite int, phenomenonType JupiterGalileanPhenomenonType, inst *Instance) JupiterGalileanPhenomenonEvent {
+	event, _ := searchJupiterGalileanPhenomenonEvent(jd, satellite, phenomenonType, 1, false, inst)
 	return event
 }
 
-// ClosestJupiterGalileanPhenomenonEvent 最近一次伽利略卫星现象 / closest Galilean-satellite event.
-//
-// jd 与返回时刻都是民用儒略日；需要瞬时状态时先用 UTC2TT(jd) 换成 TT。
-func ClosestJupiterGalileanPhenomenonEvent(jd float64, satellite int, phenomenonType JupiterGalileanPhenomenonType) JupiterGalileanPhenomenonEvent {
-	last, hasLast := searchJupiterGalileanPhenomenonEvent(jd, satellite, phenomenonType, -1, true)
-	next, hasNext := searchJupiterGalileanPhenomenonEvent(jd, satellite, phenomenonType, 1, false)
+// ClosestJupiterGalileanPhenomenonEventWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func ClosestJupiterGalileanPhenomenonEventWithInstance(jd float64, satellite int, phenomenonType JupiterGalileanPhenomenonType, inst *Instance) JupiterGalileanPhenomenonEvent {
+	last, hasLast := searchJupiterGalileanPhenomenonEvent(jd, satellite, phenomenonType, -1, true, inst)
+	next, hasNext := searchJupiterGalileanPhenomenonEvent(jd, satellite, phenomenonType, 1, false, inst)
 	switch {
 	case hasLast && !hasNext:
 		return last
@@ -97,14 +93,15 @@ func searchJupiterGalileanPhenomenonEvent(
 	satellite int,
 	phenomenonType JupiterGalileanPhenomenonType,
 	direction int,
-	includeCurrent bool,
-) (JupiterGalileanPhenomenonEvent, bool) {
+	includeCurrent bool, instances ...*Instance) (JupiterGalileanPhenomenonEvent, bool) {
+	inst := instanceValue(instances)
+
 	if !isFinite(jd) || direction == 0 || satellite < 1 || satellite > 4 || !isValidJupiterGalileanPhenomenonType(phenomenonType) {
 		return invalidJupiterGalileanPhenomenonEvent(), false
 	}
 
-	if sample := jupiterGalileanPhenomenonMetricAt(jd, satellite, phenomenonType); sample.active {
-		current := findJupiterGalileanPhenomenonEventAround(jd, satellite, phenomenonType)
+	if sample := jupiterGalileanPhenomenonMetricAt(jd, satellite, phenomenonType, inst); sample.active {
+		current := findJupiterGalileanPhenomenonEventAround(jd, satellite, phenomenonType, inst)
 		if current.Valid && includeCurrent {
 			return current, true
 		}
@@ -122,16 +119,16 @@ func searchJupiterGalileanPhenomenonEvent(
 	sign := float64(direction)
 
 	prevTime := jd
-	prevSample := jupiterGalileanPhenomenonMetricAt(prevTime, satellite, phenomenonType)
+	prevSample := jupiterGalileanPhenomenonMetricAt(prevTime, satellite, phenomenonType, inst)
 	midTime := jd + sign*stepDays
-	midSample := jupiterGalileanPhenomenonMetricAt(midTime, satellite, phenomenonType)
+	midSample := jupiterGalileanPhenomenonMetricAt(midTime, satellite, phenomenonType, inst)
 
 	for i := 2; i <= maxSteps; i++ {
 		nextTime := jd + sign*float64(i)*stepDays
-		nextSample := jupiterGalileanPhenomenonMetricAt(nextTime, satellite, phenomenonType)
+		nextSample := jupiterGalileanPhenomenonMetricAt(nextTime, satellite, phenomenonType, inst)
 		if event, ok := jupiterGalileanIntervalCandidate(
 			prevTime, nextTime, prevSample, midSample, nextSample,
-			jd, satellite, phenomenonType, direction, includeCurrent,
+			jd, satellite, phenomenonType, direction, includeCurrent, inst,
 		); ok {
 			return event, true
 		}
@@ -150,8 +147,9 @@ func jupiterGalileanIntervalCandidate(
 	satellite int,
 	phenomenonType JupiterGalileanPhenomenonType,
 	direction int,
-	includeCurrent bool,
-) (JupiterGalileanPhenomenonEvent, bool) {
+	includeCurrent bool, instances ...*Instance) (JupiterGalileanPhenomenonEvent, bool) {
+	inst := instanceValue(instances)
+
 	var best JupiterGalileanPhenomenonEvent
 	found := false
 	consider := func(event JupiterGalileanPhenomenonEvent) {
@@ -169,17 +167,17 @@ func jupiterGalileanIntervalCandidate(
 		midSample.metric <= prevSample.metric &&
 		midSample.metric <= nextSample.metric {
 		consider(findJupiterGalileanPhenomenonEventAround(
-			refineJupiterGalileanMetricMinimum(prevTime, nextTime, satellite, phenomenonType),
-			satellite, phenomenonType,
+			refineJupiterGalileanMetricMinimum(prevTime, nextTime, satellite, phenomenonType, inst),
+			satellite, phenomenonType, inst,
 		))
 	}
 	if jupiterGalileanSignedCrosses(prevSample.signed, nextSample.signed) &&
 		jupiterGalileanNearDisk(prevSample, midSample, nextSample) {
-		crossing := refineJupiterGalileanSignedCrossing(prevTime, nextTime, satellite, phenomenonType)
+		crossing := refineJupiterGalileanSignedCrossing(prevTime, nextTime, satellite, phenomenonType, inst)
 		// 过零点只说明"靠近木星"，只在它已贴近视面时按事件尺度细扫一次。
-		if sample := jupiterGalileanPhenomenonMetricAt(crossing, satellite, phenomenonType); isFinite(sample.metric) &&
+		if sample := jupiterGalileanPhenomenonMetricAt(crossing, satellite, phenomenonType, inst); isFinite(sample.metric) &&
 			sample.metric <= jupiterGalileanCrossingProbeMetric {
-			if event, ok := jupiterGalileanFineScanAround(crossing, satellite, phenomenonType); ok {
+			if event, ok := jupiterGalileanFineScanAround(crossing, satellite, phenomenonType, inst); ok {
 				consider(event)
 			}
 		}
@@ -210,8 +208,9 @@ func jupiterGalileanNearDisk(prevSample, midSample, nextSample jupiterGalileanMe
 func jupiterGalileanFineScanAround(
 	jd float64,
 	satellite int,
-	phenomenonType JupiterGalileanPhenomenonType,
-) (JupiterGalileanPhenomenonEvent, bool) {
+	phenomenonType JupiterGalileanPhenomenonType, instances ...*Instance) (JupiterGalileanPhenomenonEvent, bool) {
+	inst := instanceValue(instances)
+
 	// 从过零点向两侧交替外扩，通常几步内就能落进事件窗口。
 	steps := int(math.Round(jupiterGalileanCrossingProbeDays / jupiterGalileanCrossingProbeStepDays))
 	for step := 0; step <= steps; step++ {
@@ -220,10 +219,10 @@ func jupiterGalileanFineScanAround(
 				continue
 			}
 			candidate := jd + sign*float64(step)*jupiterGalileanCrossingProbeStepDays
-			if !jupiterGalileanPhenomenonMetricAt(candidate, satellite, phenomenonType).active {
+			if !jupiterGalileanPhenomenonMetricAt(candidate, satellite, phenomenonType, inst).active {
 				continue
 			}
-			if event := findJupiterGalileanPhenomenonEventAround(candidate, satellite, phenomenonType); event.Valid {
+			if event := findJupiterGalileanPhenomenonEventAround(candidate, satellite, phenomenonType, inst); event.Valid {
 				return event, true
 			}
 		}
@@ -246,16 +245,17 @@ func jupiterGalileanSignedCrosses(first, second float64) bool {
 func refineJupiterGalileanSignedCrossing(
 	left, right float64,
 	satellite int,
-	phenomenonType JupiterGalileanPhenomenonType,
-) float64 {
-	leftValue := jupiterGalileanPhenomenonMetricAt(left, satellite, phenomenonType).signed
-	rightValue := jupiterGalileanPhenomenonMetricAt(right, satellite, phenomenonType).signed
+	phenomenonType JupiterGalileanPhenomenonType, instances ...*Instance) float64 {
+	inst := instanceValue(instances)
+
+	leftValue := jupiterGalileanPhenomenonMetricAt(left, satellite, phenomenonType, inst).signed
+	rightValue := jupiterGalileanPhenomenonMetricAt(right, satellite, phenomenonType, inst).signed
 	if !isFinite(leftValue) || !isFinite(rightValue) || (leftValue < 0) == (rightValue < 0) {
 		return (left + right) / 2
 	}
 	for i := 0; i < 80 && right-left > jupiterGalileanEventEpsilonDays; i++ {
 		middle := (left + right) / 2
-		value := jupiterGalileanPhenomenonMetricAt(middle, satellite, phenomenonType).signed
+		value := jupiterGalileanPhenomenonMetricAt(middle, satellite, phenomenonType, inst).signed
 		if !isFinite(value) {
 			return middle
 		}
@@ -268,8 +268,10 @@ func refineJupiterGalileanSignedCrossing(
 	return (left + right) / 2
 }
 
-func findJupiterGalileanPhenomenonEventAround(jd float64, satellite int, phenomenonType JupiterGalileanPhenomenonType) JupiterGalileanPhenomenonEvent {
-	sample := jupiterGalileanPhenomenonMetricAt(jd, satellite, phenomenonType)
+func findJupiterGalileanPhenomenonEventAround(jd float64, satellite int, phenomenonType JupiterGalileanPhenomenonType, instances ...*Instance) JupiterGalileanPhenomenonEvent {
+	inst := instanceValue(instances)
+
+	sample := jupiterGalileanPhenomenonMetricAt(jd, satellite, phenomenonType, inst)
 	if !sample.active {
 		return invalidJupiterGalileanPhenomenonEvent()
 	}
@@ -281,7 +283,7 @@ func findJupiterGalileanPhenomenonEventAround(jd float64, satellite int, phenome
 	inactiveStart := math.NaN()
 	for i := 0; i < maxBoundarySteps; i++ {
 		candidate := activeStart - stepDays
-		if !jupiterGalileanPhenomenonMetricAt(candidate, satellite, phenomenonType).active {
+		if !jupiterGalileanPhenomenonMetricAt(candidate, satellite, phenomenonType, inst).active {
 			inactiveStart = candidate
 			break
 		}
@@ -295,7 +297,7 @@ func findJupiterGalileanPhenomenonEventAround(jd float64, satellite int, phenome
 	inactiveEnd := math.NaN()
 	for i := 0; i < maxBoundarySteps; i++ {
 		candidate := activeEnd + stepDays
-		if !jupiterGalileanPhenomenonMetricAt(candidate, satellite, phenomenonType).active {
+		if !jupiterGalileanPhenomenonMetricAt(candidate, satellite, phenomenonType, inst).active {
 			inactiveEnd = candidate
 			break
 		}
@@ -305,14 +307,14 @@ func findJupiterGalileanPhenomenonEventAround(jd float64, satellite int, phenome
 		return invalidJupiterGalileanPhenomenonEvent()
 	}
 
-	start := refineJupiterGalileanEventStart(inactiveStart, activeStart, satellite, phenomenonType)
-	end := refineJupiterGalileanEventEnd(activeEnd, inactiveEnd, satellite, phenomenonType)
+	start := refineJupiterGalileanEventStart(inactiveStart, activeStart, satellite, phenomenonType, inst)
+	end := refineJupiterGalileanEventEnd(activeEnd, inactiveEnd, satellite, phenomenonType, inst)
 	if !isFinite(start) || !isFinite(end) || end <= start {
 		return invalidJupiterGalileanPhenomenonEvent()
 	}
 
-	greatest := refineJupiterGalileanMetricMinimum(start, end, satellite, phenomenonType)
-	greatestSample := jupiterGalileanPhenomenonMetricAt(greatest, satellite, phenomenonType)
+	greatest := refineJupiterGalileanMetricMinimum(start, end, satellite, phenomenonType, inst)
+	greatestSample := jupiterGalileanPhenomenonMetricAt(greatest, satellite, phenomenonType, inst)
 	if !greatestSample.active {
 		return invalidJupiterGalileanPhenomenonEvent()
 	}
@@ -331,22 +333,23 @@ func findJupiterGalileanPhenomenonEventAround(jd float64, satellite int, phenome
 func refineJupiterGalileanEventStart(
 	outsideJD, insideJD float64,
 	satellite int,
-	phenomenonType JupiterGalileanPhenomenonType,
-) float64 {
+	phenomenonType JupiterGalileanPhenomenonType, instances ...*Instance) float64 {
+	inst := instanceValue(instances)
+
 	if insideJD < outsideJD {
 		outsideJD, insideJD = insideJD, outsideJD
 	}
-	if jupiterGalileanPhenomenonMetricAt(outsideJD, satellite, phenomenonType).active {
+	if jupiterGalileanPhenomenonMetricAt(outsideJD, satellite, phenomenonType, inst).active {
 		return math.NaN()
 	}
-	if !jupiterGalileanPhenomenonMetricAt(insideJD, satellite, phenomenonType).active {
+	if !jupiterGalileanPhenomenonMetricAt(insideJD, satellite, phenomenonType, inst).active {
 		return math.NaN()
 	}
 	left := outsideJD
 	right := insideJD
 	for i := 0; i < 80 && right-left > jupiterGalileanEventEpsilonDays; i++ {
 		mid := (left + right) / 2
-		if jupiterGalileanPhenomenonMetricAt(mid, satellite, phenomenonType).active {
+		if jupiterGalileanPhenomenonMetricAt(mid, satellite, phenomenonType, inst).active {
 			right = mid
 		} else {
 			left = mid
@@ -358,22 +361,23 @@ func refineJupiterGalileanEventStart(
 func refineJupiterGalileanEventEnd(
 	insideJD, outsideJD float64,
 	satellite int,
-	phenomenonType JupiterGalileanPhenomenonType,
-) float64 {
+	phenomenonType JupiterGalileanPhenomenonType, instances ...*Instance) float64 {
+	inst := instanceValue(instances)
+
 	if outsideJD < insideJD {
 		insideJD, outsideJD = outsideJD, insideJD
 	}
-	if !jupiterGalileanPhenomenonMetricAt(insideJD, satellite, phenomenonType).active {
+	if !jupiterGalileanPhenomenonMetricAt(insideJD, satellite, phenomenonType, inst).active {
 		return math.NaN()
 	}
-	if jupiterGalileanPhenomenonMetricAt(outsideJD, satellite, phenomenonType).active {
+	if jupiterGalileanPhenomenonMetricAt(outsideJD, satellite, phenomenonType, inst).active {
 		return math.NaN()
 	}
 	left := insideJD
 	right := outsideJD
 	for i := 0; i < 80 && right-left > jupiterGalileanEventEpsilonDays; i++ {
 		mid := (left + right) / 2
-		if jupiterGalileanPhenomenonMetricAt(mid, satellite, phenomenonType).active {
+		if jupiterGalileanPhenomenonMetricAt(mid, satellite, phenomenonType, inst).active {
 			left = mid
 		} else {
 			right = mid
@@ -385,8 +389,9 @@ func refineJupiterGalileanEventEnd(
 func refineJupiterGalileanMetricMinimum(
 	jd1, jd2 float64,
 	satellite int,
-	phenomenonType JupiterGalileanPhenomenonType,
-) float64 {
+	phenomenonType JupiterGalileanPhenomenonType, instances ...*Instance) float64 {
+	inst := instanceValue(instances)
+
 	left := math.Min(jd1, jd2)
 	right := math.Max(jd1, jd2)
 	if right-left <= jupiterGalileanEventEpsilonDays {
@@ -395,21 +400,21 @@ func refineJupiterGalileanMetricMinimum(
 	const phi = 0.6180339887498948482
 	x1 := right - phi*(right-left)
 	x2 := left + phi*(right-left)
-	f1 := jupiterGalileanPhenomenonMetricAt(x1, satellite, phenomenonType).metric
-	f2 := jupiterGalileanPhenomenonMetricAt(x2, satellite, phenomenonType).metric
+	f1 := jupiterGalileanPhenomenonMetricAt(x1, satellite, phenomenonType, inst).metric
+	f2 := jupiterGalileanPhenomenonMetricAt(x2, satellite, phenomenonType, inst).metric
 	for i := 0; i < 80 && right-left > jupiterGalileanEventEpsilonDays; i++ {
 		if f1 <= f2 {
 			right = x2
 			x2 = x1
 			f2 = f1
 			x1 = right - phi*(right-left)
-			f1 = jupiterGalileanPhenomenonMetricAt(x1, satellite, phenomenonType).metric
+			f1 = jupiterGalileanPhenomenonMetricAt(x1, satellite, phenomenonType, inst).metric
 		} else {
 			left = x1
 			x1 = x2
 			f1 = f2
 			x2 = left + phi*(right-left)
-			f2 = jupiterGalileanPhenomenonMetricAt(x2, satellite, phenomenonType).metric
+			f2 = jupiterGalileanPhenomenonMetricAt(x2, satellite, phenomenonType, inst).metric
 		}
 	}
 	return (left + right) / 2
@@ -418,8 +423,9 @@ func refineJupiterGalileanMetricMinimum(
 func jupiterGalileanPhenomenonMetricAt(
 	jd float64,
 	satellite int,
-	phenomenonType JupiterGalileanPhenomenonType,
-) jupiterGalileanMetricSample {
+	phenomenonType JupiterGalileanPhenomenonType, instances ...*Instance) jupiterGalileanMetricSample {
+	inst := instanceValue(instances)
+
 	if !isFinite(jd) || satellite < 1 || satellite > 4 || !isValidJupiterGalileanPhenomenonType(phenomenonType) {
 		return jupiterGalileanMetricSample{
 			metric:     math.Inf(1),
@@ -429,7 +435,7 @@ func jupiterGalileanPhenomenonMetricAt(
 	}
 
 	evaluationJDE := UTC2TT(jd)
-	context := newJupiterGalileanObservationContext(evaluationJDE)
+	context := newJupiterGalileanObservationContext(evaluationJDE, inst)
 	if context.jupiterDistance == 0 {
 		return jupiterGalileanMetricSample{
 			metric:     math.Inf(1),

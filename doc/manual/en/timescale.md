@@ -82,6 +82,14 @@ func main() {
 }
 ```
 
+```text
+UTC: 2026-04-01T00:00:00Z
+TT: 2026-04-01 00:01:09.184014
+UT1: 2026-04-01 00:00:00.051015
+DUT1: 0.051000 s
+UTC from TT: 2026-04-01T00:00:00Z
+```
+
 Conversions pass through floating-point Julian days, so round trips can have small rounding differences. The TT/UT1 display formats omit `Z` to avoid presenting them as UTC timestamps.
 
 ## Julian-day conversion API
@@ -129,7 +137,7 @@ A single `float64` JD has a resolution of about 40 µs near modern dates; the `t
 
 ## ΔT models
 
-The default combines SMH2016 and Morrison 2021 splines and long-term extrapolation, using a monthly observed ΔT table wherever available. The table currently extends to September 1, 2026; the last point is a rapid observation, not yet a final solution. Constant endpoint adjustments keep extrapolation continuous.
+The default combines SMH2016 and Morrison 2021 splines and long-term extrapolation, using a monthly observed ΔT table wherever available. The table currently extends to October 1, 2026; the September 1 point is final, while the last point is a preliminary extension. Constant endpoint adjustments keep extrapolation continuous.
 
 `DeltaT` returns `NaN` outside ±40000 years.
 
@@ -173,6 +181,12 @@ func main() {
 }
 ```
 
+```text
+smh2016 86.98252070239269
+espenak_meeus_2006 202.7448354310582
+nasa_canon_2006 202.7448354310582
+```
+
 Future ΔT is uncertain. The current Espenak–Meeus 2006 and default models differ by about 11, 21, 116 and 275 seconds in 2035, 2050, 2100 and 2200. This affects future eclipse times and ground paths.
 
 Match ΔT models before comparing eclipse catalogs.
@@ -194,19 +208,27 @@ These settings affect subsequent calculations throughout the process. Configure 
 
 ## UTC assumptions beyond the observed interval
 
-`SetTimeScaleFuturePolicy` and `GetTimeScaleFuturePolicy` select the civil-time conversion policy, defaulting to `TimeScaleLeapSecond`. All policies apply only after the observed interval except `TimeScaleUT1Civil`, which replaces the scale throughout the timeline. An explicit TT−UTC override takes precedence from 1972 onward. This setting is separate from the output-scale options `TimeScaleUTC` and `TimeScaleUT1`.
+> **UTC stops inserting leap seconds on 20 May 2027 (leap hour replaces leap second)**
+>
+> On 15 October 2026 the 28th General Conference on Weights and Measures (CGPM) adopted [Resolution 5, "On the technical actions needed to ensure the continuity of UTC"](https://www.bipm.org/en/cgpm-2026/resolution-5) (`Resolution-CGPM-28-5`, DOI `10.59161/CGPM2026RES5E`): **continuous UTC becomes effective on 20 May 2027** and the maximum value of `|UT1−UTC|` is widened from 0.9 seconds to **3600 seconds (1 hour)**.
+>
+> [IERS Bulletin C 72 (2026-07-06)](https://datacenter.iers.org/data/latestVersion/bulletinC.txt) confirms that **no leap second will be introduced at the end of December 2026**; the leap-second mechanism ends on 2027-05-20, so the possible insertion point at the end of June 2027 will not carry one either.
+>
+> This library therefore changes the default policy beyond the built-in window (which ends 2026-10-01) to `TimeScaleLeapHour`: 1972–2026 still uses the definitive leap-second table and those historical values are unchanged; past the window TT−UTC stays at 69.184 seconds until `|UT1−UTC|` approaches one hour, centuries from now. The 1900–2026 span of the modern lunisolar fast tables is consequently bit-identical as well.
+
+`SetTimeScaleFuturePolicy` and `GetTimeScaleFuturePolicy` select the civil-time conversion policy, defaulting to `TimeScaleLeapHour`. All policies apply only after the observed interval except `TimeScaleUT1Civil`, which replaces the scale throughout the timeline. An explicit TT−UTC override takes precedence from 1972 onward. This setting is separate from the output-scale options `TimeScaleUTC` and `TimeScaleUT1`.
 
 | Policy | Assumption |
 | --- | --- |
-| `TimeScaleLeapSecond` (zero value, default) | Applies the fewest integer-second corrections to the final TT−UTC offset to bring extrapolated DUT1 within ±0.9 seconds |
+| `TimeScaleLeapHour` (zero value, default) | Applies the fewest whole-hour corrections to bring DUT1 within ±3600 seconds; matches the continuous UTC effective 2027-05-20 |
+| `TimeScaleLeapSecond` | Applies the fewest integer-second corrections to the final TT−UTC offset to bring extrapolated DUT1 within ±0.9 seconds; the definitive 1972–2026 convention, kept for reproduction and comparison |
 | `TimeScaleAssumeUT1Tracking` | Holds the final observed DUT1 constant, allowing TT−UTC to follow extrapolated ΔT smoothly |
 | `TimeScaleFreezeUTCOffset` | Holds TT−UTC at its final built-in value, currently 69.184 seconds |
-| `TimeScaleLeapHour` | Applies the fewest whole-hour corrections to bring DUT1 within ±3600 seconds; intended for scenario calculations |
 | `TimeScaleUT1Civil` | Treats civil time as UT1 throughout the timeline, including the historical leap-table interval; DUT1 is zero unless explicitly overridden |
 
-These are calculation assumptions, not predictions of future leap seconds or international decisions. Integer-second or hour corrections depend on ΔT at the queried instant; they do not track prior corrections or restrict steps to announcement calendar boundaries. Pointwise round trips need not be identical near a step. A stepping policy returns `NaN` when its ΔT is invalid or outside the model range, rather than falling back to a normal offset.
+The default policy `TimeScaleLeapHour` follows the continuous UTC that takes effect on 2027-05-20, so it is no longer a scenario assumption; `TimeScaleLeapSecond` is kept to reproduce the definitive 1972–2026 convention or for comparison. Whole-hour corrections depend on ΔT at the queried instant; they do not track prior corrections or restrict steps to announcement calendar boundaries. Pointwise round trips need not be identical near a step. A stepping policy returns `NaN` when its ΔT is invalid or outside the model range, rather than falling back to a normal offset.
 
-The default does not guarantee an error below 0.9 seconds against real future UTC. Precise civil timing requires published data for the relevant date.
+Under `TimeScaleLeapHour` the `|UT1−UTC|` tolerance is 3600 seconds, so TT−UTC past the window stays at 69.184 seconds for a very long time; `TimeScaleLeapSecond` still extrapolates against ±0.9 seconds and reproduces the old one-to-two-year stepping, which no longer reflects reality. Precise civil timing requires published data for the relevant date.
 
 ## SVG, GeoJSON and KML labels
 

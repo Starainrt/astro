@@ -15,13 +15,13 @@ type ApsisInfo struct {
 }
 
 // PerigeesInMonth 指定年月内的所有月球近地点 / all lunar perigees in the given Gregorian month.
-func PerigeesInMonth(year int, month time.Month) []ApsisInfo {
-	return convertMoonApsisInfos(basic.MoonPerigees(year, month))
+func (module *Moon) PerigeesInMonth(year int, month time.Month) []ApsisInfo {
+	return convertMoonApsisInfos(basic.MoonPerigeesWithInstance(year, month, module.inst))
 }
 
 // ApogeesInMonth 指定年月内的所有月球远地点 / all lunar apogees in the given Gregorian month.
-func ApogeesInMonth(year int, month time.Month) []ApsisInfo {
-	return convertMoonApsisInfos(basic.MoonApogees(year, month))
+func (module *Moon) ApogeesInMonth(year int, month time.Month) []ApsisInfo {
+	return convertMoonApsisInfos(basic.MoonApogeesWithInstance(year, month, module.inst))
 }
 
 func convertMoonApsisInfos(events []basic.ApsisEvent) []ApsisInfo {

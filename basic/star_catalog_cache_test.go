@@ -5,26 +5,15 @@ import (
 	"testing"
 )
 
-func TestStarDataCacheMatchesRawRows(t *testing.T) {
+func TestStarDataCacheMatchesDecodedRows(t *testing.T) {
 	if err := LoadStarData(); err != nil {
 		t.Fatal(err)
 	}
-	if len(parsedStarData) != len(stardat) {
-		t.Fatalf("parsed cache length mismatch: got %d want %d", len(parsedStarData), len(stardat))
+	if len(cachedStarData) != len(parsedStarData) {
+		t.Fatalf("full cache length mismatch: got %d want %d", len(cachedStarData), len(parsedStarData))
 	}
-	if len(cachedStarData) != len(stardat) {
-		t.Fatalf("full cache length mismatch: got %d want %d", len(cachedStarData), len(stardat))
-	}
-	for i, row := range stardat {
-		parsed, err := parseStarData(row)
-		if err != nil {
-			t.Fatalf("parse row %d failed: %v", i+1, err)
-		}
-		if parsed != parsedStarData[i] {
-			t.Fatalf("parsed cache mismatch at HR %d", i+1)
-		}
-		full := fullStarData(parsed)
-		if full != cachedStarData[i] {
+	for i, parsed := range parsedStarData {
+		if full := fullStarData(parsed); full != cachedStarData[i] {
 			t.Fatalf("full cache mismatch at HR %d", i+1)
 		}
 	}
@@ -108,7 +97,7 @@ func TestStarDataByHRInvalid(t *testing.T) {
 	if err := LoadStarData(); err != nil {
 		t.Fatal(err)
 	}
-	for _, hr := range []int{0, -1, len(stardat) + 1} {
+	for _, hr := range []int{0, -1, len(cachedStarData) + 1} {
 		if _, err := StarDataByHR(hr); err == nil {
 			t.Fatalf("StarDataByHR(%d) expected error", hr)
 		}
@@ -118,7 +107,6 @@ func TestStarDataByHRInvalid(t *testing.T) {
 func BenchmarkInitStarData(b *testing.B) {
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
-		stardat = nil
 		hr2detail = nil
 		hr2hip = nil
 		chnidx = nil

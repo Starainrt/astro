@@ -121,16 +121,16 @@ type SolarEclipseShadowSolver struct {
 }
 
 // NewSolarEclipseShadowSolver 构造单时刻求解器 / builds a single-instant solver.
-func NewSolarEclipseShadowSolver(options SolarEclipseShadowSolverOptions) *SolarEclipseShadowSolver {
+func (module *Eclipse) NewSolarEclipseShadowSolver(options SolarEclipseShadowSolverOptions) *SolarEclipseShadowSolver {
 	return &SolarEclipseShadowSolver{
 		options: options,
-		inner: basic.NewSolarEclipseShadowSolver(basic.SolarEclipseShadowSolverOptions{
+		inner: basic.NewSolarEclipseShadowSolverWithInstance(basic.SolarEclipseShadowSolverOptions{
 			Model:           basic.SolarEclipseRadiusModel(options.Model),
 			DeltaTSeconds:   options.DeltaTSeconds,
 			BoundaryPoints:  options.BoundaryPoints,
 			Kind:            basic.SolarEclipseShadowKind(options.Kind),
 			TargetSpacingKM: options.TargetSpacingKM,
-		}),
+		}, module.inst),
 	}
 }
 
@@ -239,13 +239,13 @@ func solarEclipseStationStateFromBasic(
 }
 
 // SolarEclipseShadowAt 无状态便捷入口，可并发调用 / stateless convenience entry point.
-func SolarEclipseShadowAt(value time.Time) (SolarEclipseShadowInstant, bool) {
-	return NewSolarEclipseShadowSolver(SolarEclipseShadowSolverOptions{}).ShadowAt(value)
+func (module *Eclipse) SolarEclipseShadowAt(value time.Time) (SolarEclipseShadowInstant, bool) {
+	return module.NewSolarEclipseShadowSolver(SolarEclipseShadowSolverOptions{}).ShadowAt(value)
 }
 
 // SolarEclipseStationStateAt 无状态便捷入口，可并发调用 / stateless convenience entry point.
-func SolarEclipseStationStateAt(value time.Time, lon, lat, height float64) SolarEclipseStationState {
-	return NewSolarEclipseShadowSolver(SolarEclipseShadowSolverOptions{}).StationStateAt(value, lon, lat, height)
+func (module *Eclipse) SolarEclipseStationStateAt(value time.Time, lon, lat, height float64) SolarEclipseStationState {
+	return module.NewSolarEclipseShadowSolver(SolarEclipseShadowSolverOptions{}).StationStateAt(value, lon, lat, height)
 }
 
 func finiteEclipseValue(value float64) bool {
@@ -299,15 +299,15 @@ func (solver *SolarEclipseShadowSolver) StationStatesBetween(
 }
 
 // SolarEclipseShadowBetween 无状态批量入口，使用进程级 ΔT / stateless batch entry point.
-func SolarEclipseShadowBetween(
+func (module *Eclipse) SolarEclipseShadowBetween(
 	start, end time.Time, step time.Duration,
 ) []SolarEclipseShadowInstant {
-	return SolarEclipseShadowBetweenWithOptions(start, end, step, SolarEclipseShadowSolverOptions{})
+	return module.SolarEclipseShadowBetweenWithOptions(start, end, step, SolarEclipseShadowSolverOptions{})
 }
 
 // SolarEclipseShadowBetweenWithOptions 可显式指定 ΔT 与模型 / with explicit ΔT and model.
-func SolarEclipseShadowBetweenWithOptions(
+func (module *Eclipse) SolarEclipseShadowBetweenWithOptions(
 	start, end time.Time, step time.Duration, options SolarEclipseShadowSolverOptions,
 ) []SolarEclipseShadowInstant {
-	return NewSolarEclipseShadowSolver(options).ShadowBetween(start, end, step)
+	return module.NewSolarEclipseShadowSolver(options).ShadowBetween(start, end, step)
 }

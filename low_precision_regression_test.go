@@ -9,6 +9,8 @@ import (
 
 	"github.com/starainrt/astro/basic"
 	"github.com/starainrt/astro/planet"
+
+	"github.com/starainrt/astro/internal/ephemtest"
 )
 
 type lowPrecisionSunSnapshot struct {
@@ -167,6 +169,7 @@ func derivedTruncationCases(samples []lowPrecisionSample) []truncationCase {
 }
 
 func TestDerivedHighPrecisionTruncationConverges(t *testing.T) {
+	ephemtest.PinLegacy(t)
 	samples := loadLowPrecisionSamples(t)
 	assertTruncationConverges(t, derivedTruncationCases(samples), len(samples))
 }

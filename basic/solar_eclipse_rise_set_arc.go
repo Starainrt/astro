@@ -3,6 +3,8 @@ package basic
 import (
 	"math"
 	"sort"
+
+	"github.com/starainrt/astro/internal/geodata"
 )
 
 const (
@@ -261,7 +263,12 @@ func (solver solarEclipseSolver) closeSolarEclipseRiseSetArcFolds(
 			if len(segment) < 2 {
 				continue
 			}
-			for _, pointIndex := range []int{0, len(segment) - 1} {
+			for _, last := range []bool{false, true} {
+				// 加密首边会改变段长，末点下标必须取当前段。
+				pointIndex := 0
+				if last {
+					pointIndex = len(curve.Segments[segmentIndex]) - 1
+				}
 				endpoint := curve.Segments[segmentIndex][pointIndex]
 				if solarEclipseRiseSetArcEndpointShared(curves, curveIndex, segmentIndex, pointIndex) {
 					continue
@@ -286,7 +293,9 @@ func (solver solarEclipseSolver) closeSolarEclipseRiseSetArcFolds(
 					solarEclipsePathDistanceKM(fold, endpoint) > maximumFoldDistance {
 					continue
 				}
-				curve.Segments[segmentIndex][pointIndex] = fold
+				curve.Segments[segmentIndex] = solver.replaceRiseSetArcEndpoint(
+					curve.Segments[segmentIndex], last, fold, curve.Phase, curve.Direction,
+				)
 				bestJunction := SolarEclipsePathPoint{}
 				bestMetric := math.Inf(1)
 				for _, junction := range junctions {
@@ -325,6 +334,30 @@ func (solver solarEclipseSolver) closeSolarEclipseRiseSetArcFolds(
 		normalizeSolarEclipseRiseSetCurveSegments(&curves[curveIndex])
 		mergeSolarEclipseRiseSetArcContinuations(&curves[curveIndex])
 	}
+}
+
+// replaceRiseSetArcEndpoint 把段端点移到细化后的折点，新边照常加密而不留长弦。
+func (solver solarEclipseSolver) replaceRiseSetArcEndpoint(
+	segment []SolarEclipsePathPoint,
+	last bool,
+	fold SolarEclipsePathPoint,
+	phase RiseSetPhase,
+	direction RiseSetDirection,
+) []SolarEclipsePathPoint {
+	if len(segment) < 2 {
+		return segment
+	}
+	if !last {
+		edge := solver.appendRefinedRiseSetSegment(
+			[]SolarEclipsePathPoint{fold}, fold, segment[1], phase, direction, 0,
+		)
+		return append(edge, segment[2:]...)
+	}
+	neighbor := segment[len(segment)-2]
+	edge := solver.appendRefinedRiseSetSegment(
+		[]SolarEclipsePathPoint{neighbor}, neighbor, fold, phase, direction, 0,
+	)
+	return append(segment[:len(segment)-2:len(segment)-2], edge...)
 }
 
 func solarEclipseRiseSetArcEndpointShared(
@@ -724,7 +757,7 @@ func (solver solarEclipseSolver) correctRiseSetArc(
 		for index := range coordinates {
 			coordinates[index] += delta[index]
 		}
-		coordinates[0] = normalizeLongitude(coordinates[0])
+		coordinates[0] = geodata.NormalizeLongitude(coordinates[0])
 		if coordinates[1] <= -89.999999 || coordinates[1] >= 89.999999 {
 			return solarEclipseRiseSetArcState{}, iteration, false
 		}
@@ -744,7 +777,7 @@ func (solver solarEclipseSolver) validRiseSetArcState(
 	iterations int,
 ) (solarEclipseRiseSetArcState, int, bool) {
 	jde := referenceJDE + coordinates[2]/solarEclipseRiseSetArcTimeScale
-	longitude, latitude := normalizeLongitude(coordinates[0]), coordinates[1]
+	longitude, latitude := geodata.NormalizeLongitude(coordinates[0]), coordinates[1]
 	evaluation := solver.magnitudeEvaluationAt(jde)
 	state := evaluation.center.stateAt(longitude*rad, latitude*rad, 0)
 	tangent, ok := solarEclipseMagnitudeArcTangent(jacobian)
@@ -766,7 +799,7 @@ func (solver solarEclipseSolver) riseSetArcJacobian(
 	referenceJDE float64,
 ) ([2]float64, [2][3]float64, bool) {
 	jde := referenceJDE + coordinates[2]/solarEclipseRiseSetArcTimeScale
-	longitude, latitude := normalizeLongitude(coordinates[0]), coordinates[1]
+	longitude, latitude := geodata.NormalizeLongitude(coordinates[0]), coordinates[1]
 	evaluation := solver.magnitudeEvaluationAt(jde)
 	residual, ok := solarEclipseRiseSetArcResidualAt(evaluation, longitude, latitude, greatest)
 	if !ok {
@@ -933,7 +966,7 @@ func (solver solarEclipseSolver) riseSetArcTransition(
 	if firstAltitudeDerivative*secondAltitudeDerivative <= 0 {
 		if point, ok := solver.refineRiseSetDirectionJunction(
 			(first.point.JDE+second.point.JDE)/2,
-			normalizeLongitude(first.point.Longitude+math.Remainder(second.point.Longitude-first.point.Longitude, 360)/2),
+			geodata.NormalizeLongitude(first.point.Longitude+math.Remainder(second.point.Longitude-first.point.Longitude, 360)/2),
 			(first.point.Latitude+second.point.Latitude)/2,
 			greatest,
 		); ok {
@@ -1023,7 +1056,7 @@ func solarEclipseRiseSetArcPointAtTime(
 	fraction := (jd - before.JDE) / (after.JDE - before.JDE)
 	return SolarEclipsePathPoint{
 		JDE: jd,
-		Longitude: normalizeLongitude(
+		Longitude: geodata.NormalizeLongitude(
 			before.Longitude + fraction*math.Remainder(after.Longitude-before.Longitude, 360),
 		),
 		Latitude: before.Latitude + fraction*(after.Latitude-before.Latitude),

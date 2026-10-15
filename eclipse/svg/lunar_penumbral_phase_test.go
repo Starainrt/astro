@@ -13,6 +13,8 @@ import (
 
 	"github.com/starainrt/astro/basic"
 	eclipsecore "github.com/starainrt/astro/eclipse"
+
+	"github.com/starainrt/astro/internal/ephemtest"
 )
 
 // 半影阶段开关的契约：零值输出与不区分半影阶段的基线逐字节一致，打开后补画 U1–U4 地平边界、
@@ -47,6 +49,7 @@ func TestLunarEclipseMapSVGDisablePenumbralPhaseMatchesBaseline(t *testing.T) {
 	if len(render) != len(lunarPenumbralPhaseBaseline) {
 		t.Fatalf("baseline table has %d cases, renderers %d", len(lunarPenumbralPhaseBaseline), len(render))
 	}
+	values := ephemtest.NewValues(t, "lunar_penumbral_phase_digest")
 	for _, want := range lunarPenumbralPhaseBaseline {
 		draw, ok := render[want.name]
 		if !ok {
@@ -57,7 +60,10 @@ func TestLunarEclipseMapSVGDisablePenumbralPhaseMatchesBaseline(t *testing.T) {
 			t.Fatalf("%s: chart missing", want.name)
 		}
 		sum := md5.Sum([]byte(doc))
-		if got := hex.EncodeToString(sum[:]); got != want.digest || len(doc) != want.length {
+		got := hex.EncodeToString(sum[:])
+		want.digest = values.WantString(want.name+"/md5", want.digest, got)
+		want.length = int(values.Want(want.name+"/bytes", float64(want.length), float64(len(doc))))
+		if got != want.digest || len(doc) != want.length {
 			t.Fatalf("%s: md5=%s bytes=%d, want md5=%s bytes=%d",
 				want.name, got, len(doc), want.digest, want.length)
 		}

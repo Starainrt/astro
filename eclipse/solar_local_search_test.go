@@ -3,6 +3,8 @@ package eclipse
 import (
 	"testing"
 	"time"
+
+	"github.com/starainrt/astro/internal/ephemtest"
 )
 
 func TestSearchLocalCentralSolarEclipseReportsExhaustion(t *testing.T) {
@@ -155,6 +157,8 @@ func TestSolarEclipseCandidatesRespectRequestedRange(t *testing.T) {
 }
 
 func TestSolarEclipseCandidatesCentralOnlyUsesGlobalType(t *testing.T) {
+	// 夹具按旧模型几何选取，用来覆盖该边界分支。
+	ephemtest.PinLegacy(t)
 	start := time.Date(-911, time.January, 1, 0, 0, 0, 0, time.UTC)
 	end := time.Date(-908, time.January, 1, 0, 0, 0, 0, time.UTC)
 	all := SolarEclipseCandidates(start, end, SolarEclipseCandidateOptions{})

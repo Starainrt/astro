@@ -1,6 +1,7 @@
 package svg
 
 import (
+	"github.com/starainrt/astro/internal/limbnote"
 	"github.com/starainrt/astro/internal/timenote"
 	"fmt"
 	"html"
@@ -73,6 +74,8 @@ type LunarEclipseSVGOptions struct {
 	// TimeScale selects the label scale: the zero value is UTC; TimeScaleUT1 uses UT1 labels and requires
 	// Location to be nil or UTC (otherwise the renderer returns false).
 	TimeScale astro.TimeScale
+	// LunarLimb 月缘剖面，nil 为圆月面；只精修接触时刻，月盘仍按圆面绘制 / lunar limb profile, nil for circular; refines contacts only.
+	LunarLimb basic.LunarLimb
 }
 
 type lunarEclipseSVGCalculator func(float64, basic.LunarEclipseDiagramOptions) basic.LunarEclipseDiagramResult
@@ -164,7 +167,8 @@ func lunarEclipseSVG(
 	}
 	options = normalizeLunarEclipseSVGOptions(options)
 	diagram := calculator(timeToTTJDE(date), basic.LunarEclipseDiagramOptions{
-		StepDays: durationToDays(options.Step),
+		StepDays:  durationToDays(options.Step),
+		LunarLimb: options.LunarLimb,
 	})
 	if diagram.Eclipse.Type == basic.LunarEclipseNone || len(diagram.Points) == 0 {
 		return "", false
@@ -1045,7 +1049,8 @@ func lunarEclipseSVGFooterLines(direction string, info LunarEclipseInfo, options
 	if maxLines < 1 {
 		maxLines = 1
 	}
-	note := timenote.Scale(options.TimeScale, info.Maximum, options.Location, options.Language)
+	note := limbnote.Join(timenote.Scale(options.TimeScale, info.Maximum, options.Location, options.Language),
+		limbnote.Contacts(info.LunarLimbApplied, options.Language), options.Language)
 	lines := []string{lunarEclipseSVGFooterNoteText(options)}
 	if options.FooterNote != "" {
 		lines = svgchart.WrapText(options.FooterNote, float64(options.Width)-80, fontSize)

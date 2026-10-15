@@ -5,6 +5,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/starainrt/astro/internal/geodata"
 )
 
 func TestPlanetOccultationCombinedPositionMatchesSeparateEphemerides(t *testing.T) {
@@ -490,7 +492,7 @@ func TestPlanetOccultationInnerConeUsesSignedTargetRadius(t *testing.T) {
 func TestOccultationPathBoundaryTangentFindsBetweenSamples(t *testing.T) {
 	const boundaryRadiusKM = 1737.4
 	theta := math.Pi / float64(occultationPathBoundaryScanPoints)
-	offset := occultationPathEarthEquatorialRadiusKM + boundaryRadiusKM - 0.01
+	offset := geodata.EarthEquatorialRadiusKM + boundaryRadiusKM - 0.01
 	moon := occultationPathVector{
 		x: 384000,
 		y: -offset * math.Cos(theta),
@@ -517,7 +519,7 @@ func TestOccultationPathBoundaryTangentFindsBetweenSamples(t *testing.T) {
 	}
 	polarRatioSquared := occultationPathEarthPolarRatio * occultationPathEarthPolarRatio
 	ellipsoidResidual := point.x*point.x + point.y*point.y + point.z*point.z/polarRatioSquared -
-		occultationPathEarthEquatorialRadiusKM*occultationPathEarthEquatorialRadiusKM
+		geodata.EarthEquatorialRadiusKM*geodata.EarthEquatorialRadiusKM
 	if math.Abs(ellipsoidResidual) > 1e-3 {
 		t.Fatalf("tangent point ellipsoid residual = %.9f", ellipsoidResidual)
 	}

@@ -1,4 +1,4 @@
-// Package svg 生成日食与月食的 SVG 图件。
+// Package svg 生成日食、月食与水星、金星凌日的 SVG 图件。
 //
 // 可降级的图层用 data-source 标注实际几何来源，取值词表如下；没有降级分支的图层不带该属性。
 //
@@ -16,27 +16,33 @@
 //	central-shadow-outlines      瞬时本影、反本影轮廓
 //	p1-p4-visibility-regions     月食可见性分区
 //	p1-p4-horizon-boundaries     月食 P1、P4 地平边界
+//	c1-c4-visibility-regions     凌日可见性分区
+//	c1-c4-horizon-boundaries     凌日 C1、C4 视地平边界
+//	transit-contact-isochrones   凌日站心接触等时线
 //
-// Package svg renders solar- and lunar-eclipse SVG charts. Degradable layers tag the geometry
+// Package svg renders solar-eclipse, lunar-eclipse and Mercury/Venus transit SVG charts. Degradable layers tag the geometry
 // source they actually used in data-source, using exactly the values above.
 package svg
 
 // data-source 词表，见包注释。
 const (
-	eclipseMapSourcePartialBandUnion       = "partial-band-union"
-	eclipseMapSourceSampledFootprintSweep  = "sampled-footprint-sweep"
-	eclipseMapSourcePartialBandContours    = "partial-band-contours"
-	eclipseMapSourceRiseSetPhaseLines      = "rise-set-phase-lines"
-	eclipseMapSourceMagnitudeContours      = "magnitude-contours"
-	eclipseMapSourceGreatestTimeIsochrones = "greatest-time-isochrones"
-	eclipseMapSourceBesselianEnvelope      = "besselian-critical-envelope"
-	eclipseMapSourcePairedLimitChords      = "paired-limit-chords"
-	eclipseMapSourceSampledOpenSweep       = "sampled-open-sweep"
-	eclipseMapSourceCentralPathLimits      = "central-path-limits"
-	eclipseMapSourcePenumbralOutlines      = "penumbral-outlines"
-	eclipseMapSourceCentralShadowOutlines  = "central-shadow-outlines"
-	eclipseMapSourceLunarVisibilityRegions = "p1-p4-visibility-regions"
-	eclipseMapSourceLunarHorizonBoundaries = "p1-p4-horizon-boundaries"
+	eclipseMapSourcePartialBandUnion         = "partial-band-union"
+	eclipseMapSourceSampledFootprintSweep    = "sampled-footprint-sweep"
+	eclipseMapSourcePartialBandContours      = "partial-band-contours"
+	eclipseMapSourceRiseSetPhaseLines        = "rise-set-phase-lines"
+	eclipseMapSourceMagnitudeContours        = "magnitude-contours"
+	eclipseMapSourceGreatestTimeIsochrones   = "greatest-time-isochrones"
+	eclipseMapSourceBesselianEnvelope        = "besselian-critical-envelope"
+	eclipseMapSourcePairedLimitChords        = "paired-limit-chords"
+	eclipseMapSourceSampledOpenSweep         = "sampled-open-sweep"
+	eclipseMapSourceCentralPathLimits        = "central-path-limits"
+	eclipseMapSourcePenumbralOutlines        = "penumbral-outlines"
+	eclipseMapSourceCentralShadowOutlines    = "central-shadow-outlines"
+	eclipseMapSourceLunarVisibilityRegions   = "p1-p4-visibility-regions"
+	eclipseMapSourceLunarHorizonBoundaries   = "p1-p4-horizon-boundaries"
+	eclipseMapSourceTransitVisibilityRegions = "c1-c4-visibility-regions"
+	eclipseMapSourceTransitHorizonBoundaries = "c1-c4-horizon-boundaries"
+	eclipseMapSourceTransitContactIsochrones = "transit-contact-isochrones"
 )
 
 // eclipseMapDataSources 是全部合法取值，测试用它封闭词表。
@@ -55,4 +61,7 @@ var eclipseMapDataSources = []string{
 	eclipseMapSourceCentralShadowOutlines,
 	eclipseMapSourceLunarVisibilityRegions,
 	eclipseMapSourceLunarHorizonBoundaries,
+	eclipseMapSourceTransitVisibilityRegions,
+	eclipseMapSourceTransitHorizonBoundaries,
+	eclipseMapSourceTransitContactIsochrones,
 }

@@ -2,7 +2,7 @@
 
 [English](en/occultation.md) | [返回 README](../../README.md)
 
-月掩接口位于 `moon`，按用户给定的目标搜索，不会遍历恒星表（=-=可自行维护常见被掩星表）。固定地点接口直接接收 `start`、`end`、经度、纬度和椭球高；全球路径接口返回 WGS84 经纬度采样，可继续交给 `moon/svg` 或 `geojson`或`kml`处理。
+月掩接口位于 `moon`，按用户给定的目标搜索，不会遍历恒星表（常用被掩星表由调用方自行维护）。固定地点接口直接接收 `start`、`end`、经度、纬度和椭球高；全球路径接口返回 WGS84 经纬度采样，可继续交给 `moon/svg` 或 `geojson`或`kml`处理。
 
 目标和接触语义分为两类：
 
@@ -26,10 +26,12 @@
   - [路径算法与轮廓](#路径算法与轮廓)
   - [掩甚时刻等时线](#掩甚时刻等时线)
 - [行星月掩](#行星月掩)
+- [月缘地形修正](#月缘地形修正)
 - [月掩出图](#月掩出图)
   - [全球掩带图](#全球掩带图)
   - [详细版式](#详细版式)
   - [站心事件图](#站心事件图)
+  - [精密月掩剖面图](#精密月掩剖面图)
   - [时标口径与 UT1](#时标口径与-ut1)
 
 ## 简单示例：搜索指定地点的恒星月掩
@@ -88,11 +90,11 @@ func main() {
 | `moonsvg.FindLocalStarOccultationSVGs` / `FindLocalPlanetOccultationSVGs` | 搜索并渲染站心图 | 同上 |
 | `moonsvg.StarOccultationPathSVG` / `PlanetOccultationPathSVG` | 渲染已有全球路径 | 返回 `(string, error)` |
 | `moonsvg.StarOccultationDetailedSVG` / `PlanetOccultationDetailedSVG` | 一页详细版式 | 固定正射球面 |
+| `moon.StarOccultationLimbProfile` / `StarOccultationLimbProfileInUT1` | 沿星迹按月缘剖面精密求解，给出全部遮挡区间与带内采样 | 必须传入剖面；结果见 `StarOccultationLimbProfileResult` |
+| `moonsvg.StarOccultationLimbProfileSVG` | 精密月掩剖面图 | 选项 `StarOccultationLimbProfileSVGOptions` |
 | `moonsvg.StarOccultationSVGOptions` / `moonsvg.OccultationDetailedSVGOptions` | 出图选项（画布、投影、时标、标记步长） | 投影用 `MapProjection*`，时标用 `astro.TimeScale*` |
 | `moon.OccultationMercury` … `moon.OccultationNeptune` | 行星目标常量 | 传给行星入口 |
 | `moon.OccultationSearchOptions` / `moon.OccultationPathOptions` | 搜索与路径选项 | 路径选项含 `Step`、`TargetSpacingKM`、`GreatestTimeStep` |
-
-
 
 ## 常用场景
 
@@ -109,7 +111,6 @@ func main() {
 | 渲染已有的固定地点事件 | `moonsvg.LocalStarOccultationSVG(info, star, localOptions)` | `(string, error)` |
 | 只要站心轨迹几何数据（不出图） | `moon.StarOccultationDiagram(info, star, diagramOptions)` | `moon.StarOccultationDiagramResult` |
 | 交给 GIS | `geojson.MarshalStarOccultation(path)` / `MarshalStarOccultationWithTimeMarkers(path, markerOptions)` / `MarshalStarOccultationFootprint(instant)` | `([]byte, error)` |
-
 
 ### 某地今晚有没有月掩
 
@@ -184,7 +185,6 @@ fmt.Println(err, len(svg), detailErr, len(detailed))
 - 只渲染已有路径用 `StarOccultationPathSVG`；"搜索 + 渲染"一步到位用 `FindStarOccultationSVGs`（见上方两条链）。
 - 画布下限：单独掩带图 `640×480`；详细版宽度下限是 `480`，但整幅版式实测要 `670×595` 以上才放得下地图、数据块与页脚，低于下限直接返回错误。
 
-
 ### 掠掩、等时线与掩带宽口径
 
 - **掠掩没有中心线**：`HasTotalBand` 为假时全球图只画南北限，此情形不要假设存在中心线。
@@ -197,7 +197,6 @@ fmt.Println(err, len(svg), detailErr, len(detailed))
 > 图内与图注的时标声明见[时标声明](map-geojson.md#时标声明)。
 
 恒星由调用者传入 `StarCoordinate`。`RA` / `Dec` 单位为度，`Epoch` 和 `Frame` 必填；自行单位为 `mas/year`，其中 `ProperMotionRACosDecMasPerYear` 使用星表常见的 `dRA*cos(Dec)` 口径。
-
 
 | 字段 | 类型 | 零值 | 合法范围与报错 | 作用 |
 | --- | --- | --- | --- | --- |
@@ -219,7 +218,6 @@ fmt.Println(err, len(svg), detailErr, len(detailed))
 - `j2000`：坐标是 J2000.0 平位置，`Epoch` 填 `2000-01-01 12:00 UTC`。库内岁差起点硬编码为 J2000.0，`Epoch` 只决定自行从哪一年开始外推；把非 J2000 历元填进来会让自行重复计一段。
 - `icrs`：坐标是 ICRS 星表位置，先过一次 ~17 mas 的框架偏差矩阵；`Epoch` 填星表历元（Hipparcos `1991.25`、Gaia `2016.0`）。
 - `apparent_of_date`：坐标是**该时刻的视位置**（已含岁差、章动、光行差），`Epoch` 必须填那一刻；库会在该时刻反解回平位置再向前传播。直接从星图软件（如stellarium）显示的"当前坐标"时使用这个参数。
-
 
 可以直接构造坐标：
 
@@ -309,10 +307,10 @@ func main() {
 
 ```text
 进贤增九 total
-2025-06-05 19:14:01.076 CST 2025-06-05 20:02:06.311 CST 2025-06-05 20:50:10.721 CST
-altitude=75.561 visible=true
-2025-06-05 17:45:28.475 CST 2025-06-05 20:02:06.300 CST 2025-06-05 22:18:49.945 CST
-greatest=121.566009 6.807079 width=3582.4km center=108
+2025-06-05 19:14:03.127 CST 2025-06-05 20:02:08.397 CST 2025-06-05 20:50:12.789 CST
+altitude=75.556 visible=true
+2025-06-05 17:45:29.822 CST 2025-06-05 20:02:07.622 CST 2025-06-05 22:18:51.246 CST
+greatest=121.561060 6.808173 width=3582.4km center=108
 ```
 
 ### 搜索与路径采样选项
@@ -333,7 +331,7 @@ greatest=121.566009 6.807079 width=3582.4km center=108
 
 ### 路径算法与轮廓
 
-`OccultationPathOptions.Algorithm` 控制恒星和行星全球路径的星历分支：零值或 `moon.OccultationPathAlgorithmOptimized` 默认使用经抽检的 30 分钟节点矢量插值，保留现有站心方程、连续包络和升落曲线；`moon.OccultationPathAlgorithmExact` 在候选筛选时可使用插值，最终求解使用全项星历。优化分支在抽检不合格时回退到全项求解，超出插值时间窗时使用精确星历。
+`OccultationPathOptions.Algorithm` 控制恒星和行星全球路径的星历分支：零值或 `moon.OccultationPathAlgorithmOptimized` 用 30 分钟节点的矢量插值近似星历；插值自检不通过、或时刻超出插值时间窗时，改用完整星历重算。`moon.OccultationPathAlgorithmExact` 只在候选筛选时用插值，最终求解始终用完整星历。两者共用的站心方程、掩带边界与升落曲线不变。
 
 抽检不是全时段严格误差证明；两个分支的几何目标相同，但不保证采样点或 GeoJSON 字节完全相同。此选项不影响仅查询事件、指定站点接触或独立单时刻月影接口，也不影响日月食。
 
@@ -396,14 +394,51 @@ func main() {
 
 ```text
 Saturn total true
-2025-02-01 11:29:09.710 CST
-2025-02-01 11:29:40.069 CST
-2025-02-01 12:00:48.747 CST
-2025-02-01 12:32:46.415 CST
-2025-02-01 12:33:18.312 CST
+2025-02-01 11:29:10.984 CST
+2025-02-01 11:29:41.333 CST
+2025-02-01 12:00:50.058 CST
+2025-02-01 12:32:47.753 CST
+2025-02-01 12:33:19.650 CST
 ```
 
 `FindPlanetOccultationPaths` 的全球结果同时包含任意圆盘重叠的部分掩区域和整颗行星被遮住的全掩区域。`HasTotalBand` 表示是否存在全掩带，`GreatestTotalWidthKM` 是掩甚处全掩带宽；中心线、边界和启用时的瞬时足迹都带采样时刻。
+
+## 月缘地形修正
+
+默认月面是圆盘。固定地点的恒星、行星月掩搜索可以改用 `moon/limb` 子包的 ISAS/JAXA 月缘剖面（由 SELENE/Kaguya LALT 数据加工，说明见[日月食与凌日手册](eclipse.md#月缘地形修正)）：掩始、掩终及行星的内外切按月心指向目标方向上的实际月缘半径精修，掩甚、食型和候选筛选仍按圆月面。
+
+```go
+import "github.com/starainrt/astro/moon/limb"
+
+events, err := moon.FindStarOccultations(start, end, star, lon, lat, 0,
+	moon.OccultationSearchOptions{LunarLimb: limb.Default()})
+
+// 或在上下文上统一设置
+base, err := astro.NewContext(astro.ModelSemianalytic)
+if err != nil {
+	panic(err)
+}
+ctx := base.WithLunarLimb(limb.Default())
+events, err = ctx.Moon().FindStarOccultations(start, end, star, lon, lat, 0, moon.OccultationSearchOptions{})
+```
+
+修正量通常为秒级，例如 2024-08-21 土星月掩各接触移动 `-1.8 s` 至 `-0.6 s`。
+
+精度边界：
+
+- 内置剖面按天平动 1° 格网插值，单个接触的月缘余量误差约 `±0.05″`（月面上约 100 m），由 16 像素/度的地形分辨率与插值共同决定。
+- 掠掩时星迹贴着月缘走，余量只有百分之几角秒，遮挡段数与短暂的掩入、复现可能与实测不同；只保证主遮挡段的时刻与量级。例：2017-09-18 轩辕十四掠掩（希腊，IOTA 实测 5 段），本库给出 1 段，与实测最后一段的掩入、复现相差 `+0.6 s` / `-0.4 s`。
+- 需要更细的掠掩剖面时，可用更高分辨率的地形自制剖面表，经 `limb.Parse` 读入或实现 `LunarLimb` 接口接入。
+
+全球月掩路径（`FindStarOccultationPaths`、`FindPlanetOccultationPaths`，用 `OccultationPathOptions.LunarLimb` 或模块设置）只修正外接触南北界：
+
+- 边界平移到月缘掠掩线：星迹在切点附近按直线处理，有效月缘取切点两侧 ±8° 位置角内的最高点。
+- 月球在地平线附近的点保留圆月面。
+- 行星全掩界、掩带填充、等时线与升落线仍按圆月面。
+- 掠掩带内多次掩始掩终的逐点剖面不在这里计算。
+- 2025-06-05 HR 4799 掠掩线最大移动约 `4 km`。
+
+出图不需要单独开关：结果上的 `LunarLimbApplied` 记录月缘是否真正生效，`moon/svg` 按它在时标声明后写明口径。站心结果只有全部接触都按剖面收敛才置真，任一接触失败则整体保留圆月面；路径结果至少一个界线点被修正才置真。已收敛的接触不再落在圆月面上，站心图对这类结果跳过圆月面接触校验，因此内置或自定义剖面的事件都能直接出图。
 
 ## 月掩出图
 
@@ -416,6 +451,7 @@ Saturn total true
 | `StarOccultationDetailedSVG` / `PlanetOccultationDetailedSVG` | 一页详细版式 |
 | `FindLocalStarOccultationSVGs` / `FindLocalPlanetOccultationSVGs` | 指定地点的站心月面轨迹、白道与接触阶段图 |
 | `LocalStarOccultationSVG` / `LocalPlanetOccultationSVG` | 渲染已有的固定地点事件 |
+| `StarOccultationLimbProfileSVG` | 精密月掩剖面图：沿星迹的月缘起伏、全部遮挡区间与掩入/复现编号 |
 
 `eclipse/svg` 的入口返回 `(string, bool)`，`moon/svg` 的入口返回 `(string, error)` 或 `([]string, error)`：月掩侧的第二个返回值是真正的错误（UT1 配非 UTC 时区、画布低于下限、路径非法），不是“画不出来”的标志。恒星按点光源处理，行星按有限圆盘处理：行星月掩的接触时刻由圆盘与月缘的几何求解，`OccultationPlanet` 决定圆盘半径；土星环既不参与接触计算、也不作为圆盘边界绘制。
 
@@ -497,11 +533,11 @@ if err == nil {
 
 详细版按画布推导版式，实测最小画布 `670×595`（宽度下限 `480` 只是参数校验）：地图与数据块放不下时返回 `ErrInvalidOccultationDetailedSVGOptions`（`800×600`、`1000×1414`、`1414×1000` 均可出图，`660×600`、`800×590`、`640×420`、`900×400` 会被拒绝）。
 
-图上标注的“掩带宽”是掩甚处南北限的地面间距 `GreatestLimitSeparationKM`（HR 4799 样例约 `3666.6 km`），与中心线横向宽度 `Greatest.WidthKM`（约 `3582.4 km`）口径不同、不可互换。
+图上标注的“掩带宽”是掩甚处南北限的地面间距 `GreatestLimitSeparationKM`，不是中心线横向宽度 `Greatest.WidthKM`，两者不可互换。
 
 掩甚时刻等时线要在路径层显式请求 `moon.OccultationPathOptions.GreatestTimeStep`：`moon/svg` 自身不提供开关，只绘制路径结果里已有的 `GreatestTimeContours`，因此请求必须在计算路径时提出，线的位置也由核心口径决定（`GreatestTimeStep` 对齐 UTC 整刻度；要按展示时区对齐，就先换算成力学时儒略日再传给 `GreatestTimeValues`）。
 
-月掩的全球可见窗口通常只有数小时（HR 4799 样例为 4 小时 33 分），常用间隔比日食更密，为 15–30 分钟量级。使用 `DisableFootprints` 的紧凑掩带首次渲染会合并一次，之后同一路径走缓存。
+月掩的全球可见窗口通常只有数小时（HR 4799 样例为 4 小时 33 分），常用间隔比日食更密，为 15–30 分钟量级。使用 `DisableFootprints` 的紧凑掩带只在首次渲染时计算一次，之后同一路径复用缓存。
 
 ### 站心事件图
 
@@ -515,9 +551,47 @@ localSVGs, err := moonsvg.FindLocalStarOccultationSVGs(
 fmt.Println(err, len(localSVGs))
 ```
 
-本地图按指定观测者的站心几何绘制，下图沿用前文 `2025-06-05` 月掩进贤增九（HR 4799）的样例。局地图的观测点为 `121.56601°E, 6.80706°N`，靠近全球几何掩甚点；图中的掩始、掩甚和掩终是该地点实际看到的站心接触时刻，并同时给出月面方向、白道、月高、方位和地平可见性。
+本地图按指定观测者的站心几何绘制，下图沿用前文 `2025-06-05` 月掩进贤增九（HR 4799）的样例。该图的观测点为 `121.56601°E, 6.80706°N`，靠近全球几何掩甚点；图中的掩始、掩甚和掩终是该地点实际看到的站心接触时刻，并同时给出月面方向、白道、月高、方位和地平可见性。
 
 ![2025 月掩进贤增九指定地点见掩图](../img/lunar-occultation-hr4799-2025-06-05-local.svg)
+
+### 精密月掩剖面图
+
+上面的接触时刻都按圆月面求解。把月缘起伏逐点代入，可以得到星迹上每一刻的月缘几何和**全部**遮挡区间——深掩是掩入、复现两段，掠掩通常只有一段，月缘山谷还会把一次掩星切成多个分离区间。
+
+```go
+profile, err := moon.StarOccultationLimbProfile(events[0], target, limb.Default(),
+	moon.StarOccultationLimbProfileOptions{Step: 200 * time.Millisecond})
+fmt.Println(len(profile.Hidden), profile.Hidden[0].Start.UTC(), profile.Hidden[len(profile.Hidden)-1].End.UTC())
+samples := 0
+for _, segment := range profile.Segments {
+	samples += len(segment)
+}
+fmt.Println(profile.Step, len(profile.Segments), samples)
+
+profileSVG, err := moonsvg.StarOccultationLimbProfileSVG(profile,
+	moonsvg.StarOccultationLimbProfileSVGOptions{Width: 1000, Height: 620, Location: cst})
+fmt.Println(err, len(profileSVG))
+```
+
+```text
+1 2025-06-05 11:13:59.65061903 +0000 UTC 2025-06-05 12:50:11.632025241 +0000 UTC
+200ms 2 191
+<nil> 30585
+```
+
+![2025 月掩进贤增九精密月缘剖面图](../img/lunar-occultation-hr4799-2025-06-05-limb-profile.svg)
+
+横轴是时刻，每格同时标出该时刻的月缘位置角；纵轴是相对参考圆月面的高度（km）。棕色实线是恒星方向的月缘半径，红色虚线是恒星中心到月心的角距，两者相交的区间就是遮挡区间，图上用阴影标出并给出编号；`Segments` 有几段就画几个面板，右侧另附天球平面缩略图与掩入/复现清单。同一次事件的圆月面结果（`11:14:03.127` / `12:50:12.789 UTC`）与剖面结果相差数秒，这个差值就是月缘起伏带来的修正。
+
+约定：
+
+- `info` 只取掩甚时刻与观测者，其余接触时刻由剖面重算并写入 `profile.Occultation`；它必须是 UTC 口径的结果，不能传 `...InUT1` 副本。
+- `limb` 传 `nil` 时用模块或上下文的默认剖面（`WithLunarLimb`）；两边都没有设置时返回 `ErrInvalidOccultationInput`。
+- `Step` 零值为 200 ms，小于 10 ms 提升到 10 ms；每段至少 64 个采样、总数不超过 20000，越界时自动调整。**短于步长的遮挡或复现可能漏检**，要掠掩细节就把步长调小。
+- `Segments` 是月缘起伏带内的采样段（深掩两段、掠掩通常一段），`Hidden` 是全部遮挡区间，`ReliefMinKM` / `ReliefMaxKM` 是判定所用的月缘半径范围，`ReferenceRadiusKM` 是 `MeanRadiusArcsec` 背后的参考月球半径。
+- 剖面图默认 `920×620`，最小 `640×480`，更小返回 `ErrInvalidStarOccultationLimbProfileSVGOptions`；星迹全程落在起伏带外、没有任何采样时返回 `ErrEmptyStarOccultationLimbProfile`。
+- 要在 UT1 口径下标时刻，用 `moon.StarOccultationLimbProfileInUT1(profile)` 换一份副本，或给绘图选项传 `TimeScale: astro.TimeScaleUT1`（此时 `Location` 必须是 UTC）。
 
 ### 时标口径与 UT1
 

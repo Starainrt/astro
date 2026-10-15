@@ -142,7 +142,7 @@ func TestSamePhaseHorizonConnectorAllowedMatchesReferenceRule(t *testing.T) {
 		}
 		last := horizonConnectorEndpoint{
 			point: basic.OccultationPathPoint{
-				Longitude: distanceKM / (EarthRadiusKM * math.Pi / 180),
+				Longitude: distanceKM / (geodata.EarthEquatorialRadiusKM * math.Pi / 180),
 			},
 			curveIndex: 3, segmentIndex: 1, atStart: true,
 		}

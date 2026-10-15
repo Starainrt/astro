@@ -565,7 +565,7 @@ func assertOccultationRiseSetPolarProjectionSpacing(
 				deltaLongitude := math.Remainder((second.Longitude-first.Longitude)*rad, 2*math.Pi)
 				firstY := math.Log(math.Tan(math.Pi/4 + math.Min(85, math.Max(-85, first.Latitude))*rad/2))
 				secondY := math.Log(math.Tan(math.Pi/4 + math.Min(85, math.Max(-85, second.Latitude))*rad/2))
-				distance := occultationTopocentricEarthRadiusKM * math.Hypot(deltaLongitude, secondY-firstY)
+				distance := topocentricEarthRadiusKM * math.Hypot(deltaLongitude, secondY-firstY)
 				if distance > maximumMercatorKM {
 					t.Fatalf("%s/%s segment %d edge %d has %.1f km Web Mercator length, want at most %.1f km",
 						curve.Phase, curve.Direction, segmentIndex, pointIndex-1, distance, maximumMercatorKM)

@@ -51,6 +51,9 @@ var grazingBandCases = []grazingBandCase{
 }
 
 func TestSolarEclipseGrazingCentralBandCoversUmbralSweep(t *testing.T) {
+	if testing.Short() {
+		t.Skip("slow regression")
+	}
 	for _, testCase := range grazingBandCases {
 		t.Run(testCase.date+"-"+testCase.options, func(t *testing.T) {
 			date := grazingBandDate(t, testCase.date)

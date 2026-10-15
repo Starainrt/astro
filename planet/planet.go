@@ -1,11 +1,12 @@
 package planet
 
 import (
+	"github.com/starainrt/astro/internal/ephem"
 	. "github.com/starainrt/astro/tools"
 	"math"
 )
 
-// WherePlanet 天体 xt 在儒略日 jde 的 VSOP 结果 / VSOP result for body xt at Julian day jde.
+// WherePlanet 天体 xt 在儒略日 jde 的历元平黄道几何量，按当前星历模型求值 / geometric position of body xt of date under the active ephemeris model.
 //
 // xt 取 -1 或 0..7：0 为地球，1..7 依次为水星、金星、火星、木星、土星、天王星、海王星；-1 表示地球，zn 取 0 时给日心黄经。
 // zn 取 0 黄经、1 黄纬、2 日心距（AU）；xt 或 zn 越界返回 NaN 而不 panic。
@@ -15,13 +16,18 @@ func WherePlanet(xt, zn int, jde float64) float64 {
 	return WherePlanetN(xt, zn, jde, -1)
 }
 
-// WherePlanetN 同 WherePlanet 的截断版 / truncated form of WherePlanet.
-//
-// n < 0 时使用全部项；否则保留约 n 个主项并按比例缩短高阶项。取值域与越界行为同 WherePlanet。
-// When n < 0 all terms are used; otherwise roughly n principal terms are kept and higher orders scaled proportionally. Domain and out-of-range behavior match WherePlanet.
+// WherePlanetN WherePlanet 的 n 变体；n < 0 取完整级数，半解析模型下 n >= 0 用快速表，Legacy 按 n 截断 / n-parameterised WherePlanet.
 func WherePlanetN(xt, zn int, jde float64, n int) float64 {
+	return WherePlanetModelN(ephem.Active(), xt, zn, jde, n)
+}
+
+// WherePlanetModelN 按指定模型计算行星几何量 / evaluate planetary geometry with an explicit model.
+func WherePlanetModelN(model ephem.Model, xt, zn int, jde float64, n int) float64 {
 	if xt < -1 || xt > 7 || zn < 0 || zn > 2 {
 		return math.NaN()
+	}
+	if model == ephem.Semianalytic {
+		return semiPlanet(xt, zn, jde, n)
 	}
 
 	sata := 0

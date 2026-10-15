@@ -52,18 +52,18 @@ type SolarEclipseLocalSearchStatus struct {
 }
 
 const (
-	// 旧口径为 6000 次候选步进，实测覆盖 992.33~992.47 年；取 992.5 年完整覆盖旧跨度。
+	// 默认搜索跨度 992.5 年，完整覆盖旧候选步进口径。
 	localSolarEclipseDefaultSearchYears = 992.5
 	// 时间跨度搜索的迭代硬上限，防止病态输入死循环。
 	localSolarEclipseSearchIterationCap = 200000
 )
 
 // SearchLocalCentralSolarEclipse 在给定跨度内搜索站心食并回报是否用尽跨度 / station search within a horizon.
-func SearchLocalCentralSolarEclipse(
+func (module *Eclipse) SearchLocalCentralSolarEclipse(
 	date time.Time, lon, lat, height float64,
 	options SolarEclipseLocalSearchOptions,
 ) (LocalSolarEclipseInfo, SolarEclipseLocalSearchStatus) {
-	calculator := localSolarEclipseCalculatorForModel(options.Model)
+	calculator := localSolarEclipseCalculatorForModel(options.Model, module)
 	mode := localSolarEclipseQueryVisible
 	if options.Geometric {
 		mode = localSolarEclipseQueryGeometric
@@ -80,18 +80,16 @@ func SearchLocalCentralSolarEclipse(
 	info, status, ok := searchLocalCentralSolarEclipse(
 		targetTT, targetTT+float64(direction)*maxYears*365.25, direction,
 		options.IncludeCurrent, options.Kind, lon, lat, height, date.Location(),
-		calculator, mode,
+		calculator, mode, module,
 	)
 	status.Found = ok
 	status.Exhausted = !ok && !status.Capped
 	return info, status
 }
 
-func localSolarEclipseCalculatorForModel(model SolarEclipseRadiusModel) localSolarEclipseCalculator {
-	if model == SolarEclipseModelIAUSingleK {
-		return localSolarEclipseIAUSingleK
-	}
-	return localSolarEclipseNASABulletinSplitK
+// localSolarEclipseCalculatorForModel 构造绑定模块星历实例的计算器，非 IAU Single-K 一律按 Split-K。
+func localSolarEclipseCalculatorForModel(model SolarEclipseRadiusModel, module *Eclipse) localSolarEclipseCalculator {
+	return localSolarEclipseCalculatorFor(SolarEclipseOptions{RadiusModel: model}, module)
 }
 
 func searchLocalCentralSolarEclipse(
@@ -102,10 +100,14 @@ func searchLocalCentralSolarEclipse(
 	lon, lat, height float64,
 	location *time.Location,
 	calculator localSolarEclipseCalculator,
-	mode localSolarEclipseQueryMode,
-) (LocalSolarEclipseInfo, SolarEclipseLocalSearchStatus, bool) {
+	mode localSolarEclipseQueryMode, modules ...*Eclipse) (LocalSolarEclipseInfo, SolarEclipseLocalSearchStatus, bool) {
+	module := &defaultModule
+	if len(modules) > 0 {
+		module = modules[0]
+	}
+
 	status := SolarEclipseLocalSearchStatus{}
-	candidateTT := basic.CalcMoonSHByJDE(targetTT, 0)
+	candidateTT := basic.CalcMoonSHByJDEWithInstance(targetTT, 0, module.inst)
 	capped := true
 	for iteration := 0; iteration < localSolarEclipseSearchIterationCap; iteration++ {
 		if direction > 0 && candidateTT > horizonTT {
@@ -118,7 +120,7 @@ func searchLocalCentralSolarEclipse(
 		}
 		status.MonthsScanned++
 		status.YearsScanned = math.Abs(candidateTT-targetTT) / 365.25
-		if isPotentialLocalSolarEclipse(candidateTT) {
+		if isPotentialLocalSolarEclipse(candidateTT, module) {
 			globalResult := calculator.global(candidateTT)
 			status.GlobalChecks++
 			if globalResult.Type != basic.SolarEclipseNone {
@@ -126,8 +128,8 @@ func searchLocalCentralSolarEclipse(
 					result := calculator.local(globalResult.GreatestEclipse, lon, lat, height)
 					status.LocalChecks++
 					if localSolarEclipseKindMatchesLocal(kind, result) {
-						info := localSolarEclipseInfoFromBasic(result, lon, lat, height, location)
-						if (mode != localSolarEclipseQueryVisible || localSolarEclipseKindVisible(kind, info)) &&
+						info := localSolarEclipseInfoFromBasic(result, lon, lat, height, location, calculator.limb, module)
+						if (mode != localSolarEclipseQueryVisible || localSolarEclipseKindVisible(kind, info, module)) &&
 							localSolarEclipseMatchesDirection(result.GreatestEclipse, targetTT, direction, includeCurrent) {
 							return info, status, true
 						}
@@ -135,7 +137,7 @@ func searchLocalCentralSolarEclipse(
 				}
 			}
 		}
-		candidateTT = nextEclipseSearchCandidateTT(candidateTT, 0, direction, localSolarEclipseSynodicMonthDays)
+		candidateTT = nextEclipseSearchCandidateTT(candidateTT, 0, direction, localSolarEclipseSynodicMonthDays, module)
 	}
 	// 循环自然结束说明撞上了迭代硬上限。
 	status.Capped = capped
@@ -162,9 +164,14 @@ func localSolarEclipseKindMatchesLocal(kind SolarEclipseLocalSearchKind, result 
 	return result.Type != basic.SolarEclipseNone
 }
 
-func localSolarEclipseKindVisible(kind SolarEclipseLocalSearchKind, info LocalSolarEclipseInfo) bool {
-	if kind == SolarEclipseLocalSearchAny {
-		return localSolarEclipseVisible(info)
+func localSolarEclipseKindVisible(kind SolarEclipseLocalSearchKind, info LocalSolarEclipseInfo, modules ...*Eclipse) bool {
+	module := &defaultModule
+	if len(modules) > 0 {
+		module = modules[0]
 	}
-	return localCentralSolarEclipseVisible(info)
+
+	if kind == SolarEclipseLocalSearchAny {
+		return localSolarEclipseVisible(info, module)
+	}
+	return localCentralSolarEclipseVisible(info, module)
 }

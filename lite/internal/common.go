@@ -5,8 +5,6 @@ import (
 	"math"
 
 	. "github.com/starainrt/astro/tools"
-
-	"github.com/starainrt/astro/basic"
 )
 
 const (
@@ -40,7 +38,7 @@ func EclipticToEquatorial(jde, lo, bo float64) (float64, float64) {
 }
 
 func HorizontalCoordinates(ra, dec, jd, lon, lat float64) (float64, float64, float64) {
-	lst := Limit360(MeanSiderealTime(basic.UTC2UT1(jd)) + lon)
+	lst := Limit360(MeanSiderealTime(UTC2UT1(jd)) + lon)
 	hourAngle := Limit360(lst - ra)
 	altitude := ArcSin(clampUnit(Sin(lat)*Sin(dec) + Cos(lat)*Cos(dec)*Cos(hourAngle)))
 
@@ -65,7 +63,7 @@ func TopocentricRaDec(ra, dec, observerLat, observerLon, jd, distanceEarthRadii,
 	rhoCos := math.Cos(u) + heightMeters/6378140.0*Cos(observerLat)
 	parallax := math.Asin(1.0 / distanceEarthRadii)
 
-	hourAngle := (Limit360(MeanSiderealTime(basic.UTC2UT1(jd)) + observerLon - ra)) * math.Pi / 180.0
+	hourAngle := (Limit360(MeanSiderealTime(UTC2UT1(jd)) + observerLon - ra)) * math.Pi / 180.0
 	decRad := dec * math.Pi / 180.0
 
 	numerator := -rhoCos * math.Sin(parallax) * math.Sin(hourAngle)

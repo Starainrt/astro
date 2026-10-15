@@ -17,8 +17,10 @@ const (
 	marsStationHalfWindowDay     = 6.0
 )
 
-func marsSunLongitudeDelta(jde, degree float64, filter bool) float64 {
-	sub := Limit360(Limit360(MarsApparentLo(jde)-HSunApparentLo(jde)) - degree)
+func marsSunLongitudeDelta(jde, degree float64, filter bool, instances ...*Instance) float64 {
+	inst := instanceValue(instances)
+
+	sub := Limit360(Limit360(MarsApparentLoWithInstance(jde, inst)-HSunApparentLoWithInstance(jde, inst)) - degree)
 	if filter {
 		if sub > 180 {
 			sub -= 360
@@ -30,8 +32,10 @@ func marsSunLongitudeDelta(jde, degree float64, filter bool) float64 {
 	return sub
 }
 
-func marsSunLongitudeDeltaN(jde, degree float64, filter bool, n int) float64 {
-	sub := Limit360(Limit360(MarsApparentLoN(jde, n)-HSunApparentLoN(jde, n)) - degree)
+func marsSunLongitudeDeltaN(jde, degree float64, filter bool, n int, instances ...*Instance) float64 {
+	inst := instanceValue(instances)
+
+	sub := Limit360(Limit360(MarsApparentLoNWithInstance(jde, n, inst)-HSunApparentLoNWithInstance(jde, n, inst)) - degree)
 	if filter {
 		if sub > 180 {
 			sub -= 360
@@ -43,8 +47,10 @@ func marsSunLongitudeDeltaN(jde, degree float64, filter bool, n int) float64 {
 	return sub
 }
 
-func marsRADerivative(jde, val float64) float64 {
-	sub := MarsApparentRa(jde+val) - MarsApparentRa(jde-val)
+func marsRADerivative(jde, val float64, instances ...*Instance) float64 {
+	inst := instanceValue(instances)
+
+	sub := MarsApparentRaWithInstance(jde+val, inst) - MarsApparentRaWithInstance(jde-val, inst)
 	if sub > 180 {
 		sub -= 360
 	}
@@ -54,8 +60,10 @@ func marsRADerivative(jde, val float64) float64 {
 	return sub / (2 * val)
 }
 
-func marsRADerivativeN(jde, val float64, n int) float64 {
-	sub := MarsApparentRaN(jde+val, n) - MarsApparentRaN(jde-val, n)
+func marsRADerivativeN(jde, val float64, n int, instances ...*Instance) float64 {
+	inst := instanceValue(instances)
+
+	sub := MarsApparentRaNWithInstance(jde+val, n, inst) - MarsApparentRaNWithInstance(jde-val, n, inst)
 	if sub > 180 {
 		sub -= 360
 	}
@@ -65,13 +73,15 @@ func marsRADerivativeN(jde, val float64, n int) float64 {
 	return sub / (2 * val)
 }
 
-func marsConjunctionFull(jde, degree float64, next uint8) float64 {
+func marsConjunctionFull(jde, degree float64, next uint8, instances ...*Instance) float64 {
+	inst := instanceValue(instances)
+
 	//0=last 1=next
 	if !isFiniteFloat(jde) || !isFiniteFloat(degree) {
 		return math.NaN()
 	}
 	daysPerDegree := MARS_S_PERIOD / 360
-	currentDelta := marsSunLongitudeDelta(jde, degree, false)
+	currentDelta := marsSunLongitudeDelta(jde, degree, false, inst)
 	if next == 0 {
 		jde -= (360 - currentDelta) * daysPerDegree
 	} else {
@@ -81,8 +91,8 @@ func marsConjunctionFull(jde, degree float64, next uint8) float64 {
 	converged := false
 	for i := 0; i < eventNewtonMaxIterations; i++ {
 		prevJDE := estimateJDE
-		longitudeDelta := marsSunLongitudeDelta(prevJDE, degree, true)
-		longitudeSlope := (marsSunLongitudeDelta(prevJDE+0.000005, degree, true) - marsSunLongitudeDelta(prevJDE-0.000005, degree, true)) / 0.00001
+		longitudeDelta := marsSunLongitudeDelta(prevJDE, degree, true, inst)
+		longitudeSlope := (marsSunLongitudeDelta(prevJDE+0.000005, degree, true, inst) - marsSunLongitudeDelta(prevJDE-0.000005, degree, true, inst)) / 0.00001
 		nextJD := prevJDE - longitudeDelta/longitudeSlope
 		estimateJDE = nextJD
 		if math.Abs(nextJD-prevJDE) <= 0.00001 {
@@ -96,13 +106,15 @@ func marsConjunctionFull(jde, degree float64, next uint8) float64 {
 	return TT2UTC(estimateJDE)
 }
 
-func marsConjunction(jde, degree float64, next uint8) float64 {
+func marsConjunction(jde, degree float64, next uint8, instances ...*Instance) float64 {
+	inst := instanceValue(instances)
+
 	//0=last 1=next
 	if !isFiniteFloat(jde) || !isFiniteFloat(degree) {
 		return math.NaN()
 	}
 	daysPerDegree := MARS_S_PERIOD / 360
-	currentDelta := marsSunLongitudeDelta(jde, degree, false)
+	currentDelta := marsSunLongitudeDelta(jde, degree, false, inst)
 	if next == 0 {
 		jde -= (360 - currentDelta) * daysPerDegree
 	} else {
@@ -112,8 +124,8 @@ func marsConjunction(jde, degree float64, next uint8) float64 {
 	converged := false
 	for i := 0; i < eventNewtonMaxIterations; i++ {
 		prevJDE := estimateJDE
-		longitudeDelta := marsSunLongitudeDeltaN(prevJDE, degree, true, marsEventSearchN)
-		longitudeSlope := (marsSunLongitudeDeltaN(prevJDE+0.000005, degree, true, marsEventSearchN) - marsSunLongitudeDeltaN(prevJDE-0.000005, degree, true, marsEventSearchN)) / 0.00001
+		longitudeDelta := marsSunLongitudeDeltaN(prevJDE, degree, true, marsEventSearchN, inst)
+		longitudeSlope := (marsSunLongitudeDeltaN(prevJDE+0.000005, degree, true, marsEventSearchN, inst) - marsSunLongitudeDeltaN(prevJDE-0.000005, degree, true, marsEventSearchN, inst)) / 0.00001
 		nextJD := prevJDE - longitudeDelta/longitudeSlope
 		estimateJDE = nextJD
 		if math.Abs(nextJD-prevJDE) <= marsPhaseCoarseTolerance {
@@ -127,8 +139,8 @@ func marsConjunction(jde, degree float64, next uint8) float64 {
 	converged = false
 	for i := 0; i < eventNewtonMaxIterations; i++ {
 		prevJDE := estimateJDE
-		longitudeDelta := marsSunLongitudeDelta(prevJDE, degree, true)
-		longitudeSlope := (marsSunLongitudeDelta(prevJDE+0.000005, degree, true) - marsSunLongitudeDelta(prevJDE-0.000005, degree, true)) / 0.00001
+		longitudeDelta := marsSunLongitudeDelta(prevJDE, degree, true, inst)
+		longitudeSlope := (marsSunLongitudeDelta(prevJDE+0.000005, degree, true, inst) - marsSunLongitudeDelta(prevJDE-0.000005, degree, true, inst)) / 0.00001
 		nextJD := prevJDE - longitudeDelta/longitudeSlope
 		estimateJDE = nextJD
 		if math.Abs(nextJD-prevJDE) <= 0.00001 {
@@ -142,39 +154,65 @@ func marsConjunction(jde, degree float64, next uint8) float64 {
 	return TT2UTC(estimateJDE)
 }
 
-func LastMarsConjunction(jde float64) float64 {
-	return inclusiveLastPhaseEvent(jde, 0, marsConjunction)
+// LastMarsConjunctionWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func LastMarsConjunctionWithInstance(jde float64, inst *Instance) float64 {
+	return inclusiveLastPhaseEvent(jde, 0, func(jde, degree float64, next uint8) float64 {
+		return marsConjunction(jde, degree, next, inst)
+	})
 }
 
-func NextMarsConjunction(jde float64) float64 {
-	return inclusiveNextPhaseEvent(jde, 0, marsConjunction)
+// NextMarsConjunctionWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func NextMarsConjunctionWithInstance(jde float64, inst *Instance) float64 {
+	return inclusiveNextPhaseEvent(jde, 0, func(jde, degree float64, next uint8) float64 {
+		return marsConjunction(jde, degree, next, inst)
+	})
 }
 
-func LastMarsOpposition(jde float64) float64 {
-	return inclusiveLastPhaseEvent(jde, 180, marsConjunction)
+// LastMarsOppositionWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func LastMarsOppositionWithInstance(jde float64, inst *Instance) float64 {
+	return inclusiveLastPhaseEvent(jde, 180, func(jde, degree float64, next uint8) float64 {
+		return marsConjunction(jde, degree, next, inst)
+	})
 }
 
-func NextMarsOpposition(jde float64) float64 {
-	return inclusiveNextPhaseEvent(jde, 180, marsConjunction)
+// NextMarsOppositionWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func NextMarsOppositionWithInstance(jde float64, inst *Instance) float64 {
+	return inclusiveNextPhaseEvent(jde, 180, func(jde, degree float64, next uint8) float64 {
+		return marsConjunction(jde, degree, next, inst)
+	})
 }
 
-func NextMarsEasternQuadrature(jde float64) float64 {
-	return inclusiveNextPhaseEvent(jde, 90, marsConjunction)
+// NextMarsEasternQuadratureWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func NextMarsEasternQuadratureWithInstance(jde float64, inst *Instance) float64 {
+	return inclusiveNextPhaseEvent(jde, 90, func(jde, degree float64, next uint8) float64 {
+		return marsConjunction(jde, degree, next, inst)
+	})
 }
 
-func LastMarsEasternQuadrature(jde float64) float64 {
-	return inclusiveLastPhaseEvent(jde, 90, marsConjunction)
+// LastMarsEasternQuadratureWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func LastMarsEasternQuadratureWithInstance(jde float64, inst *Instance) float64 {
+	return inclusiveLastPhaseEvent(jde, 90, func(jde, degree float64, next uint8) float64 {
+		return marsConjunction(jde, degree, next, inst)
+	})
 }
 
-func NextMarsWesternQuadrature(jde float64) float64 {
-	return inclusiveNextPhaseEvent(jde, 270, marsConjunction)
+// NextMarsWesternQuadratureWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func NextMarsWesternQuadratureWithInstance(jde float64, inst *Instance) float64 {
+	return inclusiveNextPhaseEvent(jde, 270, func(jde, degree float64, next uint8) float64 {
+		return marsConjunction(jde, degree, next, inst)
+	})
 }
 
-func LastMarsWesternQuadrature(jde float64) float64 {
-	return inclusiveLastPhaseEvent(jde, 270, marsConjunction)
+// LastMarsWesternQuadratureWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func LastMarsWesternQuadratureWithInstance(jde float64, inst *Instance) float64 {
+	return inclusiveLastPhaseEvent(jde, 270, func(jde, degree float64, next uint8) float64 {
+		return marsConjunction(jde, degree, next, inst)
+	})
 }
 
-func marsRetrogradeAroundOpposition(oppositionJD float64, searchBeforeOpposition bool) float64 {
+func marsRetrogradeAroundOpposition(oppositionJD float64, searchBeforeOpposition bool, instances ...*Instance) float64 {
+	inst := instanceValue(instances)
+
 	if !isFiniteFloat(oppositionJD) {
 		return math.NaN()
 	}
@@ -182,103 +220,107 @@ func marsRetrogradeAroundOpposition(oppositionJD float64, searchBeforeOpposition
 	startTT := oppositionTT
 	endTT := oppositionTT
 	if searchBeforeOpposition {
-		easternQuadratureUT := marsConjunction(oppositionTT, 90, 0)
+		easternQuadratureUT := marsConjunction(oppositionTT, 90, 0, inst)
 		startTT = UTC2TT(easternQuadratureUT)
 	} else {
-		westernQuadratureUT := marsConjunction(oppositionTT, 270, 1)
+		westernQuadratureUT := marsConjunction(oppositionTT, 270, 1, inst)
 		endTT = UTC2TT(westernQuadratureUT)
 	}
 	bestJDE := zeroEventInWindow(startTT, endTT, marsStationCoarseStepDay, marsStationHalfWindowDay, 30.0/86400.0, func(jd float64) float64 {
-		return marsRADerivativeN(jd, marsStationDerivativeStepDay, marsEventSearchN)
+		return marsRADerivativeN(jd, marsStationDerivativeStepDay, marsEventSearchN, inst)
 	}, func(jd float64) float64 {
-		return marsRADerivative(jd, marsStationDerivativeStepDay)
+		return marsRADerivative(jd, marsStationDerivativeStepDay, inst)
 	})
 	return TT2UTC(bestJDE)
 }
 
-func NextMarsRetrogradeToPrograde(jde float64) float64 {
+// NextMarsRetrogradeToProgradeWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func NextMarsRetrogradeToProgradeWithInstance(jde float64, inst *Instance) float64 {
 	if !isFiniteFloat(jde) {
 		return math.NaN()
 	}
-	lastOppositionJD := marsConjunctionFull(jde, 180, 0)
-	date := marsRetrogradeAroundOpposition(lastOppositionJD, false)
+	lastOppositionJD := marsConjunctionFull(jde, 180, 0, inst)
+	date := marsRetrogradeAroundOpposition(lastOppositionJD, false, inst)
 	if isFiniteFloat(date) && stationUTQueryAfterOrEqual(date, jde) {
 		return date
 	}
-	nextOppositionJD := marsConjunctionFull(jde, 180, 1)
+	nextOppositionJD := marsConjunctionFull(jde, 180, 1, inst)
 	if !isFiniteFloat(nextOppositionJD) {
 		return math.NaN()
 	}
-	date = marsRetrogradeAroundOpposition(nextOppositionJD, false)
+	date = marsRetrogradeAroundOpposition(nextOppositionJD, false, inst)
 	if !isFiniteFloat(date) || !stationUTQueryAfterOrEqual(date, jde) {
 		return math.NaN()
 	}
 	return date
 }
 
-func LastMarsRetrogradeToPrograde(jde float64) float64 {
+// LastMarsRetrogradeToProgradeWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func LastMarsRetrogradeToProgradeWithInstance(jde float64, inst *Instance) float64 {
 	if !isFiniteFloat(jde) {
 		return math.NaN()
 	}
-	lastOppositionJD := marsConjunctionFull(jde, 180, 0)
-	date := marsRetrogradeAroundOpposition(lastOppositionJD, false)
+	lastOppositionJD := marsConjunctionFull(jde, 180, 0, inst)
+	date := marsRetrogradeAroundOpposition(lastOppositionJD, false, inst)
 	if isFiniteFloat(date) && stationUTQueryBeforeOrEqual(date, jde) {
 		return date
 	}
 	if !isFiniteFloat(lastOppositionJD) {
 		return math.NaN()
 	}
-	previousOppositionJD := marsConjunctionFull(eventUTLastQueryTT(lastOppositionJD), 180, 0)
+	previousOppositionJD := marsConjunctionFull(eventUTLastQueryTT(lastOppositionJD), 180, 0, inst)
 	if !isFiniteFloat(previousOppositionJD) {
 		return math.NaN()
 	}
-	date = marsRetrogradeAroundOpposition(previousOppositionJD, false)
+	date = marsRetrogradeAroundOpposition(previousOppositionJD, false, inst)
 	if !isFiniteFloat(date) || !stationUTQueryBeforeOrEqual(date, jde) {
 		return math.NaN()
 	}
 	return date
 }
 
-func NextMarsProgradeToRetrograde(jde float64) float64 {
+// NextMarsProgradeToRetrogradeWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func NextMarsProgradeToRetrogradeWithInstance(jde float64, inst *Instance) float64 {
 	if !isFiniteFloat(jde) {
 		return math.NaN()
 	}
-	nextOppositionJD := marsConjunctionFull(jde, 180, 1)
-	date := marsRetrogradeAroundOpposition(nextOppositionJD, true)
+	nextOppositionJD := marsConjunctionFull(jde, 180, 1, inst)
+	date := marsRetrogradeAroundOpposition(nextOppositionJD, true, inst)
 	if isFiniteFloat(date) && stationUTQueryAfterOrEqual(date, jde) {
 		return date
 	}
 	if !isFiniteFloat(nextOppositionJD) {
 		return math.NaN()
 	}
-	followingOppositionJD := marsConjunctionFull(eventUTNextQueryTT(nextOppositionJD), 180, 1)
+	followingOppositionJD := marsConjunctionFull(eventUTNextQueryTT(nextOppositionJD), 180, 1, inst)
 	if !isFiniteFloat(followingOppositionJD) {
 		return math.NaN()
 	}
-	date = marsRetrogradeAroundOpposition(followingOppositionJD, true)
+	date = marsRetrogradeAroundOpposition(followingOppositionJD, true, inst)
 	if !isFiniteFloat(date) || !stationUTQueryAfterOrEqual(date, jde) {
 		return math.NaN()
 	}
 	return date
 }
 
-func LastMarsProgradeToRetrograde(jde float64) float64 {
+// LastMarsProgradeToRetrogradeWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func LastMarsProgradeToRetrogradeWithInstance(jde float64, inst *Instance) float64 {
 	if !isFiniteFloat(jde) {
 		return math.NaN()
 	}
-	nextOppositionJD := marsConjunctionFull(jde, 180, 1)
-	date := marsRetrogradeAroundOpposition(nextOppositionJD, true)
+	nextOppositionJD := marsConjunctionFull(jde, 180, 1, inst)
+	date := marsRetrogradeAroundOpposition(nextOppositionJD, true, inst)
 	if isFiniteFloat(date) && stationUTQueryBeforeOrEqual(date, jde) {
 		return date
 	}
 	if !isFiniteFloat(nextOppositionJD) {
 		return math.NaN()
 	}
-	lastOppositionJD := marsConjunctionFull(jde, 180, 0)
+	lastOppositionJD := marsConjunctionFull(jde, 180, 0, inst)
 	if !isFiniteFloat(lastOppositionJD) {
 		return math.NaN()
 	}
-	date = marsRetrogradeAroundOpposition(lastOppositionJD, true)
+	date = marsRetrogradeAroundOpposition(lastOppositionJD, true, inst)
 	if !isFiniteFloat(date) || !stationUTQueryBeforeOrEqual(date, jde) {
 		return math.NaN()
 	}

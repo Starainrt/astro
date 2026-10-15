@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/starainrt/astro/basic"
+	"github.com/starainrt/astro/internal/ephem"
+	"github.com/starainrt/astro/internal/ephemtest"
 )
 
 func TestSarosNumberAgainstAllCatalogAnchors(t *testing.T) {
@@ -28,20 +30,31 @@ func TestSarosNumberAgainstAllCatalogAnchors(t *testing.T) {
 }
 
 func TestExtendedSarosUsesPrecomputedSeries(t *testing.T) {
-	got := ClosestSolarEclipse(time.Date(3288, 11, 15, 12, 0, 0, 0, time.UTC))
-	if !got.HasSaros || got.Saros != (SarosInfo{Series: 202, Member: 1, Count: 71}) {
-		t.Fatalf("unexpected precomputed solar Saros: has=%v info=%+v", got.HasSaros, got.Saros)
+	var span sarosSpan
+	for _, candidate := range sarosExtensionSpans(0) {
+		if candidate.Series == 202 {
+			span = candidate
+			break
+		}
 	}
-	next := ClosestSolarEclipse(time.Date(3306, 11, 28, 12, 0, 0, 0, time.UTC))
-	if !next.HasSaros || next.Saros != (SarosInfo{Series: 202, Member: 2, Count: 71}) {
-		t.Fatalf("unexpected second precomputed member: %+v", next.Saros)
+	if span.Count == 0 {
+		t.Fatal("missing precomputed solar Saros series 202")
 	}
-	previous := ClosestSolarEclipse(time.Date(3288, 10, 17, 12, 0, 0, 0, time.UTC))
-	assertSarosInfo(t, previous.HasSaros, previous.Saros, 164, 67, 80)
+	for _, k := range []int{span.First, span.Last} {
+		ttJDE, exists, valid := sarosEclipse(k, 0)
+		if !exists || !valid {
+			t.Fatalf("precomputed solar Saros k=%d: exists=%v valid=%v", k, exists, valid)
+		}
+		want := SarosInfo{Series: span.Series, Member: span.Member + (k-span.First)/sarosCycleLunations, Count: span.Count}
+		got, ok := extendedSarosInfo(ttJDE, 0)
+		if !ok || got != want {
+			t.Fatalf("precomputed solar Saros k=%d: got=%+v/%v want=%+v", k, got, ok, want)
+		}
+	}
 }
 
 func TestExtendedSarosSpansAreComplete(t *testing.T) {
-	for phase, spans := range [][]sarosSpan{solarSarosExtended[:], lunarSarosExtended[:]} {
+	for phase, spans := range [][]sarosSpan{sarosExtensionSpans(0), sarosExtensionSpans(1)} {
 		seen := make(map[int]bool)
 		for i, span := range spans {
 			if span.First > span.Last || (span.Last-span.First)%sarosCycleLunations != 0 || span.Member < 1 || span.Member > span.Count {
@@ -96,10 +109,7 @@ func TestExtendedSarosMatchesLiveSeries(t *testing.T) {
 		{phase: 1, series: 202},
 	} {
 		t.Run(fmt.Sprintf("phase%d/series%d", tc.phase, tc.series), func(t *testing.T) {
-			spans := solarSarosExtended[:]
-			if tc.phase == 1 {
-				spans = lunarSarosExtended[:]
-			}
+			spans := sarosExtensionSpans(tc.phase)
 			found := false
 			for _, span := range spans {
 				if span.Series != tc.series {
@@ -137,7 +147,7 @@ func TestExtendedSarosRangeAndInvalidInput(t *testing.T) {
 	if sarosExtendedStartTT != timeToTTJDE(time.Date(-3000, 1, 1, 0, 0, 0, 0, time.UTC)) || sarosExtendedEndTT != timeToTTJDE(time.Date(6001, 1, 1, 0, 0, 0, 0, time.UTC)) {
 		t.Fatal("precomputed range must include both end years")
 	}
-	for phase, spans := range [][]sarosSpan{solarSarosExtended[:], lunarSarosExtended[:]} {
+	for phase, spans := range [][]sarosSpan{sarosExtensionSpans(0), sarosExtensionSpans(1)} {
 		for _, tt := range []float64{sarosExtendedStartTT, sarosExtendedEndTT - 1.0/86400} {
 			k, _ := sarosLunation(tt, phase)
 			want, wantOK := matchSarosSpans(spans, k)
@@ -152,9 +162,35 @@ func TestExtendedSarosRangeAndInvalidInput(t *testing.T) {
 			}
 		}
 	}
-	if got, ok := extrapolateSaros(-56340, 1); ok || got != (SarosInfo{}) {
-		t.Fatalf("missing lunar return produced metadata: %+v/%v", got, ok)
+	missing, found := firstMissingSarosReturn(sarosExtensionSpans(1))
+	if !found {
+		t.Fatal("test table has no missing lunar return")
 	}
+	if got, ok := extrapolateSaros(missing, 1); ok || got != (SarosInfo{}) {
+		t.Fatalf("missing lunar return k=%d produced metadata: %+v/%v", missing, got, ok)
+	}
+}
+
+func TestSarosTablesFollowRuntimeModel(t *testing.T) {
+	for _, model := range []ephem.Model{ephem.Legacy, ephem.Semianalytic, ephem.Legacy} {
+		t.Run(fmt.Sprintf("model%d", model), func(t *testing.T) {
+			ephemtest.Pin(t, model)
+			TestSarosExtensionTableIsFresh(t)
+			TestExtendedSarosUsesPrecomputedSeries(t)
+			TestExtendedSarosSpansAreComplete(t)
+			TestExtendedSarosMatchesLiveSeries(t)
+		})
+	}
+}
+
+func firstMissingSarosReturn(spans []sarosSpan) (int, bool) {
+	for index := 1; index < len(spans); index++ {
+		previous, current := spans[index-1], spans[index]
+		if previous.Series == current.Series && current.First > previous.Last+sarosCycleLunations {
+			return previous.Last + sarosCycleLunations, true
+		}
+	}
+	return 0, false
 }
 
 // 直映缓存只复用结果：命中与未命中都必须与未缓存求值逐字段相同，外推结果也必须与
@@ -165,7 +201,8 @@ func TestSarosEclipseMemoMatchesUncachedEvaluation(t *testing.T) {
 			for attempt := 0; attempt < 2; attempt++ {
 				maximum, exists, valid := sarosEclipse(k, phase)
 				wantMaximum, wantExists, wantValid := sarosEclipseUncached(k, phase)
-				if maximum != wantMaximum || exists != wantExists || valid != wantValid {
+				sameMaximum := maximum == wantMaximum || (math.IsNaN(maximum) && math.IsNaN(wantMaximum))
+				if !sameMaximum || exists != wantExists || valid != wantValid {
 					t.Fatalf("phase=%d k=%d attempt=%d cached=%v/%v/%v uncached=%v/%v/%v",
 						phase, k, attempt, maximum, exists, valid, wantMaximum, wantExists, wantValid)
 				}
@@ -203,4 +240,31 @@ func sarosExtrapolationUncachedForTest(k, phase int) (SarosInfo, bool) {
 		}
 	}
 	return info, true
+}
+
+// 序列首尾的擦边食是否成立随模型而定：Series 不变，Member/Count 可差一位。
+func TestSarosGrazingHeadDependsOnModel(t *testing.T) {
+	head := time.Date(3288, 11, 15, 12, 0, 0, 0, time.UTC)
+	next := time.Date(3306, 11, 28, 12, 0, 0, 0, time.UTC)
+	for _, tc := range []struct {
+		model   ephem.Model
+		hasHead bool
+		head    SarosInfo
+		next    SarosInfo
+	}{
+		{ephem.Legacy, true, SarosInfo{Series: 202, Member: 1, Count: 71}, SarosInfo{Series: 202, Member: 2, Count: 71}},
+		{ephem.Semianalytic, false, SarosInfo{}, SarosInfo{Series: 202, Member: 1, Count: 70}},
+	} {
+		t.Run(fmt.Sprintf("model%d", tc.model), func(t *testing.T) {
+			ephemtest.Pin(t, tc.model)
+			info, ok := SolarEclipseOnDate(head)
+			if ok != tc.hasHead || (ok && (!info.HasSaros || info.Saros != tc.head)) {
+				t.Fatalf("head: ok=%v hasSaros=%v %+v, want ok=%v %+v", ok, info.HasSaros, info.Saros, tc.hasHead, tc.head)
+			}
+			info, ok = SolarEclipseOnDate(next)
+			if !ok || !info.HasSaros || info.Saros != tc.next {
+				t.Fatalf("next: ok=%v hasSaros=%v %+v, want %+v", ok, info.HasSaros, info.Saros, tc.next)
+			}
+		})
+	}
 }

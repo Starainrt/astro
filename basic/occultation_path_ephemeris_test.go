@@ -6,6 +6,8 @@ import (
 	"reflect"
 	"testing"
 	"time"
+
+	_ "github.com/starainrt/astro/planet" // ensure semianalytic engine registration
 )
 
 func TestOccultationPathAlgorithmOptions(t *testing.T) {

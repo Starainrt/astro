@@ -3,7 +3,6 @@ package basic
 import (
 	"math"
 
-	"github.com/starainrt/astro/planet"
 	. "github.com/starainrt/astro/tools"
 )
 
@@ -122,18 +121,19 @@ func OrbitAstrometricGeocentricEquatorialJ2000(jde float64, elements OrbitElemen
 	return orbitVectorToEquatorial(vector)
 }
 
-// OrbitApparentGeocentricEcliptic 返回光行时与章动修正后的地心视黄道坐标，单位度/AU。
+// OrbitApparentGeocentricEcliptic 返回光行时、周年光行差与章动修正后的地心视黄道坐标，单位度/AU。
 func OrbitApparentGeocentricEcliptic(jde float64, elements OrbitElements) (lon, lat, distance float64) {
 	vectorDate := eclipticVectorAtReferenceEpoch(OrbitAstrometricGeocentricXYZJ2000(jde, elements), orbitReferenceJD, jde)
 	lon, lat, distance = orbitVectorToEcliptic(vectorDate)
 	if math.IsNaN(lon) {
 		return math.NaN(), math.NaN(), math.NaN()
 	}
-	lon = Limit360(lon + Nutation2000Bi(jde))
-	return lon, lat, distance
+	aberrationLon, aberrationLat := GXCLo(lon, lat, jde), GXCBo(lon, lat, jde)
+	lon = Limit360(lon + aberrationLon/3600 + Nutation2000Bi(jde))
+	return lon, lat + aberrationLat/3600, distance
 }
 
-// OrbitApparentGeocentricEquatorial 返回光行时与章动修正后的地心视赤道坐标，单位度/AU。
+// OrbitApparentGeocentricEquatorial 返回光行时、周年光行差与章动修正后的地心视赤道坐标，单位度/AU。
 func OrbitApparentGeocentricEquatorial(jde float64, elements OrbitElements) (ra, dec, distance float64) {
 	lon, lat, distance := OrbitApparentGeocentricEcliptic(jde, elements)
 	if math.IsNaN(lon) {
@@ -143,7 +143,7 @@ func OrbitApparentGeocentricEquatorial(jde float64, elements OrbitElements) (ra,
 	return ra, dec, distance
 }
 
-// OrbitApparentTopocentricEquatorial 返回光行时、章动与站心修正后的视赤道坐标，单位度/AU。
+// OrbitApparentTopocentricEquatorial 返回光行时、周年光行差、章动与站心修正后的视赤道坐标，单位度/AU。
 func OrbitApparentTopocentricEquatorial(jde, observerLon, observerLat, observerHeight float64, elements OrbitElements) (ra, dec, distance float64) {
 	geocentricRA, geocentricDec, geocentricDistance := OrbitApparentGeocentricEquatorial(jde, elements)
 	if math.IsNaN(geocentricRA) {
@@ -159,16 +159,20 @@ func OrbitApparentTopocentricEquatorial(jde, observerLon, observerLat, observerH
 	return orbitVectorToEquatorial(topocentricVector)
 }
 
-func earthHeliocentricVectorOfDate(jde float64) Vector3 {
+func earthHeliocentricVectorOfDate(jde float64, instances ...*Instance) Vector3 {
+	inst := instanceValue(instances)
+
 	return eclipticCartesian(
-		planet.WherePlanet(-1, 0, jde),
-		planet.WherePlanet(-1, 1, jde),
-		planet.WherePlanet(-1, 2, jde),
+		PlanetCoordinateWithInstance(-1, 0, jde, inst),
+		PlanetCoordinateWithInstance(-1, 1, jde, inst),
+		PlanetCoordinateWithInstance(-1, 2, jde, inst),
 	)
 }
 
-func earthHeliocentricVectorJ2000(jde float64) Vector3 {
-	return eclipticVectorAtReferenceEpoch(earthHeliocentricVectorOfDate(jde), jde, orbitReferenceJD)
+func earthHeliocentricVectorJ2000(jde float64, instances ...*Instance) Vector3 {
+	inst := instanceValue(instances)
+
+	return eclipticVectorAtReferenceEpoch(earthHeliocentricVectorOfDate(jde, inst), jde, orbitReferenceJD)
 }
 
 func orbitVectorToEcliptic(vector Vector3) (lon, lat, distance float64) {

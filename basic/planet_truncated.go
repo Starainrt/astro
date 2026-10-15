@@ -3,20 +3,21 @@ package basic
 import (
 	"math"
 
-	"github.com/starainrt/astro/planet"
 	. "github.com/starainrt/astro/tools"
 )
 
 // Exported N variants below keep the same jd semantics as the non-N APIs; n < 0 means full series.
 type planetDeclinationFuncN func(float64, int) float64
 
-func planetXYZN(planetIndex int, jde float64, n int) (float64, float64, float64) {
-	l := planet.WherePlanetN(planetIndex, 0, jde, n)
-	b := planet.WherePlanetN(planetIndex, 1, jde, n)
-	r := planet.WherePlanetN(planetIndex, 2, jde, n)
-	el := planet.WherePlanetN(-1, 0, jde, n)
-	eb := planet.WherePlanetN(-1, 1, jde, n)
-	er := planet.WherePlanetN(-1, 2, jde, n)
+func planetXYZN(planetIndex int, jde float64, n int, instances ...*Instance) (float64, float64, float64) {
+	inst := instanceValue(instances)
+
+	l := PlanetCoordinateNWithInstance(planetIndex, 0, jde, n, inst)
+	b := PlanetCoordinateNWithInstance(planetIndex, 1, jde, n, inst)
+	r := PlanetCoordinateNWithInstance(planetIndex, 2, jde, n, inst)
+	el := PlanetCoordinateNWithInstance(-1, 0, jde, n, inst)
+	eb := PlanetCoordinateNWithInstance(-1, 1, jde, n, inst)
+	er := PlanetCoordinateNWithInstance(-1, 2, jde, n, inst)
 	x := r*Cos(b)*Cos(l) - er*Cos(eb)*Cos(el)
 	y := r*Cos(b)*Sin(l) - er*Cos(eb)*Sin(el)
 	z := r*Sin(b) - er*Sin(eb)
@@ -56,34 +57,6 @@ func planetApparentRaDecFromLoBo(jde, lo, bo float64) (float64, float64) {
 
 func planetEarthAwayN(planetIndex int, jd float64, n int) float64 {
 	return planetEarthAwayExplicitN(planetIndex, jd, n)
-}
-
-func planetHeightN(localJD, lon, lat, timezone float64, n int, apparentRaDec func(float64, int) (float64, float64)) float64 {
-	utcJD := localJD - timezone/24.0
-	ra, dec := apparentRaDec(UTC2TT(utcJD), n)
-	st := Limit360(ApparentSiderealTime(UTC2UT1(utcJD))*15 + lon)
-	H := Limit360(st - ra)
-	sinHeight := Sin(lat)*Sin(dec) + Cos(dec)*Cos(lat)*Cos(H)
-	return ArcSin(sinHeight)
-}
-
-func planetAzimuthN(localJD, lon, lat, timezone float64, n int, apparentRaDec func(float64, int) (float64, float64)) float64 {
-	utcJD := localJD - timezone/24.0
-	ra, dec := apparentRaDec(UTC2TT(utcJD), n)
-	st := Limit360(ApparentSiderealTime(UTC2UT1(utcJD))*15 + lon)
-	H := Limit360(st - ra)
-	tanAzimuth := Sin(H) / (Cos(H)*Sin(lat) - Tan(dec)*Cos(lat))
-	azimuth := ArcTan(tanAzimuth)
-	if azimuth < 0 {
-		if H/15 < 12 {
-			return azimuth + 360
-		}
-		return azimuth + 180
-	}
-	if H/15 < 12 {
-		return azimuth + 180
-	}
-	return azimuth
 }
 
 func planetHourAngleN(jd, lon, timezone float64, n int, apparentRa func(float64, int) float64) float64 {
@@ -181,548 +154,618 @@ func planetRiseDownN(jd, lon, lat, timezone, aeroCorrection, observerHeight floa
 	return estimateJD - localTimezone/24 + timezone/24, nil
 }
 
-// MercuryApparentLoN 水星视黄经（截断版） / truncated apparent ecliptic longitude of Mercury.
+// MercuryApparentLoN 水星视黄经（n 变体） / n-parameterised apparent ecliptic longitude of Mercury.
 func MercuryApparentLoN(jd float64, n int) float64 {
 	lo, _ := planetApparentLoBoN(1, jd, n)
 	return lo
 }
 
-// MercuryApparentBoN 水星视黄纬（截断版） / truncated apparent ecliptic latitude of Mercury.
+// MercuryApparentBoN 水星视黄纬（n 变体） / n-parameterised apparent ecliptic latitude of Mercury.
 func MercuryApparentBoN(jd float64, n int) float64 {
 	_, bo := planetApparentLoBoN(1, jd, n)
 	return bo
 }
 
-// MercuryApparentLoBoN 水星视黄经黄纬（截断版） / truncated apparent ecliptic longitude and latitude of Mercury.
+// MercuryApparentLoBoN 水星视黄经黄纬（n 变体） / n-parameterised apparent ecliptic longitude and latitude of Mercury.
 func MercuryApparentLoBoN(jd float64, n int) (float64, float64) {
 	return planetApparentLoBoN(1, jd, n)
 }
 
-// MercuryApparentRaN 水星视赤经（截断版） / truncated apparent right ascension of Mercury.
+// MercuryApparentRaN 水星视赤经（n 变体） / n-parameterised apparent right ascension of Mercury.
 func MercuryApparentRaN(jde float64, n int) float64 {
 	lo, bo := MercuryApparentLoBoN(jde, n)
 	return LoToRa(jde, lo, bo)
 }
 
-// MercuryApparentDecN 水星视赤纬（截断版） / truncated apparent declination of Mercury.
+// MercuryApparentDecN 水星视赤纬（n 变体） / n-parameterised apparent declination of Mercury.
 func MercuryApparentDecN(jde float64, n int) float64 {
 	lo, bo := MercuryApparentLoBoN(jde, n)
 	eps := TrueObliquity(jde)
 	return ArcSin(Sin(bo)*Cos(eps) + Cos(bo)*Sin(eps)*Sin(lo))
 }
 
-// MercuryApparentRaDecN 水星视赤经赤纬（截断版） / truncated apparent right ascension and declination of Mercury.
+// MercuryApparentRaDecN 水星视赤经赤纬（n 变体） / n-parameterised apparent right ascension and declination of Mercury.
 func MercuryApparentRaDecN(jde float64, n int) (float64, float64) {
 	lo, bo := MercuryApparentLoBoN(jde, n)
 	return LoBoToRaDec(jde, lo, bo)
 }
 
-// EarthMercuryAwayN 地水距离（截断版） / truncated Earth-Mercury distance.
+// EarthMercuryAwayN 地水距离（n 变体） / n-parameterised Earth-Mercury distance.
 func EarthMercuryAwayN(jd float64, n int) float64 {
 	return planetEarthAwayN(1, jd, n)
 }
 
-// MercuryMagN 水星视星等（截断版） / truncated apparent magnitude of Mercury.
-func MercuryMagN(jde float64, n int) float64 {
-	awaySun := planet.WherePlanetN(1, 2, jde, n)
-	awayEarth := EarthMercuryAwayN(jde, n)
-	away := planet.WherePlanetN(-1, 2, jde, n)
+// MercuryMagNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func MercuryMagNWithInstance(jde float64, n int, inst *Instance) float64 {
+	awaySun := PlanetCoordinateNWithInstance(1, 2, jde, n, inst)
+	awayEarth := EarthMercuryAwayNWithInstance(jde, n, inst)
+	away := PlanetCoordinateNWithInstance(-1, 2, jde, n, inst)
 	i := (awaySun*awaySun + awayEarth*awayEarth - away*away) / (2 * awaySun * awayEarth)
 	i = ArcCos(i)
 	mag := -0.42 + 5*math.Log10(awaySun*awayEarth) + 0.0380*i - 0.000273*i*i + 0.000002*i*i*i
 	return FloatRound(mag, 2)
 }
 
-// MercuryHeightN 水星高度角（截断版） / truncated altitude of Mercury.
-func MercuryHeightN(localJD, lon, lat, timezone float64, n int) float64 {
-	return planetHeightN(localJD, lon, lat, timezone, n, MercuryApparentRaDecN)
+// MercuryHeightNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func MercuryHeightNWithInstance(localJD, lon, lat, timezone float64, n int, inst *Instance) float64 {
+	return planetHeightN(1, localJD, lon, lat, timezone, n, inst)
 }
 
-// MercuryAzimuthN 水星方位角（截断版） / truncated azimuth of Mercury.
-func MercuryAzimuthN(localJD, lon, lat, timezone float64, n int) float64 {
-	return planetAzimuthN(localJD, lon, lat, timezone, n, MercuryApparentRaDecN)
+// MercuryAzimuthNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func MercuryAzimuthNWithInstance(localJD, lon, lat, timezone float64, n int, inst *Instance) float64 {
+	return planetAzimuthN(1, localJD, lon, lat, timezone, n, inst)
 }
 
-// MercuryHourAngleN 水星时角（截断版） / truncated hour angle of Mercury.
-func MercuryHourAngleN(jd, lon, timezone float64, n int) float64 {
-	return planetHourAngleN(jd, lon, timezone, n, MercuryApparentRaN)
+// MercuryHourAngleNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func MercuryHourAngleNWithInstance(jd, lon, timezone float64, n int, inst *Instance) float64 {
+	return planetHourAngleN(jd, lon, timezone, n, func(jde float64, n int) float64 { return MercuryApparentRaNWithInstance(jde, n, inst) })
 }
 
-// MercuryCulminationTimeN 水星中天时间（截断版） / truncated culmination time of Mercury.
-func MercuryCulminationTimeN(localJD, lon, timezone float64, n int) float64 {
-	return planetCulminationTimeN(localJD, lon, timezone, n, MercuryHourAngleN)
+// MercuryCulminationTimeNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func MercuryCulminationTimeNWithInstance(localJD, lon, timezone float64, n int, inst *Instance) float64 {
+	return planetCulminationTimeN(localJD, lon, timezone, n, func(jd, lon, timezone float64, n int) float64 {
+		return MercuryHourAngleNWithInstance(jd, lon, timezone, n, inst)
+	})
 }
 
-// MercuryRiseTimeN 水星升起时间（截断版） / truncated rise time of Mercury.
-func MercuryRiseTimeN(jd, lon, lat, timezone, aeroCorrection, observerHeight float64, n int) (float64, error) {
-	return planetRiseDownN(jd, lon, lat, timezone, aeroCorrection, observerHeight, true, n, MercuryCulminationTimeN, MercuryHeightN, MercuryApparentDecN)
+// MercuryRiseTimeNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func MercuryRiseTimeNWithInstance(jd, lon, lat, timezone, aeroCorrection, observerHeight float64, n int, inst *Instance) (float64, error) {
+	return planetRiseDownN(jd, lon, lat, timezone, aeroCorrection, observerHeight, true, n, func(localJD, lon, timezone float64, n int) float64 {
+		return MercuryCulminationTimeNWithInstance(localJD, lon, timezone, n, inst)
+	}, func(localJD, lon, lat, timezone float64, n int) float64 {
+		return MercuryHeightNWithInstance(localJD, lon, lat, timezone, n, inst)
+	}, func(jde float64, n int) float64 { return MercuryApparentDecNWithInstance(jde, n, inst) })
 }
 
-// MercurySetTimeN 水星落下时间（截断版） / truncated set time of Mercury.
-func MercurySetTimeN(jd, lon, lat, timezone, aeroCorrection, observerHeight float64, n int) (float64, error) {
-	return planetRiseDownN(jd, lon, lat, timezone, aeroCorrection, observerHeight, false, n, MercuryCulminationTimeN, MercuryHeightN, MercuryApparentDecN)
+// MercurySetTimeNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func MercurySetTimeNWithInstance(jd, lon, lat, timezone, aeroCorrection, observerHeight float64, n int, inst *Instance) (float64, error) {
+	return planetRiseDownN(jd, lon, lat, timezone, aeroCorrection, observerHeight, false, n, func(localJD, lon, timezone float64, n int) float64 {
+		return MercuryCulminationTimeNWithInstance(localJD, lon, timezone, n, inst)
+	}, func(localJD, lon, lat, timezone float64, n int) float64 {
+		return MercuryHeightNWithInstance(localJD, lon, lat, timezone, n, inst)
+	}, func(jde float64, n int) float64 { return MercuryApparentDecNWithInstance(jde, n, inst) })
 }
 
-// VenusApparentLoN 金星视黄经（截断版） / truncated apparent ecliptic longitude of Venus.
+// VenusApparentLoN 金星视黄经（n 变体） / n-parameterised apparent ecliptic longitude of Venus.
 func VenusApparentLoN(jd float64, n int) float64 {
 	lo, _ := planetApparentLoBoN(2, jd, n)
 	return lo
 }
 
-// VenusApparentBoN 金星视黄纬（截断版） / truncated apparent ecliptic latitude of Venus.
+// VenusApparentBoN 金星视黄纬（n 变体） / n-parameterised apparent ecliptic latitude of Venus.
 func VenusApparentBoN(jd float64, n int) float64 {
 	_, bo := planetApparentLoBoN(2, jd, n)
 	return bo
 }
 
-// VenusApparentLoBoN 金星视黄经黄纬（截断版） / truncated apparent ecliptic longitude and latitude of Venus.
+// VenusApparentLoBoN 金星视黄经黄纬（n 变体） / n-parameterised apparent ecliptic longitude and latitude of Venus.
 func VenusApparentLoBoN(jd float64, n int) (float64, float64) {
 	return planetApparentLoBoN(2, jd, n)
 }
 
-// VenusApparentRaN 金星视赤经（截断版） / truncated apparent right ascension of Venus.
+// VenusApparentRaN 金星视赤经（n 变体） / n-parameterised apparent right ascension of Venus.
 func VenusApparentRaN(jd float64, n int) float64 {
 	return planetApparentRaManualN(2, jd, n)
 }
 
-// VenusApparentDecN 金星视赤纬（截断版） / truncated apparent declination of Venus.
+// VenusApparentDecN 金星视赤纬（n 变体） / n-parameterised apparent declination of Venus.
 func VenusApparentDecN(jd float64, n int) float64 {
 	return planetApparentDecManualN(2, jd, n)
 }
 
-// VenusApparentRaDecN 金星视赤经赤纬（截断版） / truncated apparent right ascension and declination of Venus.
+// VenusApparentRaDecN 金星视赤经赤纬（n 变体） / n-parameterised apparent right ascension and declination of Venus.
 func VenusApparentRaDecN(jd float64, n int) (float64, float64) {
 	return planetApparentRaDecManualN(2, jd, n)
 }
 
-// EarthVenusAwayN 地金距离（截断版） / truncated Earth-Venus distance.
+// EarthVenusAwayN 地金距离（n 变体） / n-parameterised Earth-Venus distance.
 func EarthVenusAwayN(jd float64, n int) float64 {
 	return planetEarthAwayN(2, jd, n)
 }
 
-// VenusMagN 金星视星等（截断版） / truncated apparent magnitude of Venus.
-func VenusMagN(jde float64, n int) float64 {
-	awaySun := planet.WherePlanetN(2, 2, jde, n)
-	awayEarth := EarthVenusAwayN(jde, n)
-	away := planet.WherePlanetN(-1, 2, jde, n)
+// VenusMagNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func VenusMagNWithInstance(jde float64, n int, inst *Instance) float64 {
+	awaySun := PlanetCoordinateNWithInstance(2, 2, jde, n, inst)
+	awayEarth := EarthVenusAwayNWithInstance(jde, n, inst)
+	away := PlanetCoordinateNWithInstance(-1, 2, jde, n, inst)
 	i := (awaySun*awaySun + awayEarth*awayEarth - away*away) / (2 * awaySun * awayEarth)
 	i = ArcCos(i)
 	mag := -4.40 + 5*math.Log10(awaySun*awayEarth) + 0.0009*i + 0.000239*i*i - 0.00000065*i*i*i
 	return FloatRound(mag, 2)
 }
 
-// VenusHeightN 金星高度角（截断版） / truncated altitude of Venus.
-func VenusHeightN(localJD, lon, lat, timezone float64, n int) float64 {
-	return planetHeightN(localJD, lon, lat, timezone, n, VenusApparentRaDecN)
+// VenusHeightNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func VenusHeightNWithInstance(localJD, lon, lat, timezone float64, n int, inst *Instance) float64 {
+	return planetHeightN(2, localJD, lon, lat, timezone, n, inst)
 }
 
-// VenusAzimuthN 金星方位角（截断版） / truncated azimuth of Venus.
-func VenusAzimuthN(localJD, lon, lat, timezone float64, n int) float64 {
-	return planetAzimuthN(localJD, lon, lat, timezone, n, VenusApparentRaDecN)
+// VenusAzimuthNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func VenusAzimuthNWithInstance(localJD, lon, lat, timezone float64, n int, inst *Instance) float64 {
+	return planetAzimuthN(2, localJD, lon, lat, timezone, n, inst)
 }
 
-// VenusHourAngleN 金星时角（截断版） / truncated hour angle of Venus.
-func VenusHourAngleN(jd, lon, timezone float64, n int) float64 {
-	return planetHourAngleN(jd, lon, timezone, n, VenusApparentRaN)
+// VenusHourAngleNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func VenusHourAngleNWithInstance(jd, lon, timezone float64, n int, inst *Instance) float64 {
+	return planetHourAngleN(jd, lon, timezone, n, func(jd float64, n int) float64 { return VenusApparentRaNWithInstance(jd, n, inst) })
 }
 
-// VenusCulminationTimeN 金星中天时间（截断版） / truncated culmination time of Venus.
-func VenusCulminationTimeN(localJD, lon, timezone float64, n int) float64 {
-	return planetCulminationTimeN(localJD, lon, timezone, n, VenusHourAngleN)
+// VenusCulminationTimeNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func VenusCulminationTimeNWithInstance(localJD, lon, timezone float64, n int, inst *Instance) float64 {
+	return planetCulminationTimeN(localJD, lon, timezone, n, func(jd, lon, timezone float64, n int) float64 {
+		return VenusHourAngleNWithInstance(jd, lon, timezone, n, inst)
+	})
 }
 
-// VenusRiseTimeN 金星升起时间（截断版） / truncated rise time of Venus.
-func VenusRiseTimeN(jd, lon, lat, timezone, aeroCorrection, observerHeight float64, n int) (float64, error) {
-	return planetRiseDownN(jd, lon, lat, timezone, aeroCorrection, observerHeight, true, n, VenusCulminationTimeN, VenusHeightN, VenusApparentDecN)
+// VenusRiseTimeNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func VenusRiseTimeNWithInstance(jd, lon, lat, timezone, aeroCorrection, observerHeight float64, n int, inst *Instance) (float64, error) {
+	return planetRiseDownN(jd, lon, lat, timezone, aeroCorrection, observerHeight, true, n, func(localJD, lon, timezone float64, n int) float64 {
+		return VenusCulminationTimeNWithInstance(localJD, lon, timezone, n, inst)
+	}, func(localJD, lon, lat, timezone float64, n int) float64 {
+		return VenusHeightNWithInstance(localJD, lon, lat, timezone, n, inst)
+	}, func(jd float64, n int) float64 { return VenusApparentDecNWithInstance(jd, n, inst) })
 }
 
-// VenusSetTimeN 金星落下时间（截断版） / truncated set time of Venus.
-func VenusSetTimeN(jd, lon, lat, timezone, aeroCorrection, observerHeight float64, n int) (float64, error) {
-	return planetRiseDownN(jd, lon, lat, timezone, aeroCorrection, observerHeight, false, n, VenusCulminationTimeN, VenusHeightN, VenusApparentDecN)
+// VenusSetTimeNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func VenusSetTimeNWithInstance(jd, lon, lat, timezone, aeroCorrection, observerHeight float64, n int, inst *Instance) (float64, error) {
+	return planetRiseDownN(jd, lon, lat, timezone, aeroCorrection, observerHeight, false, n, func(localJD, lon, timezone float64, n int) float64 {
+		return VenusCulminationTimeNWithInstance(localJD, lon, timezone, n, inst)
+	}, func(localJD, lon, lat, timezone float64, n int) float64 {
+		return VenusHeightNWithInstance(localJD, lon, lat, timezone, n, inst)
+	}, func(jd float64, n int) float64 { return VenusApparentDecNWithInstance(jd, n, inst) })
 }
 
-// MarsApparentLoN 火星视黄经（截断版） / truncated apparent ecliptic longitude of Mars.
+// MarsApparentLoN 火星视黄经（n 变体） / n-parameterised apparent ecliptic longitude of Mars.
 func MarsApparentLoN(jd float64, n int) float64 {
 	lo, _ := planetApparentLoBoN(3, jd, n)
 	return lo
 }
 
-// MarsApparentBoN 火星视黄纬（截断版） / truncated apparent ecliptic latitude of Mars.
+// MarsApparentBoN 火星视黄纬（n 变体） / n-parameterised apparent ecliptic latitude of Mars.
 func MarsApparentBoN(jd float64, n int) float64 {
 	_, bo := planetApparentLoBoN(3, jd, n)
 	return bo
 }
 
-// MarsApparentLoBoN 火星视黄经黄纬（截断版） / truncated apparent ecliptic longitude and latitude of Mars.
+// MarsApparentLoBoN 火星视黄经黄纬（n 变体） / n-parameterised apparent ecliptic longitude and latitude of Mars.
 func MarsApparentLoBoN(jd float64, n int) (float64, float64) {
 	return planetApparentLoBoN(3, jd, n)
 }
 
-// MarsApparentRaN 火星视赤经（截断版） / truncated apparent right ascension of Mars.
+// MarsApparentRaN 火星视赤经（n 变体） / n-parameterised apparent right ascension of Mars.
 func MarsApparentRaN(jd float64, n int) float64 {
 	return planetApparentRaManualN(3, jd, n)
 }
 
-// MarsApparentDecN 火星视赤纬（截断版） / truncated apparent declination of Mars.
+// MarsApparentDecN 火星视赤纬（n 变体） / n-parameterised apparent declination of Mars.
 func MarsApparentDecN(jd float64, n int) float64 {
 	return planetApparentDecManualN(3, jd, n)
 }
 
-// MarsApparentRaDecN 火星视赤经赤纬（截断版） / truncated apparent right ascension and declination of Mars.
+// MarsApparentRaDecN 火星视赤经赤纬（n 变体） / n-parameterised apparent right ascension and declination of Mars.
 func MarsApparentRaDecN(jd float64, n int) (float64, float64) {
 	return planetApparentRaDecManualN(3, jd, n)
 }
 
-// EarthMarsAwayN 地火距离（截断版） / truncated Earth-Mars distance.
+// EarthMarsAwayN 地火距离（n 变体） / n-parameterised Earth-Mars distance.
 func EarthMarsAwayN(jd float64, n int) float64 {
 	return planetEarthAwayN(3, jd, n)
 }
 
-// MarsMagN 火星视星等（截断版） / truncated apparent magnitude of Mars.
-func MarsMagN(jde float64, n int) float64 {
-	awaySun := planet.WherePlanetN(3, 2, jde, n)
-	awayEarth := EarthMarsAwayN(jde, n)
-	away := planet.WherePlanetN(-1, 2, jde, n)
+// MarsMagNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func MarsMagNWithInstance(jde float64, n int, inst *Instance) float64 {
+	awaySun := PlanetCoordinateNWithInstance(3, 2, jde, n, inst)
+	awayEarth := EarthMarsAwayNWithInstance(jde, n, inst)
+	away := PlanetCoordinateNWithInstance(-1, 2, jde, n, inst)
 	i := (awaySun*awaySun + awayEarth*awayEarth - away*away) / (2 * awaySun * awayEarth)
 	i = ArcCos(i)
 	mag := -1.52 + 5*math.Log10(awaySun*awayEarth) + 0.016*i
 	return FloatRound(mag, 2)
 }
 
-// MarsHeightN 火星高度角（截断版） / truncated altitude of Mars.
-func MarsHeightN(localJD, lon, lat, timezone float64, n int) float64 {
-	return planetHeightN(localJD, lon, lat, timezone, n, MarsApparentRaDecN)
+// MarsHeightNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func MarsHeightNWithInstance(localJD, lon, lat, timezone float64, n int, inst *Instance) float64 {
+	return planetHeightN(3, localJD, lon, lat, timezone, n, inst)
 }
 
-// MarsAzimuthN 火星方位角（截断版） / truncated azimuth of Mars.
-func MarsAzimuthN(localJD, lon, lat, timezone float64, n int) float64 {
-	return planetAzimuthN(localJD, lon, lat, timezone, n, MarsApparentRaDecN)
+// MarsAzimuthNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func MarsAzimuthNWithInstance(localJD, lon, lat, timezone float64, n int, inst *Instance) float64 {
+	return planetAzimuthN(3, localJD, lon, lat, timezone, n, inst)
 }
 
-// MarsHourAngleN 火星时角（截断版） / truncated hour angle of Mars.
-func MarsHourAngleN(jd, lon, timezone float64, n int) float64 {
-	return planetHourAngleN(jd, lon, timezone, n, MarsApparentRaN)
+// MarsHourAngleNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func MarsHourAngleNWithInstance(jd, lon, timezone float64, n int, inst *Instance) float64 {
+	return planetHourAngleN(jd, lon, timezone, n, func(jd float64, n int) float64 { return MarsApparentRaNWithInstance(jd, n, inst) })
 }
 
-// MarsCulminationTimeN 火星中天时间（截断版） / truncated culmination time of Mars.
-func MarsCulminationTimeN(localJD, lon, timezone float64, n int) float64 {
-	return planetCulminationTimeN(localJD, lon, timezone, n, MarsHourAngleN)
+// MarsCulminationTimeNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func MarsCulminationTimeNWithInstance(localJD, lon, timezone float64, n int, inst *Instance) float64 {
+	return planetCulminationTimeN(localJD, lon, timezone, n, func(jd, lon, timezone float64, n int) float64 {
+		return MarsHourAngleNWithInstance(jd, lon, timezone, n, inst)
+	})
 }
 
-// MarsRiseTimeN 火星升起时间（截断版） / truncated rise time of Mars.
-func MarsRiseTimeN(jd, lon, lat, timezone, aeroCorrection, observerHeight float64, n int) (float64, error) {
-	return planetRiseDownN(jd, lon, lat, timezone, aeroCorrection, observerHeight, true, n, MarsCulminationTimeN, MarsHeightN, MarsApparentDecN)
+// MarsRiseTimeNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func MarsRiseTimeNWithInstance(jd, lon, lat, timezone, aeroCorrection, observerHeight float64, n int, inst *Instance) (float64, error) {
+	return planetRiseDownN(jd, lon, lat, timezone, aeroCorrection, observerHeight, true, n, func(localJD, lon, timezone float64, n int) float64 {
+		return MarsCulminationTimeNWithInstance(localJD, lon, timezone, n, inst)
+	}, func(localJD, lon, lat, timezone float64, n int) float64 {
+		return MarsHeightNWithInstance(localJD, lon, lat, timezone, n, inst)
+	}, func(jd float64, n int) float64 { return MarsApparentDecNWithInstance(jd, n, inst) })
 }
 
-// MarsSetTimeN 火星落下时间（截断版） / truncated set time of Mars.
-func MarsSetTimeN(jd, lon, lat, timezone, aeroCorrection, observerHeight float64, n int) (float64, error) {
-	return planetRiseDownN(jd, lon, lat, timezone, aeroCorrection, observerHeight, false, n, MarsCulminationTimeN, MarsHeightN, MarsApparentDecN)
+// MarsSetTimeNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func MarsSetTimeNWithInstance(jd, lon, lat, timezone, aeroCorrection, observerHeight float64, n int, inst *Instance) (float64, error) {
+	return planetRiseDownN(jd, lon, lat, timezone, aeroCorrection, observerHeight, false, n, func(localJD, lon, timezone float64, n int) float64 {
+		return MarsCulminationTimeNWithInstance(localJD, lon, timezone, n, inst)
+	}, func(localJD, lon, lat, timezone float64, n int) float64 {
+		return MarsHeightNWithInstance(localJD, lon, lat, timezone, n, inst)
+	}, func(jd float64, n int) float64 { return MarsApparentDecNWithInstance(jd, n, inst) })
 }
 
-// JupiterApparentLoN 木星视黄经（截断版） / truncated apparent ecliptic longitude of Jupiter.
+// JupiterApparentLoN 木星视黄经（n 变体） / n-parameterised apparent ecliptic longitude of Jupiter.
 func JupiterApparentLoN(jd float64, n int) float64 {
 	lo, _ := planetApparentLoBoN(4, jd, n)
 	return lo
 }
 
-// JupiterApparentBoN 木星视黄纬（截断版） / truncated apparent ecliptic latitude of Jupiter.
+// JupiterApparentBoN 木星视黄纬（n 变体） / n-parameterised apparent ecliptic latitude of Jupiter.
 func JupiterApparentBoN(jd float64, n int) float64 {
 	_, bo := planetApparentLoBoN(4, jd, n)
 	return bo
 }
 
-// JupiterApparentLoBoN 木星视黄经黄纬（截断版） / truncated apparent ecliptic longitude and latitude of Jupiter.
+// JupiterApparentLoBoN 木星视黄经黄纬（n 变体） / n-parameterised apparent ecliptic longitude and latitude of Jupiter.
 func JupiterApparentLoBoN(jd float64, n int) (float64, float64) {
 	return planetApparentLoBoN(4, jd, n)
 }
 
-// JupiterApparentRaN 木星视赤经（截断版） / truncated apparent right ascension of Jupiter.
+// JupiterApparentRaN 木星视赤经（n 变体） / n-parameterised apparent right ascension of Jupiter.
 func JupiterApparentRaN(jd float64, n int) float64 {
 	return planetApparentRaManualN(4, jd, n)
 }
 
-// JupiterApparentDecN 木星视赤纬（截断版） / truncated apparent declination of Jupiter.
+// JupiterApparentDecN 木星视赤纬（n 变体） / n-parameterised apparent declination of Jupiter.
 func JupiterApparentDecN(jd float64, n int) float64 {
 	return planetApparentDecManualN(4, jd, n)
 }
 
-// JupiterApparentRaDecN 木星视赤经赤纬（截断版） / truncated apparent right ascension and declination of Jupiter.
+// JupiterApparentRaDecN 木星视赤经赤纬（n 变体） / n-parameterised apparent right ascension and declination of Jupiter.
 func JupiterApparentRaDecN(jd float64, n int) (float64, float64) {
 	return planetApparentRaDecManualN(4, jd, n)
 }
 
-// EarthJupiterAwayN 地木距离（截断版） / truncated Earth-Jupiter distance.
+// EarthJupiterAwayN 地木距离（n 变体） / n-parameterised Earth-Jupiter distance.
 func EarthJupiterAwayN(jd float64, n int) float64 {
 	return planetEarthAwayN(4, jd, n)
 }
 
-// JupiterMagN 木星视星等（截断版） / truncated apparent magnitude of Jupiter.
-func JupiterMagN(jde float64, n int) float64 {
-	awaySun := planet.WherePlanetN(4, 2, jde, n)
-	awayEarth := EarthJupiterAwayN(jde, n)
-	away := planet.WherePlanetN(-1, 2, jde, n)
+// JupiterMagNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func JupiterMagNWithInstance(jde float64, n int, inst *Instance) float64 {
+	awaySun := PlanetCoordinateNWithInstance(4, 2, jde, n, inst)
+	awayEarth := EarthJupiterAwayNWithInstance(jde, n, inst)
+	away := PlanetCoordinateNWithInstance(-1, 2, jde, n, inst)
 	i := (awaySun*awaySun + awayEarth*awayEarth - away*away) / (2 * awaySun * awayEarth)
 	i = ArcCos(i)
 	mag := -9.40 + 5*math.Log10(awaySun*awayEarth) + 0.0005*i
 	return FloatRound(mag, 2)
 }
 
-// JupiterHeightN 木星高度角（截断版） / truncated altitude of Jupiter.
-func JupiterHeightN(localJD, lon, lat, timezone float64, n int) float64 {
-	return planetHeightN(localJD, lon, lat, timezone, n, JupiterApparentRaDecN)
+// JupiterHeightNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func JupiterHeightNWithInstance(localJD, lon, lat, timezone float64, n int, inst *Instance) float64 {
+	return planetHeightN(4, localJD, lon, lat, timezone, n, inst)
 }
 
-// JupiterAzimuthN 木星方位角（截断版） / truncated azimuth of Jupiter.
-func JupiterAzimuthN(localJD, lon, lat, timezone float64, n int) float64 {
-	return planetAzimuthN(localJD, lon, lat, timezone, n, JupiterApparentRaDecN)
+// JupiterAzimuthNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func JupiterAzimuthNWithInstance(localJD, lon, lat, timezone float64, n int, inst *Instance) float64 {
+	return planetAzimuthN(4, localJD, lon, lat, timezone, n, inst)
 }
 
-// JupiterHourAngleN 木星时角（截断版） / truncated hour angle of Jupiter.
-func JupiterHourAngleN(jd, lon, timezone float64, n int) float64 {
-	return planetHourAngleN(jd, lon, timezone, n, JupiterApparentRaN)
+// JupiterHourAngleNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func JupiterHourAngleNWithInstance(jd, lon, timezone float64, n int, inst *Instance) float64 {
+	return planetHourAngleN(jd, lon, timezone, n, func(jd float64, n int) float64 { return JupiterApparentRaNWithInstance(jd, n, inst) })
 }
 
-// JupiterCulminationTimeN 木星中天时间（截断版） / truncated culmination time of Jupiter.
-func JupiterCulminationTimeN(localJD, lon, timezone float64, n int) float64 {
-	return planetCulminationTimeN(localJD, lon, timezone, n, JupiterHourAngleN)
+// JupiterCulminationTimeNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func JupiterCulminationTimeNWithInstance(localJD, lon, timezone float64, n int, inst *Instance) float64 {
+	return planetCulminationTimeN(localJD, lon, timezone, n, func(jd, lon, timezone float64, n int) float64 {
+		return JupiterHourAngleNWithInstance(jd, lon, timezone, n, inst)
+	})
 }
 
-// JupiterRiseTimeN 木星升起时间（截断版） / truncated rise time of Jupiter.
-func JupiterRiseTimeN(jd, lon, lat, timezone, aeroCorrection, observerHeight float64, n int) (float64, error) {
-	return planetRiseDownN(jd, lon, lat, timezone, aeroCorrection, observerHeight, true, n, JupiterCulminationTimeN, JupiterHeightN, JupiterApparentDecN)
+// JupiterRiseTimeNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func JupiterRiseTimeNWithInstance(jd, lon, lat, timezone, aeroCorrection, observerHeight float64, n int, inst *Instance) (float64, error) {
+	return planetRiseDownN(jd, lon, lat, timezone, aeroCorrection, observerHeight, true, n, func(localJD, lon, timezone float64, n int) float64 {
+		return JupiterCulminationTimeNWithInstance(localJD, lon, timezone, n, inst)
+	}, func(localJD, lon, lat, timezone float64, n int) float64 {
+		return JupiterHeightNWithInstance(localJD, lon, lat, timezone, n, inst)
+	}, func(jd float64, n int) float64 { return JupiterApparentDecNWithInstance(jd, n, inst) })
 }
 
-// JupiterSetTimeN 木星落下时间（截断版） / truncated set time of Jupiter.
-func JupiterSetTimeN(jd, lon, lat, timezone, aeroCorrection, observerHeight float64, n int) (float64, error) {
-	return planetRiseDownN(jd, lon, lat, timezone, aeroCorrection, observerHeight, false, n, JupiterCulminationTimeN, JupiterHeightN, JupiterApparentDecN)
+// JupiterSetTimeNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func JupiterSetTimeNWithInstance(jd, lon, lat, timezone, aeroCorrection, observerHeight float64, n int, inst *Instance) (float64, error) {
+	return planetRiseDownN(jd, lon, lat, timezone, aeroCorrection, observerHeight, false, n, func(localJD, lon, timezone float64, n int) float64 {
+		return JupiterCulminationTimeNWithInstance(localJD, lon, timezone, n, inst)
+	}, func(localJD, lon, lat, timezone float64, n int) float64 {
+		return JupiterHeightNWithInstance(localJD, lon, lat, timezone, n, inst)
+	}, func(jd float64, n int) float64 { return JupiterApparentDecNWithInstance(jd, n, inst) })
 }
 
-// SaturnApparentLoN 土星视黄经（截断版） / truncated apparent ecliptic longitude of Saturn.
+// SaturnApparentLoN 土星视黄经（n 变体） / n-parameterised apparent ecliptic longitude of Saturn.
 func SaturnApparentLoN(jd float64, n int) float64 {
 	lo, _ := planetApparentLoBoN(5, jd, n)
 	return lo
 }
 
-// SaturnApparentBoN 土星视黄纬（截断版） / truncated apparent ecliptic latitude of Saturn.
+// SaturnApparentBoN 土星视黄纬（n 变体） / n-parameterised apparent ecliptic latitude of Saturn.
 func SaturnApparentBoN(jd float64, n int) float64 {
 	_, bo := planetApparentLoBoN(5, jd, n)
 	return bo
 }
 
-// SaturnApparentLoBoN 土星视黄经黄纬（截断版） / truncated apparent ecliptic longitude and latitude of Saturn.
+// SaturnApparentLoBoN 土星视黄经黄纬（n 变体） / n-parameterised apparent ecliptic longitude and latitude of Saturn.
 func SaturnApparentLoBoN(jd float64, n int) (float64, float64) {
 	return planetApparentLoBoN(5, jd, n)
 }
 
-// SaturnApparentRaN 土星视赤经（截断版） / truncated apparent right ascension of Saturn.
+// SaturnApparentRaN 土星视赤经（n 变体） / n-parameterised apparent right ascension of Saturn.
 func SaturnApparentRaN(jd float64, n int) float64 {
 	return planetApparentRaManualN(5, jd, n)
 }
 
-// SaturnApparentDecN 土星视赤纬（截断版） / truncated apparent declination of Saturn.
+// SaturnApparentDecN 土星视赤纬（n 变体） / n-parameterised apparent declination of Saturn.
 func SaturnApparentDecN(jd float64, n int) float64 {
 	return planetApparentDecManualN(5, jd, n)
 }
 
-// SaturnApparentRaDecN 土星视赤经赤纬（截断版） / truncated apparent right ascension and declination of Saturn.
+// SaturnApparentRaDecN 土星视赤经赤纬（n 变体） / n-parameterised apparent right ascension and declination of Saturn.
 func SaturnApparentRaDecN(jd float64, n int) (float64, float64) {
 	return planetApparentRaDecManualN(5, jd, n)
 }
 
-// EarthSaturnAwayN 地土距离（截断版） / truncated Earth-Saturn distance.
+// EarthSaturnAwayN 地土距离（n 变体） / n-parameterised Earth-Saturn distance.
 func EarthSaturnAwayN(jd float64, n int) float64 {
 	return planetEarthAwayN(5, jd, n)
 }
 
-// SaturnMagN 土星视星等（截断版） / truncated apparent magnitude of Saturn.
-func SaturnMagN(jde float64, n int) float64 {
-	awaySun := planet.WherePlanetN(5, 2, jde, n)
-	awayEarth := EarthSaturnAwayN(jde, n)
-	ringB, _, _, deltaU, _, _ := SaturnRingParametersN(jde, n)
+// SaturnMagNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func SaturnMagNWithInstance(jde float64, n int, inst *Instance) float64 {
+	awaySun := PlanetCoordinateNWithInstance(5, 2, jde, n, inst)
+	awayEarth := EarthSaturnAwayNWithInstance(jde, n, inst)
+	ringB, _, _, deltaU, _, _ := SaturnRingParametersNWithInstance(jde, n, inst)
 	ringB = math.Abs(ringB)
 	mag := -8.68 + 5*math.Log10(awaySun*awayEarth) + 0.044*deltaU - 2.6*Sin(ringB) + 1.25*Sin(ringB)*Sin(ringB)
 	return FloatRound(mag, 2)
 }
 
-// SaturnHeightN 土星高度角（截断版） / truncated altitude of Saturn.
-func SaturnHeightN(localJD, lon, lat, timezone float64, n int) float64 {
-	return planetHeightN(localJD, lon, lat, timezone, n, SaturnApparentRaDecN)
+// SaturnHeightNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func SaturnHeightNWithInstance(localJD, lon, lat, timezone float64, n int, inst *Instance) float64 {
+	return planetHeightN(5, localJD, lon, lat, timezone, n, inst)
 }
 
-// SaturnAzimuthN 土星方位角（截断版） / truncated azimuth of Saturn.
-func SaturnAzimuthN(localJD, lon, lat, timezone float64, n int) float64 {
-	return planetAzimuthN(localJD, lon, lat, timezone, n, SaturnApparentRaDecN)
+// SaturnAzimuthNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func SaturnAzimuthNWithInstance(localJD, lon, lat, timezone float64, n int, inst *Instance) float64 {
+	return planetAzimuthN(5, localJD, lon, lat, timezone, n, inst)
 }
 
-// SaturnHourAngleN 土星时角（截断版） / truncated hour angle of Saturn.
-func SaturnHourAngleN(jd, lon, timezone float64, n int) float64 {
-	return planetHourAngleN(jd, lon, timezone, n, SaturnApparentRaN)
+// SaturnHourAngleNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func SaturnHourAngleNWithInstance(jd, lon, timezone float64, n int, inst *Instance) float64 {
+	return planetHourAngleN(jd, lon, timezone, n, func(jd float64, n int) float64 { return SaturnApparentRaNWithInstance(jd, n, inst) })
 }
 
-// SaturnCulminationTimeN 土星中天时间（截断版） / truncated culmination time of Saturn.
-func SaturnCulminationTimeN(localJD, lon, timezone float64, n int) float64 {
-	return planetCulminationTimeN(localJD, lon, timezone, n, SaturnHourAngleN)
+// SaturnCulminationTimeNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func SaturnCulminationTimeNWithInstance(localJD, lon, timezone float64, n int, inst *Instance) float64 {
+	return planetCulminationTimeN(localJD, lon, timezone, n, func(jd, lon, timezone float64, n int) float64 {
+		return SaturnHourAngleNWithInstance(jd, lon, timezone, n, inst)
+	})
 }
 
-// SaturnRiseTimeN 土星升起时间（截断版） / truncated rise time of Saturn.
-func SaturnRiseTimeN(jd, lon, lat, timezone, aeroCorrection, observerHeight float64, n int) (float64, error) {
-	return planetRiseDownN(jd, lon, lat, timezone, aeroCorrection, observerHeight, true, n, SaturnCulminationTimeN, SaturnHeightN, SaturnApparentDecN)
+// SaturnRiseTimeNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func SaturnRiseTimeNWithInstance(jd, lon, lat, timezone, aeroCorrection, observerHeight float64, n int, inst *Instance) (float64, error) {
+	return planetRiseDownN(jd, lon, lat, timezone, aeroCorrection, observerHeight, true, n, func(localJD, lon, timezone float64, n int) float64 {
+		return SaturnCulminationTimeNWithInstance(localJD, lon, timezone, n, inst)
+	}, func(localJD, lon, lat, timezone float64, n int) float64 {
+		return SaturnHeightNWithInstance(localJD, lon, lat, timezone, n, inst)
+	}, func(jd float64, n int) float64 { return SaturnApparentDecNWithInstance(jd, n, inst) })
 }
 
-// SaturnSetTimeN 土星落下时间（截断版） / truncated set time of Saturn.
-func SaturnSetTimeN(jd, lon, lat, timezone, aeroCorrection, observerHeight float64, n int) (float64, error) {
-	return planetRiseDownN(jd, lon, lat, timezone, aeroCorrection, observerHeight, false, n, SaturnCulminationTimeN, SaturnHeightN, SaturnApparentDecN)
+// SaturnSetTimeNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func SaturnSetTimeNWithInstance(jd, lon, lat, timezone, aeroCorrection, observerHeight float64, n int, inst *Instance) (float64, error) {
+	return planetRiseDownN(jd, lon, lat, timezone, aeroCorrection, observerHeight, false, n, func(localJD, lon, timezone float64, n int) float64 {
+		return SaturnCulminationTimeNWithInstance(localJD, lon, timezone, n, inst)
+	}, func(localJD, lon, lat, timezone float64, n int) float64 {
+		return SaturnHeightNWithInstance(localJD, lon, lat, timezone, n, inst)
+	}, func(jd float64, n int) float64 { return SaturnApparentDecNWithInstance(jd, n, inst) })
 }
 
-// UranusApparentLoN 天王星视黄经（截断版） / truncated apparent ecliptic longitude of Uranus.
+// UranusApparentLoN 天王星视黄经（n 变体） / n-parameterised apparent ecliptic longitude of Uranus.
 func UranusApparentLoN(jd float64, n int) float64 {
 	lo, _ := planetApparentLoBoN(6, jd, n)
 	return lo
 }
 
-// UranusApparentBoN 天王星视黄纬（截断版） / truncated apparent ecliptic latitude of Uranus.
+// UranusApparentBoN 天王星视黄纬（n 变体） / n-parameterised apparent ecliptic latitude of Uranus.
 func UranusApparentBoN(jd float64, n int) float64 {
 	_, bo := planetApparentLoBoN(6, jd, n)
 	return bo
 }
 
-// UranusApparentLoBoN 天王星视黄经黄纬（截断版） / truncated apparent ecliptic longitude and latitude of Uranus.
+// UranusApparentLoBoN 天王星视黄经黄纬（n 变体） / n-parameterised apparent ecliptic longitude and latitude of Uranus.
 func UranusApparentLoBoN(jd float64, n int) (float64, float64) {
 	return planetApparentLoBoN(6, jd, n)
 }
 
-// UranusApparentRaN 天王星视赤经（截断版） / truncated apparent right ascension of Uranus.
+// UranusApparentRaN 天王星视赤经（n 变体） / n-parameterised apparent right ascension of Uranus.
 func UranusApparentRaN(jd float64, n int) float64 {
 	return planetApparentRaManualN(6, jd, n)
 }
 
-// UranusApparentDecN 天王星视赤纬（截断版） / truncated apparent declination of Uranus.
+// UranusApparentDecN 天王星视赤纬（n 变体） / n-parameterised apparent declination of Uranus.
 func UranusApparentDecN(jd float64, n int) float64 {
 	return planetApparentDecManualN(6, jd, n)
 }
 
-// UranusApparentRaDecN 天王星视赤经赤纬（截断版） / truncated apparent right ascension and declination of Uranus.
+// UranusApparentRaDecN 天王星视赤经赤纬（n 变体） / n-parameterised apparent right ascension and declination of Uranus.
 func UranusApparentRaDecN(jd float64, n int) (float64, float64) {
 	return planetApparentRaDecManualN(6, jd, n)
 }
 
-// EarthUranusAwayN 地天距离（截断版） / truncated Earth-Uranus distance.
+// EarthUranusAwayN 地天距离（n 变体） / n-parameterised Earth-Uranus distance.
 func EarthUranusAwayN(jd float64, n int) float64 {
 	return planetEarthAwayN(6, jd, n)
 }
 
-// UranusMagN 天王星视星等（截断版） / truncated apparent magnitude of Uranus.
-func UranusMagN(jde float64, n int) float64 {
-	awaySun := planet.WherePlanetN(6, 2, jde, n)
-	awayEarth := EarthUranusAwayN(jde, n)
-	away := planet.WherePlanetN(-1, 2, jde, n)
+// UranusMagNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func UranusMagNWithInstance(jde float64, n int, inst *Instance) float64 {
+	awaySun := PlanetCoordinateNWithInstance(6, 2, jde, n, inst)
+	awayEarth := EarthUranusAwayNWithInstance(jde, n, inst)
+	away := PlanetCoordinateNWithInstance(-1, 2, jde, n, inst)
 	i := (awaySun*awaySun + awayEarth*awayEarth - away*away) / (2 * awaySun * awayEarth)
 	i = ArcCos(i)
 	mag := -7.19 + 5*math.Log10(awaySun*awayEarth) + 0.016*i
 	return FloatRound(mag, 2)
 }
 
-// UranusHeightN 天王星高度角（截断版） / truncated altitude of Uranus.
-func UranusHeightN(localJD, lon, lat, timezone float64, n int) float64 {
-	return planetHeightN(localJD, lon, lat, timezone, n, UranusApparentRaDecN)
+// UranusHeightNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func UranusHeightNWithInstance(localJD, lon, lat, timezone float64, n int, inst *Instance) float64 {
+	return planetHeightN(6, localJD, lon, lat, timezone, n, inst)
 }
 
-// UranusAzimuthN 天王星方位角（截断版） / truncated azimuth of Uranus.
-func UranusAzimuthN(localJD, lon, lat, timezone float64, n int) float64 {
-	return planetAzimuthN(localJD, lon, lat, timezone, n, UranusApparentRaDecN)
+// UranusAzimuthNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func UranusAzimuthNWithInstance(localJD, lon, lat, timezone float64, n int, inst *Instance) float64 {
+	return planetAzimuthN(6, localJD, lon, lat, timezone, n, inst)
 }
 
-// UranusHourAngleN 天王星时角（截断版） / truncated hour angle of Uranus.
-func UranusHourAngleN(jd, lon, timezone float64, n int) float64 {
-	return planetHourAngleN(jd, lon, timezone, n, UranusApparentRaN)
+// UranusHourAngleNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func UranusHourAngleNWithInstance(jd, lon, timezone float64, n int, inst *Instance) float64 {
+	return planetHourAngleN(jd, lon, timezone, n, func(jd float64, n int) float64 { return UranusApparentRaNWithInstance(jd, n, inst) })
 }
 
-// UranusCulminationTimeN 天王星中天时间（截断版） / truncated culmination time of Uranus.
-func UranusCulminationTimeN(localJD, lon, timezone float64, n int) float64 {
-	return planetCulminationTimeN(localJD, lon, timezone, n, UranusHourAngleN)
+// UranusCulminationTimeNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func UranusCulminationTimeNWithInstance(localJD, lon, timezone float64, n int, inst *Instance) float64 {
+	return planetCulminationTimeN(localJD, lon, timezone, n, func(jd, lon, timezone float64, n int) float64 {
+		return UranusHourAngleNWithInstance(jd, lon, timezone, n, inst)
+	})
 }
 
-// UranusRiseTimeN 天王星升起时间（截断版） / truncated rise time of Uranus.
-func UranusRiseTimeN(jd, lon, lat, timezone, aeroCorrection, observerHeight float64, n int) (float64, error) {
-	return planetRiseDownN(jd, lon, lat, timezone, aeroCorrection, observerHeight, true, n, UranusCulminationTimeN, UranusHeightN, UranusApparentDecN)
+// UranusRiseTimeNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func UranusRiseTimeNWithInstance(jd, lon, lat, timezone, aeroCorrection, observerHeight float64, n int, inst *Instance) (float64, error) {
+	return planetRiseDownN(jd, lon, lat, timezone, aeroCorrection, observerHeight, true, n, func(localJD, lon, timezone float64, n int) float64 {
+		return UranusCulminationTimeNWithInstance(localJD, lon, timezone, n, inst)
+	}, func(localJD, lon, lat, timezone float64, n int) float64 {
+		return UranusHeightNWithInstance(localJD, lon, lat, timezone, n, inst)
+	}, func(jd float64, n int) float64 { return UranusApparentDecNWithInstance(jd, n, inst) })
 }
 
-// UranusSetTimeN 天王星落下时间（截断版） / truncated set time of Uranus.
-func UranusSetTimeN(jd, lon, lat, timezone, aeroCorrection, observerHeight float64, n int) (float64, error) {
-	return planetRiseDownN(jd, lon, lat, timezone, aeroCorrection, observerHeight, false, n, UranusCulminationTimeN, UranusHeightN, UranusApparentDecN)
+// UranusSetTimeNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func UranusSetTimeNWithInstance(jd, lon, lat, timezone, aeroCorrection, observerHeight float64, n int, inst *Instance) (float64, error) {
+	return planetRiseDownN(jd, lon, lat, timezone, aeroCorrection, observerHeight, false, n, func(localJD, lon, timezone float64, n int) float64 {
+		return UranusCulminationTimeNWithInstance(localJD, lon, timezone, n, inst)
+	}, func(localJD, lon, lat, timezone float64, n int) float64 {
+		return UranusHeightNWithInstance(localJD, lon, lat, timezone, n, inst)
+	}, func(jd float64, n int) float64 { return UranusApparentDecNWithInstance(jd, n, inst) })
 }
 
-// NeptuneApparentLoN 海王星视黄经（截断版） / truncated apparent ecliptic longitude of Neptune.
+// NeptuneApparentLoN 海王星视黄经（n 变体） / n-parameterised apparent ecliptic longitude of Neptune.
 func NeptuneApparentLoN(jd float64, n int) float64 {
 	lo, _ := planetApparentLoBoN(7, jd, n)
 	return lo
 }
 
-// NeptuneApparentBoN 海王星视黄纬（截断版） / truncated apparent ecliptic latitude of Neptune.
+// NeptuneApparentBoN 海王星视黄纬（n 变体） / n-parameterised apparent ecliptic latitude of Neptune.
 func NeptuneApparentBoN(jd float64, n int) float64 {
 	_, bo := planetApparentLoBoN(7, jd, n)
 	return bo
 }
 
-// NeptuneApparentLoBoN 海王星视黄经黄纬（截断版） / truncated apparent ecliptic longitude and latitude of Neptune.
+// NeptuneApparentLoBoN 海王星视黄经黄纬（n 变体） / n-parameterised apparent ecliptic longitude and latitude of Neptune.
 func NeptuneApparentLoBoN(jd float64, n int) (float64, float64) {
 	return planetApparentLoBoN(7, jd, n)
 }
 
-// NeptuneApparentRaN 海王星视赤经（截断版） / truncated apparent right ascension of Neptune.
+// NeptuneApparentRaN 海王星视赤经（n 变体） / n-parameterised apparent right ascension of Neptune.
 func NeptuneApparentRaN(jd float64, n int) float64 {
 	return planetApparentRaManualN(7, jd, n)
 }
 
-// NeptuneApparentDecN 海王星视赤纬（截断版） / truncated apparent declination of Neptune.
+// NeptuneApparentDecN 海王星视赤纬（n 变体） / n-parameterised apparent declination of Neptune.
 func NeptuneApparentDecN(jd float64, n int) float64 {
 	return planetApparentDecManualN(7, jd, n)
 }
 
-// NeptuneApparentRaDecN 海王星视赤经赤纬（截断版） / truncated apparent right ascension and declination of Neptune.
+// NeptuneApparentRaDecN 海王星视赤经赤纬（n 变体） / n-parameterised apparent right ascension and declination of Neptune.
 func NeptuneApparentRaDecN(jd float64, n int) (float64, float64) {
 	return planetApparentRaDecManualN(7, jd, n)
 }
 
-// EarthNeptuneAwayN 地海距离（截断版） / truncated Earth-Neptune distance.
+// EarthNeptuneAwayN 地海距离（n 变体） / n-parameterised Earth-Neptune distance.
 func EarthNeptuneAwayN(jd float64, n int) float64 {
 	return planetEarthAwayN(7, jd, n)
 }
 
-// NeptuneMagN 海王星视星等（截断版） / truncated apparent magnitude of Neptune.
-func NeptuneMagN(jde float64, n int) float64 {
-	awaySun := planet.WherePlanetN(7, 2, jde, n)
-	awayEarth := EarthNeptuneAwayN(jde, n)
+// NeptuneMagNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func NeptuneMagNWithInstance(jde float64, n int, inst *Instance) float64 {
+	awaySun := PlanetCoordinateNWithInstance(7, 2, jde, n, inst)
+	awayEarth := EarthNeptuneAwayNWithInstance(jde, n, inst)
 	mag := -6.87 + 5*math.Log10(awaySun*awayEarth)
 	return FloatRound(mag, 2)
 }
 
-// NeptuneHeightN 海王星高度角（截断版） / truncated altitude of Neptune.
-func NeptuneHeightN(localJD, lon, lat, timezone float64, n int) float64 {
-	return planetHeightN(localJD, lon, lat, timezone, n, NeptuneApparentRaDecN)
+// NeptuneHeightNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func NeptuneHeightNWithInstance(localJD, lon, lat, timezone float64, n int, inst *Instance) float64 {
+	return planetHeightN(7, localJD, lon, lat, timezone, n, inst)
 }
 
-// NeptuneAzimuthN 海王星方位角（截断版） / truncated azimuth of Neptune.
-func NeptuneAzimuthN(localJD, lon, lat, timezone float64, n int) float64 {
-	return planetAzimuthN(localJD, lon, lat, timezone, n, NeptuneApparentRaDecN)
+// NeptuneAzimuthNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func NeptuneAzimuthNWithInstance(localJD, lon, lat, timezone float64, n int, inst *Instance) float64 {
+	return planetAzimuthN(7, localJD, lon, lat, timezone, n, inst)
 }
 
-// NeptuneHourAngleN 海王星时角（截断版） / truncated hour angle of Neptune.
-func NeptuneHourAngleN(jd, lon, timezone float64, n int) float64 {
-	return planetHourAngleN(jd, lon, timezone, n, NeptuneApparentRaN)
+// NeptuneHourAngleNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func NeptuneHourAngleNWithInstance(jd, lon, timezone float64, n int, inst *Instance) float64 {
+	return planetHourAngleN(jd, lon, timezone, n, func(jd float64, n int) float64 { return NeptuneApparentRaNWithInstance(jd, n, inst) })
 }
 
-// NeptuneCulminationTimeN 海王星中天时间（截断版） / truncated culmination time of Neptune.
-func NeptuneCulminationTimeN(localJD, lon, timezone float64, n int) float64 {
-	return planetCulminationTimeN(localJD, lon, timezone, n, NeptuneHourAngleN)
+// NeptuneCulminationTimeNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func NeptuneCulminationTimeNWithInstance(localJD, lon, timezone float64, n int, inst *Instance) float64 {
+	return planetCulminationTimeN(localJD, lon, timezone, n, func(jd, lon, timezone float64, n int) float64 {
+		return NeptuneHourAngleNWithInstance(jd, lon, timezone, n, inst)
+	})
 }
 
-// NeptuneRiseTimeN 海王星升起时间（截断版） / truncated rise time of Neptune.
-func NeptuneRiseTimeN(jd, lon, lat, timezone, aeroCorrection, observerHeight float64, n int) (float64, error) {
-	return planetRiseDownN(jd, lon, lat, timezone, aeroCorrection, observerHeight, true, n, NeptuneCulminationTimeN, NeptuneHeightN, NeptuneApparentDecN)
+// NeptuneRiseTimeNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func NeptuneRiseTimeNWithInstance(jd, lon, lat, timezone, aeroCorrection, observerHeight float64, n int, inst *Instance) (float64, error) {
+	return planetRiseDownN(jd, lon, lat, timezone, aeroCorrection, observerHeight, true, n, func(localJD, lon, timezone float64, n int) float64 {
+		return NeptuneCulminationTimeNWithInstance(localJD, lon, timezone, n, inst)
+	}, func(localJD, lon, lat, timezone float64, n int) float64 {
+		return NeptuneHeightNWithInstance(localJD, lon, lat, timezone, n, inst)
+	}, func(jd float64, n int) float64 { return NeptuneApparentDecNWithInstance(jd, n, inst) })
 }
 
-// NeptuneSetTimeN 海王星落下时间（截断版） / truncated set time of Neptune.
-func NeptuneSetTimeN(jd, lon, lat, timezone, aeroCorrection, observerHeight float64, n int) (float64, error) {
-	return planetRiseDownN(jd, lon, lat, timezone, aeroCorrection, observerHeight, false, n, NeptuneCulminationTimeN, NeptuneHeightN, NeptuneApparentDecN)
+// NeptuneSetTimeNWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func NeptuneSetTimeNWithInstance(jd, lon, lat, timezone, aeroCorrection, observerHeight float64, n int, inst *Instance) (float64, error) {
+	return planetRiseDownN(jd, lon, lat, timezone, aeroCorrection, observerHeight, false, n, func(localJD, lon, timezone float64, n int) float64 {
+		return NeptuneCulminationTimeNWithInstance(localJD, lon, timezone, n, inst)
+	}, func(localJD, lon, lat, timezone float64, n int) float64 {
+		return NeptuneHeightNWithInstance(localJD, lon, lat, timezone, n, inst)
+	}, func(jd float64, n int) float64 { return NeptuneApparentDecNWithInstance(jd, n, inst) })
 }

@@ -1274,7 +1274,7 @@ func occultationCoverageProbeExists(
 	probe geodata.GeoPoint,
 ) bool {
 	for _, existing := range coveragePaths {
-		if geoDistanceKM(existing[0], probe) < 10 {
+		if geodata.EquatorialDistanceKM(existing[0], probe) < 10 {
 			return true
 		}
 	}

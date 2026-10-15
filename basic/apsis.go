@@ -57,14 +57,14 @@ func EarthAphelion(year int) ApsisEvent {
 	return earthApsis(year, true)
 }
 
-// MoonPerigees 指定年月内的所有月球近地点 / all lunar perigees in the given Gregorian month.
-func MoonPerigees(year int, month time.Month) []ApsisEvent {
-	return moonApsisInMonth(year, month, false)
+// MoonPerigeesWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func MoonPerigeesWithInstance(year int, month time.Month, inst *Instance) []ApsisEvent {
+	return moonApsisInMonth(year, month, false, inst)
 }
 
-// MoonApogees 指定年月内的所有月球远地点 / all lunar apogees in the given Gregorian month.
-func MoonApogees(year int, month time.Month) []ApsisEvent {
-	return moonApsisInMonth(year, month, true)
+// MoonApogeesWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
+func MoonApogeesWithInstance(year int, month time.Month, inst *Instance) []ApsisEvent {
+	return moonApsisInMonth(year, month, true, inst)
 }
 
 func earthApsis(year int, aphelion bool) ApsisEvent {
@@ -84,7 +84,9 @@ func earthApsis(year int, aphelion bool) ApsisEvent {
 	}
 }
 
-func moonApsisInMonth(year int, month time.Month, apogee bool) []ApsisEvent {
+func moonApsisInMonth(year int, month time.Month, apogee bool, instances ...*Instance) []ApsisEvent {
+	inst := instanceValue(instances)
+
 	startUTC := time.Date(year, month, 1, 0, 0, 0, 0, time.UTC)
 	endUTC := startUTC.AddDate(0, 1, 0)
 	startTT := UTC2TT(Date2JD(startUTC))
@@ -109,7 +111,7 @@ func moonApsisInMonth(year int, month time.Month, apogee bool) []ApsisEvent {
 	events := make([]ApsisEvent, 0, 2)
 	for k := kStart; k <= kEnd; k++ {
 		seedTT := moonApsisSeedTT(float64(k) + phase)
-		eventTT, distanceKM := refineDistanceExtremum(seedTT, cfg, HMoonAway)
+		eventTT, distanceKM := refineDistanceExtremum(seedTT, cfg, func(jde float64) float64 { return HMoonAwayWithInstance(jde, inst) })
 		eventUT := TT2UTC(eventTT)
 		eventTimeUTC := JD2DateByZone(eventUT, time.UTC, false)
 		if eventTimeUTC.Before(startUTC) || !eventTimeUTC.Before(endUTC) {

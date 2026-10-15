@@ -55,41 +55,36 @@ type GalileanPhenomenonEvent struct {
 }
 
 // LastGalileanPhenomenonEvent 上一次伽利略卫星现象 / previous Galilean-satellite event.
-//
-// date 表示查询绝对时刻；satellite 取 `1=Io, 2=Europa, 3=Ganymede, 4=Callisto`；
-// phenomenonType 取 `transit/occultation/eclipse/shadow_transit` 中之一。
-// date is the query instant; satellite is `1=Io, 2=Europa, 3=Ganymede, 4=Callisto`;
-// phenomenonType is one of `transit/occultation/eclipse/shadow_transit`.
-func LastGalileanPhenomenonEvent(date time.Time, satellite int, phenomenonType GalileanPhenomenonType) GalileanPhenomenonEvent {
+func (module *Jupiter) LastGalileanPhenomenonEvent(date time.Time, satellite int, phenomenonType GalileanPhenomenonType) GalileanPhenomenonEvent {
 	return galileanPhenomenonEventFromBasic(
-		basic.LastJupiterGalileanPhenomenonEvent(
+		basic.LastJupiterGalileanPhenomenonEventWithInstance(
 			basic.Date2JD(date.UTC()),
 			satellite,
-			basic.JupiterGalileanPhenomenonType(phenomenonType),
+			basic.JupiterGalileanPhenomenonType(phenomenonType), module.inst,
 		),
 		date.Location(),
 	)
 }
 
 // NextGalileanPhenomenonEvent 下一次伽利略卫星现象 / next Galilean-satellite event.
-func NextGalileanPhenomenonEvent(date time.Time, satellite int, phenomenonType GalileanPhenomenonType) GalileanPhenomenonEvent {
+func (module *Jupiter) NextGalileanPhenomenonEvent(date time.Time, satellite int, phenomenonType GalileanPhenomenonType) GalileanPhenomenonEvent {
 	return galileanPhenomenonEventFromBasic(
-		basic.NextJupiterGalileanPhenomenonEvent(
+		basic.NextJupiterGalileanPhenomenonEventWithInstance(
 			basic.Date2JD(date.UTC()),
 			satellite,
-			basic.JupiterGalileanPhenomenonType(phenomenonType),
+			basic.JupiterGalileanPhenomenonType(phenomenonType), module.inst,
 		),
 		date.Location(),
 	)
 }
 
 // ClosestGalileanPhenomenonEvent 最近一次伽利略卫星现象 / closest Galilean-satellite event.
-func ClosestGalileanPhenomenonEvent(date time.Time, satellite int, phenomenonType GalileanPhenomenonType) GalileanPhenomenonEvent {
+func (module *Jupiter) ClosestGalileanPhenomenonEvent(date time.Time, satellite int, phenomenonType GalileanPhenomenonType) GalileanPhenomenonEvent {
 	return galileanPhenomenonEventFromBasic(
-		basic.ClosestJupiterGalileanPhenomenonEvent(
+		basic.ClosestJupiterGalileanPhenomenonEventWithInstance(
 			basic.Date2JD(date.UTC()),
 			satellite,
-			basic.JupiterGalileanPhenomenonType(phenomenonType),
+			basic.JupiterGalileanPhenomenonType(phenomenonType), module.inst,
 		),
 		date.Location(),
 	)

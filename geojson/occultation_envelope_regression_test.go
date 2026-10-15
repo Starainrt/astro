@@ -11,6 +11,9 @@ import (
 )
 
 func TestOccultationDistantEnvelopesRemainComplete(t *testing.T) {
+	if testing.Short() {
+		t.Skip("slow regression")
+	}
 	if err := basic.LoadStarData(); err != nil {
 		t.Fatal(err)
 	}

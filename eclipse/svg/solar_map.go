@@ -1,6 +1,7 @@
 package svg
 
 import (
+	"github.com/starainrt/astro/internal/limbnote"
 	"github.com/starainrt/astro/internal/timenote"
 	"fmt"
 	"html"
@@ -57,6 +58,8 @@ type SolarEclipseMapSVGOptions struct {
 	// TimeScale selects the label scale: the zero value is UTC; TimeScaleUT1 uses UT1 labels, requires
 	// Location to be nil or UTC (otherwise the renderer returns false) and declares the scale in the footer.
 	TimeScale astro.TimeScale
+	// LunarLimb 月缘剖面，nil 为圆月面；修正全球始末、食甚点站心面板、中心带界线与带宽、偏食可见域外边界，页脚只声明实际生效的层 / lunar limb profile for contacts, local panel, central limits and partial boundary.
+	LunarLimb basic.LunarLimb
 	// Projection 选择地图投影；零值从事件几何中自动选择，不支持的值使渲染器返回 false。
 	// Projection selects the map projection. The zero value selects one from the event geometry; unsupported values make the renderer return false.
 	Projection EclipseMapProjection
@@ -137,25 +140,32 @@ func SolarEclipseMapSVG(date time.Time, options SolarEclipseMapSVGOptions) (stri
 // SolarEclipseMapSVGNASABulletinSplitK 使用 NASA bulletin Split-K 绘制地图。
 // SolarEclipseMapSVGNASABulletinSplitK renders a NASA bulletin Split-K map.
 func SolarEclipseMapSVGNASABulletinSplitK(date time.Time, options SolarEclipseMapSVGOptions) (string, bool) {
+	module := solarEclipseMapModule(options)
 	return solarEclipseMapSVG(date, options, solarEclipseMapCalculators{
-		global:  eclipsecore.SolarEclipseOnDateNASABulletinSplitK,
+		global:  module.SolarEclipseOnDateNASABulletinSplitK,
 		panel:   eclipsecore.SolarEclipseGeocentricPanelAt,
-		partial: eclipsecore.SolarEclipsePartialFootprintsNASABulletinSplitK,
-		central: eclipsecore.SolarEclipseCentralPathNASABulletinSplitK,
-		local:   eclipsecore.GeometricLocalSolarEclipseOnDateNASABulletinSplitK,
+		partial: module.SolarEclipsePartialFootprintsNASABulletinSplitK,
+		central: module.SolarEclipseCentralPathNASABulletinSplitK,
+		local:   module.GeometricLocalSolarEclipseOnDateNASABulletinSplitK,
 	})
 }
 
 // SolarEclipseMapSVGIAUSingleK 使用 IAU Single-K 模型绘制地图。
 // SolarEclipseMapSVGIAUSingleK renders an IAU Single-K map.
 func SolarEclipseMapSVGIAUSingleK(date time.Time, options SolarEclipseMapSVGOptions) (string, bool) {
+	module := solarEclipseMapModule(options)
 	return solarEclipseMapSVG(date, options, solarEclipseMapCalculators{
-		global:  eclipsecore.SolarEclipseOnDateIAUSingleK,
+		global:  module.SolarEclipseOnDateIAUSingleK,
 		panel:   eclipsecore.SolarEclipseGeocentricPanelIAUSingleK,
-		partial: eclipsecore.SolarEclipsePartialFootprintsIAUSingleK,
-		central: eclipsecore.SolarEclipseCentralPathIAUSingleK,
-		local:   eclipsecore.GeometricLocalSolarEclipseOnDateIAUSingleK,
+		partial: module.SolarEclipsePartialFootprintsIAUSingleK,
+		central: module.SolarEclipseCentralPathIAUSingleK,
+		local:   module.GeometricLocalSolarEclipseOnDateIAUSingleK,
 	})
+}
+
+// solarEclipseMapModule 返回按选项月缘配置的核心模块，用于全局结果、中心带、偏食可见域外边界与食甚点站心面板；食分线、等时线与地心面板保持圆月面。
+func solarEclipseMapModule(options SolarEclipseMapSVGOptions) *eclipsecore.Eclipse {
+	return eclipsecore.NewWithInstance(nil).WithLunarLimb(options.LunarLimb)
 }
 
 func solarEclipseMapSVG(
@@ -211,6 +221,11 @@ func solarEclipseMapSVG(
 	if calculators.panel != nil {
 		geocentric, hasGeocentric = calculators.panel(date)
 	}
+	// 带宽与画出的南北界同源：南北界真正按月缘修正时取中心路径食甚点带宽。
+	if solarEclipseMapLimbLayers(partial, central, hasCentral, local, hasLocal).CentralLimits {
+		partial.Eclipse.PathWidthDefined = central.PathWidthDefined
+		partial.Eclipse.PathWidthKM = central.Greatest.WidthKM
+	}
 	// 几何（直射点、闭合弧、等时线取值）必须用民用时刻算；只有写出的文字换时标。
 	// 时刻标记按输出时标的整点取点（那里本就是另一个物理时刻），位置随整点标注移动。
 	civilPartial := partial
@@ -230,6 +245,22 @@ func solarEclipseMapSVG(
 	}
 	return plan.render(civilPartial, partial, central, hasCentral,
 		local, hasLocal, geocentric, hasGeocentric, options, projection), true
+}
+
+// solarEclipseMapLimbLayers 汇总各图层是否真正按月缘修正；各层彼此独立，页脚与带宽同步都读这里。
+func solarEclipseMapLimbLayers(
+	partial eclipsecore.SolarEclipsePartialFootprintsInfo,
+	central eclipsecore.SolarEclipsePath,
+	hasCentral bool,
+	local eclipsecore.LocalSolarEclipseInfo,
+	hasLocal bool,
+) limbnote.SolarMapLayers {
+	return limbnote.SolarMapLayers{
+		GlobalContacts:  partial.Eclipse.LunarLimbApplied,
+		LocalPanel:      hasLocal && local.LunarLimbApplied,
+		CentralLimits:   hasCentral && central.CentralLimitsLimbApplied,
+		PartialBoundary: partial.PartialBoundaryLimbApplied,
+	}
 }
 
 // solarEclipseMapHasCentralBand 报告该事件是否有中心食带（包络、限界或瞬时足迹任一存在）。
@@ -479,7 +510,8 @@ func (plan solarEclipseMapPlan) render(
 		options.Width-44, options.Height-36)
 	fmt.Fprintf(&builder, `<text x="%.3f" y="47" fill="#111111" font-family="Georgia, 'Times New Roman', serif" font-size="24" font-weight="700" text-anchor="middle">%s</text>`,
 		float64(options.Width)/2, html.EscapeString(titleText))
-	writeSolarEclipseMapSummary(&builder, labels, partial.Eclipse, local, hasLocal, geocentric, hasGeocentric, options)
+	limbLayers := solarEclipseMapLimbLayers(partial, central, hasCentral, local, hasLocal)
+	writeSolarEclipseMapSummary(&builder, labels, partial.Eclipse, local, hasLocal, geocentric, hasGeocentric, limbLayers, options)
 	writeSolarEclipseMapSectionTitle(&builder, labels, layout, options, hasCentral)
 
 	frame.WriteOcean(&builder)
@@ -708,7 +740,7 @@ func solarEclipseAppendEquirectangularPoleRim(
 	for step := 1; step <= steps; step++ {
 		longitude := lastLongitude + delta*float64(step)/float64(steps)
 		result = append(result, svgmap.GeoPoint{
-			Longitude: normalizeDegree180(longitude),
+			Longitude: geodata.NormalizeLongitude(longitude),
 			Latitude:  poleLatitude,
 		})
 	}
@@ -795,7 +827,7 @@ func solarEclipseSubsolarPoint(value time.Time) svgmap.GeoPoint {
 	ttJDE := solarEclipseTimeToTTJDE(value)
 	ra, dec := basic.HSunApparentRaDec(ttJDE)
 	ut1JDE := basic.TT2UT1(ttJDE)
-	longitude := normalizeDegree180(ra - basic.ApparentSiderealTime(ut1JDE)*15)
+	longitude := geodata.NormalizeLongitude(ra - basic.ApparentSiderealTime(ut1JDE)*15)
 	return svgmap.GeoPoint{Longitude: longitude, Latitude: dec}
 }
 
@@ -1111,6 +1143,7 @@ func writeSolarEclipseMapSummary(
 	hasLocal bool,
 	geocentric eclipsecore.SolarEclipseGeocentricPanel,
 	hasGeocentric bool,
+	limbLayers limbnote.SolarMapLayers,
 	options SolarEclipseMapSVGOptions,
 ) {
 	start := info.PartialBeginOnEarth.In(options.Location)
@@ -1192,7 +1225,8 @@ func writeSolarEclipseMapSummary(
 			summaryX, conjunctionY, html.EscapeString(conjunctionText))
 	}
 	// 图上所有时刻都按展示时区，这里明确写出它与 UT 的偏差，避免被当成 UT 读。
-	zoneNote := timenote.Scale(options.TimeScale, maximum, options.Location, options.Language)
+	zoneNote := limbnote.Join(timenote.Scale(options.TimeScale, maximum, options.Location, options.Language),
+		limbnote.SolarMap(limbLayers, options.Language), options.Language)
 	labels.ReserveText(summaryX, conjunctionY+20, 11, zoneNote, "middle")
 	fmt.Fprintf(builder, `<text x="%.3f" y="%.3f" fill="#7b8794" font-family="Arial, sans-serif" font-size="11" text-anchor="middle">%s</text>`,
 		summaryX, conjunctionY+20, html.EscapeString(zoneNote))
