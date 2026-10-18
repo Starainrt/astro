@@ -2008,6 +2008,9 @@ func TestMarshalPlanetOccultationCompactBandHandlesTangentBranchConvergence(t *t
 	if testing.Short() {
 		t.Skip("slow regression")
 	}
+	if go116386() {
+		t.Skip("Go 1.16/386 skips the heavy integration regressions; Go 1.17+ covers them")
+	}
 	for _, date := range []time.Time{
 		time.Date(1954, time.June, 30, 0, 0, 0, 0, time.UTC),
 		time.Date(1962, time.April, 1, 0, 0, 0, 0, time.UTC),

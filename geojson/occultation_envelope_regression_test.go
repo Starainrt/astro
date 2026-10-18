@@ -14,6 +14,9 @@ func TestOccultationDistantEnvelopesRemainComplete(t *testing.T) {
 	if testing.Short() {
 		t.Skip("slow regression")
 	}
+	if go116386() {
+		t.Skip("Go 1.16/386 skips the heavy integration regressions; Go 1.17+ covers them")
+	}
 	if err := basic.LoadStarData(); err != nil {
 		t.Fatal(err)
 	}

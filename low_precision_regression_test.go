@@ -74,9 +74,14 @@ func TestLowPrecisionSunMoonBaselineRegression(t *testing.T) {
 
 	assertBits := func(t *testing.T, name, utc string, got float64, want uint64) {
 		t.Helper()
-		if math.Float64bits(got) != want {
-			t.Fatalf("%s regression at %s", name, utc)
+		if math.Float64bits(got) == want {
+			return
 		}
+		// Go 1.16/386 的超越函数可能差 1 ULP；该组合按 1e-12 度放行。
+		if go116386() && math.Abs(got-math.Float64frombits(want)) <= 1e-12 {
+			return
+		}
+		t.Fatalf("%s regression at %s", name, utc)
 	}
 
 	for _, sample := range samples {

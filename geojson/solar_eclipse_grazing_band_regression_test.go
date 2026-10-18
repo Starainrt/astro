@@ -54,6 +54,9 @@ func TestSolarEclipseGrazingCentralBandCoversUmbralSweep(t *testing.T) {
 	if testing.Short() {
 		t.Skip("slow regression")
 	}
+	if go116386() {
+		t.Skip("Go 1.16/386 skips the heavy integration regressions; Go 1.17+ covers them")
+	}
 	for _, testCase := range grazingBandCases {
 		t.Run(testCase.date+"-"+testCase.options, func(t *testing.T) {
 			date := grazingBandDate(t, testCase.date)

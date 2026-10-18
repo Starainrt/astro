@@ -9,6 +9,7 @@ import (
 )
 
 func TestMarshalPlanetOccultationVenus20250919OptimizedContoursAreStrictlyOrdered(t *testing.T) {
+	skipHeavyOnGo116386(t)
 	day := time.Date(2025, 9, 19, 0, 0, 0, 0, time.UTC)
 	paths, err := moon.FindPlanetOccultationPaths(
 		day.Add(-12*time.Hour), day.Add(36*time.Hour), moon.OccultationVenus,

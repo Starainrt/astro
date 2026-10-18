@@ -19,6 +19,7 @@ import (
 // intentionally smaller than the opt-in millennium diagnostic while still
 // exercising antimeridian, polar and non-central topology in normal tests.
 func TestSolarEclipseP2SarosGeoJSONSamples(t *testing.T) {
+	skipHeavyOnGo116386(t)
 	const sarosDays = 6585.321314
 	seed := basic.JDCalc(2024, 4, 8)
 	for _, familyIndex := range []int{-28, -21, -14, -7, 0, 7, 14, 21, 28} {
@@ -54,6 +55,7 @@ func TestSolarEclipseP2SarosGeoJSONSamples(t *testing.T) {
 }
 
 func TestOccultationP2RepresentativeGeoJSONPathsRemainClosed(t *testing.T) {
+	skipHeavyOnGo116386(t)
 	zone := time.FixedZone("UTC+8", 8*60*60)
 	star := moon.StarCoordinate{
 		ID: "HR 4799", RA: 189.1975, Dec: -5.831944444444,
@@ -122,6 +124,7 @@ func TestOccultationP2RepresentativeGeoJSONPathsRemainClosed(t *testing.T) {
 }
 
 func TestOccultationP2Venus20250919HasNoInternalOutline(t *testing.T) {
+	skipHeavyOnGo116386(t)
 	start := time.Date(2025, time.September, 19, 0, 0, 0, 0, time.FixedZone("UTC+8", 8*3600))
 	for _, algorithm := range []moon.OccultationPathAlgorithm{moon.OccultationPathAlgorithmOptimized, moon.OccultationPathAlgorithmExact} {
 		t.Run(string(algorithm), func(t *testing.T) {
@@ -175,6 +178,7 @@ func TestOccultationP2Venus20250919HasNoInternalOutline(t *testing.T) {
 }
 
 func TestOccultationP2Mars20250114GeoJSONAcceptsFoldedBandContours(t *testing.T) {
+	skipHeavyOnGo116386(t)
 	zone := time.FixedZone("UTC+8", 8*60*60)
 	start := time.Date(2025, time.January, 14, 0, 0, 0, 0, zone)
 	paths, err := moon.FindPlanetOccultationPaths(
@@ -200,6 +204,7 @@ func TestOccultationP2Mars20250114GeoJSONAcceptsFoldedBandContours(t *testing.T)
 }
 
 func TestOccultationP2Mars20250729AddsMoonriseHorizonConnector(t *testing.T) {
+	skipHeavyOnGo116386(t)
 	collection := mars20250729TestFixture(t, 5*time.Minute, true).collection
 	assertOccultationHorizonConnectorsAreAuxiliary(t, collection)
 	connector := horizonConnectorFeature(t, collection, "rise")
@@ -247,6 +252,7 @@ func TestOccultationP2Mars20250729AddsMoonriseHorizonConnector(t *testing.T) {
 }
 
 func TestOccultationP2Mars20250729OneMinuteRiseSetAddsOpeningConnector(t *testing.T) {
+	skipHeavyOnGo116386(t)
 	collection := mars20250729TestFixture(t, time.Minute, true).collection
 	connector := horizonConnectorFeature(t, collection, "rise")
 	var lines [][][]float64
@@ -294,6 +300,7 @@ func TestOccultationP2Mars20250729OneMinuteRiseSetAddsOpeningConnector(t *testin
 }
 
 func TestOccultationP2Mars20250729DoesNotDuplicateSamePhaseFinalFold(t *testing.T) {
+	skipHeavyOnGo116386(t)
 	collection := mars20250729TestFixture(t, 5*time.Minute, true).collection
 	connector := horizonConnectorFeature(t, collection, "rise")
 	var lines [][][]float64
@@ -307,6 +314,7 @@ func TestOccultationP2Mars20250729DoesNotDuplicateSamePhaseFinalFold(t *testing.
 }
 
 func TestOccultationP2Mars20250729StaticBandsStayAuthoritativeAndBounded(t *testing.T) {
+	skipHeavyOnGo116386(t)
 	collection := mars20250729TestFixture(t, time.Minute, true).collection
 	for _, role := range []string{"partial-band", "total-band"} {
 		band := featureWithRole(t, collection, role)
@@ -347,6 +355,7 @@ func mustMarshalPlanetOccultation(t *testing.T, path moon.PlanetOccultationPath)
 }
 
 func TestOccultationP2Mars20250729DrawsPhaseCurvesAboveStaticBandOutlines(t *testing.T) {
+	skipHeavyOnGo116386(t)
 	collection := mars20250729TestFixture(t, time.Minute, true).collection
 	lastStaticOutline := -1
 	firstPhaseCurve := len(collection.Features)
@@ -375,6 +384,7 @@ func TestOccultationP2Mars20250729DrawsPhaseCurvesAboveStaticBandOutlines(t *tes
 }
 
 func TestOccultationP2Mars20250729TotalBandUsesInnerRiseSetCurves(t *testing.T) {
+	skipHeavyOnGo116386(t)
 	fixture := mars20250729TestFixture(t, time.Minute, true)
 	path := fixture.path
 	if !path.HasTotalBand {
@@ -394,6 +404,7 @@ func TestOccultationP2Mars20250729TotalBandUsesInnerRiseSetCurves(t *testing.T) 
 }
 
 func TestOccultationP2Mars20250729ExportsOnlyOuterContactPhaseBoundaries(t *testing.T) {
+	skipHeavyOnGo116386(t)
 	fixture := mars20250729TestFixture(t, time.Minute, true)
 	path, collection := fixture.path, fixture.collection
 	for _, feature := range featuresWithRole(collection, "visibility-boundary") {
@@ -408,6 +419,7 @@ func TestOccultationP2Mars20250729ExportsOnlyOuterContactPhaseBoundaries(t *test
 }
 
 func TestOccultationP2Mars20250729StaticBandRemainsContinuousAndContained(t *testing.T) {
+	skipHeavyOnGo116386(t)
 	fixture := mars20250729TestFixture(t, time.Minute, true)
 	path, collection := fixture.path, fixture.collection
 	assertOccultationP2StaticBand(t, path, collection)
@@ -415,6 +427,7 @@ func TestOccultationP2Mars20250729StaticBandRemainsContinuousAndContained(t *tes
 }
 
 func TestOccultationP2Saturn20240725StaticBandRemainsContinuousAndContained(t *testing.T) {
+	skipHeavyOnGo116386(t)
 	zone := time.FixedZone("UTC+8", 8*60*60)
 	start := time.Date(2024, time.July, 25, 0, 0, 0, 0, zone)
 	paths, err := moon.FindPlanetOccultationPaths(
@@ -438,6 +451,7 @@ func TestOccultationP2Saturn20240725StaticBandRemainsContinuousAndContained(t *t
 }
 
 func TestOccultationP0Mars20250729StaticBandsUseContactContours(t *testing.T) {
+	skipHeavyOnGo116386(t)
 	path := mars20250729TestFixture(t, time.Minute, true).path
 	if len(path.PartialBandContours) < 2 {
 		t.Fatalf("partial contact contours=%d, want north/south continuous envelopes", len(path.PartialBandContours))
@@ -492,6 +506,7 @@ func TestOccultationP0Mars20250729StaticBandsUseContactContours(t *testing.T) {
 }
 
 func TestOccultationP2Mars20250729EndRiseExportsRawPhaseSegments(t *testing.T) {
+	skipHeavyOnGo116386(t)
 	fixture := mars20250729TestFixture(t, 5*time.Minute, true)
 	path, collection := fixture.path, fixture.collection
 	endRise := riseSetBoundaryFeature(t, collection, "end", "rise")
@@ -901,6 +916,7 @@ func formatP2Magnitude(value int) string {
 // this catches accidental changes that make a GeoJSON payload un-decodable
 // even when the role-level checks still pass.
 func TestP2GeoJSONPayloadsDecodeAsFeatureCollections(t *testing.T) {
+	skipHeavyOnGo116386(t)
 	date := time.Date(2024, time.April, 8, 0, 0, 0, 0, time.UTC)
 	partial, ok := eclipse.SolarEclipsePartialFootprints(date, eclipse.SolarEclipsePartialFootprintOptions{
 		Step: 30 * time.Minute, BoundaryPoints: 36, DisableRiseSet: true,

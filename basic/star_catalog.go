@@ -2,7 +2,9 @@ package basic
 
 import (
 	"errors"
+	"fmt"
 	"math"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -34,15 +36,23 @@ type StarData struct {
 	CommonAliasName  string
 	Cst              string
 	CstChinese       string
+	ChineseRegion    string // 星名所属的宿/垣限定，用于区分同名星官 / mansion or enclosure qualifier.
 }
 
-var hr2detail map[uint16][]string
+var hr2name map[uint16]starNameRecord
 var hr2hip map[uint16]uint32
-var chnidx map[string]uint16
+var chnidx map[string][]uint16
+var engidx map[string][]uint16
 var parsedStarData []InnerStarData
 var cachedStarData []StarData
 var starDataOnce sync.Once
 var starDataErr error
+
+// ErrStarNotFound 未找到匹配的恒星 / no matching star.
+var ErrStarNotFound = errors.New("star not found")
+
+// ErrStarNameAmbiguous 星名对应多颗恒星 / the star name matches more than one star.
+var ErrStarNameAmbiguous = errors.New("ambiguous star name")
 
 func LoadStarData() error {
 	starDataOnce.Do(func() {
@@ -57,14 +67,24 @@ func initStarData() error {
 	for i, parsed := range parsedStarData {
 		cachedStarData[i] = fullStarData(parsed)
 	}
-	chnidx = make(map[string]uint16, len(hr2detail)*2)
+	chnidx = make(map[string][]uint16, len(hr2name)*2)
+	engidx = make(map[string][]uint16, len(hr2name))
 	for hr := 1; hr <= len(cachedStarData); hr++ {
-		info, ok := hr2detail[uint16(hr)]
+		rec, ok := hr2name[uint16(hr)]
 		if !ok {
 			continue
 		}
-		registerStarChineseIndex(uint16(hr), info[0])
-		registerStarChineseIndex(uint16(hr), info[1])
+		registerStarChineseIndex(uint16(hr), rec.chinese)
+		for _, alias := range rec.aliases {
+			registerStarChineseIndex(uint16(hr), alias)
+			if rec.region != "" {
+				registerStarChineseIndex(uint16(hr), alias+"["+rec.region+"]")
+			}
+		}
+		if rec.chinese != "" && rec.region != "" {
+			registerStarChineseIndex(uint16(hr), rec.chinese+"["+rec.region+"]")
+		}
+		addStarEnglishIndex(uint16(hr), rec.common)
 	}
 	return nil
 }
@@ -73,45 +93,215 @@ func registerStarChineseIndex(hr uint16, name string) {
 	if name == "" {
 		return
 	}
-	chnidx[name] = hr
+	addStarChineseIndex(hr, name)
 	if strings.HasSuffix(name, "星") {
 		trimmed := strings.TrimSuffix(name, "星")
 		if trimmed != "" {
-			chnidx[trimmed] = hr
+			addStarChineseIndex(hr, trimmed)
 		}
 	}
+}
+
+func addStarChineseIndex(hr uint16, name string) {
+	list := chnidx[name]
+	for _, existing := range list {
+		if existing == hr {
+			return
+		}
+	}
+	chnidx[name] = append(list, hr)
+}
+
+func normalizeStarChineseName(name string) string {
+	name = strings.TrimSpace(name)
+	if strings.HasSuffix(name, "星") {
+		name = strings.TrimSuffix(name, "星")
+	}
+	return name
+}
+
+func normalizeStarEnglishName(name string) string {
+	return strings.ToLower(strings.TrimSpace(name))
+}
+
+func addStarEnglishIndex(hr uint16, name string) {
+	name = normalizeStarEnglishName(name)
+	if name == "" {
+		return
+	}
+	list := engidx[name]
+	for _, existing := range list {
+		if existing == hr {
+			return
+		}
+	}
+	engidx[name] = append(list, hr)
+}
+
+func starDataByEnglishAll(name string) ([]StarData, error) {
+	if err := LoadStarData(); err != nil {
+		return nil, err
+	}
+	name = normalizeStarEnglishName(name)
+	hrs := engidx[name]
+	if len(hrs) == 0 {
+		return nil, fmt.Errorf("%w: %q", ErrStarNotFound, name)
+	}
+	out := make([]StarData, 0, len(hrs))
+	for _, hr := range hrs {
+		if hr == 0 || int(hr) > len(cachedStarData) {
+			continue
+		}
+		out = append(out, cachedStarData[hr-1])
+	}
+	if len(out) == 0 {
+		return nil, fmt.Errorf("%w: %q", ErrStarNotFound, name)
+	}
+	return out, nil
 }
 
 func fullStarData(star InnerStarData) StarData {
 	star.HIP = hr2hip[star.HR]
-	if info, ok := hr2detail[star.HR]; ok {
-		return StarData{
-			InnerStarData:    star,
-			ChineseName:      info[0],
-			ChineseAlias:     info[1],
-			ChineseBayerName: info[2],
-			CommonName:       info[3],
-			CommonAliasName:  "",
-			Cst:              info[5],
-			CstChinese:       info[4],
-		}
+	rec, ok := hr2name[star.HR]
+	if !ok {
+		return StarData{InnerStarData: star}
 	}
-
-	return StarData{InnerStarData: star}
+	return StarData{
+		InnerStarData:    star,
+		ChineseName:      rec.chinese,
+		ChineseAlias:     strings.Join(rec.aliases, ";"),
+		ChineseRegion:    rec.region,
+		ChineseBayerName: rec.bayerZH,
+		CommonName:       rec.common,
+		Cst:              rec.cst,
+		CstChinese:       rec.cstZH,
+	}
 }
 
+// StarDataByChinese 按中文名或别名查唯一恒星；同名多星返回 ErrStarNameAmbiguous / returns the unique star, or ErrStarNameAmbiguous for duplicate names.
 func StarDataByChinese(name string) (StarData, error) {
-	if err := LoadStarData(); err != nil {
+	matches, err := StarDataByChineseAll(name)
+	if err != nil {
 		return StarData{}, err
 	}
-	if strings.HasSuffix(name, "星") {
-		name = strings.TrimSuffix(name, "星")
+	if len(matches) != 1 {
+		return StarData{}, fmt.Errorf("%w: %q has %d candidates", ErrStarNameAmbiguous, name, len(matches))
 	}
-	hr, ok := chnidx[name]
-	if !ok || hr == 0 || int(hr) > len(cachedStarData) {
-		return StarData{}, errors.New("no such star")
+	return matches[0], nil
+}
+
+// StarDataByChineseAll 返回中文名或别名的全部候选，按 HR 升序 / all candidates by HR order.
+func StarDataByChineseAll(name string) ([]StarData, error) {
+	if err := LoadStarData(); err != nil {
+		return nil, err
 	}
-	return cachedStarData[hr-1], nil
+	name = normalizeStarChineseName(name)
+	hrs := chnidx[name]
+	if len(hrs) == 0 {
+		return nil, fmt.Errorf("%w: %q", ErrStarNotFound, name)
+	}
+	out := make([]StarData, 0, len(hrs))
+	for _, hr := range hrs {
+		if hr == 0 || int(hr) > len(cachedStarData) {
+			continue
+		}
+		out = append(out, cachedStarData[hr-1])
+	}
+	if len(out) == 0 {
+		return nil, fmt.Errorf("%w: %q", ErrStarNotFound, name)
+	}
+	return out, nil
+}
+
+// StarDataByName 按中文名、中文别名或英文常用名查唯一恒星；同名多星返回 ErrStarNameAmbiguous / returns the unique star by Chinese name, alias or English common name, or ErrStarNameAmbiguous for duplicate names.
+func StarDataByName(name string) (StarData, error) {
+	matches, err := StarDataByNameAll(name)
+	if err != nil {
+		return StarData{}, err
+	}
+	if len(matches) != 1 {
+		return StarData{}, fmt.Errorf("%w: %q has %d candidates", ErrStarNameAmbiguous, name, len(matches))
+	}
+	return matches[0], nil
+}
+
+// StarDataByNameAll 返回中文名、别名或英文常用名的全部候选，按 HR 升序 / all candidates by HR order.
+func StarDataByNameAll(name string) ([]StarData, error) {
+	if err := LoadStarData(); err != nil {
+		return nil, err
+	}
+	chinese, chineseErr := StarDataByChineseAll(name)
+	english, englishErr := starDataByEnglishAll(name)
+	if chineseErr != nil && !errors.Is(chineseErr, ErrStarNotFound) {
+		return nil, chineseErr
+	}
+	if englishErr != nil && !errors.Is(englishErr, ErrStarNotFound) {
+		return nil, englishErr
+	}
+	matches := append(append([]StarData{}, chinese...), english...)
+	sort.Slice(matches, func(i, j int) bool { return matches[i].HR < matches[j].HR })
+	out := matches[:0]
+	for _, star := range matches {
+		if len(out) == 0 || out[len(out)-1].HR != star.HR {
+			out = append(out, star)
+		}
+	}
+	if len(out) == 0 {
+		return nil, fmt.Errorf("%w: %q", ErrStarNotFound, name)
+	}
+	return out, nil
+}
+
+// StarDataByNameIn 按中文名、别名或英文常用名与宿/垣限定查唯一恒星 / looks up the unique star within a mansion or enclosure.
+func StarDataByNameIn(name, region string) (StarData, error) {
+	region = strings.TrimSpace(region)
+	if region == "" {
+		return StarDataByName(name)
+	}
+	matches, err := StarDataByNameAll(name)
+	if err != nil {
+		return StarData{}, err
+	}
+	var found []StarData
+	for _, star := range matches {
+		if star.ChineseRegion == region {
+			found = append(found, star)
+		}
+	}
+	switch len(found) {
+	case 0:
+		return StarData{}, fmt.Errorf("%w: %q in %q", ErrStarNotFound, name, region)
+	case 1:
+		return found[0], nil
+	default:
+		return StarData{}, fmt.Errorf("%w: %q in %q has %d candidates", ErrStarNameAmbiguous, name, region, len(found))
+	}
+}
+
+// StarDataByChineseIn 按中文名或别名与宿/垣限定查唯一恒星 / looks up the unique star within a mansion or enclosure.
+func StarDataByChineseIn(name, region string) (StarData, error) {
+	region = strings.TrimSpace(region)
+	if region == "" {
+		return StarDataByChinese(name)
+	}
+	matches, err := StarDataByChineseAll(name)
+	if err != nil {
+		return StarData{}, err
+	}
+	var found []StarData
+	for _, star := range matches {
+		if star.ChineseRegion == region {
+			found = append(found, star)
+		}
+	}
+	switch len(found) {
+	case 0:
+		return StarData{}, fmt.Errorf("%w: %q in %q", ErrStarNotFound, name, region)
+	case 1:
+		return found[0], nil
+	default:
+		return StarData{}, fmt.Errorf("%w: %q in %q has %d candidates", ErrStarNameAmbiguous, name, region, len(found))
+	}
 }
 
 func StarDataByHR(hr int) (StarData, error) {
@@ -119,7 +309,7 @@ func StarDataByHR(hr int) (StarData, error) {
 		return StarData{}, err
 	}
 	if hr <= 0 || hr > len(cachedStarData) {
-		return StarData{}, errors.New("no such star")
+		return StarData{}, fmt.Errorf("%w: HR %d", ErrStarNotFound, hr)
 	}
 	return cachedStarData[hr-1], nil
 }

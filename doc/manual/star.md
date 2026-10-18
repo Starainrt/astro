@@ -117,7 +117,9 @@ func main() {
 | 分组 | 入口 | 用途 | 单位与口径 |
 | --- | --- | --- | --- |
 | 星座判定 | `Constellation` / `ConstellationEN` / `ConstellationCode` | 星座中文名 / 英文名 / IAU 三字母代码 | 输入当日赤经赤纬（度）与时刻 |
-| 恒星库 | `InitStarDatabase` / `StarDataByHR` / `StarDataByName` / `TopBrightStars` | 初始化内置星表、按 HR 编号或中文名取星、取最亮恒星样本 | HR `1–9110`；`Mag` 为视星等 |
+| 恒星库 | `InitStarDatabase` / `StarDataByHR` / `StarDataByName` / `StarDataByNameAll` / `StarDataByNameIn` / `TopBrightStars` | 初始化内置星表；按 HR 编号、中文名/别名或英文常用名取星；重名时用 `All` 取候选、用 `In` 按宿/垣消歧；取最亮恒星样本 | HR `1–9110`；`Mag` 为视星等 |
+| 星名消歧 | `StarDataByNameAll` / `StarDataByNameIn` | 返回同名全部候选 / 按 `ChineseRegion` 取唯一星 | 例如 `StarDataByNameIn("杵增一", "危宿")` |
+| 错误判定 | `ErrStarNotFound` / `ErrStarNameAmbiguous` | 用 `errors.Is` 区分“未找到”与“同名歧义” | `star` 包直接导出这两个哨兵错误 |
 | 坐标修正 | `StarData.RaDecByDate`（`basic` 侧对应 `RaDecByJde`） | 把 J2000 位置修正到指定时刻 | 返回赤经赤纬，单位度 |
 | 升落与中天 | `RiseTime` / `SetTime` / `CulminationTime`（`DownTime` 是 `SetTime` 的废弃别名） | 升起、落下、中天时刻 | 返回民用时刻；极区返回哨兵错误 |
 | 带气象升落 | `RiseTimeWithAtmosphere` / `SetTimeWithAtmosphere` | 按实测气压（hPa）、气温（℃）计算升落 | 恒带大气折射 |
@@ -164,10 +166,25 @@ fmt.Println(len(bright), bright[0].HR) // 最亮恒星样本条数与首项 HR
 | `RadVel` / `RotVel` | 径向速度与自行速度，单位 km/s |
 | `Pc` | 距离，单位秒差距；`> 0` 时自行按三维空间运动推进 |
 | `ChineseName` / `ChineseAlias` / `ChineseBayerName` | 中文名、别名、中文拜耳名 |
-| `CommonName` / `CommonAliasName` | 英文常用名与别名 |
+| `ChineseRegion` | 星名所属的宿/垣限定，例如 `危宿`、`太微垣`；未标注时为空，同名星官查询时用于消歧 |
+| `CommonName` / `CommonAliasName` | 英文常用名与别名；`CommonName` 可用 `StarDataByName` 查询 |
 | `Cst` / `CstChinese` | 星座英文名与中文名 |
 
-按中文名查询只匹配库内中文名（如 `天狼`、`织女一`），英文名不参与匹配；需要按编号取星用 `StarDataByHR`。
+按名称查询同时匹配库内中文名、中文别名和英文常用名（如 `天狼`、`织女一`、`Sirius`）；英文名大小写和首尾空白不敏感。按编号取星用 `StarDataByHR`。
+
+中文星名在不同星官/宿下可能重名，例如 `杵增一` 同时出现在箕宿与危宿。`StarDataByName` 只返回唯一结果，重名时返回歧义错误；此时用 `StarDataByNameIn(name, region)` 指定 `ChineseRegion`，或用 `StarDataByNameAll` 取全部候选。也支持 `名[宿]` 写法（如 `"杵增一[危宿]"`），但新代码建议用结构化参数。
+
+**Breaking change**：旧实现遇到同名会静默返回其中一颗；现在返回 `ErrStarNameAmbiguous`。可用 `errors.Is(err, star.ErrStarNameAmbiguous)` 判断，再用 `StarDataByNameAll` / `StarDataByNameIn` 消歧。`StarDataByNameIn` 的 region 为空时等价于 `StarDataByName`，重名仍返回歧义错误。错误文本也从 `no such star` 改为 `star not found: ...`，请用 `errors.Is` 判断，不要匹配文本。
+
+英文常用名同样走 `StarDataByName`，大小写和首尾空白不敏感，例如 `"sirius"`、`"Vega"`、`"Polaris"`。它只覆盖内置的 `CommonName`（约 218 条），不包含完整拜耳名（如 `Alpha Canis Majoris`）；Bayer/Flamsteed 仍在 `Name` 字段。英文名也可能重名（如 `Gienah` 对应两颗星），此时返回 `ErrStarNameAmbiguous`，用 `StarDataByNameAll` 取候选。
+
+```go
+s, err := star.StarDataByName("sirius") // HR 2491
+```
+
+```go
+s, err := star.StarDataByNameIn("杵增一", "危宿") // HR 8449，s.ChineseRegion == "危宿"
+```
 
 ### 升落与中天
 
@@ -341,7 +358,7 @@ if errors.Is(err, star.ERR_STAR_NEVER_RISE) || errors.Is(err, star.ERR_STAR_NEVE
 
 - **极区哨兵错误**：`RiseTime` 在极夜返回 `star.ERR_STAR_NEVER_RISE`（该日永远在地平线下），`SetTime` 在极昼返回 `star.ERR_STAR_NEVER_SET`（该日永远在地平线上），用 `errors.Is` 判定；`ERR_STAR_NEVER_DOWN` 是 `ERR_STAR_NEVER_SET` 的废弃别名，`DownTime` 是 `SetTime` 的废弃别名。
 - **蒙气差模型的区间**：Saemundsson 近似只在真高度角 `(-5°, 90°)` 内生效，区间外修正量为 0——深在地平线以下时视高度角与几何高度角完全相等。
-- **星表口径**：BSC / HR `1–9110`，视星等 `-1.46`～`7.96`；按名字查询只匹配库内中文名（如 `天狼`、`织女一`），英文名不参与。
+- **星表口径**：BSC / HR `1–9110`，视星等 `-1.46`～`7.96`；按中文名/别名/英文常用名查询匹配库内中文名、别名与 `CommonName`（如 `天狼`、`织女一`、`Sirius`）；重名时用 `StarDataByNameIn` 或 `StarDataByNameAll`。
 - **与外部星表对表**：库内位置是 J2000 平位置叠加自行与岁差章动；与外部星表逐位对表时先用 `RaDecByDate` 统一到同一时刻，再比较。
 
 ## 参数与返回值约定
@@ -352,7 +369,7 @@ if errors.Is(err, star.ERR_STAR_NEVER_RISE) || errors.Is(err, star.ERR_STAR_NEVE
 - **观测点高度**：`height` 是椭球高（大地高），单位米；手上只有海拔正高时要先加大地水准面差距，约定见「观测点高度约定」。
 - **蒙气差模型的有效区间**：`ApparentAltitude`/`ApparentZenith` 用的 Saemundsson 近似只在真高度角 `(-5°, 90°)` 内生效，区间外修正量为 0——所以深在地平线以下时视高度角与几何高度角完全相等（示例里天狼星 `alt=-30.180` 与 `Altitude` 同值就是这个原因）。气压必须为正、气温必须高于绝对零度，否则返回 `NaN`。
 - **`aero` 语义**：真值按标准蒙气差修正后的地平求升落，假值走几何地平；两者的差值在低纬度约 2–3 分钟，高纬度会明显放大。
-- **星表范围**：HR `1–9110`、视星等 `-1.46`～`7.96`，按中文名查询只匹配库内中文名。
+- **星表范围**：HR `1–9110`、视星等 `-1.46`～`7.96`；按中文名、中文别名或英文常用名查询（英文名大小写不敏感），重名时用 `StarDataByNameIn` 或 `StarDataByNameAll`。
 
 ## 相关手册
 

@@ -175,9 +175,25 @@ func StarDataByHR(hr int) (basic.StarData, error) {
 	return basic.StarDataByHR(hr)
 }
 
-// StarDataByName 按中文名查询恒星数据 / returns star data by Chinese name.
+// ErrStarNotFound 未找到匹配的恒星 / no matching star.
+var ErrStarNotFound = basic.ErrStarNotFound
+
+// ErrStarNameAmbiguous 星名对应多颗恒星 / the star name matches more than one star.
+var ErrStarNameAmbiguous = basic.ErrStarNameAmbiguous
+
+// StarDataByName 按中文名、中文别名或英文常用名查唯一恒星；同名多星返回 ErrStarNameAmbiguous / returns the unique star by Chinese name, alias or English common name, or ErrStarNameAmbiguous for duplicate names.
 func StarDataByName(name string) (basic.StarData, error) {
-	return basic.StarDataByChinese(name)
+	return basic.StarDataByName(name)
+}
+
+// StarDataByNameAll 返回中文名、别名或英文常用名的全部候选，按 HR 升序 / all candidates by HR order.
+func StarDataByNameAll(name string) ([]basic.StarData, error) {
+	return basic.StarDataByNameAll(name)
+}
+
+// StarDataByNameIn 按中文名、别名或英文常用名与宿/垣限定查询唯一恒星 / returns the unique star within a mansion or enclosure.
+func StarDataByNameIn(name, region string) (basic.StarData, error) {
+	return basic.StarDataByNameIn(name, region)
 }
 
 // TopBrightStars 明亮恒星样本 / bright-star sample list.

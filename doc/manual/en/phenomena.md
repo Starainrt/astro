@@ -84,7 +84,7 @@ Both the angular separation of a planet and a star and star heliacal visibility 
 
 | Entry | Input |
 | --- | --- |
-| `StarCoordinateByName(name)` | catalog Chinese name, for example `"天狼星"` |
+| `StarCoordinateByName(name)` | catalog Chinese name/alias or English common name, for example `"天狼星"` or `"sirius"`; duplicate names return `ErrStarNameAmbiguous` |
 | `StarCoordinateByHR(hr)` | HR number |
 | `StarCoordinateFromStarData(star)` | a catalog record such as one obtained from `star.StarDataByHR` |
 
@@ -96,6 +96,19 @@ fmt.Println(err, star.ID, fmt.Sprintf("%.6f %.6f %.2f %.2f", star.RA, star.Dec,
 
 ```text
 <nil> 天狼 101.287083 -16.716111 -553.00 -1205.00
+```
+
+`StarCoordinateByName` returns `phenomena.ErrStarNameAmbiguous` for duplicate names and `phenomena.ErrStarNotFound` when nothing matches; both are usable with `errors.Is`. For duplicates, resolve the catalog record with `star.StarDataByNameIn(name, region)` first, then pass it to `StarCoordinateFromStarData`:
+
+```go
+data, err := star.StarDataByNameIn("杵增一", "危宿")
+if err != nil {
+	panic(err)
+}
+coord, err := phenomena.StarCoordinateFromStarData(data)
+if err != nil {
+	panic(err)
+}
 ```
 
 `RA` and `Dec` are in degrees, and `Epoch` and `Frame` are required; the proper-motion fields (`ProperMotionRACosDecMasPerYear` and friends) follow the catalog convention `dRA·cos(Dec)`, in milliarcseconds per year. `ParallaxMas` (or the equivalent `DistanceLightYear`) gives the distance, and `RadialVelocityKmPerSecond` gives the radial velocity; when the distance is missing the propagation is two-dimensional, and the radial velocity is included only when a distance is present.

@@ -1,6 +1,7 @@
 package phenomena
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/starainrt/astro/basic"
@@ -17,6 +18,13 @@ func TestStarCoordinateLookup(t *testing.T) {
 	}
 	if byHR != byName {
 		t.Fatalf("lookup mismatch: HR=%+v name=%+v", byHR, byName)
+	}
+	byEnglish, err := StarCoordinateByName("sirius")
+	if err != nil {
+		t.Fatalf("StarCoordinateByName(sirius) error = %v", err)
+	}
+	if byHR != byEnglish {
+		t.Fatalf("English lookup mismatch: HR=%+v name=%+v", byHR, byEnglish)
 	}
 
 	data, err := basic.StarDataByHR(2491)
@@ -36,8 +44,11 @@ func TestStarCoordinateLookupInvalid(t *testing.T) {
 	if _, err := StarCoordinateByHR(0); err == nil {
 		t.Fatal("StarCoordinateByHR(0) expected an error")
 	}
-	if _, err := StarCoordinateByName("不存在的恒星"); err == nil {
-		t.Fatal("StarCoordinateByName() expected an error")
+	if _, err := StarCoordinateByName("不存在的恒星"); !errors.Is(err, ErrStarNotFound) {
+		t.Fatalf("StarCoordinateByName(不存在的恒星) error = %v, want ErrStarNotFound", err)
+	}
+	if _, err := StarCoordinateByName("杵增一"); !errors.Is(err, ErrStarNameAmbiguous) {
+		t.Fatalf("StarCoordinateByName(杵增一) error = %v, want ErrStarNameAmbiguous", err)
 	}
 	if _, err := StarCoordinateFromStarData(StarData{}); err == nil {
 		t.Fatal("StarCoordinateFromStarData() expected an error")

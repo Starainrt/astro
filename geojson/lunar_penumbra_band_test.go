@@ -1,6 +1,7 @@
 package geojson_test
 
 import (
+	"encoding/json"
 	"testing"
 	"time"
 
@@ -28,53 +29,62 @@ func TestLunarGeoJSONPenumbraBandsFollowUmbralContacts(t *testing.T) {
 	collection := decodeCollection(t, data)
 	moonset := featureWithRole(t, collection, "penumbra-moonset")
 	moonrise := featureWithRole(t, collection, "penumbra-moonrise")
+	containsMoonset := decodeMultiPolygonContains(t, moonset.Geometry)
+	containsMoonrise := decodeMultiPolygonContains(t, moonrise.Geometry)
+	states := make(map[float64]basic.MoonState)
 	altitude := func(at time.Time, longitude, latitude float64) float64 {
-		return basic.MoonStateAt(basic.Date2JD(at.UTC())).HMoonHeight(longitude, latitude)
+		jd := basic.Date2JD(at.UTC())
+		state, ok := states[jd]
+		if !ok {
+			state = basic.MoonStateAt(jd)
+			states[jd] = state
+		}
+		return state.HMoonHeight(longitude, latitude)
 	}
-	umbralExtremum := func(longitude, latitude float64) float64 {
-		best, step := -99.0, info.PartialEnd.Sub(info.PartialStart)/400
+	umbralBelowHorizon := func(longitude, latitude float64) bool {
+		step := info.PartialEnd.Sub(info.PartialStart) / 400
 		for at := info.PartialStart; !at.After(info.PartialEnd); at = at.Add(step) {
-			if value := altitude(at, longitude, latitude); value > best {
-				best = value
+			// 判据只关心本影阶段是否整段在地平下，首次 >=0 即可停止。
+			if altitude(at, longitude, latitude) >= 0 {
+				return false
 			}
 		}
-		return best
+		return true
 	}
 	checked := map[string]int{}
-	for _, role := range []string{"penumbra-moonset", "penumbra-moonrise"} {
-		feature := moonset
-		if role == "penumbra-moonrise" {
-			feature = moonrise
-		}
-		for longitude := -179.5; longitude < 180; longitude += 3 {
-			for latitude := -89.5; latitude < 90; latitude += 3 {
-				heights := []float64{
-					altitude(info.PenumbralStart, longitude, latitude),
-					altitude(info.PartialStart, longitude, latitude),
-					altitude(info.PartialEnd, longitude, latitude),
-					altitude(info.PenumbralEnd, longitude, latitude),
+	for longitude := -179.5; longitude < 180; longitude += 3 {
+		for latitude := -89.5; latitude < 90; latitude += 3 {
+			heights := []float64{
+				altitude(info.PenumbralStart, longitude, latitude),
+				altitude(info.PartialStart, longitude, latitude),
+				altitude(info.PartialEnd, longitude, latitude),
+				altitude(info.PenumbralEnd, longitude, latitude),
+			}
+			// 区域边缘的半格误差：任一条判据高度落在 ±0.5° 内就不作断言。
+			margin := 0.5
+			for _, height := range heights {
+				if height < 0 {
+					height = -height
 				}
-				umbral := umbralExtremum(longitude, latitude)
+				if height < margin {
+					margin = height
+				}
+			}
+			if margin < 0.5 {
+				continue
+			}
+			umbralBelow := umbralBelowHorizon(longitude, latitude)
+			for _, role := range []string{"penumbra-moonset", "penumbra-moonrise"} {
 				want := false
 				if role == "penumbra-moonset" {
-					want = heights[0] > 0 && umbral < 0 && heights[3] < 0
+					want = heights[0] > 0 && umbralBelow && heights[3] < 0
 				} else {
-					want = heights[3] > 0 && umbral < 0 && heights[0] < 0
+					want = heights[3] > 0 && umbralBelow && heights[0] < 0
 				}
-				// 区域边缘的半格误差：任一条判据高度落在 ±0.5° 内就不作断言。
-				margin := 0.5
-				for _, height := range heights {
-					if height < 0 {
-						height = -height
-					}
-					if height < margin {
-						margin = height
-					}
+				got := containsMoonset(longitude, latitude)
+				if role == "penumbra-moonrise" {
+					got = containsMoonrise(longitude, latitude)
 				}
-				if margin < 0.5 {
-					continue
-				}
-				got := geometryContainsPoint(t, feature.Geometry, longitude, latitude)
 				if got != want {
 					t.Fatalf("%s (%.1f,%.1f): geometry=%v altitude criterion=%v (P1=%.2f U1=%.2f U4=%.2f P4=%.2f)",
 						role, longitude, latitude, got, want, heights[0], heights[1], heights[2], heights[3])
@@ -88,6 +98,38 @@ func TestLunarGeoJSONPenumbraBandsFollowUmbralContacts(t *testing.T) {
 	if checked["penumbra-moonset"] < 20 || checked["penumbra-moonrise"] < 20 {
 		t.Fatalf("too few grid points verified: %v", checked)
 	}
+}
+
+func decodeMultiPolygonContains(t *testing.T, geometry struct {
+	Type        string          `json:"type"`
+	Coordinates json.RawMessage `json:"coordinates"`
+	Geometries  json.RawMessage `json:"geometries"`
+}) func(float64, float64) bool {
+	t.Helper()
+	switch geometry.Type {
+	case "MultiPolygon":
+		var polygons [][][][]float64
+		if err := json.Unmarshal(geometry.Coordinates, &polygons); err != nil {
+			t.Fatalf("decode MultiPolygon coordinates: %v", err)
+		}
+		return func(longitude, latitude float64) bool {
+			return geoJSONMultiPolygonContains(polygons, longitude, latitude)
+		}
+	case "Polygon":
+		var polygon [][][]float64
+		if err := json.Unmarshal(geometry.Coordinates, &polygon); err != nil {
+			t.Fatalf("decode Polygon coordinates: %v", err)
+		}
+		if len(polygon) == 0 {
+			return func(float64, float64) bool { return false }
+		}
+		return func(longitude, latitude float64) bool {
+			return geoJSONRingContains(polygon[0], longitude, latitude)
+		}
+	default:
+		t.Fatalf("geometry type=%q, want Polygon or MultiPolygon", geometry.Type)
+	}
+	return nil
 }
 
 // 两条带必须与本地可见性类别的细分一致，且可被 SkipRoles 关掉；纯半影月食没有本影接触，不画带。

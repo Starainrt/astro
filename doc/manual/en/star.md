@@ -117,7 +117,9 @@ Proper motion is propagated in **Julian years** (365.25 days), and `RaDecByDate`
 | Group | Entry points | Purpose | Units and convention |
 | --- | --- | --- | --- |
 | Constellation | `Constellation` / `ConstellationEN` / `ConstellationCode` | Chinese name / English name / IAU three-letter code | Corrected RA/Dec in degrees plus the instant |
-| Star catalog | `InitStarDatabase` / `StarDataByHR` / `StarDataByName` / `TopBrightStars` | Initialise the embedded catalog, look up by HR number or Chinese name, fetch the bright-star sample | HR `1-9110`; `Mag` is apparent magnitude |
+| Star catalog | `InitStarDatabase` / `StarDataByHR` / `StarDataByName` / `StarDataByNameAll` / `StarDataByNameIn` / `TopBrightStars` | Initialise the embedded catalog; look up by HR number, Chinese name/alias or English common name; disambiguate duplicates with `All` or `In`; fetch the bright-star sample | HR `1-9110`; `Mag` is apparent magnitude |
+| Name disambiguation | `StarDataByNameAll` / `StarDataByNameIn` | All candidates sharing a name / the unique star matching `ChineseRegion` | For example `StarDataByNameIn("杵增一", "危宿")` |
+| Error checks | `ErrStarNotFound` / `ErrStarNameAmbiguous` | Distinguish "not found" from "ambiguous name" with `errors.Is` | Exported by the `star` package |
 | Coordinate correction | `StarData.RaDecByDate` (`RaDecByJde` on the `basic` side) | Correct a J2000 position to the given instant | Returns RA/Dec in degrees |
 | Rise, set, culmination | `RiseTime` / `SetTime` / `CulminationTime` (`DownTime` is a deprecated alias of `SetTime`) | Rise, set and culmination instants | Civil instants; polar cases return sentinel errors |
 | Rise/set with weather | `RiseTimeWithAtmosphere` / `SetTimeWithAtmosphere` | Rise and set with measured pressure (hPa) and temperature (°C) | Refraction always applied |
@@ -166,10 +168,25 @@ The catalog loads on first lookup; `InitStarDatabase()` only warms it up. It is 
 | `RadVel` / `RotVel` | Radial and proper-motion velocity, km/s |
 | `Pc` | Distance in parsecs; `> 0` propagates proper motion as a 3D space motion |
 | `ChineseName` / `ChineseAlias` / `ChineseBayerName` | Chinese name, alias and Bayer designation |
-| `CommonName` / `CommonAliasName` | Common English name and alias |
+| `ChineseRegion` | Mansion/enclosure qualifier the name belongs to, for example `危宿` or `太微垣`; empty when not annotated, used to disambiguate shared names |
+| `CommonName` / `CommonAliasName` | Common English name and alias; `CommonName` is searchable with `StarDataByName` |
 | `Cst` / `CstChinese` | Constellation name in English and Chinese |
 
-Lookup by name matches the catalog's Chinese names only (`天狼` for Sirius, `织女一` for Vega); English names are not matched. Use `StarDataByHR` to look up by number.
+Lookup by name matches the catalog's Chinese names, Chinese aliases and English common names (`天狼`, `织女一`, `Sirius`); English names are case-insensitive and ignore leading/trailing whitespace. Use `StarDataByHR` to look up by number.
+
+Chinese names can repeat across mansions or enclosures; for example, `杵增一` appears in both `箕宿` and `危宿`. `StarDataByName` returns an ambiguity error when more than one star matches. Use `StarDataByNameIn(name, region)` with `ChineseRegion` to select one, or `StarDataByNameAll` to list all candidates. The `名[宿]` form (for example `"杵增一[危宿]"`) is also accepted, but structured arguments are preferred.
+
+**Breaking change**: the old implementation silently returned one of the matching stars; it now returns `ErrStarNameAmbiguous`. Check it with `errors.Is(err, star.ErrStarNameAmbiguous)`, then disambiguate with `StarDataByNameAll` or `StarDataByNameIn`. An empty region in `StarDataByNameIn` is equivalent to `StarDataByName` and still reports ambiguity for duplicate names. Error text also changed from `no such star` to `star not found: ...`; use `errors.Is` instead of matching strings.
+
+English common names use the same `StarDataByName` entry point, case-insensitively and ignoring leading/trailing whitespace, for example `"sirius"`, `"Vega"` or `"Polaris"`. It covers the built-in `CommonName` field only (about 218 entries), not full Bayer designations such as `Alpha Canis Majoris`; Bayer/Flamsteed designations remain in `Name`. English names can also be duplicated (for example, `Gienah` refers to two stars); that returns `ErrStarNameAmbiguous`, and `StarDataByNameAll` lists the candidates.
+
+```go
+s, err := star.StarDataByName("sirius") // HR 2491
+```
+
+```go
+s, err := star.StarDataByNameIn("杵增一", "危宿") // HR 8449, s.ChineseRegion == "危宿"
+```
 
 ### Rise, set and culmination
 
@@ -351,7 +368,7 @@ if errors.Is(err, star.ERR_STAR_NEVER_RISE) || errors.Is(err, star.ERR_STAR_NEVE
 
   `ERR_STAR_NEVER_DOWN` is a deprecated alias of `ERR_STAR_NEVER_SET`, and `DownTime` is a deprecated alias of `SetTime`.
 - **Refraction range**: the Saemundsson approximation only applies for true altitudes inside `(-5, 90)` degrees and contributes zero outside, so well below the horizon the apparent altitude equals the geometric one.
-- **Catalog conventions**: BSC / HR `1-9110`, apparent magnitudes `-1.46` to `7.96`; name lookup matches the built-in Chinese names only (`天狼`, `织女一`), never English names.
+- **Catalog conventions**: BSC / HR `1-9110`, apparent magnitudes `-1.46` to `7.96`; Name lookup matches built-in Chinese names, aliases and English common names (`天狼`, `织女一`, `Sirius`); duplicate names require `StarDataByNameIn` or `StarDataByNameAll`.
 - **Cross-checking against external catalogs**: positions here are J2000 mean places with proper motion plus precession and nutation; when comparing term by term, bring both sides to the same instant with `RaDecByDate` first.
 
 ## Parameter and result conventions
@@ -366,7 +383,7 @@ if errors.Is(err, star.ERR_STAR_NEVER_RISE) || errors.Is(err, star.ERR_STAR_NEVE
 
   Pressure must be positive and temperature above absolute zero, otherwise the result is `NaN`.
 - **`aero` semantics**: a true value solves rise/set against the horizon corrected by standard refraction, a false value uses the geometric horizon; the difference is about 2-3 minutes at low latitudes and grows noticeably at high latitudes.
-- **Catalog range**: HR `1-9110`, apparent magnitudes `-1.46` to `7.96`; name lookup matches the built-in Chinese names only.
+- **Catalog range**: HR `1-9110`, apparent magnitudes `-1.46` to `7.96`; name lookup matches built-in Chinese names, Chinese aliases and English common names (case-insensitive); duplicate names require `StarDataByNameIn` or `StarDataByNameAll`.
 
 ## Related manuals
 

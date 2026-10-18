@@ -21,11 +21,6 @@ const starCatalogDetailFields = 6
 //go:embed star_catalog.dat
 var starCatalogCompressed []byte
 
-// supplementalStarDetails 载荷中无命名条目的星表元数据，字段依次为中文名、别名、拜耳命名、通用名、中文星座、IAU 星座。
-var supplementalStarDetails = map[uint16][]string{
-	4799: {"进贤增九", "", "室女座25", "", "室女座", "Virgo"},
-}
-
 func initStarCatalogData() []InnerStarData {
 	reader, err := gzip.NewReader(bytes.NewReader(starCatalogCompressed))
 	if err != nil {
@@ -36,14 +31,16 @@ func initStarCatalogData() []InnerStarData {
 	if err != nil {
 		panic(err)
 	}
-	stars, detail, hip, err := decodeStarCatalogPayload(payload)
+	// STRCAT02 的详情列不参与加载，星名以 star_catalog_names.tsv 为准。
+	stars, _, hip, err := decodeStarCatalogPayload(payload, false)
 	if err != nil {
 		panic(err)
 	}
-	for hr, record := range supplementalStarDetails {
-		detail[hr] = record
+	names, err := decodeStarNameTable(starCatalogNamesCompressed, len(stars))
+	if err != nil {
+		panic(err)
 	}
-	hr2detail = detail
+	hr2name = names
 	hr2hip = hip
 	return stars
 }
@@ -128,7 +125,7 @@ func starCatalogZigzag(v uint64) int64 {
 	return int64(v>>1) ^ -int64(v&1)
 }
 
-func decodeStarCatalogPayload(payload []byte) ([]InnerStarData, map[uint16][]string, map[uint16]uint32, error) {
+func decodeStarCatalogPayload(payload []byte, includeDetail bool) ([]InnerStarData, map[uint16][]string, map[uint16]uint32, error) {
 	if len(payload) < len(starCatalogMagic)+1 || string(payload[:len(starCatalogMagic)]) != starCatalogMagic {
 		return nil, nil, nil, errors.New("invalid star catalog magic")
 	}
@@ -179,30 +176,9 @@ func decodeStarCatalogPayload(payload []byte) ([]InnerStarData, map[uint16][]str
 	if r.err == nil && stringCount > uint64(len(payload)) {
 		return nil, nil, nil, fmt.Errorf("star catalog string count %d out of range", stringCount)
 	}
-	stringsTable := make([]string, stringCount+1)
-	for i := 1; i < len(stringsTable); i++ {
-		stringsTable[i] = string(r.bytes(r.uvarint()))
-	}
-	indexes := make([][starCatalogDetailFields]uint64, count)
-	for k := 0; k < starCatalogDetailFields; k++ {
-		for i := range indexes {
-			indexes[i][k] = r.uvarint()
-		}
-	}
-	detail := make(map[uint16][]string)
-	for i, record := range indexes {
-		hasValue := false
-		values := make([]string, starCatalogDetailFields)
-		for k, index := range record {
-			if index >= uint64(len(stringsTable)) {
-				return nil, nil, nil, fmt.Errorf("detail string index out of range: hr=%d index=%d", i+1, index)
-			}
-			values[k] = stringsTable[index]
-			hasValue = hasValue || index != 0
-		}
-		if hasValue {
-			detail[uint16(i+1)] = values
-		}
+	detail, err := decodeStarCatalogDetail(r, count, stringCount, includeDetail)
+	if err != nil {
+		return nil, nil, nil, err
 	}
 	hip := make(map[uint16]uint32)
 	prevHIP := int64(0)
@@ -221,4 +197,44 @@ func decodeStarCatalogPayload(payload []byte) ([]InnerStarData, map[uint16][]str
 		return nil, nil, nil, fmt.Errorf("%d trailing bytes in star catalog", len(payload)-r.pos)
 	}
 	return stars, detail, hip, nil
+}
+
+func decodeStarCatalogDetail(r *starCatalogReader, count, stringCount uint64, includeDetail bool) (map[uint16][]string, error) {
+	if !includeDetail {
+		for i := uint64(1); i <= stringCount; i++ {
+			r.bytes(r.uvarint())
+		}
+		for k := 0; k < starCatalogDetailFields; k++ {
+			for i := 0; i < int(count); i++ {
+				r.uvarint()
+			}
+		}
+		return nil, nil
+	}
+	stringsTable := make([]string, stringCount+1)
+	for i := 1; i < len(stringsTable); i++ {
+		stringsTable[i] = string(r.bytes(r.uvarint()))
+	}
+	indexes := make([][starCatalogDetailFields]uint64, count)
+	for k := 0; k < starCatalogDetailFields; k++ {
+		for i := range indexes {
+			indexes[i][k] = r.uvarint()
+		}
+	}
+	detail := make(map[uint16][]string)
+	for i, record := range indexes {
+		hasValue := false
+		values := make([]string, starCatalogDetailFields)
+		for k, index := range record {
+			if index >= uint64(len(stringsTable)) {
+				return nil, fmt.Errorf("detail string index out of range: hr=%d index=%d", i+1, index)
+			}
+			values[k] = stringsTable[index]
+			hasValue = hasValue || index != 0
+		}
+		if hasValue {
+			detail[uint16(i+1)] = values
+		}
+	}
+	return detail, nil
 }

@@ -84,7 +84,7 @@ fmt.Println(crossings[0].Time.UTC().Format("2006-01-02 15:04"))
 
 | 入口 | 输入 |
 | --- | --- |
-| `StarCoordinateByName(name)` | 星表中文名，例如 `"天狼星"` |
+| `StarCoordinateByName(name)` | 星表中文名/别名或英文常用名，例如 `"天狼星"`、`"sirius"`；同名多星返回 `ErrStarNameAmbiguous` |
 | `StarCoordinateByHR(hr)` | HR 编号 |
 | `StarCoordinateFromStarData(star)` | `star.StarDataByHR` 等取到的星表记录 |
 
@@ -96,6 +96,19 @@ fmt.Println(err, star.ID, fmt.Sprintf("%.6f %.6f %.2f %.2f", star.RA, star.Dec,
 
 ```text
 <nil> 天狼 101.287083 -16.716111 -553.00 -1205.00
+```
+
+`StarCoordinateByName` 遇到同名多星会返回 `phenomena.ErrStarNameAmbiguous`，未找到返回 `phenomena.ErrStarNotFound`；两者都可用 `errors.Is` 判断。重名时先用 `star.StarDataByNameIn(name, region)` 取到唯一星表记录，再交给 `StarCoordinateFromStarData`：
+
+```go
+data, err := star.StarDataByNameIn("杵增一", "危宿")
+if err != nil {
+	panic(err)
+}
+coord, err := phenomena.StarCoordinateFromStarData(data)
+if err != nil {
+	panic(err)
+}
 ```
 
 `RA`、`Dec` 为度，`Epoch` 与 `Frame` 必填；自行字段（`ProperMotionRACosDecMasPerYear` 等）按星表常见的 `dRA·cos(Dec)` 约定，单位毫角秒/年。`ParallaxMas`（或等价的 `DistanceLightYear`）给出距离，`RadialVelocityKmPerSecond` 给出视向速度；距离缺失时按二维自行传播，有距离时才计入视向速度。
