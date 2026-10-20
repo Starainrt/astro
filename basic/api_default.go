@@ -14,7 +14,7 @@ func ClosestJupiterGalileanPhenomenonEvent(jd float64, satellite int, phenomenon
 	return ClosestJupiterGalileanPhenomenonEventWithInstance(jd, satellite, phenomenonType, nil)
 }
 
-// ClosestMercuryTransit 最近一次地心水星凌日 / closest geocentric transit of Mercury.
+// ClosestMercuryTransit 最近一次全球水星凌日 / closest global transit of Mercury.
 func ClosestMercuryTransit(jde float64) PlanetTransitResult {
 	return ClosestMercuryTransitWithInstance(jde, nil)
 }
@@ -34,7 +34,7 @@ func ClosestMoonPlanetConjunction(jde float64, planet MoonPlanetConjunctionPlane
 	return ClosestMoonPlanetConjunctionWithInstance(jde, planet, nil)
 }
 
-// ClosestVenusTransit 最近一次地心金星凌日 / closest geocentric transit of Venus.
+// ClosestVenusTransit 最近一次全球金星凌日 / closest global transit of Venus.
 func ClosestVenusTransit(jde float64) PlanetTransitResult {
 	return ClosestVenusTransitWithInstance(jde, nil)
 }
@@ -236,7 +236,7 @@ func LastJupiterGalileanPhenomenonEvent(jd float64, satellite int, phenomenonTyp
 	return LastJupiterGalileanPhenomenonEventWithInstance(jd, satellite, phenomenonType, nil)
 }
 
-// LastMercuryTransit 上一次地心水星凌日 / previous geocentric transit of Mercury.
+// LastMercuryTransit 上一次全球水星凌日 / previous global transit of Mercury.
 func LastMercuryTransit(jde float64) PlanetTransitResult {
 	return LastMercuryTransitWithInstance(jde, nil)
 }
@@ -256,7 +256,7 @@ func LastMoonPlanetConjunction(jde float64, planet MoonPlanetConjunctionPlanet) 
 	return LastMoonPlanetConjunctionWithInstance(jde, planet, nil)
 }
 
-// LastVenusTransit 上一次地心金星凌日 / previous geocentric transit of Venus.
+// LastVenusTransit 上一次全球金星凌日 / previous global transit of Venus.
 func LastVenusTransit(jde float64) PlanetTransitResult { return LastVenusTransitWithInstance(jde, nil) }
 
 // LocalSolarEclipseDiagramIAUSingleK 站心日食视圆图几何（IAU Single-K） / local solar eclipse disk diagram, IAU Single-K.
@@ -560,7 +560,7 @@ func NextJupiterGalileanPhenomenonEvent(jd float64, satellite int, phenomenonTyp
 	return NextJupiterGalileanPhenomenonEventWithInstance(jd, satellite, phenomenonType, nil)
 }
 
-// NextMercuryTransit 下一次地心水星凌日 / next geocentric transit of Mercury.
+// NextMercuryTransit 下一次全球水星凌日 / next global transit of Mercury.
 func NextMercuryTransit(jde float64) PlanetTransitResult {
 	return NextMercuryTransitWithInstance(jde, nil)
 }
@@ -580,7 +580,7 @@ func NextMoonPlanetConjunction(jde float64, planet MoonPlanetConjunctionPlanet) 
 	return NextMoonPlanetConjunctionWithInstance(jde, planet, nil)
 }
 
-// NextVenusTransit 下一次地心金星凌日 / next geocentric transit of Venus.
+// NextVenusTransit 下一次全球金星凌日 / next global transit of Venus.
 func NextVenusTransit(jde float64) PlanetTransitResult { return NextVenusTransitWithInstance(jde, nil) }
 
 // PlanetOccultationDiagram 已求解固定地点行星月掩的月心切平面轨迹，事件无效时不含帧 / tangent-plane track of a solved fixed-site planetary occultation.
@@ -594,6 +594,16 @@ func PlanetOccultationDiagram(
 // PlanetOccultationFootprintsAt 指定时刻行星月掩外、内接触可见足迹 / visible outer- and inner-contact planetary footprints at one instant.
 func PlanetOccultationFootprintsAt(at time.Time, planet OccultationPlanet) (PlanetOccultationInstant, error) {
 	return PlanetOccultationFootprintsAtWithInstance(at, planet, nil)
+}
+
+// PlanetTransitVisibilityColumns 按 2° 经度、1° 纬度探测站心可见区并细化边界 / sample topocentric visibility at 2-degree longitude and 1-degree latitude spacing and refine boundaries.
+func PlanetTransitVisibilityColumns(transit PlanetTransitResult) []PlanetTransitVisibilityColumn {
+	return PlanetTransitVisibilityColumnsWithInstance(transit, nil)
+}
+
+// PlanetTransitVisibilityPolygons 可见区的经度条带多边形 / longitude-strip polygons of the visible region.
+func PlanetTransitVisibilityPolygons(transit PlanetTransitResult) [][]PlanetTransitIsochronePoint {
+	return PlanetTransitVisibilityPolygonsWithInstance(transit, nil)
 }
 
 // SaturnAscendingNodeN 土星升交点黄经（n 变体） / n-parameterised ascending node longitude of Saturn.

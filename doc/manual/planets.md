@@ -32,7 +32,7 @@
   - [位置与坐标](#位置与坐标)
   - [升落与中天](#升落与中天)
   - [合冲留与方照](#合冲留与方照)
-  - [大距与地心凌日](#大距与地心凌日)
+  - [大距与凌日](#大距与凌日)
   - [节点、相位、视星等、视直径与视差角](#节点相位视星等视直径与视差角)
   - [与其他手册的分工](#与其他手册的分工)
   - [物理星历](#物理星历)
@@ -174,22 +174,22 @@ fmt.Println(saturn.NextProgradeToRetrograde(date)) // 土星下次顺转逆的�
 2020-05-11 17:26:53.961271941 +0800 CST
 ```
 
-事件搜索取"当前或之后最近一次"并保持输入时区，成对的 `Last...` 与不区分方向的 `NextRetrograde` 见[合冲留与方照](#合冲留与方照)；水星、金星的 `NextGreatestElongationEast` / `...West` 见[大距与地心凌日](#大距与地心凌日)。
+事件搜索取"当前或之后最近一次"并保持输入时区，成对的 `Last...` 与不区分方向的 `NextRetrograde` 见[合冲留与方照](#合冲留与方照)；水星、金星的 `NextGreatestElongationEast` / `...West` 见[大距与凌日](#大距与凌日)。
 
 ### 水星与金星凌日
 
 ```go
-transit := mercury.NextTransit(date)                           // 2020 年之后下一场地心水星凌日
+transit := mercury.NextTransit(date)                           // 2020 年之后下一场水星凌日
 fmt.Println(transit.Valid, transit.Start, transit.Greatest)     // 是否有凌日、一触与凌甚
 fmt.Println(transit.Duration, transit.MinimumSeparationArcsec)  // 历时与凌甚最小角距
 ```
 
 ```text
-true 2032-11-13 14:41:13.161198198 +0800 CST 2032-11-13 16:54:12.821315824 +0800 CST
-4h26m2.695272267s 572.0643215495325
+true 2032-11-13 14:41:13.691189289 +0800 CST 2032-11-13 16:54:13.351347148 +0800 CST
+4h26m2.484410405s 572.0831814505963
 ```
 
-`TransitInfo.Valid` 为假表示搜索窗口内没有凌日、其余字段是零值；`TransitInfo` 是地心几何结果。某个地点看到的接触时刻用 `LocalTransit` 求站心结果：
+`TransitInfo.Valid` 为假表示搜索窗口内没有凌日、其余字段是零值；其余情况下 `TransitInfo` 表示全球事件，接触字段是地心参考时刻。地心无接触时 `HasExternal` 为假，`Start` / `End` 也是零值，只有 `WindowStart` / `WindowEnd` 站心求解窗口有值。某个地点看到的接触时刻用 `LocalTransit` 求站心结果：
 
 ```go
 transit := mercury.NextTransit(time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC))
@@ -200,15 +200,17 @@ fmt.Println(local.Start.Time, local.Start.SunAltitude)         // 站心一触�
 
 ```text
 true true true
-2019-11-11 12:36:09.037762284 +0000 UTC 7.933256722170642
+2019-11-11 12:36:08.979182839 +0000 UTC 7.933092450591312
 ```
 
 站心接触对太阳与行星分别做视差修正后重解，所以各地接触时刻与地心值不同：金星可达约 ±7 分钟，水星约 ±2 分钟。
 
-- `SunAltitude` 是日心几何高度。
+- `SunAltitude` 是太阳中心的几何高度，不含折射。
 - `Visible`、`Sunrise`、`Sunset` 按太阳中心是否在视地平上判定，计入标准大气（1010 hPa、10 °C）折射，几何阈值约 −34′。
 - 地心有内切接触、站心可能只是掠凌（例如 1999-11-15 水星凌日在南半球高纬），此时 `HasInternal` 为假，`InternalStart` / `InternalEnd` 是零值。
-- 全球可见图与站心日面图见[日月食与凌日](eclipse.md#凌日出图)；四触、偏凌与内切口径见[大距与地心凌日](#大距与地心凌日)。
+- 全球可见图与站心日面图见[日月食与凌日](eclipse.md#凌日出图)；四触、偏凌与内切口径见[大距与凌日](#大距与凌日)。
+
+`Gamma` 是凌甚时影轴到地心的有符号距离（北侧为正），`PenumbralRadius` 是地心基本面上的半影半径，两者都以地球赤道半径为单位。凌日半影远大于地球，不要套用日食的 `|Gamma| < 1` 判断。`Series` 是周期族：金星平均 243 年、编号适用于天文年 −2000 至 +4000，水星平均 46 年、适用于 +1601 至 +2300；超出该范围或不属于已编号族时 `Number` 为 0，`PeriodYears` 仍给出平均周期。
 
 ### 相位、视直径、视星等与节点
 
@@ -348,7 +350,7 @@ fmt.Println(venus.AscendingNode(date), venus.DescendingNode(date))
 76.86008484515058 256.8600848451506 // 金星升交点、降交点黄经，单位度
 ```
 
-水星和金星还提供 `NextTransit` / `LastTransit` / `ClosestTransit` 地心凌日查询。这里的“地心”指从地球中心看到的行星圆面经过太阳圆面，不判断某个地点当时太阳是否在地平线上；观测计划用 `LocalTransit` 求站心接触与当时太阳高度（见[水星与金星凌日](#水星与金星凌日)）。
+水星和金星还提供 `NextTransit` / `LastTransit` / `ClosestTransit` 凌日查询。搜索返回全球事件，接触字段是地心参考时刻；地心无接触、只有部分地区可见的掠凌也会返回，这类事件是否成立按地表站心可见性判定。某个地点当时太阳是否在地平线上、当地看到哪些接触，用 `LocalTransit` 求站心结果（见[水星与金星凌日](#水星与金星凌日)）。
 
 ```go
 package main
@@ -553,11 +555,11 @@ fmt.Println(saturn.LastProgradeToRetrograde(date), saturn.NextProgradeToRetrogra
 fmt.Println(saturn.LastRetrogradeToPrograde(date), saturn.NextRetrogradeToPrograde(date))
 ```
 
-### 大距与地心凌日
+### 大距与凌日
 
 大距只对水星、金星有意义：`LastGreatestElongation` / `NextGreatestElongation` 不区分东西，`LastGreatestElongationEast` / `NextGreatestElongationEast` 与 `...West` 区分。
 
-地心凌日的公开入口同样只在 `mercury` / `venus`：`LastTransit` / `NextTransit` / `ClosestTransit` 返回 `TransitInfo`。`Valid` 为假表示搜索窗口内没有凌日，其余字段都是零值；偏凌日没有内切，此时 `HasInternal` 为假、`InternalStart` / `InternalEnd` 是零值。凌日只判断地心几何，不判断某地当时太阳是否在地平线上。
+凌日的公开入口同样只在 `mercury` / `venus`：`LastTransit` / `NextTransit` / `ClosestTransit` 返回 `TransitInfo`。`Valid` 为假表示搜索窗口内没有凌日，其余字段都是零值。地心无接触时 `HasExternal` 为假、`Start` / `End` 为零值，事件是否成立按地表站心可见性判定；站心内切不存在时 `HasInternal` 为假、`InternalStart` / `InternalEnd` 是零值。某个地点是否可见、看到哪些接触用 `LocalTransit` 判定。
 
 ```go
 // 大距：区分东西用 ...East / ...West，不区分时用 NextGreatestElongation。
@@ -566,7 +568,7 @@ fmt.Println(venus.NextGreatestElongation(date))
 ```
 
 ```go
-// 地心凌日：Valid 为假时其余字段为零值。
+// 凌日：Valid 为假时其余字段为零值。
 transit := mercury.NextTransit(date)
 if transit.Valid {
 	fmt.Println(transit.Start, transit.InternalStart, transit.Greatest, transit.InternalEnd, transit.End)
@@ -859,7 +861,7 @@ fmt.Println(planet.WherePlanet(-1, 0, 2460000.5), planet.WherePlanet(4, 0, 24600
 
 ### 零值、越界与哨兵错误
 
-事件搜索在窗口内没有事件时返回零值或 `Valid=false` 的结构（`TransitInfo.Valid`、`GalileanPhenomenonEvent.Valid`、`GalileanPhenomenonContactEvent.Valid`），不返回错误；`TransitInfo` 在 `HasInternal` 为假时 `InternalStart` / `InternalEnd` 为零值，偏凌日没有内切。
+事件搜索在窗口内没有事件时返回零值或 `Valid=false` 的结构（`TransitInfo.Valid`、`GalileanPhenomenonEvent.Valid`、`GalileanPhenomenonContactEvent.Valid`），不返回错误；`TransitInfo` 在 `HasExternal` 为假时 `Start` / `End` 为零值，`HasInternal` 为假时 `InternalStart` / `InternalEnd` 为零值。
 
 `planet.WherePlanet` / `planet.WherePlanetN` 的 `xt` / `zn` 越界返回 `NaN` 而不 panic；`...N` 的 `n < 0` 用完整级数，半解析的非负 `n` 用同一张快速表，Legacy 按 `n` 截断。`RiseTime` / `SetTime` / `DownTime`（含 `N` 版）当天没有几何升/落时返回下面的哨兵错误，时刻为零值。
 

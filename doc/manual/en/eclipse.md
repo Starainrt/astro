@@ -33,6 +33,7 @@ This manual covers solar- and lunar-eclipse queries and charts, plus the two Mer
 - [Transit charts](#transit-charts)
   - [Mercury: 2032-11-13 (Beijing)](#mercury-2032-11-13-beijing)
   - [Venus: 2012-06-06 (Beijing)](#venus-2012-06-06-beijing)
+  - [Special case: partial transits without geocentric contacts](#special-case-partial-transits-without-geocentric-contacts)
 
 ## Simple example: the 2009 Great Yangtze Eclipse at a site in Shanghai
 
@@ -1064,10 +1065,14 @@ Transit contact times, topocentric visibility and `LocalTransit` live in [Planet
 
 | Entry | Chart | Suggested canvas |
 | --- | --- | --- |
-| `TransitMapSVG` | Geocentric global visibility: entire transit, transit at sunrise, transit at sunset, not visible | 960×640 and up |
+| `TransitMapSVG` | Global visibility, including topocentric partial-only events without geocentric contacts | 960×640 and up |
 | `TransitLocalSVG` | Topocentric solar disk: north up, east left, planet-center track, planet disk at each contact and at greatest, contact table | 960×680 and up |
 
-Regions follow whether the Sun's center is above the apparent horizon at C1, greatest and C4, with standard refraction (a horizon circle of 90°34′). Isochrones are off by default; enable them bitwise with `Isochrones`: `TransitIsochroneC1` … `TransitIsochroneC4`, or the combinations `TransitIsochroneExternal` (C1 and C4) and `TransitIsochroneAll`. C2/C3 are dropped for a grazing transit without internal contacts. Isochrones are topocentric contact times drawn only where the Sun is above the apparent horizon; a non-positive `IsochroneStep` uses 20 s for Mercury and 1 min for Venus. A transit is visible from roughly half the globe, so the map always shows the whole world; `Projection` selects one of the four projections.
+For ordinary transits, regions follow whether the Sun's center is above the apparent horizon at C1, greatest and C4, with standard refraction (a horizon circle of 90°34′); events without geocentric contacts use the actual topocentric visible footprint. Isochrones are off by default; enable them bitwise with `Isochrones`: `TransitIsochroneC1` … `TransitIsochroneC4`, or the combinations `TransitIsochroneExternal` (C1 and C4) and `TransitIsochroneAll`. C2/C3 are omitted, including from the legend, when no site has an internal contact; a graze with only geocentric external contacts can still have topocentric C2/C3 in some regions, and those are drawn. Isochrones are topocentric contact times drawn only where the Sun is above the apparent horizon; a non-positive `IsochroneStep` uses 20 s for Mercury and 1 min for Venus.
+
+For events without geocentric contacts the partial footprint is sampled on a 2° longitude by 1° latitude grid and detected boundaries are refined. That is chart sampling, not contact accuracy: a footprint narrower than the grid may go undetected, so use `LocalTransit` for exact site decisions.
+
+`Projection` selects one of four projections; the default equirectangular map shows the whole world. Orthographic maps show only the facing hemisphere. For both Mercury and Venus, events without geocentric contacts centre on the spherical area-weighted visible footprint, for example Mercury on `1937-05-11` and Venus on `2854-12-14`. Ordinary transits retain the subsolar centre at greatest. Polar events may also use an explicit north- or south-polar projection.
 
 ```go
 venus := time.Date(2012, 6, 6, 0, 0, 0, 0, time.UTC)
@@ -1097,3 +1102,9 @@ The Venus transit of 2012-06-06 was visible in full from Beijing, with `6h39m4s`
 ![Venus transit of 2012-06-06 from Beijing](../../img/transit-venus-beijing-2012-en.svg)
 
 ![Venus transit of 2012-06-06 global visibility](../../img/transit-venus-beijing-2012-global-en.svg)
+
+### Special case: partial transits without geocentric contacts
+
+The Mercury transit of 1937-05-11 is one such event: with no geocentric contacts, its footprint spans the South Atlantic, southern Africa and the Indian Ocean east to eastern Australia. The Venus transit of `2854-12-14` belongs to the same class, with a footprint that crosses the Antarctic Circle, all south of 50°S.
+
+![Mercury transit of 1937-05-11 without geocentric contacts, global visibility](../../img/transit-mercury-1937-partial-en.svg)

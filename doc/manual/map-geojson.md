@@ -73,7 +73,11 @@ func main() {
 
 ## 导出凌日 GeoJSON
 
-凌日入口接收地心 `TransitInfo`，分区口径与凌日全球图一致：
+凌日入口接收全球事件的 `TransitInfo`，接触字段仍为地心参考时刻，分区口径与凌日全球图一致：
+
+地心无接触的边缘事件（如 2854-12-14 金星凌日）导出站心实际可见的 `transit-partial` 区域，
+不生成不存在的地心 C1/C4 地平线。属性还包含 `has_geocentric_contacts`、`gamma`、`penumbral_radius`、
+`series`、`series_period_years`。足迹按 2° 经度、1° 纬度采样并细化边界，这是制图采样而不是接触求解精度，比采样间距更窄的可见区可能未检出；精确判断请用 `LocalTransit`。
 
 ```go
 m := mercury.NextTransit(time.Date(2026, 10, 12, 0, 0, 0, 0, cst))
@@ -190,7 +194,7 @@ true <nil> true 4217
 - 日食时刻与食分线：`rise-set-phase-lines`、`magnitude-contours`、`greatest-time-isochrones`
 - 瞬时轮廓：`penumbral-outlines`、`central-shadow-outlines`
 - 月食：`p1-p4-visibility-regions`、`p1-p4-horizon-boundaries`
-- 凌日：`c1-c4-visibility-regions`、`c1-c4-horizon-boundaries`、`transit-contact-isochrones`
+- 凌日：`c1-c4-visibility-regions`、`c1-c4-horizon-boundaries`、`transit-contact-isochrones`；地心无接触时可见区填充改用 `topocentric-transit-visibility`
 
 ## 地图投影
 
@@ -294,7 +298,7 @@ func main() {
 - `MarshalLunarEclipseWithOptions`：用 `LunarEclipseOptions` 一次给出时间标记、`SkipRoles` 与时间包络的采样参数。`SkipRoles` 可跳过时间包络和仅见半影带；跳过两个时间包络时不会执行包络采样。`EnvelopeSweepSamples` 默认 48，限制在 `[2, 192]`；`EnvelopeLongitudePoints` 默认 `max(360, boundaryPoints)`，限制在 `[12, 720]`。
 - `MarshalStarOccultation` / `MarshalStarOccultationWithTimeMarkers`
 - `MarshalPlanetOccultation` / `MarshalPlanetOccultationWithTimeMarkers`
-- `MarshalMercuryTransit` / `MarshalVenusTransit`：接收 `mercury.TransitInfo` / `venus.TransitInfo`，分区口径同凌日 SVG 全球图（一触、凌甚、四触太阳中心是否在视地平上，计入标准大气折射）。`BoundaryPoints` 是地平线采样点数，同时决定分区的经度列数 `max(360, BoundaryPoints)`（上限 720）。role 有 `transit-entire`、`transit-at-sunrise`、`transit-at-sunset` 三个分区，`visible-at-c1` / `visible-at-c4` 与 `c1-horizon` / `c4-horizon`，`greatest`（太阳直射点）与时间标记 `time-marker`；`IsochroneStep` 为正（至少 1 秒）时追加 `c1-isochrone` 到 `c4-isochrone` 站心等时线（掠凌无二、三触；时刻是站心接触时刻，受视差影响可落在地心一触到四触之外），某个接触的等时线不落在可见半球上时该 role 不出现；`SkipRoles` 跳过全部三个分区时不做分区计算。
+- `MarshalMercuryTransit` / `MarshalVenusTransit`：接收 `mercury.TransitInfo` / `venus.TransitInfo`，分区口径同凌日 SVG 全球图（一触、凌甚、四触太阳中心是否在视地平上，计入标准大气折射）。`BoundaryPoints` 是地平线采样点数，同时决定分区的经度列数 `max(360, BoundaryPoints)`（上限 720）。role 有 `transit-entire`、`transit-at-sunrise`、`transit-at-sunset` 三个分区，`visible-at-c1` / `visible-at-c4` 与 `c1-horizon` / `c4-horizon`，`greatest`（太阳直射点）与时间标记 `subsolar-track`；地心无接触事件改用 `transit-partial` 分区，不生成三个可见分区、视地平与可见半球 role；`IsochroneStep` 为正（至少 1 秒）时追加 `c1-isochrone` 到 `c4-isochrone` 站心等时线（地表没有站心内切接触时无二、三触，地心只有外切的掠凌仍可能在部分地区出现；时刻是站心接触时刻，受视差影响可落在地心一触到四触之外），某个接触的等时线不落在可见半球上时该 role 不出现；`SkipRoles` 跳过全部三个分区时不做分区计算。
 - `MarshalSolarEclipseWithOptions`：用 `SolarEclipseOptions` 一次给出时间标记与 `SkipRoles`，等价于上面的日食入口再加图层裁剪。`SkipRoles` 里最常用的是 `partial-footprint`（瞬时半影轮廓）；`partial-band` 是日食带边缘（食分 0 界限），通常要留着。
 
 ### 图层筛选
@@ -434,7 +438,7 @@ func main() {
 | 掩星全掩与偏掩带 | `total-band`、`partial-band`、`total-band-outline`、`occultation-band` | 黄色，带半透明填充 |
 | 升落可见边界、月食时间包络、日食偏食带边缘 | `visibility-boundary`、`p1-horizon`、`p4-horizon`、`visible-at-p1`、`visible-at-p4`、`visible-during-eclipse`、`visible-throughout-eclipse`、日食的 `partial-band` | 橙色 |
 | 仅见半影的月出/月落带 | `penumbra-moonrise`、`penumbra-moonset` | 月出蓝紫、月落紫红，带半透明填充 |
-| 凌日可见分区与接触线 | `transit-entire`、`transit-at-sunrise`、`transit-at-sunset`、`c1-horizon`、`c4-horizon`、`visible-at-c1`、`visible-at-c4`、`c1-isochrone` … `c4-isochrone` | 三个分区各有填充色；C1/C4 视地平与可见半球橙色；四触等时线各一色 |
+| 凌日可见分区与接触线 | `transit-entire`、`transit-at-sunrise`、`transit-at-sunset`、`transit-partial`、`c1-horizon`、`c4-horizon`、`visible-at-c1`、`visible-at-c4`、`c1-isochrone` … `c4-isochrone` | 三个分区与部分凌日可见区各有填充色；C1/C4 视地平与可见半球橙色；四触等时线各一色 |
 | 其他限界、轮廓、足迹与时间标记 | 其他 `role` | 灰色，面默认只画轮廓 |
 
 `Style` 的零值字段沿用默认样式：

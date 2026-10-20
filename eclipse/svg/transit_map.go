@@ -36,9 +36,9 @@ type TransitIsochrones uint8
 const (
 	// TransitIsochroneC1 画一触等时线 / draw C1 isochrones.
 	TransitIsochroneC1 TransitIsochrones = 1 << iota
-	// TransitIsochroneC2 画二触等时线；掠凌没有内切接触时忽略 / draw C2 isochrones, ignored for a grazing transit.
+	// TransitIsochroneC2 画二触等时线；地表没有站心内切时忽略 / draw C2 isochrones, ignored where no site has internal contact.
 	TransitIsochroneC2
-	// TransitIsochroneC3 画三触等时线；掠凌没有内切接触时忽略 / draw C3 isochrones, ignored for a grazing transit.
+	// TransitIsochroneC3 画三触等时线；地表没有站心内切时忽略 / draw C3 isochrones, ignored where no site has internal contact.
 	TransitIsochroneC3
 	// TransitIsochroneC4 画四触等时线 / draw C4 isochrones.
 	TransitIsochroneC4
@@ -64,8 +64,7 @@ type TransitMapSVGOptions struct {
 	// TimeScale 选择图中时刻的时标：零值 UTC；TimeScaleUT1 要求 Location 为 nil 或 UTC，否则返回 false。
 	// TimeScale selects the label scale: the zero value is UTC; TimeScaleUT1 requires Location to be nil or UTC, otherwise the renderer returns false.
 	TimeScale astro.TimeScale
-	// Projection 选择地图投影；零值使用等经纬投影，正射投影视点取凌甚时的太阳直射点。
-	// Projection selects the map projection. The zero value uses equirectangular; orthographic centres on the subsolar point at greatest.
+	// Projection 选择地图投影，默认等经纬；正射视点在地心无接触时取站心可见区中心，否则取凌甚太阳直射点 / projection, default equirectangular; orthographic centres on the visible footprint without geocentric contacts, otherwise the subsolar point at greatest.
 	Projection EclipseMapProjection
 	// Isochrones 选择要画的站心接触等时线，可按位组合；零值不画（默认关闭，需显式开启）。
 	// Isochrones selects the topocentric contact isochrones to draw and may combine flags. The zero value draws none (off by default).
@@ -79,12 +78,14 @@ type TransitMapSVGOptions struct {
 	FooterNote string
 }
 
-// TransitMapSVG 绘制距 date 最近一次水星或金星凌日的全球可见图：按一触、凌甚、四触太阳中心在视地平上
-// （计入标准大气折射）的区域分区；Options.Isochrones 显式开启时叠加所选接触的站心等时线。找不到凌日或选项无效时返回 false。
-// TransitMapSVG renders the global visibility of the Mercury or Venus transit closest to date: regions follow where the
-// Sun's centre is above the apparent horizon (standard refraction) at C1, greatest and C4. Topocentric isochrones of the
-// selected contacts are overlaid only when Options.Isochrones enables them. It returns false when no transit is found
-// or the options are invalid.
+// TransitMapSVG 绘制距 date 最近一次水星或金星凌日的全球可见图：普通凌日按一触、凌甚、四触太阳中心在视地平上
+// （计入标准大气折射）的区域分区，地心无接触时绘制站心部分凌日可见区；Options.Isochrones 显式开启时叠加所选接触的
+// 站心等时线，图例只列实际画出的接触。找不到凌日或选项无效时返回 false。
+// TransitMapSVG renders the global visibility of the Mercury or Venus transit closest to date: ordinary transits are
+// partitioned by whether the Sun's centre is above the apparent horizon (standard refraction) at C1, greatest and C4;
+// events without geocentric contacts show the topocentric partial-transit footprint. Topocentric isochrones of the
+// selected contacts are overlaid only when Options.Isochrones enables them, and the legend lists only contacts that
+// produced lines. It returns false when no transit is found or the options are invalid.
 func TransitMapSVG(planet TransitPlanet, date time.Time, options TransitMapSVGOptions) (string, bool) {
 	transit, ok := closestPlanetTransit(planet, date)
 	if !ok || !validEclipseMapProjection(options.Projection) {
@@ -97,7 +98,7 @@ func TransitMapSVG(planet TransitPlanet, date time.Time, options TransitMapSVGOp
 		options.Location = time.UTC
 	}
 	options = normalizeTransitMapSVGOptions(date, options)
-	if !transit.HasInternal {
+	if !transit.HasExternal {
 		options.Isochrones &^= TransitIsochroneC2 | TransitIsochroneC3
 	}
 	options.Isochrones &= TransitIsochroneAll
@@ -114,7 +115,7 @@ func TransitMapSVG(planet TransitPlanet, date time.Time, options TransitMapSVGOp
 	return renderTransitMapSVG(planet, transit, options, projection), true
 }
 
-// closestPlanetTransit 返回距 date 最近的一次地心凌日；行星无效或找不到时第二个返回值为 false。
+// closestPlanetTransit 返回距 date 最近的一次全球凌日。
 func closestPlanetTransit(planet TransitPlanet, date time.Time) (basic.PlanetTransitResult, bool) {
 	jd := basic.Date2JD(date.UTC())
 	var transit basic.PlanetTransitResult
@@ -155,7 +156,12 @@ type transitMapContacts struct {
 }
 
 func transitMapContactsOf(transit basic.PlanetTransitResult) transitMapContacts {
-	at := func(jd float64) time.Time { return basic.JD2DateByZone(jd, time.UTC, false) }
+	at := func(jd float64) time.Time {
+		if jd == 0 {
+			return time.Time{}
+		}
+		return basic.JD2DateByZone(jd, time.UTC, false)
+	}
 	contacts := transitMapContacts{
 		start:       at(transit.ExternalIngress),
 		greatest:    at(transit.Greatest),
@@ -178,7 +184,7 @@ func renderTransitMapSVG(
 	// 底部比月食图多留两行：图例下要放可折行的说明与时标声明。
 	frame := eclipseMapFrame(options.Width, options.Height, projection, 142, 122)
 	if projection == svgmap.ProjectionOrthographic {
-		center := solarEclipseSubsolarPoint(contacts.greatest)
+		center := transitMapOrthographicCenter(transit)
 		frame.CenterLongitude, frame.CenterLatitude = center.Longitude, center.Latitude
 	}
 	title := options.Title
@@ -192,8 +198,12 @@ func renderTransitMapSVG(
 	}
 
 	var b strings.Builder
-	fmt.Fprintf(&b, `<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" viewBox="0 0 %d %d" role="img" aria-label="%s">`,
+	fmt.Fprintf(&b, `<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" viewBox="0 0 %d %d" role="img" aria-label="%s"`,
 		options.Width, options.Height, options.Width, options.Height, html.EscapeString(title))
+	if projection == svgmap.ProjectionOrthographic {
+		fmt.Fprintf(&b, ` data-center-longitude="%.6f" data-center-latitude="%.6f"`, frame.CenterLongitude, frame.CenterLatitude)
+	}
+	b.WriteString(`>`)
 	b.WriteString(`<defs>`)
 	writeTransitMapDefinitions(&b, frame, contacts)
 	b.WriteString(`</defs>`)
@@ -211,13 +221,15 @@ func renderTransitMapSVG(
 	frame.WriteOcean(&b)
 	frame.WriteGraticule(&b, "transit-map-clip")
 	frame.WriteLand(&b, "transit-map-clip")
-	writeTransitMapRegions(&b, frame, contacts)
-	if options.Isochrones != 0 {
-		writeTransitMapIsochrones(&b, frame, transit, options)
+	if transit.HasExternal {
+		writeTransitMapRegions(&b, frame, contacts)
+	} else {
+		writeTransitMapPartialRegions(&b, frame, transit)
 	}
+	options.Isochrones = writeTransitMapIsochrones(&b, frame, transit, options)
 	frame.WriteFrame(&b)
-	legendRows := writeTransitMapLegend(&b, frame, float64(options.Width), options)
-	writeTransitMapFooter(&b, frame, options, projection, contacts.greatest, legendRows)
+	legendRows := writeTransitMapLegend(&b, frame, float64(options.Width), options, transit.HasExternal)
+	writeTransitMapFooter(&b, frame, options, projection, contacts.greatest, legendRows, transit.HasExternal)
 	b.WriteString(`</svg>`)
 	return b.String()
 }
@@ -264,6 +276,9 @@ const (
 // writeTransitMapDefinitions 输出一触、凌甚、四触三个太阳在地平上半球的形状与排除掩膜，分区口径同月食可见图。
 func writeTransitMapDefinitions(b *strings.Builder, frame svgmap.Frame, contacts transitMapContacts) {
 	b.WriteString(frame.ClipDefinition("transit-map-clip"))
+	if contacts.start.IsZero() || contacts.end.IsZero() {
+		return
+	}
 	startPath, _ := transitMapSunUpPath(contacts.start, frame)
 	endPath, _ := transitMapSunUpPath(contacts.end, frame)
 	greatestPath, _ := transitMapSunUpPath(contacts.greatest, frame)
@@ -285,10 +300,19 @@ const (
 	transitMapColorSunrise = "#4e9da0"
 	transitMapColorSunset  = "#e2aa4b"
 	transitMapColorNone    = "#747b7d"
+	transitMapColorPartial = "#f7dd93"
 	transitMapColorC1      = "#a3392f"
 	transitMapColorC2      = "#c0702a"
 	transitMapColorC3      = "#7a4ca0"
 	transitMapColorC4      = "#2f5ea3"
+
+	transitMapFooterSideInset = 120.0
+
+	transitMapRegionFillOpacity = 0.34
+	// 部分凌日只有一块可见区，要比普通凌日分区更浓才能从底图上辨认。
+	transitMapPartialFillOpacity = 0.55
+	// 图例色块直接画在白底上，比叠在海陆底色上的分区取更浓的值，同月食图。
+	transitMapLegendFillOpacity = 0.78
 )
 
 // writeTransitMapRegions 着色四类可见区：全程可见、日出时凌日已开始、日落时凌日未结束、不可见。
@@ -298,25 +322,27 @@ func writeTransitMapRegions(b *strings.Builder, frame svgmap.Frame, contacts tra
 	_, endBoundary := transitMapSunUpPath(contacts.end, frame)
 	fmt.Fprintf(b, `<g class="transit-visibility-regions" data-source="%s" clip-path="url(#transit-map-clip)">`, eclipseMapSourceTransitVisibilityRegions)
 	if frame.IsPolar() {
-		fmt.Fprintf(b, `<circle class="transit-not-visible-region" mask="url(#transit-not-visible-mask)" cx="%.3f" cy="%.3f" r="%.3f" fill="%s" fill-opacity="0.34"/>`,
-			frame.X+frame.Width/2, frame.Y+frame.Height/2, frame.Width/2, transitMapColorNone)
+		fmt.Fprintf(b, `<circle class="transit-not-visible-region" mask="url(#transit-not-visible-mask)" cx="%.3f" cy="%.3f" r="%.3f" fill="%s" fill-opacity="%.2f"/>`,
+			frame.X+frame.Width/2, frame.Y+frame.Height/2, frame.Width/2, transitMapColorNone, transitMapRegionFillOpacity)
 	} else {
-		fmt.Fprintf(b, `<rect class="transit-not-visible-region" mask="url(#transit-not-visible-mask)" x="%.3f" y="%.3f" width="%.3f" height="%.3f" fill="%s" fill-opacity="0.34"/>`,
-			frame.X, frame.Y, frame.Width, frame.Height, transitMapColorNone)
+		fmt.Fprintf(b, `<rect class="transit-not-visible-region" mask="url(#transit-not-visible-mask)" x="%.3f" y="%.3f" width="%.3f" height="%.3f" fill="%s" fill-opacity="%.2f"/>`,
+			frame.X, frame.Y, frame.Width, frame.Height, transitMapColorNone, transitMapRegionFillOpacity)
 	}
-	fmt.Fprintf(b, `<use class="transit-sunset-region" mask="url(#transit-not-c4-mask)" href="#transit-sun-c1-shape" fill="%s" fill-opacity="0.34"/>`, transitMapColorSunset)
-	fmt.Fprintf(b, `<use class="transit-sunrise-region" mask="url(#transit-not-c1-mask)" href="#transit-sun-c4-shape" fill="%s" fill-opacity="0.34"/>`, transitMapColorSunrise)
-	fmt.Fprintf(b, `<g clip-path="url(#transit-sun-c4)"><g clip-path="url(#transit-sun-greatest)"><use class="transit-entire-region" href="#transit-sun-c1-shape" fill="%s" fill-opacity="0.34"/></g></g>`, transitMapColorEntire)
-	fmt.Fprintf(b, `<g clip-path="url(#transit-sun-c4)"><g mask="url(#transit-not-greatest-mask)"><use class="transit-sunset-region" href="#transit-sun-c1-shape" fill="%s" fill-opacity="0.34"/></g></g>`, transitMapColorSunset)
-	fmt.Fprintf(b, `<g mask="url(#transit-not-c1-c4-mask)"><use class="transit-sunset-region" href="#transit-sun-greatest-shape" fill="%s" fill-opacity="0.34"/></g>`, transitMapColorSunset)
+	fmt.Fprintf(b, `<use class="transit-sunset-region" mask="url(#transit-not-c4-mask)" href="#transit-sun-c1-shape" fill="%s" fill-opacity="%.2f"/>`, transitMapColorSunset, transitMapRegionFillOpacity)
+	fmt.Fprintf(b, `<use class="transit-sunrise-region" mask="url(#transit-not-c1-mask)" href="#transit-sun-c4-shape" fill="%s" fill-opacity="%.2f"/>`, transitMapColorSunrise, transitMapRegionFillOpacity)
+	fmt.Fprintf(b, `<g clip-path="url(#transit-sun-c4)"><g clip-path="url(#transit-sun-greatest)"><use class="transit-entire-region" href="#transit-sun-c1-shape" fill="%s" fill-opacity="%.2f"/></g></g>`, transitMapColorEntire, transitMapRegionFillOpacity)
+	fmt.Fprintf(b, `<g clip-path="url(#transit-sun-c4)"><g mask="url(#transit-not-greatest-mask)"><use class="transit-sunset-region" href="#transit-sun-c1-shape" fill="%s" fill-opacity="%.2f"/></g></g>`, transitMapColorSunset, transitMapRegionFillOpacity)
+	fmt.Fprintf(b, `<g mask="url(#transit-not-c1-c4-mask)"><use class="transit-sunset-region" href="#transit-sun-greatest-shape" fill="%s" fill-opacity="%.2f"/></g>`, transitMapColorSunset, transitMapRegionFillOpacity)
 	b.WriteString(`</g>`)
 	writeEclipseMapGeoLine(b, frame, startBoundary, "c1-horizon", "#a56c16", 1.2, "4 3", "transit-map-clip", eclipseMapSourceTransitHorizonBoundaries)
 	writeEclipseMapGeoLine(b, frame, endBoundary, "c4-horizon", "#197a82", 1.2, "4 3", "transit-map-clip", eclipseMapSourceTransitHorizonBoundaries)
 }
 
 // writeTransitMapIsochrones 画选中接触的站心等时线：每条线是同一时刻看到该接触的地点，只保留该时刻太阳在视地平上的部分。
+// 返回实际画出线的接触，供图例使用。
 // 每隔若干条标一次时刻，标签按 LabelTable 避让。
-func writeTransitMapIsochrones(b *strings.Builder, frame svgmap.Frame, transit basic.PlanetTransitResult, options TransitMapSVGOptions) {
+func writeTransitMapIsochrones(b *strings.Builder, frame svgmap.Frame, transit basic.PlanetTransitResult, options TransitMapSVGOptions) TransitIsochrones {
+	var drawn TransitIsochrones
 	table := &svgchart.LabelTable{}
 	format := "15:04"
 	if options.IsochroneStep%time.Minute != 0 {
@@ -337,6 +363,9 @@ func writeTransitMapIsochrones(b *strings.Builder, frame svgmap.Frame, transit b
 			continue
 		}
 		lines := basic.PlanetTransitContactIsochrones(transit, contact.kind, options.IsochroneStep)
+		if len(lines) > 0 {
+			drawn |= contact.flag
+		}
 		labelEvery := transitMapIsochroneLabelEvery(len(lines))
 		for index, line := range lines {
 			segments := make([][]svgmap.GeoPoint, 0, len(line.Segments))
@@ -360,6 +389,7 @@ func writeTransitMapIsochrones(b *strings.Builder, frame svgmap.Frame, transit b
 				contact.class, placement.X, placement.Y, contact.color, placement.Anchor, html.EscapeString(text))
 		}
 	}
+	return drawn
 }
 
 // transitMapIsochroneLabelEvery 让每个接触最多标八条线。
@@ -413,7 +443,10 @@ func writeTransitMapSummary(b *strings.Builder, transit basic.PlanetTransitResul
 	if options.Language == "en" {
 		greatest, separation = "Greatest", "least separation"
 	}
-	parts := []string{"C1 " + clock(contacts.start)}
+	parts := []string{}
+	if !contacts.start.IsZero() {
+		parts = append(parts, "C1 "+clock(contacts.start))
+	}
 	if contacts.hasInternal {
 		parts = append(parts, "C2 "+clock(contacts.internalStart))
 	}
@@ -421,7 +454,13 @@ func writeTransitMapSummary(b *strings.Builder, transit basic.PlanetTransitResul
 	if contacts.hasInternal {
 		parts = append(parts, "C3 "+clock(contacts.internalEnd))
 	}
-	parts = append(parts, "C4 "+clock(contacts.end))
+	if !contacts.end.IsZero() {
+		parts = append(parts, "C4 "+clock(contacts.end))
+	} else if options.Language == "en" {
+		parts = append(parts, "Partial transit; no geocentric contacts")
+	} else {
+		parts = append(parts, "仅部分凌日，地心无接触")
+	}
 	line := fmt.Sprintf("%s (%s)", strings.Join(parts, " | "), zone)
 	fmt.Fprintf(b, `<text x="%.3f" y="82" fill="#293235" font-family="Arial, sans-serif" font-size="13" text-anchor="middle">%s</text>`,
 		float64(options.Width)/2, html.EscapeString(svgchart.EllipsizeText(line, float64(options.Width)-60, 13)))
@@ -432,23 +471,33 @@ func writeTransitMapSummary(b *strings.Builder, transit basic.PlanetTransitResul
 			transit.MinimumSeparationArcsec, transit.SunSemidiameterArcsec, transit.PlanetSemidiameterArcsec)
 	}
 	fmt.Fprintf(b, `<text x="%.3f" y="100" fill="#293235" font-family="Arial, sans-serif" font-size="13" text-anchor="middle">%s</text>`,
-		float64(options.Width)/2, html.EscapeString(note))
+		float64(options.Width)/2, html.EscapeString(svgchart.EllipsizeText(transitMapGeometryNote(transit, options.Language)+" | "+note, float64(options.Width)-60, 13)))
 }
 
-// writeTransitMapLegend 画区域色块与等时线图例，按画布宽度折行，返回行数。
-func writeTransitMapLegend(b *strings.Builder, frame svgmap.Frame, canvasWidth float64, options TransitMapSVGOptions) int {
-	type entry struct {
-		text, color string
-		line        bool
-	}
+type transitMapLegendEntry struct {
+	text, color string
+	line        bool
+}
+
+// transitMapLegendEntries 列出图例项：地心无接触时是部分凌日可见区，否则是四个分区；两者都追加实际画出的等时线。
+func transitMapLegendEntries(options TransitMapSVGOptions, hasExternal bool) []transitMapLegendEntry {
 	labels := []string{"全程可见", "日出时已在凌日", "日落时仍在凌日", "不可见", "一触等时线", "二触等时线", "三触等时线", "四触等时线"}
 	if options.Language == "en" {
 		labels = []string{"Entire transit", "Transit at sunrise", "Transit at sunset", "Not visible",
 			"C1 isochrones", "C2 isochrones", "C3 isochrones", "C4 isochrones"}
 	}
-	entries := []entry{
-		{labels[0], transitMapColorEntire, false}, {labels[1], transitMapColorSunrise, false},
-		{labels[2], transitMapColorSunset, false}, {labels[3], transitMapColorNone, false},
+	var entries []transitMapLegendEntry
+	if !hasExternal {
+		partial := "部分凌日可见区"
+		if options.Language == "en" {
+			partial = "Partial transit visible"
+		}
+		entries = []transitMapLegendEntry{{partial, transitMapColorPartial, false}}
+	} else {
+		entries = []transitMapLegendEntry{
+			{labels[0], transitMapColorEntire, false}, {labels[1], transitMapColorSunrise, false},
+			{labels[2], transitMapColorSunset, false}, {labels[3], transitMapColorNone, false},
+		}
 	}
 	for index, item := range []struct {
 		flag  TransitIsochrones
@@ -458,14 +507,20 @@ func writeTransitMapLegend(b *strings.Builder, frame svgmap.Frame, canvasWidth f
 		{TransitIsochroneC3, transitMapColorC3}, {TransitIsochroneC4, transitMapColorC4},
 	} {
 		if options.Isochrones&item.flag != 0 {
-			entries = append(entries, entry{labels[4+index], item.color, true})
+			entries = append(entries, transitMapLegendEntry{labels[4+index], item.color, true})
 		}
 	}
-	width := func(item entry) float64 {
+	return entries
+}
+
+// writeTransitMapLegend 画区域色块与等时线图例，按画布宽度折行，返回行数。
+func writeTransitMapLegend(b *strings.Builder, frame svgmap.Frame, canvasWidth float64, options TransitMapSVGOptions, hasExternal bool) int {
+	entries := transitMapLegendEntries(options, hasExternal)
+	var rows [][]transitMapLegendEntry
+	width := func(item transitMapLegendEntry) float64 {
 		return lunarEclipseDetailedMapLegendIconWidth + svgchart.EstimatedTextWidth(item.text, lunarEclipseDetailedMapLegendFontSize)
 	}
 	available := canvasWidth - 2*lunarEclipseDetailedPageInset
-	var rows [][]entry
 	used := 0.0
 	for _, item := range entries {
 		if len(rows) == 0 || used+lunarEclipseDetailedMapLegendGap+width(item) > available {
@@ -487,7 +542,7 @@ func writeTransitMapLegend(b *strings.Builder, frame svgmap.Frame, canvasWidth f
 			if item.line {
 				fmt.Fprintf(b, `<line x1="%.3f" y1="%.3f" x2="%.3f" y2="%.3f" stroke="%s" stroke-width="1.4"/>`, x, y-4, x+18, y-4, item.color)
 			} else {
-				fmt.Fprintf(b, `<rect x="%.3f" y="%.3f" width="18" height="9" fill="%s" fill-opacity="0.78"/>`, x, y-8, item.color)
+				fmt.Fprintf(b, `<rect x="%.3f" y="%.3f" width="18" height="9" fill="%s" fill-opacity="%.2f"/>`, x, y-8, item.color, transitMapLegendFillOpacity)
 			}
 			fmt.Fprintf(b, `<text x="%.3f" y="%.3f" fill="#465053" font-family="Arial, sans-serif" font-size="%.0f">%s</text>`,
 				x+lunarEclipseDetailedMapLegendIconWidth, y, lunarEclipseDetailedMapLegendFontSize, html.EscapeString(item.text))
@@ -504,17 +559,25 @@ func writeTransitMapFooter(
 	projection svgmap.Projection,
 	instant time.Time,
 	legendRows int,
+	hasExternal bool,
 ) {
 	text := options.FooterNote
 	if text == "" {
+		projectionLabel := transitMapProjectionLabel(projection, hasExternal, options.Language)
 		if options.Language == "en" {
-			text = eclipseMapProjectionLabel(projection, "en") + "; regions follow whether the Sun's centre is above the apparent horizon (standard refraction) at C1, greatest and C4"
+			text = projectionLabel + "; regions follow whether the Sun's centre is above the apparent horizon (standard refraction) at C1, greatest and C4"
+			if !hasExternal {
+				text = projectionLabel + "; shaded footprint uses topocentric disk overlap and apparent-horizon visibility (standard refraction)"
+			}
 			if options.Isochrones != 0 {
 				text += "; isochrones are topocentric contact times"
 			}
 			text += "."
 		} else {
-			text = eclipseMapProjectionLabel(projection, "zh") + "；按一触、凌甚、四触太阳中心是否在视地平上分区（计入标准大气折射）"
+			text = projectionLabel + "；按一触、凌甚、四触太阳中心是否在视地平上分区（计入标准大气折射）"
+			if !hasExternal {
+				text = projectionLabel + "；着色区域按站心圆面相交与视地平可见性计算（计入标准大气折射）"
+			}
 			if options.Isochrones != 0 {
 				text += "；等时线为站心接触时刻"
 			}
@@ -525,12 +588,18 @@ func writeTransitMapFooter(
 	// 页脚紧跟图例末行，不与图例重叠；行数按画布底边截断，时标声明独占最后一行。
 
 	baseline := frame.Y + frame.Height + 31 + float64(legendRows-1)*lunarEclipseDetailedMapLegendLineStep + 18
+	x, anchor := frame.X, "start"
 	maxWidth := float64(options.Width) - frame.X - 24
+	// 球面投影的盘面居中而左缘靠里，页脚改为随图例居中，否则文字整体右偏。
+	if frame.IsDisk() {
+		x, anchor = float64(options.Width)/2, "middle"
+		maxWidth = float64(options.Width) - 2*transitMapFooterSideInset
+	}
 	lines := svgchart.WrapText(text, maxWidth, 11)
 	lines = svgchart.FooterLinesWithScale(lines, timenote.Scale(options.TimeScale, instant, options.Location, options.Language), maxWidth, 11,
 		svgchart.BaselineLineLimit(11, svgchart.FooterLineHeight(11), baseline, float64(options.Height)-footerBottomPadding))
 	for index, line := range lines {
-		fmt.Fprintf(b, `<text x="%.3f" y="%.3f" fill="#596164" font-family="Georgia, 'Times New Roman', serif" font-size="11">%s</text>`,
-			frame.X, baseline+float64(index)*svgchart.FooterLineHeight(11), html.EscapeString(line))
+		fmt.Fprintf(b, `<text x="%.3f" y="%.3f" fill="#596164" font-family="Georgia, 'Times New Roman', serif" font-size="11" text-anchor="%s">%s</text>`,
+			x, baseline+float64(index)*svgchart.FooterLineHeight(11), anchor, html.EscapeString(line))
 	}
 }

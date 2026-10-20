@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-// 站心凌日：以地心凌日为种子，对太阳与行星的视赤经赤纬分别做观测者视差修正后重解接触与凌甚。
+// 站心凌日：以全球凌日窗口为种子，分别修正太阳与行星的视差后重解接触与凌甚。
 // 太阳视半径按站心距离缩放（影响最多约 0.04″）；行星视半径沿用地心值，站心修正低于 0.01″。
 // 结果里的太阳高度一律为几何中心高度；可见性、日出日落与等时线裁剪按太阳中心视高度 0° 判定，
 // 即计入标准大气（1010 hPa、10 °C）下的地平折射，几何高度阈值约 -34′。
@@ -91,8 +91,7 @@ type PlanetTransitLocalResult struct {
 	Sunset  float64
 }
 
-// PlanetTransitLocal 返回地心凌日 transit 在观测者 observer 处的站心接触与凌甚。
-// PlanetTransitLocal returns the topocentric contacts and greatest instant of the geocentric transit seen by observer.
+// PlanetTransitLocal 观测地的站心接触与凌甚 / topocentric contacts and greatest transit at the site.
 func PlanetTransitLocal(transit PlanetTransitResult, observer Observer) PlanetTransitLocalResult {
 	return PlanetTransitLocalWithInstance(transit, observer, nil)
 }
@@ -118,7 +117,9 @@ type planetTransitSnapshot struct {
 	step        float64
 	// 按列存储：太阳赤经、赤纬、距离，行星赤经、赤纬、距离，太阳与行星视半径，格林尼治视恒星时（度）。
 	// 赤经与恒星时已展开为连续值，避免插值跨越 0°/360°。
-	columns [planetTransitSnapshotColumns][]float64
+	columns        [planetTransitSnapshotColumns][]float64
+	visibilityOnce sync.Once
+	visibility     []PlanetTransitVisibilityColumn
 }
 
 const (
@@ -137,9 +138,9 @@ const (
 const (
 	// planetTransitSnapshotStepDays 是缓存节点间距；四点拉格朗日插值在十分钟间距下误差远低于 1e-6″。
 	planetTransitSnapshotStepDays = 10.0 / 1440
-	// planetTransitSnapshotMarginDays 是缓存相对地心一触、四触向外扩展的余量。
+	// planetTransitSnapshotMarginDays 是缓存相对地心一触、四触或地心无接触时求解窗口向外扩展的余量。
 	planetTransitSnapshotMarginDays = 2.0 / 24
-	// planetTransitMaxSpanDays 是地心一触到四触的跨度上限。实际凌日最长约 8 小时（水星）、
+	// planetTransitMaxSpanDays 是地心一触到四触或求解窗口的跨度上限。实际凌日最长约 8 小时（水星）、
 	// 金星不到 9 小时；超出视为异常输入，避免按跨度分配巨大缓存。
 	planetTransitMaxSpanDays = 1.0
 )
@@ -171,10 +172,16 @@ func newPlanetTransitSnapshot(transit PlanetTransitResult, inst *Instance) (*pla
 }
 
 func buildPlanetTransitSnapshot(transit PlanetTransitResult, inst *Instance) (*planetTransitSnapshot, bool) {
-	if !transit.Valid || !transit.HasExternal || !isFiniteFloat(transit.ExternalIngress) || !isFiniteFloat(transit.ExternalEgress) ||
-		!isFiniteFloat(transit.Greatest) || transit.ExternalEgress <= transit.ExternalIngress ||
-		transit.ExternalEgress-transit.ExternalIngress > planetTransitMaxSpanDays ||
-		transit.Greatest < transit.ExternalIngress || transit.Greatest > transit.ExternalEgress {
+	start, end := transit.WindowStart, transit.WindowEnd
+	if transit.HasExternal {
+		start, end = transit.ExternalIngress, transit.ExternalEgress
+	}
+	if !transit.HasExternal && (transit.ExternalIngress != 0 || transit.ExternalEgress != 0 || transit.HasInternal) {
+		return nil, false
+	}
+	if !transit.Valid || !isFiniteFloat(start) || !isFiniteFloat(end) || start == 0 || end == 0 ||
+		!isFiniteFloat(transit.Greatest) || end <= start || end-start > planetTransitMaxSpanDays ||
+		transit.Greatest < start || transit.Greatest > end {
 		return nil, false
 	}
 	var cfg planetTransitConfig
@@ -186,8 +193,8 @@ func buildPlanetTransitSnapshot(transit PlanetTransitResult, inst *Instance) (*p
 	default:
 		return nil, false
 	}
-	startTT := UTC2TT(transit.ExternalIngress) - planetTransitSnapshotMarginDays
-	endTT := UTC2TT(transit.ExternalEgress) + planetTransitSnapshotMarginDays
+	startTT := UTC2TT(start) - planetTransitSnapshotMarginDays
+	endTT := UTC2TT(end) + planetTransitSnapshotMarginDays
 	count := int(math.Ceil((endTT-startTT)/planetTransitSnapshotStepDays)) + 1
 	snapshot := &planetTransitSnapshot{planetIndex: transit.PlanetIndex, startTT: startTT, step: planetTransitSnapshotStepDays}
 	for column := range snapshot.columns {
@@ -445,7 +452,11 @@ func (snapshot *planetTransitSnapshot) localContactTT(
 	if seedValue > 0 {
 		direction = -outward
 	}
-	limit := int(math.Ceil(planetTransitLocalWindowDays / planetTransitLocalScanStepDays))
+	span := planetTransitLocalWindowDays
+	if math.Abs(seedTT-greatestTT) < planetTransitLocalToleranceDays {
+		span = math.Max(greatestTT-snapshot.startTT, snapshot.startTT+float64(len(snapshot.columns[0])-1)*snapshot.step-greatestTT)
+	}
+	limit := int(math.Ceil(span / planetTransitLocalScanStepDays))
 	near, nearValue := seedTT, seedValue
 	for step := 1; step <= limit; step++ {
 		far := seedTT + direction*float64(step)*planetTransitLocalScanStepDays
@@ -544,13 +555,13 @@ type PlanetTransitIsochrone struct {
 
 // PlanetTransitContactIsochrones 返回接触 kind 的站心等时线，时刻按 step 对齐到整刻度（UTC）；
 // 条数超过 64 时步长按倍数放大，保证覆盖整个接触时段；
-// step 非正、kind 不是 C1–C4 或地心凌日没有该接触时返回 nil。
+// step 非正、kind 不是 C1–C4 或地表没有该接触时返回 nil。
 // 时刻是站心接触时刻，受视差影响可落在地心 C1–C4 之外（金星约数分钟）；
 // 一触、四触与远离掠凌边界的二触、三触，线上地点的站心接触时刻与 PlanetTransitLocal 相差不到 1 秒；
 // 掠凌边界附近（站心内切余量 <0.5″）内切时刻梯度发散，偏差可达数十秒。
 // PlanetTransitContactIsochrones returns topocentric isochrones of contact kind at UTC instants aligned to step.
 // When more than 64 lines would be needed, the step is doubled until the whole contact span fits.
-// It returns nil for a non-positive step, a kind other than C1-C4, or a contact the geocentric transit lacks.
+// It returns nil for a non-positive step, a kind other than C1-C4, or a contact absent everywhere on Earth.
 // Points agree with PlanetTransitLocal to within a second, except C2/C3 near the grazing limit (internal margin
 // below 0.5″), where the contact-time gradient diverges and errors reach tens of seconds.
 func PlanetTransitContactIsochrones(transit PlanetTransitResult, kind PlanetTransitContactKind, step time.Duration) []PlanetTransitIsochrone {
@@ -565,9 +576,6 @@ func PlanetTransitContactIsochronesWithInstance(
 	inst *Instance,
 ) []PlanetTransitIsochrone {
 	if step <= 0 || kind < PlanetTransitC1 || kind > PlanetTransitC4 {
-		return nil
-	}
-	if (kind == PlanetTransitC2 || kind == PlanetTransitC3) && !transit.HasInternal {
 		return nil
 	}
 	snapshot, ok := newPlanetTransitSnapshot(transit, inst)
@@ -971,9 +979,10 @@ func PlanetTransitLocalInfoFromResult(result PlanetTransitLocalResult, loc *time
 	}
 }
 
-// PlanetTransitResultFromTimes 由各接触时刻重建地心凌日结果，零值时刻表示该接触不存在。
-// 行星包的 TransitInfo 只保存 time.Time，站心计算用它还原 basic 结果。
-// PlanetTransitResultFromTimes rebuilds a geocentric transit result from contact times; a zero time means the contact is absent.
+// PlanetTransitResultFromTimes 由各接触时刻重建地心凌日结果，一触、凌甚、四触必填，内切时刻为零表示不存在；
+// 地心无接触事件改用 PlanetTransitResultFromWindow。
+// PlanetTransitResultFromTimes rebuilds a geocentric transit result from contact times; C1, greatest and C4 are required,
+// and a zero internal contact means it is absent. Use PlanetTransitResultFromWindow for events without geocentric contacts.
 func PlanetTransitResultFromTimes(planetIndex int, start, internalStart, greatest, internalEnd, end time.Time) PlanetTransitResult {
 	jd := func(value time.Time) float64 {
 		if value.IsZero() {
@@ -992,7 +1001,25 @@ func PlanetTransitResultFromTimes(planetIndex int, start, internalStart, greates
 		HasExternal:     true,
 	}
 	result.HasInternal = result.InternalIngress != 0 && result.InternalEgress != 0
+	if result.Valid {
+		result.WindowStart = result.ExternalIngress - planetTransitSnapshotMarginDays
+		result.WindowEnd = result.ExternalEgress + planetTransitSnapshotMarginDays
+	}
 	return result
+}
+
+// PlanetTransitResultFromWindow 由凌甚与站心求解窗口重建地心无接触的凌日结果 / rebuild a transit without geocentric contacts from greatest and its local search window.
+func PlanetTransitResultFromWindow(planetIndex int, windowStart, greatest, windowEnd time.Time) PlanetTransitResult {
+	if windowStart.IsZero() || greatest.IsZero() || windowEnd.IsZero() || !windowStart.Before(greatest) || !greatest.Before(windowEnd) {
+		return PlanetTransitResult{PlanetIndex: planetIndex}
+	}
+	return PlanetTransitResult{
+		Valid:       true,
+		PlanetIndex: planetIndex,
+		Greatest:    Date2JD(greatest.UTC()),
+		WindowStart: Date2JD(windowStart.UTC()),
+		WindowEnd:   Date2JD(windowEnd.UTC()),
+	}
 }
 
 // PlanetTransitLocalFrame 是站心日面上一个时刻的行星位置。

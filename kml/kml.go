@@ -1254,6 +1254,7 @@ var lookAtPriority = map[string]bool{
 	"occultation-band":         true,
 	"total-footprint":          true,
 	"sublunar-track":           true,
+	"transit-partial":          true,
 }
 
 func lookAtElements(groups []roleGeometry) [][]element {
@@ -1386,7 +1387,7 @@ func paletteStyle(event, role string) Style {
 		return Style{LineColor: ColorOrange, LineWidth: 2}
 	case "c1-horizon", "c4-horizon", "visible-at-c1", "visible-at-c4":
 		return Style{LineColor: ColorOrange, LineWidth: 2}
-	case "transit-entire":
+	case "transit-entire", "transit-partial":
 		return Style{LineColor: transitEntireColor, FillColor: transitEntireFill, LineWidth: 1.5}
 	case "transit-at-sunrise":
 		return Style{LineColor: transitSunriseColor, FillColor: transitSunriseFill, LineWidth: 1.5}
@@ -1629,6 +1630,7 @@ var roleNames = map[string][2]string{
 	"visible-at-c1":               {"一触可见区", "Visible at C1"},
 	"visible-at-c4":               {"四触可见区", "Visible at C4"},
 	"transit-entire":              {"全程可见", "Entire transit visible"},
+	"transit-partial":             {"部分凌日可见区", "Partial transit visible"},
 	"transit-at-sunrise":          {"日出时已在凌日", "Transit in progress at sunrise"},
 	"transit-at-sunset":           {"日落时仍在凌日", "Transit in progress at sunset"},
 	"c1-isochrone":                {"一触等时线", "C1 isochrones"},

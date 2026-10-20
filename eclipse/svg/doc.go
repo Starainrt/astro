@@ -19,6 +19,7 @@
 //	c1-c4-visibility-regions     凌日可见性分区
 //	c1-c4-horizon-boundaries     凌日 C1、C4 视地平边界
 //	transit-contact-isochrones   凌日站心接触等时线
+//	topocentric-transit-visibility 地心无接触时按站心求得的部分凌日可见区
 //
 // Package svg renders solar-eclipse, lunar-eclipse and Mercury/Venus transit SVG charts. Degradable layers tag the geometry
 // source they actually used in data-source, using exactly the values above.
@@ -43,6 +44,7 @@ const (
 	eclipseMapSourceTransitVisibilityRegions = "c1-c4-visibility-regions"
 	eclipseMapSourceTransitHorizonBoundaries = "c1-c4-horizon-boundaries"
 	eclipseMapSourceTransitContactIsochrones = "transit-contact-isochrones"
+	eclipseMapSourceTransitPartialVisibility = "topocentric-transit-visibility"
 )
 
 // eclipseMapDataSources 是全部合法取值，测试用它封闭词表。
@@ -64,4 +66,5 @@ var eclipseMapDataSources = []string{
 	eclipseMapSourceTransitVisibilityRegions,
 	eclipseMapSourceTransitHorizonBoundaries,
 	eclipseMapSourceTransitContactIsochrones,
+	eclipseMapSourceTransitPartialVisibility,
 }

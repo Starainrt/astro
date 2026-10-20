@@ -28,16 +28,17 @@ type PlanetTransitOptions struct {
 	// 小于等于零时使用 360，其他值限制在 [12, 1440]。
 	// BoundaryPoints is the horizon sample count and also sets the region longitude columns to
 	// max(360, BoundaryPoints), capped at 720. Values <= 0 use 360; others are clamped to [12, 1440].
+	// 地心无接触事件使用固定站心网格，不由 BoundaryPoints 控制 / events without geocentric contacts use a fixed topocentric grid.
 	BoundaryPoints int
-	// IsochroneStep 为正时输出一触到四触的站心接触等时线（掠凌没有二触、三触），至少一秒；零值不输出。
-	// A positive IsochroneStep adds topocentric C1-C4 isochrones (no C2/C3 for a grazing transit) and must be
+	// IsochroneStep 为正时输出一触到四触的站心接触等时线（地表没有站心内切的事件没有二触、三触），至少一秒；零值不输出。
+	// A positive IsochroneStep adds topocentric C1-C4 isochrones (no C2/C3 where no site has internal contact) and must be
 	// at least one second. The zero value adds none.
 	IsochroneStep time.Duration
-	// TimeMarkers 非空时沿一触到四触的太阳直射点轨迹追加时间标记 Point 要素。
-	// TimeMarkers adds time-marker Point Features along the subsolar track from C1 through C4 when non-nil.
+	// TimeMarkers 非空时沿太阳直射点轨迹追加时间标记；无地心接触时覆盖求解窗口。
+	// TimeMarkers adds subsolar-track markers over C1-C4, or over the search window when geocentric contacts are absent.
 	TimeMarkers *TimeMarkerOptions
-	// SkipRoles 列出不写进输出的 role；分区三个 role 都跳过时不做分区计算。
-	// SkipRoles lists roles to leave out; skipping all three region roles skips the region computation.
+	// SkipRoles 列出不写进输出的 role；分区 role 全部跳过时不做分区计算。
+	// SkipRoles lists roles to leave out; skipping every region role skips the region computation.
 	SkipRoles []string
 }
 
@@ -54,6 +55,12 @@ type planetTransitInput struct {
 	separation  float64
 	sunRadius   float64
 	planetRad   float64
+	hasExternal bool
+	windowStart time.Time
+	windowEnd   time.Time
+	gamma       float64
+	penumbra    float64
+	series      basic.PlanetTransitSeries
 }
 
 // MarshalMercuryTransit 将水星凌日的全球可见分区、一触/四触地平线与可选站心等时线编码为 GeoJSON / encode a Mercury transit as GeoJSON.
@@ -66,6 +73,8 @@ func (module *Generator) MarshalMercuryTransit(info mercury.TransitInfo, options
 		start: info.Start, c2: info.InternalStart, greatest: info.Greatest, c3: info.InternalEnd, end: info.End,
 		hasInternal: info.HasInternal, separation: info.MinimumSeparationArcsec,
 		sunRadius: info.SunSemidiameterArcsec, planetRad: info.PlanetSemidiameterArcsec,
+		hasExternal: !info.Start.IsZero() && !info.End.IsZero(), windowStart: info.WindowStart, windowEnd: info.WindowEnd,
+		gamma: info.Gamma, penumbra: info.PenumbralRadius, series: info.Series,
 	}, options, module)
 }
 
@@ -79,10 +88,32 @@ func (module *Generator) MarshalVenusTransit(info venus.TransitInfo, options Pla
 		start: info.Start, c2: info.InternalStart, greatest: info.Greatest, c3: info.InternalEnd, end: info.End,
 		hasInternal: info.HasInternal, separation: info.MinimumSeparationArcsec,
 		sunRadius: info.SunSemidiameterArcsec, planetRad: info.PlanetSemidiameterArcsec,
+		hasExternal: !info.Start.IsZero() && !info.End.IsZero(), windowStart: info.WindowStart, windowEnd: info.WindowEnd,
+		gamma: info.Gamma, penumbra: info.PenumbralRadius, series: info.Series,
 	}, options, module)
 }
 
+// planetTransitHasOnlyWindow 判断输入是否只给了站心求解窗口：地心无接触，接触时刻全为零。
+func planetTransitHasOnlyWindow(input planetTransitInput) bool {
+	if input.hasExternal || input.hasInternal {
+		return false
+	}
+	if !input.start.IsZero() || !input.end.IsZero() || !input.c2.IsZero() || !input.c3.IsZero() {
+		return false
+	}
+	if input.greatest.IsZero() || input.windowStart.IsZero() || input.windowEnd.IsZero() {
+		return false
+	}
+	if !input.windowStart.Before(input.greatest) || !input.greatest.Before(input.windowEnd) {
+		return false
+	}
+	return input.windowEnd.Sub(input.windowStart) <= 24*time.Hour
+}
+
 func validatePlanetTransitInput(input planetTransitInput) error {
+	if planetTransitHasOnlyWindow(input) {
+		return nil
+	}
 	if input.start.IsZero() || input.greatest.IsZero() || input.end.IsZero() {
 		return fmt.Errorf("geojson: %s transit contact times are required", input.planet)
 	}
@@ -140,13 +171,18 @@ func marshalPlanetTransit(input planetTransitInput, options PlanetTransitOptions
 		longitudes[index] = -180 + 360*float64(index)/float64(longitudePoints)
 	}
 	refraction := basic.RefractionFromApparentAltitude(0, planetTransitRefractionPressureHPa, planetTransitRefractionTemperatureC)
-	base := map[string]interface{}{"planet": input.planet, "has_internal": input.hasInternal}
+	base := map[string]interface{}{"planet": input.planet, "has_internal": input.hasInternal,
+		"has_geocentric_contacts": input.hasExternal, "gamma": input.gamma, "penumbral_radius": input.penumbra,
+		"series": input.series.Number, "series_period_years": input.series.PeriodYears}
 	withBase := func(extra map[string]interface{}) map[string]interface{} {
 		properties := cloneProperties(base)
 		for key, value := range extra {
 			properties[key] = value
 		}
 		return properties
+	}
+	if !input.hasExternal {
+		return marshalPlanetTransitPartial(input, options, timeScale, withBase, module)
 	}
 	features := make([]feature, 0, 12)
 
@@ -354,6 +390,13 @@ func planetTransitRegionFeatures(
 	return features, nil
 }
 
+func planetTransitResultOf(input planetTransitInput) basic.PlanetTransitResult {
+	if !input.hasExternal {
+		return basic.PlanetTransitResultFromWindow(input.planetIndex, input.windowStart, input.greatest, input.windowEnd)
+	}
+	return basic.PlanetTransitResultFromTimes(input.planetIndex, input.start, input.c2, input.greatest, input.c3, input.end)
+}
+
 // planetTransitIsochroneFeatures 把每个接触的站心等时线编码为一条带 times 的 MultiLineString：
 // 每段是一条支路，times 与坐标对齐，同一支路上所有点同刻。
 func planetTransitIsochroneFeatures(
@@ -364,7 +407,7 @@ func planetTransitIsochroneFeatures(
 	withBase func(map[string]interface{}) map[string]interface{},
 	module *Generator,
 ) ([]feature, error) {
-	result := basic.PlanetTransitResultFromTimes(input.planetIndex, input.start, input.c2, input.greatest, input.c3, input.end)
+	result := planetTransitResultOf(input)
 	features := make([]feature, 0, 4)
 	for _, contact := range []struct {
 		kind basic.PlanetTransitContactKind

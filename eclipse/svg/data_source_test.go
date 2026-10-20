@@ -18,6 +18,7 @@ func TestEclipseMapDataSourcesUseDocumentedVocabulary(t *testing.T) {
 		"central-path-limits", "penumbral-outlines", "central-shadow-outlines",
 		"p1-p4-visibility-regions", "p1-p4-horizon-boundaries",
 		"c1-c4-visibility-regions", "c1-c4-horizon-boundaries", "transit-contact-isochrones",
+		"topocentric-transit-visibility",
 	}
 	if len(documented) != len(eclipseMapDataSources) {
 		t.Fatalf("vocabulary has %d entries, want %d", len(eclipseMapDataSources), len(documented))

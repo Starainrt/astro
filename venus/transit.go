@@ -6,12 +6,12 @@ import (
 	"github.com/starainrt/astro/basic"
 )
 
-// TransitInfo 地心金星凌日信息 / geocentric Venus transit information.
+// TransitInfo 全球金星凌日与地心接触 / global Venus transit and geocentric contacts.
 //
 // Start、Greatest、End、InternalStart、InternalEnd 都保持调用者输入的时区。
-// 内切接触不存在时 InternalStart / InternalEnd 为零值。
+// 地心接触不存在时对应时刻为零值；WindowStart、WindowEnd 只是站心求解窗口。
 // Start, Greatest, End, InternalStart, and InternalEnd preserve the caller's timezone.
-// InternalStart and InternalEnd are zero values when internal contacts do not exist.
+// Absent geocentric contacts are zero; WindowStart and WindowEnd are only a local search window.
 type TransitInfo struct {
 	Valid bool
 
@@ -28,20 +28,26 @@ type TransitInfo struct {
 	SunSemidiameterArcsec    float64
 	PlanetSemidiameterArcsec float64
 
-	HasInternal bool
+	HasInternal     bool
+	HasExternal     bool
+	WindowStart     time.Time
+	WindowEnd       time.Time
+	Gamma           float64
+	PenumbralRadius float64
+	Series          basic.PlanetTransitSeries
 }
 
-// NextTransit 下一次地心金星凌日 / next geocentric Venus transit.
+// NextTransit 下一次全球金星凌日 / next global Venus transit.
 func (module *Venus) NextTransit(date time.Time) TransitInfo {
 	return transitInfoFromBasic(basic.NextVenusTransitWithInstance(basic.Date2JD(date.UTC()), module.inst), date.Location())
 }
 
-// LastTransit 上一次地心金星凌日 / previous geocentric Venus transit.
+// LastTransit 上一次全球金星凌日 / previous global Venus transit.
 func (module *Venus) LastTransit(date time.Time) TransitInfo {
 	return transitInfoFromBasic(basic.LastVenusTransitWithInstance(basic.Date2JD(date.UTC()), module.inst), date.Location())
 }
 
-// ClosestTransit 最近一次地心金星凌日 / closest geocentric Venus transit.
+// ClosestTransit 最近一次全球金星凌日 / closest global Venus transit.
 func (module *Venus) ClosestTransit(date time.Time) TransitInfo {
 	return transitInfoFromBasic(basic.ClosestVenusTransitWithInstance(basic.Date2JD(date.UTC()), module.inst), date.Location())
 }
@@ -50,19 +56,25 @@ func transitInfoFromBasic(result basic.PlanetTransitResult, loc *time.Location) 
 	if !result.Valid {
 		return TransitInfo{}
 	}
-	start := basic.JD2DateByZone(result.ExternalIngress, loc, false)
 	greatest := basic.JD2DateByZone(result.Greatest, loc, false)
-	end := basic.JD2DateByZone(result.ExternalEgress, loc, false)
 	info := TransitInfo{
 		Valid:                    true,
-		Start:                    start,
 		Greatest:                 greatest,
-		End:                      end,
-		Duration:                 end.Sub(start),
 		MinimumSeparationArcsec:  result.MinimumSeparationArcsec,
 		SunSemidiameterArcsec:    result.SunSemidiameterArcsec,
 		PlanetSemidiameterArcsec: result.PlanetSemidiameterArcsec,
 		HasInternal:              result.HasInternal,
+		HasExternal:              result.HasExternal,
+		WindowStart:              basic.JD2DateByZone(result.WindowStart, loc, false),
+		WindowEnd:                basic.JD2DateByZone(result.WindowEnd, loc, false),
+		Gamma:                    result.Gamma,
+		PenumbralRadius:          result.PenumbralRadius,
+		Series:                   result.Series,
+	}
+	if result.HasExternal {
+		info.Start = basic.JD2DateByZone(result.ExternalIngress, loc, false)
+		info.End = basic.JD2DateByZone(result.ExternalEgress, loc, false)
+		info.Duration = info.End.Sub(info.Start)
 	}
 	if result.HasInternal {
 		info.InternalStart = basic.JD2DateByZone(result.InternalIngress, loc, false)
@@ -81,7 +93,7 @@ type LocalTransitInfo = basic.PlanetTransitLocalInfo
 // LocalTransitContact 站心凌日接触 / topocentric transit contact.
 type LocalTransitContact = basic.PlanetTransitLocalContactInfo
 
-// LocalTransit 地心凌日 transit 在观测地的站心接触与凌甚 / topocentric contacts of transit seen from the site.
+// LocalTransit 凌日 transit 在观测地的站心接触与凌甚 / topocentric contacts of transit seen from the site.
 //
 // lon、lat 为度，东经、北纬为正；height 为海拔米。
 // lon and lat are in degrees, east and north positive; height is in meters.
@@ -89,8 +101,15 @@ func (module *Venus) LocalTransit(transit TransitInfo, lon, lat, height float64)
 	if !transit.Valid {
 		return LocalTransitInfo{}
 	}
-	result := basic.PlanetTransitResultFromTimes(2,
-		transit.Start, transit.InternalStart, transit.Greatest, transit.InternalEnd, transit.End)
-	local := basic.PlanetTransitLocalWithInstance(result, basic.Observer{Longitude: lon, Latitude: lat, Height: height}, module.inst)
+	local := basic.PlanetTransitLocalWithInstance(transitResultFromInfo(transit), basic.Observer{Longitude: lon, Latitude: lat, Height: height}, module.inst)
 	return basic.PlanetTransitLocalInfoFromResult(local, transit.Greatest.Location())
+}
+
+// transitResultFromInfo 按一触、四触是否为零选择地心接触或求解窗口还原 basic 结果。
+func transitResultFromInfo(transit TransitInfo) basic.PlanetTransitResult {
+	if transit.Start.IsZero() && transit.End.IsZero() {
+		return basic.PlanetTransitResultFromWindow(2, transit.WindowStart, transit.Greatest, transit.WindowEnd)
+	}
+	return basic.PlanetTransitResultFromTimes(2,
+		transit.Start, transit.InternalStart, transit.Greatest, transit.InternalEnd, transit.End)
 }

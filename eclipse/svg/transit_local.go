@@ -175,13 +175,31 @@ func renderTransitLocalSVG(
 	fmt.Fprintf(&b, `<text x="%.3f" y="47" fill="#111111" font-family="Georgia, 'Times New Roman', serif" font-size="24" font-weight="700" text-anchor="middle">%s</text>`,
 		width/2, html.EscapeString(titleText))
 	for index, line := range []string{site, summary} {
+		line = svgchart.EllipsizeText(line, width-80, 13)
 		fmt.Fprintf(&b, `<text x="%.3f" y="%.3f" fill="#333" font-family="Georgia, 'Times New Roman', serif" font-size="13" text-anchor="middle">%s</text>`,
 			width/2, 72+float64(index)*19, html.EscapeString(line))
 	}
 
-	// 日面区占左侧，接触表占右侧。
+	// 日面区占左侧，接触表占右侧；日面半径要容下盘外的东南西北轴标签，所以上下界由副标题与页脚算出。
 	panelWidth := 300.0
-	top, bottom := 112.0, height-86
+	footerLines := transitLocalFooterLines(local, options, width)
+	footerBaselines := transitLocalFooterBaselines(len(footerLines), height)
+	footerTop := height - 30.0
+	if len(footerBaselines) > 0 {
+		footerTop = footerBaselines[0] - 10.2
+	}
+	const (
+		headerBottom      = 72 + 19 + 10 // 经纬度行、摘要行与留白
+		axisLabelAbove    = 33.0         // 盘顶到“北”字上沿
+		axisLabelBelow    = 36.0         // 盘底到“南”字下沿
+		minimumDiskHeight = 150.0
+	)
+	top, bottom := headerBottom+axisLabelAbove, footerTop-axisLabelBelow
+	if bottom-top < minimumDiskHeight {
+		shrink := (minimumDiskHeight - (bottom - top)) / 2
+		top -= shrink
+		bottom += shrink
+	}
 	diskLeft, diskRight := 46.0, width-panelWidth-60
 	cx, cy := (diskLeft+diskRight)/2, (top+bottom)/2
 	extent := local.SunSemidiameterArcsec + 2.2*local.PlanetSemidiameterArcsec + 60
@@ -196,6 +214,9 @@ func renderTransitLocalSVG(
 	events := transitLocalEvents(local, options.Language)
 	planetRadius := math.Max(local.PlanetSemidiameterArcsec*scale, 2)
 	table := &svgchart.LabelTable{}
+	table.Reserve(30, footerTop-4, width-60, height-footerTop+4)
+	table.Reserve(cx-14, cy+sunRadius+16, 28, 18)
+	table.Reserve(cx-14, cy-sunRadius-32, 28, 20)
 	for _, event := range events {
 		x, y := transitLocalEventPosition(frames, event.contact.JD, mapX, mapY)
 		fill, stroke := "#1d1d1d", "#000000"
@@ -234,7 +255,7 @@ func renderTransitLocalSVG(
 				// 标签平移进白色图框内、接触表左侧，不能伸出画面。
 				box := svgchart.LabelTextBox(candidate.X, candidate.Y, 11, text, anchor)
 				candidate.X += math.Max(0, 30-box.X) - math.Max(0, box.X+box.Width-(width-panelWidth-44))
-				candidate.Y += math.Max(0, top-8-box.Y) - math.Max(0, box.Y+box.Height-(height-30))
+				candidate.Y += math.Max(0, top-8-box.Y) - math.Max(0, box.Y+box.Height-(footerTop-4))
 				candidates = append(candidates, candidate)
 			}
 			placement, placed = table.Place(text, 11, candidates)
@@ -254,8 +275,14 @@ func renderTransitLocalSVG(
 			placement.X, placement.Y, placement.Anchor, html.EscapeString(text))
 	}
 
-	writeTransitLocalContactTable(&b, local, events, at, width-panelWidth-36, top+10, panelWidth, options.Language)
-	writeTransitLocalFooter(&b, local, options, width, height)
+	tableWidth := panelWidth
+	tableX := width - panelWidth - 36
+	if minimum := cx + sunRadius + 40; tableX < minimum {
+		tableX = minimum
+		tableWidth = width - tableX - 36
+	}
+	writeTransitLocalContactTable(&b, local, events, at, tableX, top+10, tableWidth, options.Language)
+	writeTransitLocalFooter(&b, footerLines, footerBaselines)
 	b.WriteString(`</svg>`)
 	return b.String()
 }
@@ -301,7 +328,7 @@ func transitLocalSummaryText(local basic.PlanetTransitLocalResult, language stri
 
 // writeTransitLocalAxes 画过日心的南北、东西虚线与方向字。
 func writeTransitLocalAxes(b *strings.Builder, cx, cy, radius float64, language string) {
-	reach := radius + 18
+	reach := radius + 12
 	fmt.Fprintf(b, `<line x1="%.3f" y1="%.3f" x2="%.3f" y2="%.3f" stroke="#8b6a2b" stroke-width="0.8" stroke-dasharray="3 4" stroke-opacity="0.7"/>`, cx, cy-reach, cx, cy+reach)
 	fmt.Fprintf(b, `<line x1="%.3f" y1="%.3f" x2="%.3f" y2="%.3f" stroke="#8b6a2b" stroke-width="0.8" stroke-dasharray="3 4" stroke-opacity="0.7"/>`, cx-reach, cy, cx+reach, cy)
 	labels := [4]string{"北", "南", "东", "西"}
@@ -419,18 +446,25 @@ func writeTransitLocalContactTable(
 	}
 }
 
-func writeTransitLocalFooter(b *strings.Builder, local basic.PlanetTransitLocalResult, options TransitLocalSVGOptions, width, height float64) {
+func transitLocalFooterLines(local basic.PlanetTransitLocalResult, options TransitLocalSVGOptions, width float64) []string {
 	note := options.FooterNote
 	if note == "" {
 		if options.Language == "en" {
 			note = "Sky view, north up and east left. Topocentric contacts; Sun altitudes are geometric centre altitudes, grey parts have the Sun's centre below the apparent horizon (standard refraction)."
 		} else {
-			note = "天空视向，上北左东；站心接触时刻，太阳高度为日心几何高度，灰色部分太阳中心在视地平下（计入标准大气折射）。"
+			note = "天空视向，上北左东；站心接触时刻，太阳高度为太阳中心几何高度，灰色部分太阳中心在视地平下（计入标准大气折射）。"
 		}
 	}
 	scaleNote := timenote.Scale(options.TimeScale, basic.JD2DateByZone(local.Greatest.JD, time.UTC, false), options.Location, options.Language)
-	lines := svgchart.FooterLinesWithScale(svgchart.WrapText(note, width-80, 12), scaleNote, width-80, 12, 3)
-	baselines, _ := svgchart.FooterBlock(len(lines), height, 12, svgchart.FooterLineHeight(12), svgchart.FooterBottomPadding(12)+18)
+	return svgchart.FooterLinesWithScale(svgchart.WrapText(note, width-80, 12), scaleNote, width-80, 12, 3)
+}
+
+func transitLocalFooterBaselines(lineCount int, height float64) []float64 {
+	baselines, _ := svgchart.FooterBlock(lineCount, height, 12, svgchart.FooterLineHeight(12), svgchart.FooterBottomPadding(12)+18)
+	return baselines
+}
+
+func writeTransitLocalFooter(b *strings.Builder, lines []string, baselines []float64) {
 	for index, line := range lines {
 		fmt.Fprintf(b, `<text x="40" y="%.3f" fill="#555" font-family="Georgia, 'Times New Roman', serif" font-size="12">%s</text>`,
 			baselines[index], html.EscapeString(line))

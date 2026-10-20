@@ -78,7 +78,7 @@ func BrightLimbPositionAngleN(date time.Time, n int) float64 {
 	return defaultModule.BrightLimbPositionAngleN(date, n)
 }
 
-// ClosestTransit 最近一次地心水星凌日 / closest geocentric Mercury transit.
+// ClosestTransit 最近一次全球水星凌日 / closest global Mercury transit.
 func ClosestTransit(date time.Time) TransitInfo { return defaultModule.ClosestTransit(date) }
 
 // CulminationTime 中天时刻，取 date 所在当地民用日 / culmination time, on the local civil day of date.
@@ -178,10 +178,10 @@ func LastSuperiorConjunction(date time.Time) time.Time {
 	return defaultModule.LastSuperiorConjunction(date)
 }
 
-// LastTransit 上一次地心水星凌日 / previous geocentric Mercury transit.
+// LastTransit 上一次全球水星凌日 / previous global Mercury transit.
 func LastTransit(date time.Time) TransitInfo { return defaultModule.LastTransit(date) }
 
-// LocalTransit 地心凌日在观测地的站心接触与凌甚 / topocentric contacts of a transit seen from the site.
+// LocalTransit 凌日在观测地的站心接触与凌甚 / topocentric contacts of a transit seen from the site.
 func LocalTransit(transit TransitInfo, lon, lat, height float64) LocalTransitInfo {
 	return defaultModule.LocalTransit(transit, lon, lat, height)
 }
@@ -227,7 +227,7 @@ func NextSuperiorConjunction(date time.Time) time.Time {
 	return defaultModule.NextSuperiorConjunction(date)
 }
 
-// NextTransit 下一次地心水星凌日 / next geocentric Mercury transit.
+// NextTransit 下一次全球水星凌日 / next global Mercury transit.
 func NextTransit(date time.Time) TransitInfo { return defaultModule.NextTransit(date) }
 
 // ParallacticAngle 水星视差角（天顶方向角） / Mercury parallactic angle.

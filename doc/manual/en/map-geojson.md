@@ -73,7 +73,11 @@ A partial eclipse may have no central path, so `centralPath` may be `nil`. This 
 
 ## Exporting transit GeoJSON
 
-The transit entry points take a geocentric `TransitInfo` and partition the globe exactly like the transit visibility map:
+The transit entry points take a global-event `TransitInfo`; contact fields remain geocentric, and regions match the transit visibility map.
+
+Events without geocentric contacts, such as the Venus transit of 2854-12-14, export the actual topocentric
+`transit-partial` footprint and omit nonexistent geocentric C1/C4 horizons. Properties also carry
+`has_geocentric_contacts`, `gamma`, `penumbral_radius`, `series` and `series_period_years`. The footprint is sampled on a 2° longitude by 1° latitude grid with boundary refinement; that is chart sampling rather than contact accuracy, so a footprint narrower than the grid may go undetected — use `LocalTransit` for exact site decisions.
 
 ```go
 m := mercury.NextTransit(time.Date(2026, 10, 12, 0, 0, 0, 0, cst))
@@ -194,7 +198,7 @@ Grouped by figure family, the `data-source` values are listed below; the `eclips
 - Solar-eclipse instants and magnitude lines: `rise-set-phase-lines`, `magnitude-contours`, `greatest-time-isochrones`
 - Instantaneous outlines: `penumbral-outlines`, `central-shadow-outlines`
 - Lunar eclipses: `p1-p4-visibility-regions`, `p1-p4-horizon-boundaries`
-- Transits: `c1-c4-visibility-regions`, `c1-c4-horizon-boundaries`, `transit-contact-isochrones`
+- Transits: `c1-c4-visibility-regions`, `c1-c4-horizon-boundaries`, `transit-contact-isochrones`; events without geocentric contacts fill the footprint from `topocentric-transit-visibility`
 
 ## Map Projections
 
@@ -312,7 +316,7 @@ Each event type has plain and time-marker variants:
 - `MarshalLunarEclipseWithOptions`: one `LunarEclipseOptions` value carrying the time markers, `SkipRoles` and the time-envelope sampling parameters. `SkipRoles` can omit envelopes and penumbra-only bands; skipping both envelopes also skips their sampling. `EnvelopeSweepSamples` defaults to 48 and is clamped to `[2, 192]`; `EnvelopeLongitudePoints` defaults to `max(360, boundaryPoints)` and is clamped to `[12, 720]`.
 - `MarshalStarOccultation` / `MarshalStarOccultationWithTimeMarkers`
 - `MarshalPlanetOccultation` / `MarshalPlanetOccultationWithTimeMarkers`
-- `MarshalMercuryTransit` / `MarshalVenusTransit`: take `mercury.TransitInfo` / `venus.TransitInfo` and partition the globe like the transit SVG map (whether the Sun's center is above the apparent horizon, standard refraction, at C1, greatest and C4). `BoundaryPoints` is the horizon sample count and also sets the region longitude columns to `max(360, BoundaryPoints)`, capped at 720. Roles are the three regions `transit-entire`, `transit-at-sunrise` and `transit-at-sunset`, the visible hemispheres and horizons `visible-at-c1` / `visible-at-c4` and `c1-horizon` / `c4-horizon`, `greatest` (the subsolar point) and the time markers `time-marker`. A positive `IsochroneStep` (at least 1 s) adds topocentric `c1-isochrone` through `c4-isochrone` (no C2/C3 for a grazing transit; the times are topocentric contacts and parallax can place them outside the geocentric C1–C4 interval), and a contact whose isochrone does not reach the visible hemisphere omits that role; skipping all three region roles skips the region computation.
+- `MarshalMercuryTransit` / `MarshalVenusTransit`: take `mercury.TransitInfo` / `venus.TransitInfo` and partition the globe like the transit SVG map (whether the Sun's center is above the apparent horizon, standard refraction, at C1, greatest and C4). `BoundaryPoints` is the horizon sample count and also sets the region longitude columns to `max(360, BoundaryPoints)`, capped at 720. Roles are the three regions `transit-entire`, `transit-at-sunrise` and `transit-at-sunset`, the visible hemispheres and horizons `visible-at-c1` / `visible-at-c4` and `c1-horizon` / `c4-horizon`, `greatest` (the subsolar point) and the time markers `subsolar-track`. Events without geocentric contacts switch to a `transit-partial` region and omit the three visibility regions, the horizons and the visible hemispheres. A positive `IsochroneStep` (at least 1 s) adds topocentric `c1-isochrone` through `c4-isochrone` (no C2/C3 when no site has an internal contact, though a graze with only geocentric external contacts can still have them in some regions; the times are topocentric contacts and parallax can place them outside the geocentric C1–C4 interval), and a contact whose isochrone does not reach the visible hemisphere omits that role; skipping all three region roles skips the region computation.
 - `MarshalSolarEclipseWithOptions`: one `SolarEclipseOptions` value carrying both the time markers and `SkipRoles`, equivalent to the solar entry points above plus layer trimming.
 
   The usual entry in `SkipRoles` is `partial-footprint` (the instantaneous penumbral outlines); `partial-band` is the edge of the eclipse band (the magnitude-0 limit) and is normally kept.
@@ -472,7 +476,7 @@ Features are grouped into Folders by `event` and `role`. Collections containing 
 | Total and partial occultation bands | `total-band`, `partial-band`, `total-band-outline`, `occultation-band` | Yellow with translucent band fill |
 | Rise/set visibility edges, lunar time envelopes and solar partial-band edge | `visibility-boundary`, `p1-horizon`, `p4-horizon`, `visible-at-p1`, `visible-at-p4`, `visible-during-eclipse`, `visible-throughout-eclipse`, solar `partial-band` | Orange |
 | Penumbra-only moonrise/moonset bands | `penumbra-moonrise`, `penumbra-moonset` | Blue-violet for moonrise, violet for moonset, with a translucent fill |
-| Transit visibility regions and contact lines | `transit-entire`, `transit-at-sunrise`, `transit-at-sunset`, `c1-horizon`, `c4-horizon`, `visible-at-c1`, `visible-at-c4`, `c1-isochrone` … `c4-isochrone` | Each of the three regions has its own fill; C1/C4 horizons and visible hemispheres are orange; the four contact isochrones each get a color |
+| Transit visibility regions and contact lines | `transit-entire`, `transit-at-sunrise`, `transit-at-sunset`, `transit-partial`, `c1-horizon`, `c4-horizon`, `visible-at-c1`, `visible-at-c4`, `c1-isochrone` … `c4-isochrone` | Each of the three regions and the partial-transit footprint has its own fill; C1/C4 horizons and visible hemispheres are orange; the four contact isochrones each get a color |
 | Other limits, outlines, footprints and time markers | Other roles | Grey; polygons are outline-only by default |
 
 Zero-valued `Style` fields retain palette defaults:

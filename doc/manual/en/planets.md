@@ -38,7 +38,7 @@ The inner planets (Mercury and Venus) add superior/inferior conjunction, greates
   - [Position and coordinates](#position-and-coordinates)
   - [Rise, set and culmination](#rise-set-and-culmination)
   - [Conjunctions, oppositions, stations and quadratures](#conjunctions-oppositions-stations-and-quadratures)
-  - [Greatest elongation and geocentric transits](#greatest-elongation-and-geocentric-transits)
+  - [Greatest elongation and transits](#greatest-elongation-and-transits)
   - [Nodes, phase, magnitude, diameter and parallactic angle](#nodes-phase-magnitude-diameter-and-parallactic-angle)
   - [Division of labour with other manuals](#division-of-labour-with-other-manuals)
   - [Physical ephemerides](#physical-ephemerides)
@@ -188,22 +188,22 @@ fmt.Println(saturn.NextProgradeToRetrograde(date)) // Saturn's next prograde-to-
 
 Event searches return the nearest event at or after the input instant and keep its time zone; the paired `Last...` functions and the direction-agnostic `NextRetrograde` are in [Conjunctions, oppositions, stations and quadratures](#conjunctions-oppositions-stations-and-quadratures);
 
-Mercury's and Venus's `NextGreatestElongationEast` / `...West` are in [Greatest elongation and geocentric transits](#greatest-elongation-and-geocentric-transits).
+Mercury's and Venus's `NextGreatestElongationEast` / `...West` are in [Greatest elongation and transits](#greatest-elongation-and-transits).
 
 ### Mercury and Venus transits
 
 ```go
-transit := mercury.NextTransit(date)                           // next geocentric Mercury transit after 2020
+transit := mercury.NextTransit(date)                           // next Mercury transit after 2020
 fmt.Println(transit.Valid, transit.Start, transit.Greatest)     // whether one was found, first contact, greatest transit
 fmt.Println(transit.Duration, transit.MinimumSeparationArcsec)  // duration and minimum separation at greatest transit
 ```
 
 ```text
-true 2032-11-13 14:41:13.161198198 +0800 CST 2032-11-13 16:54:12.821315824 +0800 CST
-4h26m2.695272267s 572.0643215495325
+true 2032-11-13 14:41:13.691189289 +0800 CST 2032-11-13 16:54:13.351347148 +0800 CST
+4h26m2.484410405s 572.0831814505963
 ```
 
-`TransitInfo.Valid` false means no transit inside the search window and every other field is the zero value; `TransitInfo` is the geocentric geometry. For the contact times seen from one site, `LocalTransit` returns the topocentric result:
+`TransitInfo.Valid` false means no transit inside the search window and every other field is the zero value; otherwise `TransitInfo` describes a global event whose contact fields are geocentric reference times. Without geocentric contacts `HasExternal` is false, `Start` / `End` are zero, and only the `WindowStart` / `WindowEnd` search window is set. For the contact times seen from one site, `LocalTransit` returns the topocentric result:
 
 ```go
 transit := mercury.NextTransit(time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC))
@@ -214,12 +214,14 @@ fmt.Println(local.Start.Time, local.Start.SunAltitude)         // topocentric C1
 
 ```text
 true true true
-2019-11-11 12:36:09.037762284 +0000 UTC 7.933256722170642
+2019-11-11 12:36:08.979182839 +0000 UTC 7.933092450591312
 ```
 
 Topocentric contacts are re-solved after applying parallax to the Sun and the planet separately; Venus contacts can shift by about ±7 minutes from the geocentric ones across the globe, Mercury by about ±2 minutes. `SunAltitude` is the geometric altitude of the Sun's center; `Visible`, `Sunrise` and `Sunset` test whether the Sun's center is above the apparent horizon with standard refraction (1010 hPa, 10 °C), a geometric threshold of about −34′. A site may see only a grazing transit even when the geocentric one has internal contacts (the 1999-11-15 Mercury transit at high southern latitudes); then `HasInternal` is false and `InternalStart` / `InternalEnd` are zero. Global maps and topocentric disk charts are in [Eclipses and transits](eclipse.md#transit-charts).
 
-The four contacts, partial transits and the internal-contact fields are in [Greatest elongation and geocentric transits](#greatest-elongation-and-geocentric-transits).
+The four contacts, partial transits and the internal-contact fields are in [Greatest elongation and transits](#greatest-elongation-and-transits).
+
+`Gamma` is the signed distance from Earth's centre to the shadow axis at greatest (positive to the north) and `PenumbralRadius` is the penumbral radius on the fundamental plane, both in Earth equatorial radii. The transit penumbra is far larger than Earth, so the solar-eclipse test `|Gamma| < 1` does not apply. `Series` is the transit family: Venus families average 243 years and are numbered for astronomical years −2000 to +4000, Mercury families average 46 years and are numbered for +1601 to +2300; outside those spans, or for an unnumbered family, `Number` is zero while `PeriodYears` still gives the mean period.
 
 ### Phase, diameter, magnitude and nodes
 
@@ -580,15 +582,15 @@ fmt.Println(saturn.LastProgradeToRetrograde(date), saturn.NextProgradeToRetrogra
 fmt.Println(saturn.LastRetrogradeToPrograde(date), saturn.NextRetrogradeToPrograde(date))
 ```
 
-### Greatest elongation and geocentric transits
+### Greatest elongation and transits
 
 Greatest elongation only makes sense for Mercury and Venus: `LastGreatestElongation` / `NextGreatestElongation` ignore the side, while `LastGreatestElongationEast` / `NextGreatestElongationEast` and the `...West` forms distinguish it.
 
-The public entry points for geocentric transits are likewise only in `mercury` / `venus`: `LastTransit` / `NextTransit` / `ClosestTransit` return a `TransitInfo`.
+The public transit entry points are likewise only in `mercury` / `venus`: `LastTransit` / `NextTransit` / `ClosestTransit` return a `TransitInfo`.
 
-`Valid == false` means no transit inside the search window and every other field is a zero value; a partial transit has no internal contacts, so `HasInternal` is false and `InternalStart` / `InternalEnd` are zero.
+`Valid == false` means no transit inside the search window and every other field is a zero value. Without geocentric contacts `HasExternal` is false and `Start` / `End` are zero; the event is then accepted or rejected by topocentric surface visibility. Without a topocentric internal contact `HasInternal` is false and `InternalStart` / `InternalEnd` are zero.
 
-A transit is a purely geocentric geometry test and does not check whether the Sun is above the horizon at a given site.
+Contact fields come from the geocentric geometry, but whether a site can see the transit, and which contacts it sees, is decided by `LocalTransit`.
 
 ```go
 // Greatest elongation: use ...East / ...West to pick a side, or the plain form for either.
@@ -902,7 +904,7 @@ Geocentric, topocentric, and distance are three different conventions: `Apparent
 
 ### Zero values, out-of-range input and sentinel errors
 
-When an event search finds nothing inside its window it returns zero values or a struct with `Valid == false` (`TransitInfo.Valid`, `GalileanPhenomenonEvent.Valid`, `GalileanPhenomenonContactEvent.Valid`) instead of an error; when `TransitInfo.HasInternal` is false, `InternalStart` / `InternalEnd` are zero values because a partial transit has no internal contacts.
+When an event search finds nothing inside its window it returns zero values or a struct with `Valid == false` (`TransitInfo.Valid`, `GalileanPhenomenonEvent.Valid`, `GalileanPhenomenonContactEvent.Valid`) instead of an error; when `TransitInfo.HasExternal` is false, `Start` / `End` are zero values, and when `TransitInfo.HasInternal` is false, `InternalStart` / `InternalEnd` are zero values.
 
 `planet.WherePlanet` / `planet.WherePlanetN` return `NaN` instead of panicking when `xt` / `zn` is out of range. `n < 0` selects the full series; all nonnegative `n` select one semianalytic fast table, while Legacy truncates according to `n`.
 
