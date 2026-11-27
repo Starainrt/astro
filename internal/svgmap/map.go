@@ -41,8 +41,8 @@ type Frame struct {
 	Width      float64
 	Height     float64
 	Projection Projection
-	// CenterLongitude 与 CenterLatitude 是正射投影的视点；其他投影忽略。
-	// CenterLongitude and CenterLatitude are the orthographic view point; other projections ignore them.
+	// CenterLongitude 与 CenterLatitude 是正射投影视点；等经纬投影使用 CenterLongitude 作为中央经线。
+	// CenterLongitude and CenterLatitude are the orthographic view point; equirectangular frames use CenterLongitude as their central meridian.
 	CenterLongitude float64
 	CenterLatitude  float64
 }
@@ -275,6 +275,9 @@ func (frame Frame) hemisphere() float64 {
 // 居中经线落在画面正中，其对面的经线同时是左右边缘：已经在窗口内的经度按原值返回，
 // 让接缝两侧的点各自贴住自己那一侧的边缘，窗口外的经度再按 360 折回。
 func equirectangularLongitudeOffset(longitude, center float64) float64 {
+	if longitude == center+180 {
+		return 360
+	}
 	offset := longitude - (center - 180)
 	if offset >= 0 && offset <= 360 {
 		return offset

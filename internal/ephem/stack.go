@@ -97,6 +97,75 @@ func (stack *Stack) Coverage(target Body) (start, end float64, ok bool) {
 	return start, end, ok
 }
 
+type coverageBoundaryProvider interface {
+	AppendCoverageBoundaries([]float64, Body) []float64
+}
+
+// FirstStateGap 查找声明边界之间首个越界状态的探测时刻 / find the first out-of-range state probe between declared coverage boundaries.
+func FirstStateGap(engine Engine, targets []Body, center Body, start, end float64) (float64, bool) {
+	if IsNilEngine(engine) || !finiteEpoch(start) || !finiteEpoch(end) || start >= end {
+		return 0, false
+	}
+	boundaries := []float64{start, end}
+	for _, target := range targets {
+		if target == center {
+			continue
+		}
+		boundaries = appendStateBoundaries(boundaries, engine, target, center)
+	}
+	sort.Float64s(boundaries)
+	previous := start
+	for _, boundary := range boundaries {
+		if boundary > end {
+			break
+		}
+		if boundary <= previous {
+			continue
+		}
+		prev := previous
+		probe := prev + (boundary-prev)/2
+		previous = boundary
+		if probe == prev || probe == boundary {
+			continue
+		}
+		for _, target := range targets {
+			if target != center {
+				if _, _, err := engine.State(target, center, probe); errors.Is(err, ErrOutOfRange) {
+					return probe, true
+				}
+			}
+		}
+	}
+	return 0, false
+}
+
+func appendStateBoundaries(boundaries []float64, engine Engine, target, center Body) []float64 {
+	if stack, ok := engine.(*Stack); ok {
+		for _, source := range stack.engines {
+			boundaries = appendStateBoundaries(boundaries, source, target, center)
+		}
+		return boundaries
+	}
+	var bodies [stackInlineBodies]Body
+	candidates := append(bodies[:0], target, center)
+	for _, body := range chainBodies {
+		candidates = appendUniqueBody(candidates, body)
+	}
+	if source, ok := engine.(BodyProvider); ok {
+		for _, body := range source.Bodies() {
+			candidates = appendUniqueBody(candidates, body)
+		}
+	}
+	for _, body := range candidates {
+		if source, ok := engine.(coverageBoundaryProvider); ok {
+			boundaries = source.AppendCoverageBoundaries(boundaries, body)
+		} else if left, right, ok := engine.Coverage(body); ok {
+			boundaries = append(boundaries, left, right)
+		}
+	}
+	return boundaries
+}
+
 // State 返回目标相对中心的状态，并在源之间拼接中心链 / returns target-relative state, composing center chains across sources.
 func (stack *Stack) State(target, center Body, jdTDB float64) (pos, vel [3]float64, err error) {
 	if target == center {

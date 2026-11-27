@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/starainrt/astro/basic"
-	"github.com/starainrt/astro/calendar"
 )
 
 var (
@@ -32,49 +31,49 @@ func riseSetResult(date time.Time, jd float64, err error) (time.Time, error) {
 
 // ApparentLo 视黄经 / apparent ecliptic longitude.
 func (module *Neptune) ApparentLo(date time.Time) float64 {
-	jd := calendar.Date2JD(date.UTC())
+	jd := basic.Date2JD(date.UTC())
 	return basic.NeptuneApparentLoWithInstance(basic.UTC2TT(jd), module.inst)
 }
 
 // ApparentBo 视黄纬 / apparent ecliptic latitude.
 func (module *Neptune) ApparentBo(date time.Time) float64 {
-	jd := calendar.Date2JD(date.UTC())
+	jd := basic.Date2JD(date.UTC())
 	return basic.NeptuneApparentBoWithInstance(basic.UTC2TT(jd), module.inst)
 }
 
 // ApparentRa 视赤经 / apparent right ascension.
 func (module *Neptune) ApparentRa(date time.Time) float64 {
-	jd := calendar.Date2JD(date.UTC())
+	jd := basic.Date2JD(date.UTC())
 	return basic.NeptuneApparentRaWithInstance(basic.UTC2TT(jd), module.inst)
 }
 
 // ApparentDec 视赤纬 / apparent declination.
 func (module *Neptune) ApparentDec(date time.Time) float64 {
-	jd := calendar.Date2JD(date.UTC())
+	jd := basic.Date2JD(date.UTC())
 	return basic.NeptuneApparentDecWithInstance(basic.UTC2TT(jd), module.inst)
 }
 
 // ApparentRaDec 视赤经、视赤纬 / apparent right ascension and declination.
 func (module *Neptune) ApparentRaDec(date time.Time) (float64, float64) {
-	jd := calendar.Date2JD(date.UTC())
+	jd := basic.Date2JD(date.UTC())
 	return basic.NeptuneApparentRaDecWithInstance(basic.UTC2TT(jd), module.inst)
 }
 
 // ApparentMagnitude 视星等 / apparent magnitude.
 func (module *Neptune) ApparentMagnitude(date time.Time) float64 {
-	jd := calendar.Date2JD(date.UTC())
+	jd := basic.Date2JD(date.UTC())
 	return basic.NeptuneMagWithInstance(basic.UTC2TT(jd), module.inst)
 }
 
 // EarthDistance 地心距离 / Earth distance.
 func (module *Neptune) EarthDistance(date time.Time) float64 {
-	jd := calendar.Date2JD(date.UTC())
+	jd := basic.Date2JD(date.UTC())
 	return basic.EarthNeptuneAwayWithInstance(basic.UTC2TT(jd), module.inst)
 }
 
 // SunDistance 日心距离 / Sun distance.
 func (module *Neptune) SunDistance(date time.Time) float64 {
-	jd := calendar.Date2JD(date.UTC())
+	jd := basic.Date2JD(date.UTC())
 	return basic.PlanetCoordinateWithInstance(7, 2, basic.UTC2TT(jd), module.inst)
 }
 
@@ -224,6 +223,6 @@ func (module *Neptune) NextWesternQuadrature(date time.Time) time.Time {
 
 // ApparentMagnitude2018 视星等（Mallama & Hilton 2018 模型）/ apparent magnitude, Mallama & Hilton 2018 model.
 func (module *Neptune) ApparentMagnitude2018(date time.Time) float64 {
-	jd := calendar.Date2JD(date.UTC())
+	jd := basic.Date2JD(date.UTC())
 	return basic.NeptuneMag2018WithInstance(basic.UTC2TT(jd), module.inst)
 }

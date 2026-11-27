@@ -144,38 +144,139 @@ func mustParseRFC3339Nano(t *testing.T, value string) time.Time {
 	return date
 }
 
-func TestJupiterGalileanSearchFindsShortGrazingTransit(t *testing.T) {
-	// 2463144 附近 Callisto 有一次擦边凌日：Start 2463143.9993 / Greatest 2463144.0015 /
-	// End 2463144.0038，全场只有 6.4 分钟，整段落在 2 小时粗采样之间。旧实现看不到度量
-	// 凹陷，会把 16.85 天后的下一次凌日当成 "next"（Valid 仍为 true，属静默跳事件）。
-	// Callisto has a grazing transit near 2463144: Start 2463143.9993, Greatest
-	// 2463144.0015, End 2463144.0038 — only 6.4 minutes, entirely between two two-hour
-	// coarse samples. The old search saw no metric dip and reported the next transit 16.85
-	// days later as "next", still with Valid=true (a silent skip).
-	closest := ClosestJupiterGalileanPhenomenonEvent(2463144.0, 4, JupiterGalileanTransit)
-	if !closest.Valid {
-		t.Fatal("no Callisto transit found at 2463144")
-	}
-	if duration := closest.End - closest.Start; duration > 0.01 {
-		t.Fatalf("fixture changed: transit duration %.4f d, want the 6.4-minute grazing event", duration)
-	}
-
-	next := NextJupiterGalileanPhenomenonEvent(2463143.9646, 4, JupiterGalileanTransit)
+func TestJupiterGalileanSearchUsesJUP365GrazingGeometry(t *testing.T) {
+	const seed = 2463143.9646
+	next := NextJupiterGalileanPhenomenonEvent(seed, 4, JupiterGalileanTransit)
 	if !next.Valid {
 		t.Fatal("NextJupiterGalileanPhenomenonEvent returned nothing")
 	}
-	if offset := next.Greatest - 2463143.9646; offset > 0.1 {
-		t.Fatalf("next transit is %.3f d away, want the 53-minute one (the search skipped it)", offset)
+	if offset := next.Greatest - seed; offset < 0.1 {
+		t.Fatalf("next transit is %.3f d away, but JUP365 has no transit in the legacy grazing window", offset)
+	}
+
+	closest := ClosestJupiterGalileanPhenomenonEvent(2463144.0, 4, JupiterGalileanTransit)
+	if !closest.Valid {
+		t.Fatal("ClosestJupiterGalileanPhenomenonEvent returned nothing")
 	}
 	if math.Abs(next.Greatest-closest.Greatest) > 1e-5 {
 		t.Fatalf("next greatest %.9f, want the same event as closest %.9f", next.Greatest, closest.Greatest)
 	}
 
-	last := LastJupiterGalileanPhenomenonEvent(2463144.05, 4, JupiterGalileanTransit)
+	last := LastJupiterGalileanPhenomenonEvent(next.End+0.05, 4, JupiterGalileanTransit)
 	if !last.Valid {
 		t.Fatal("LastJupiterGalileanPhenomenonEvent returned nothing")
 	}
 	if math.Abs(last.Greatest-closest.Greatest) > 1e-5 {
 		t.Fatalf("last greatest %.9f, want the same event as closest %.9f", last.Greatest, closest.Greatest)
+	}
+}
+
+func TestJupiterGalileanSearchConsistencyShortGrazingTransit(t *testing.T) {
+	const satellite = 4
+	const firstCoarse = 2441548.7104382128
+	const denseStep = 5.0 / 86400
+	const timeTolerance = 1.0 / 86400
+	coarseStep := jupiterGalileanCoarseStepDays(satellite)
+	secondCoarse := firstCoarse + coarseStep
+	for _, jd := range []float64{firstCoarse - coarseStep, firstCoarse, secondCoarse, secondCoarse + coarseStep} {
+		sample := jupiterGalileanPhenomenonMetricAt(jd, satellite, JupiterGalileanTransit)
+		if !isFinite(sample.metric) || sample.active {
+			t.Fatalf("fixture coarse point %.12f: active=%v metric=%.12g", jd, sample.active, sample.metric)
+		}
+	}
+	firstActive, lastActive, denseGreatest := math.NaN(), math.NaN(), math.NaN()
+	minimumMetric := math.Inf(1)
+	ended := false
+	steps := int(math.Round(coarseStep / denseStep))
+	for sampleIndex := 0; sampleIndex <= steps; sampleIndex++ {
+		jd := firstCoarse + float64(sampleIndex)*denseStep
+		sample := jupiterGalileanPhenomenonMetricAt(jd, satellite, JupiterGalileanTransit)
+		if !isFinite(sample.metric) {
+			t.Fatalf("invalid dense metric at %.12f", jd)
+		}
+		if sample.metric < minimumMetric {
+			minimumMetric, denseGreatest = sample.metric, jd
+		}
+		if sample.active {
+			if ended {
+				t.Fatal("fixture has more than one active interval between coarse points")
+			}
+			if math.IsNaN(firstActive) {
+				firstActive = jd
+			}
+			lastActive = jd
+		} else if !math.IsNaN(firstActive) {
+			ended = true
+		}
+	}
+	if math.IsNaN(firstActive) || !ended || firstActive-denseStep <= firstCoarse || lastActive+denseStep >= secondCoarse {
+		t.Fatalf("fixture does not contain a complete hidden transit: coarse=[%.12f, %.12f] active=[%.12f, %.12f]", firstCoarse, secondCoarse, firstActive, lastActive)
+	}
+	if maximumDuration := lastActive - firstActive + 2*denseStep; maximumDuration >= 5.0/1440 {
+		t.Fatalf("fixture is no longer short: dense upper duration %.3f min", maximumDuration*1440)
+	}
+	t.Logf("hidden transit coarse=[%.12f, %.12f] start bracket=[%.12f, %.12f] end bracket=[%.12f, %.12f] dense minimum=%.12g at %.12f", firstCoarse, secondCoarse, firstActive-denseStep, firstActive, lastActive, lastActive+denseStep, minimumMetric, denseGreatest)
+	var firstEvent JupiterGalileanPhenomenonEvent
+	for _, result := range []struct {
+		name  string
+		event JupiterGalileanPhenomenonEvent
+	}{
+		{"Next", NextJupiterGalileanPhenomenonEvent(firstCoarse, satellite, JupiterGalileanTransit)},
+		{"Last", LastJupiterGalileanPhenomenonEvent(secondCoarse, satellite, JupiterGalileanTransit)},
+		{"Closest", ClosestJupiterGalileanPhenomenonEvent(firstCoarse, satellite, JupiterGalileanTransit)},
+	} {
+		event := result.event
+		if !event.Valid || !isFinite(event.Start) || !isFinite(event.Greatest) || !isFinite(event.End) {
+			t.Errorf("%s returned no short grazing transit", result.name)
+			continue
+		}
+		t.Logf("%s start=%.12f greatest=%.12f end=%.12f duration=%.6f min", result.name, event.Start, event.Greatest, event.End, (event.End-event.Start)*1440)
+		if event.Start < firstActive-denseStep-timeTolerance || event.Start > firstActive+timeTolerance || event.End < lastActive-timeTolerance || event.End > lastActive+denseStep+timeTolerance || math.Abs(event.Greatest-denseGreatest) > denseStep+timeTolerance {
+			t.Errorf("%s skipped the hidden transit: start=%.12f greatest=%.12f end=%.12f", result.name, event.Start, event.Greatest, event.End)
+		}
+		if event.Start >= event.Greatest || event.Greatest >= event.End || event.Start <= firstCoarse || event.End >= secondCoarse {
+			t.Errorf("%s event does not lie completely between coarse points: %+v", result.name, event)
+		}
+		if firstEvent.Valid && (math.Abs(event.Start-firstEvent.Start) > timeTolerance || math.Abs(event.Greatest-firstEvent.Greatest) > timeTolerance || math.Abs(event.End-firstEvent.End) > timeTolerance) {
+			t.Errorf("%s disagrees with Next by more than one second", result.name)
+		}
+		if !firstEvent.Valid {
+			firstEvent = event
+		}
+	}
+}
+
+func TestJupiterGalileanShadowTransitSearchConsistency(t *testing.T) {
+	seed := time.Date(2022, 6, 13, 6, 11, 35, 510000000, time.UTC)
+	first := NextJupiterGalileanPhenomenonEvent(Date2JD(seed), 4, JupiterGalileanShadowTransit)
+	if !first.Valid {
+		t.Fatal("Next missed the June 2022 Callisto shadow transit")
+	}
+	second := NextJupiterGalileanPhenomenonEvent(first.End+0.1/86400, 4, JupiterGalileanShadowTransit)
+	if !second.Valid {
+		t.Fatal("Next missed the following Callisto shadow transit")
+	}
+
+	firstDate := JD2Date(first.Greatest).UTC().Format("2006-01-02")
+	secondDate := JD2Date(second.Greatest).UTC().Format("2006-01-02")
+	if firstDate != "2022-06-29" || secondDate != "2022-07-16" {
+		t.Fatalf("shadow-transit dates=%s, %s; want 2022-06-29 and 2022-07-16", firstDate, secondDate)
+	}
+	for _, event := range []JupiterGalileanPhenomenonEvent{first, second} {
+		if !jupiterGalileanPhenomenonMetricAt(event.Greatest, 4, JupiterGalileanShadowTransit).active {
+			t.Fatalf("greatest is not active: %+v", event)
+		}
+		if jupiterGalileanPhenomenonMetricAt(event.Start-1.0/1440, 4, JupiterGalileanShadowTransit).active ||
+			jupiterGalileanPhenomenonMetricAt(event.End+1.0/1440, 4, JupiterGalileanShadowTransit).active {
+			t.Fatalf("event boundaries do not enclose one active interval: %+v", event)
+		}
+		for name, result := range map[string]JupiterGalileanPhenomenonEvent{
+			"Last":    LastJupiterGalileanPhenomenonEvent(event.Greatest, 4, JupiterGalileanShadowTransit),
+			"Closest": ClosestJupiterGalileanPhenomenonEvent(event.Greatest, 4, JupiterGalileanShadowTransit),
+		} {
+			if !result.Valid || math.Abs(result.Greatest-event.Greatest) > 1.0/86400 {
+				t.Errorf("%s disagrees with Next event on %s: %+v", name, JD2Date(event.Greatest).UTC().Format("2006-01-02"), result)
+			}
+		}
 	}
 }

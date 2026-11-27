@@ -117,7 +117,7 @@ func TestSiderealMemoRejectsStaleGenerationWrite(t *testing.T) {
 // 同一批瞬时重复求值必须命中记忆表（否则扩表/世代逻辑等于没生效）。
 func TestSiderealMemoHitsRepeatedInstants(t *testing.T) {
 	resetSiderealMemo()
-	const distinct = 8192
+	const distinct = siderealMemoSize / 2
 	for offset := 0; offset < distinct; offset++ {
 		_ = ApparentSiderealTime2006(2460310.5 + float64(offset)*0.25)
 	}

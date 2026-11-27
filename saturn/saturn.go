@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/starainrt/astro/basic"
-	"github.com/starainrt/astro/calendar"
 )
 
 var (
@@ -32,49 +31,49 @@ func riseSetResult(date time.Time, jd float64, err error) (time.Time, error) {
 
 // ApparentLo 视黄经 / apparent ecliptic longitude.
 func (module *Saturn) ApparentLo(date time.Time) float64 {
-	jd := calendar.Date2JD(date.UTC())
+	jd := basic.Date2JD(date.UTC())
 	return basic.SaturnApparentLoWithInstance(basic.UTC2TT(jd), module.inst)
 }
 
 // ApparentBo 视黄纬 / apparent ecliptic latitude.
 func (module *Saturn) ApparentBo(date time.Time) float64 {
-	jd := calendar.Date2JD(date.UTC())
+	jd := basic.Date2JD(date.UTC())
 	return basic.SaturnApparentBoWithInstance(basic.UTC2TT(jd), module.inst)
 }
 
 // ApparentRa 视赤经 / apparent right ascension.
 func (module *Saturn) ApparentRa(date time.Time) float64 {
-	jd := calendar.Date2JD(date.UTC())
+	jd := basic.Date2JD(date.UTC())
 	return basic.SaturnApparentRaWithInstance(basic.UTC2TT(jd), module.inst)
 }
 
 // ApparentDec 视赤纬 / apparent declination.
 func (module *Saturn) ApparentDec(date time.Time) float64 {
-	jd := calendar.Date2JD(date.UTC())
+	jd := basic.Date2JD(date.UTC())
 	return basic.SaturnApparentDecWithInstance(basic.UTC2TT(jd), module.inst)
 }
 
 // ApparentRaDec 视赤经、视赤纬 / apparent right ascension and declination.
 func (module *Saturn) ApparentRaDec(date time.Time) (float64, float64) {
-	jd := calendar.Date2JD(date.UTC())
+	jd := basic.Date2JD(date.UTC())
 	return basic.SaturnApparentRaDecWithInstance(basic.UTC2TT(jd), module.inst)
 }
 
 // ApparentMagnitude 视星等 / apparent magnitude.
 func (module *Saturn) ApparentMagnitude(date time.Time) float64 {
-	jd := calendar.Date2JD(date.UTC())
+	jd := basic.Date2JD(date.UTC())
 	return basic.SaturnMagWithInstance(basic.UTC2TT(jd), module.inst)
 }
 
 // EarthDistance 地心距离 / Earth distance.
 func (module *Saturn) EarthDistance(date time.Time) float64 {
-	jd := calendar.Date2JD(date.UTC())
+	jd := basic.Date2JD(date.UTC())
 	return basic.EarthSaturnAwayWithInstance(basic.UTC2TT(jd), module.inst)
 }
 
 // SunDistance 日心距离 / Sun distance.
 func (module *Saturn) SunDistance(date time.Time) float64 {
-	jd := calendar.Date2JD(date.UTC())
+	jd := basic.Date2JD(date.UTC())
 	return basic.PlanetCoordinateWithInstance(5, 2, basic.UTC2TT(jd), module.inst)
 }
 
@@ -224,6 +223,6 @@ func (module *Saturn) NextWesternQuadrature(date time.Time) time.Time {
 
 // ApparentMagnitude2018 视星等（Mallama & Hilton 2018 模型）/ apparent magnitude, Mallama & Hilton 2018 model.
 func (module *Saturn) ApparentMagnitude2018(date time.Time) float64 {
-	jd := calendar.Date2JD(date.UTC())
+	jd := basic.Date2JD(date.UTC())
 	return basic.SaturnMag2018WithInstance(basic.UTC2TT(jd), module.inst)
 }

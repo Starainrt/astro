@@ -4,6 +4,11 @@ import (
 	"time"
 )
 
+// ClosestJupiterGalileanMutualEvent 最近一次伽利略卫星互现象事件，jde 与返回时刻均为 TT 儒略日 / closest Galilean mutual phenomenon in TT Julian days.
+func ClosestJupiterGalileanMutualEvent(jde float64, first, second int, phenomenonType JupiterGalileanMutualPhenomenonType) JupiterGalileanMutualEvent {
+	return ClosestJupiterGalileanMutualEventWithInstance(jde, first, second, phenomenonType, nil)
+}
+
 // ClosestJupiterGalileanPhenomenonContactEvent 最近一次 IMCCE 风格接触事件 / closest IMCCE-style contact event.
 func ClosestJupiterGalileanPhenomenonContactEvent(jd float64, satellite int, phenomenonType JupiterGalileanPhenomenonType) JupiterGalileanPhenomenonContactEvent {
 	return ClosestJupiterGalileanPhenomenonContactEventWithInstance(jd, satellite, phenomenonType, nil)
@@ -37,6 +42,11 @@ func ClosestMoonPlanetConjunction(jde float64, planet MoonPlanetConjunctionPlane
 // ClosestVenusTransit 最近一次全球金星凌日 / closest global transit of Venus.
 func ClosestVenusTransit(jde float64) PlanetTransitResult {
 	return ClosestVenusTransitWithInstance(jde, nil)
+}
+
+// EastToPlanetographicLongitude 东经转行星制图经度，度 [0,360) / east to planetographic longitude in degrees [0,360).
+func EastToPlanetographicLongitude(body SkyBody, eastLongitude float64) (float64, error) {
+	return convertBodyLongitude(body, eastLongitude)
 }
 
 // EveningTwilight 昏朦影，localJD 为当地 0 时民用日锚点且只取整数日 / evening twilight on the local civil day anchored at localJD.
@@ -76,6 +86,11 @@ func FindStarOccultationPaths(start, end time.Time, star StarCoordinate, options
 func FindStarOccultations(start, end time.Time, star StarCoordinate, longitude, latitude, height float64,
 	options OccultationSearchOptions) ([]StarOccultationInfo, error) {
 	return FindStarOccultationsWithInstance(start, end, star, longitude, latitude, height, options, nil)
+}
+
+// FromBodyEquatorial 行星赤道方向转 ICRF 赤经赤纬，时刻为 TT/TDB 儒略日 / planetary equatorial direction to ICRF at a TT/TDB Julian day.
+func FromBodyEquatorial(body SkyBody, jdTDB, bodyRA, bodyDec float64, origin BodyEquatorOrigin) (ra, dec float64, err error) {
+	return fromBodyEquatorial(body, jdTDB, bodyRA, bodyDec, origin, nil)
 }
 
 // GetSunRiseTime 日出时刻，julianDay 为当地 0 时民用日锚点 / sunrise on the local civil day anchored at julianDay.
@@ -216,6 +231,11 @@ func JupiterRiseTimeN(jd, lon, lat, timezone, aeroCorrection, observerHeight flo
 	return JupiterRiseTimeNWithInstance(jd, lon, lat, timezone, aeroCorrection, observerHeight, n, nil)
 }
 
+// JupiterRotationAngle 木星指定旋转系统的 ICRF 本初子午线角，时刻为 TT 儒略日 / ICRF prime meridian angle of a Jovian rotation system at a TT Julian day.
+func JupiterRotationAngle(jdTT float64, system JupiterRotationSystem) (float64, error) {
+	return JupiterRotationAngleWithInstance(jdTT, system, nil)
+}
+
 // JupiterSemidiameterN 木星视半径（n 变体），单位角秒 / n-parameterised apparent Jupiter semidiameter in arcseconds.
 func JupiterSemidiameterN(jde float64, n int) float64 {
 	return JupiterSemidiameterNWithInstance(jde, n, nil)
@@ -229,6 +249,11 @@ func JupiterSetTimeN(jd, lon, lat, timezone, aeroCorrection, observerHeight floa
 // LastJupiterGalileanPhenomenonContactEvent 上一次 IMCCE 风格接触事件 / previous IMCCE-style contact event.
 func LastJupiterGalileanPhenomenonContactEvent(jd float64, satellite int, phenomenonType JupiterGalileanPhenomenonType) JupiterGalileanPhenomenonContactEvent {
 	return LastJupiterGalileanPhenomenonContactEventWithInstance(jd, satellite, phenomenonType, nil)
+}
+
+// LastJupiterGalileanMutualEvent 上一次伽利略卫星互现象事件，jde 与返回时刻均为 TT 儒略日 / previous Galilean mutual phenomenon in TT Julian days.
+func LastJupiterGalileanMutualEvent(jde float64, first, second int, phenomenonType JupiterGalileanMutualPhenomenonType) JupiterGalileanMutualEvent {
+	return LastJupiterGalileanMutualEventWithInstance(jde, first, second, phenomenonType, nil)
 }
 
 // LastJupiterGalileanPhenomenonEvent 上一次伽利略卫星现象，jd 与返回时刻均为民用儒略日 / previous Galilean-satellite event in civil Julian days.
@@ -287,6 +312,9 @@ func MarsBrightLimbPositionAngleN(jde float64, n int) float64 {
 	return MarsBrightLimbPositionAngleNWithInstance(jde, n, nil)
 }
 
+// MarsCoordinatedTime 火星协调时，小时 [0,24) / Mars coordinated time in hours [0,24).
+func MarsCoordinatedTime(jdTT float64) (float64, error) { return marsCoordinatedTime(jdTT) }
+
 // MarsCulminationTimeN 火星中天时间（n 变体） / n-parameterised culmination time of Mars.
 func MarsCulminationTimeN(localJD, lon, timezone float64, n int) float64 {
 	return MarsCulminationTimeNWithInstance(localJD, lon, timezone, n, nil)
@@ -315,6 +343,16 @@ func MarsIlluminatedFractionN(jd float64, n int) float64 {
 	return MarsIlluminatedFractionNWithInstance(jd, n, nil)
 }
 
+// MarsLocalMeanSolarTime 火星地方平太阳时，东经为正，小时 [0,24) / Mars local mean solar time for east longitude in hours [0,24).
+func MarsLocalMeanSolarTime(jdTT, eastLongitude float64) (float64, error) {
+	return marsLocalMeanSolarTime(jdTT, eastLongitude)
+}
+
+// MarsLocalTrueSolarTime 火星地方真太阳时，东经为正，时刻为 TT 儒略日 / Mars local true solar time for east longitude at a TT Julian day.
+func MarsLocalTrueSolarTime(jdTT, eastLongitude float64) (float64, error) {
+	return MarsLocalTrueSolarTimeWithInstance(jdTT, eastLongitude, nil)
+}
+
 // MarsMagN 火星视星等（n 变体） / n-parameterised apparent magnitude of Mars.
 func MarsMagN(jde float64, n int) float64 { return MarsMagNWithInstance(jde, n, nil) }
 
@@ -337,6 +375,14 @@ func MarsSemidiameterN(jde float64, n int) float64 { return MarsSemidiameterNWit
 // MarsSetTimeN 火星落下时间（n 变体） / n-parameterised set time of Mars.
 func MarsSetTimeN(jd, lon, lat, timezone, aeroCorrection, observerHeight float64, n int) (float64, error) {
 	return MarsSetTimeNWithInstance(jd, lon, lat, timezone, aeroCorrection, observerHeight, n, nil)
+}
+
+// MarsSolDate 火星 Sol 日期，时刻为 TT 儒略日 / Mars Sol Date at a TT Julian day.
+func MarsSolDate(jdTT float64) (float64, error) { return marsSolDate(jdTT) }
+
+// MarsSolarLongitude 火星太阳黄经 Ls，时刻为 TT 儒略日 / Mars solar longitude Ls at a TT Julian day.
+func MarsSolarLongitude(jdTT float64) (float64, error) {
+	return MarsSolarLongitudeWithInstance(jdTT, nil)
 }
 
 // MercuryAscendingNodeN 水星升交点黄经（n 变体） / n-parameterised ascending node longitude of Mercury.
@@ -555,6 +601,11 @@ func NextJupiterGalileanPhenomenonContactEvent(jd float64, satellite int, phenom
 	return NextJupiterGalileanPhenomenonContactEventWithInstance(jd, satellite, phenomenonType, nil)
 }
 
+// NextJupiterGalileanMutualEvent 下一次伽利略卫星互现象事件，jde 与返回时刻均为 TT 儒略日 / next Galilean mutual phenomenon in TT Julian days.
+func NextJupiterGalileanMutualEvent(jde float64, first, second int, phenomenonType JupiterGalileanMutualPhenomenonType) JupiterGalileanMutualEvent {
+	return NextJupiterGalileanMutualEventWithInstance(jde, first, second, phenomenonType, nil)
+}
+
 // NextJupiterGalileanPhenomenonEvent 下一次伽利略卫星现象，jd 与返回时刻均为民用儒略日 / next Galilean-satellite event in civil Julian days.
 func NextJupiterGalileanPhenomenonEvent(jd float64, satellite int, phenomenonType JupiterGalileanPhenomenonType) JupiterGalileanPhenomenonEvent {
 	return NextJupiterGalileanPhenomenonEventWithInstance(jd, satellite, phenomenonType, nil)
@@ -580,8 +631,33 @@ func NextMoonPlanetConjunction(jde float64, planet MoonPlanetConjunctionPlanet) 
 	return NextMoonPlanetConjunctionWithInstance(jde, planet, nil)
 }
 
+// NextStarSurfaceEvent 查找不早于 TT 时刻的下一次恒星表面事件 / next stellar surface event at or after a TT Julian day.
+func NextStarSurfaceEvent(star StarCoordinate, observer BodyObserver, kind SurfaceEventKind, afterJDE float64, options SurfaceOptions) (SurfaceEvent, error) {
+	return NextStarSurfaceEventWithInstance(star, observer, kind, afterJDE, options, nil)
+}
+
+// NextSurfaceEvent 查找不早于 TT 时刻的下一次无折射表面事件 / next airless planetary surface event at or after a TT Julian day.
+func NextSurfaceEvent(target SkyBody, observer BodyObserver, kind SurfaceEventKind, afterJDE float64, options SurfaceOptions) (SurfaceEvent, error) {
+	return NextSurfaceEventWithInstance(target, observer, kind, afterJDE, options, nil)
+}
+
 // NextVenusTransit 下一次全球金星凌日 / next global transit of Venus.
 func NextVenusTransit(jde float64) PlanetTransitResult { return NextVenusTransitWithInstance(jde, nil) }
+
+// PlanetocentricToPlanetodeticLatitude 行星中心纬度转大地纬度，度 / planetocentric to planetodetic reference-layer latitude in degrees.
+func PlanetocentricToPlanetodeticLatitude(body SkyBody, latitude float64) (float64, error) {
+	return convertBodyLatitude(body, latitude, true)
+}
+
+// PlanetodeticToPlanetocentricLatitude 大地纬度转行星中心纬度，度 / planetodetic reference-layer to planetocentric latitude in degrees.
+func PlanetodeticToPlanetocentricLatitude(body SkyBody, latitude float64) (float64, error) {
+	return convertBodyLatitude(body, latitude, false)
+}
+
+// PlanetographicToEastLongitude 行星制图经度转东经，度 [0,360) / planetographic to east longitude in degrees [0,360).
+func PlanetographicToEastLongitude(body SkyBody, longitude float64) (float64, error) {
+	return convertBodyLongitude(body, longitude)
+}
 
 // PlanetOccultationDiagram 已求解固定地点行星月掩的月心切平面轨迹，事件无效时不含帧 / tangent-plane track of a solved fixed-site planetary occultation.
 func PlanetOccultationDiagram(
@@ -741,6 +817,16 @@ func StarOccultationFootprintAt(at time.Time, star StarCoordinate) (StarOccultat
 	return StarOccultationFootprintAtWithInstance(at, star, nil)
 }
 
+// StarSurfaceEvents 查询 TT 区间内全部恒星表面事件与区间穿越状态，最多十年 / all stellar surface events and interval crossing state in a TT window of at most ten years.
+func StarSurfaceEvents(star StarCoordinate, observer BodyObserver, startJDE, endJDE float64, options SurfaceOptions) ([]SurfaceEvent, AltitudeCrossingState, error) {
+	return StarSurfaceEventsWithInstance(star, observer, startJDE, endJDE, options, nil)
+}
+
+// StarSurfacePositionAt 行星表面的恒星无折射视位置，时刻为 TT 儒略日 / airless stellar apparent position on a planet at a TT Julian day.
+func StarSurfacePositionAt(star StarCoordinate, observer BodyObserver, jdTDB float64) (SurfacePosition, error) {
+	return StarSurfacePositionAtWithInstance(star, observer, jdTDB, nil)
+}
+
 // SunDiameterN 太阳视直径（n 变体），单位角秒 / n-parameterised apparent solar diameter in arcseconds.
 func SunDiameterN(jde float64, n int) float64 { return SunDiameterNWithInstance(jde, n, nil) }
 
@@ -749,6 +835,26 @@ func SunPhysicalN(jde float64, n int) SunPhysicalInfo { return SunPhysicalNWithI
 
 // SunSemidiameterN 太阳视半径（n 变体），单位角秒 / n-parameterised apparent solar semidiameter in arcseconds.
 func SunSemidiameterN(jde float64, n int) float64 { return SunSemidiameterNWithInstance(jde, n, nil) }
+
+// SurfaceEvents 查询 TT 区间内全部无折射表面事件与区间穿越状态，最多十年 / all airless surface events and interval crossing state in a TT window of at most ten years.
+func SurfaceEvents(target SkyBody, observer BodyObserver, startJDE, endJDE float64, options SurfaceOptions) ([]SurfaceEvent, AltitudeCrossingState, error) {
+	return SurfaceEventsWithInstance(target, observer, startJDE, endJDE, options, nil)
+}
+
+// SurfaceLocalTimeAt 行星表面的本地时，时刻为 TT 儒略日 / local times on a planetary surface at a TT Julian day.
+func SurfaceLocalTimeAt(observer BodyObserver, jdTDB float64) (SurfaceLocalTime, error) {
+	return SurfaceLocalTimeAtWithInstance(observer, jdTDB, nil)
+}
+
+// SurfacePositionAt 行星表面无折射站心视位置，时刻为 TT 儒略日 / airless planetary surface apparent position at a TT Julian day.
+func SurfacePositionAt(target SkyBody, observer BodyObserver, jdTDB float64) (SurfacePosition, error) {
+	return SurfacePositionAtWithInstance(target, observer, jdTDB, nil)
+}
+
+// ToBodyEquatorial ICRF 赤经赤纬转行星赤道方向，时刻为 TT/TDB 儒略日 / ICRF direction to planetary equatorial coordinates at a TT/TDB Julian day.
+func ToBodyEquatorial(body SkyBody, jdTDB, ra, dec float64, origin BodyEquatorOrigin) (bodyRA, bodyDec float64, err error) {
+	return toBodyEquatorial(body, jdTDB, ra, dec, origin, nil)
+}
 
 // UranusAscendingNodeN 天王星升交点黄经（n 变体） / n-parameterised ascending node longitude of Uranus.
 func UranusAscendingNodeN(jd float64, n int) float64 {

@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/starainrt/astro/basic"
-	"github.com/starainrt/astro/calendar"
 )
 
 var (
@@ -32,49 +31,49 @@ func riseSetResult(date time.Time, jd float64, err error) (time.Time, error) {
 
 // ApparentLo 视黄经 / apparent ecliptic longitude.
 func (module *Mercury) ApparentLo(date time.Time) float64 {
-	jd := calendar.Date2JD(date.UTC())
+	jd := basic.Date2JD(date.UTC())
 	return basic.MercuryApparentLoWithInstance(basic.UTC2TT(jd), module.inst)
 }
 
 // ApparentBo 视黄纬 / apparent ecliptic latitude.
 func (module *Mercury) ApparentBo(date time.Time) float64 {
-	jd := calendar.Date2JD(date.UTC())
+	jd := basic.Date2JD(date.UTC())
 	return basic.MercuryApparentBoWithInstance(basic.UTC2TT(jd), module.inst)
 }
 
 // ApparentRa 视赤经 / apparent right ascension.
 func (module *Mercury) ApparentRa(date time.Time) float64 {
-	jd := calendar.Date2JD(date.UTC())
+	jd := basic.Date2JD(date.UTC())
 	return basic.MercuryApparentRaWithInstance(basic.UTC2TT(jd), module.inst)
 }
 
 // ApparentDec 视赤纬 / apparent declination.
 func (module *Mercury) ApparentDec(date time.Time) float64 {
-	jd := calendar.Date2JD(date.UTC())
+	jd := basic.Date2JD(date.UTC())
 	return basic.MercuryApparentDecWithInstance(basic.UTC2TT(jd), module.inst)
 }
 
 // ApparentRaDec 视赤经、视赤纬 / apparent right ascension and declination.
 func (module *Mercury) ApparentRaDec(date time.Time) (float64, float64) {
-	jd := calendar.Date2JD(date.UTC())
+	jd := basic.Date2JD(date.UTC())
 	return basic.MercuryApparentRaDecWithInstance(basic.UTC2TT(jd), module.inst)
 }
 
 // ApparentMagnitude 视星等 / apparent magnitude.
 func (module *Mercury) ApparentMagnitude(date time.Time) float64 {
-	jd := calendar.Date2JD(date.UTC())
+	jd := basic.Date2JD(date.UTC())
 	return basic.MercuryMagWithInstance(basic.UTC2TT(jd), module.inst)
 }
 
 // EarthDistance 地心距离 / Earth distance.
 func (module *Mercury) EarthDistance(date time.Time) float64 {
-	jd := calendar.Date2JD(date.UTC())
+	jd := basic.Date2JD(date.UTC())
 	return basic.EarthMercuryAwayWithInstance(basic.UTC2TT(jd), module.inst)
 }
 
 // SunDistance 日心距离 / Sun distance.
 func (module *Mercury) SunDistance(date time.Time) float64 {
-	jd := calendar.Date2JD(date.UTC())
+	jd := basic.Date2JD(date.UTC())
 	return basic.PlanetCoordinateWithInstance(1, 2, basic.UTC2TT(jd), module.inst)
 }
 
@@ -260,6 +259,6 @@ func (module *Mercury) NextGreatestElongationWest(date time.Time) time.Time {
 
 // ApparentMagnitude2018 视星等（Mallama & Hilton 2018 模型）/ apparent magnitude, Mallama & Hilton 2018 model.
 func (module *Mercury) ApparentMagnitude2018(date time.Time) float64 {
-	jd := calendar.Date2JD(date.UTC())
+	jd := basic.Date2JD(date.UTC())
 	return basic.MercuryMag2018WithInstance(basic.UTC2TT(jd), module.inst)
 }

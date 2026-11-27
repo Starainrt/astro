@@ -1,6 +1,7 @@
 package jupiter
 
 import (
+	"math"
 	"time"
 
 	"github.com/starainrt/astro/basic"
@@ -18,16 +19,18 @@ const (
 
 // GalileanPhenomenonContact 伽利略卫星接触窗口 / Galilean-satellite contact window.
 //
-// Start/End 是有限圆盘或有限影斑开始/结束接触的时刻；ModelCrossing 是这套连续接触模型下，
-// 零半径参考点穿越边界的时刻。
-// Start/End mark the beginning/end of the finite-disk or finite-shadow contact interval.
+// 常规窗口的 Start/End 来自有限圆盘或有限影斑模型；ModelCrossing 是零半径参考点穿越边界的时刻。
+// For regular windows, Start/End come from the finite-disk or finite-shadow model.
 // ModelCrossing is the zero-radius boundary crossing in this continuous contact model.
 type GalileanPhenomenonContact struct {
 	Valid bool
 	Phase GalileanPhenomenonContactPhase
 
+	// PenumbralFallback 备用半影时段，以事件 Greatest 为界 / penumbral segments split at the event Greatest.
+	PenumbralFallback bool
+
 	Start         time.Time
-	ModelCrossing time.Time
+	ModelCrossing time.Time // 参考点不穿越边界时为零值 / zero if the reference point does not cross the boundary.
 	End           time.Time
 
 	Duration time.Duration
@@ -35,14 +38,8 @@ type GalileanPhenomenonContact struct {
 
 // GalileanPhenomenonContactEvent IMCCE 风格的 D/F 接触事件 / IMCCE-style D/F contact event.
 //
-// 这个 API 返回有限圆盘/有限影斑的接触窗口，适合和 IMCCE 的 `TR.D/TR.F/OC.D/OC.F/EC.D/EC.F/SH.D/SH.F` 对齐；
-// 现有 `GalileanPhenomenonEvent` 返回的是零半径几何模型保持 active 的整段区间，两者语义不同。
-// 其中 `shadow_transit` 先用半影/本影边界求部分相持续时间，再把这段持续时间中心放在旧影轴过盘时刻上。
-// This API returns finite-disk / finite-shadow contact windows and is intended to align with IMCCE
-// `TR.D/TR.F/OC.D/OC.F/EC.D/EC.F/SH.D/SH.F` rows. The existing `GalileanPhenomenonEvent` returns the
-// whole active interval of the zero-radius geometric model, so the semantics are different.
-// For `shadow_transit`, the partial-phase duration comes from penumbra/umbra boundaries,
-// while the reported D/F time is centered on the shadow-axis limb crossing from the existing full-event model.
+// 常规窗口对应 IMCCE 的 TR/OC/EC/SH 接触行。影凌的部分相时长来自半影和本影边界，时刻中心在影轴过盘点上。
+// Regular windows match the IMCCE TR/OC/EC/SH contact rows. Shadow-transit partial duration uses the penumbra and umbra edges, centered on the shadow-axis limb crossing.
 type GalileanPhenomenonContactEvent struct {
 	Valid     bool
 	Satellite int
@@ -112,14 +109,18 @@ func galileanPhenomenonContactFromBasic(contact basic.JupiterGalileanPhenomenonC
 		return GalileanPhenomenonContact{}
 	}
 	start := basic.JD2DateByZone(contact.Start, loc, false)
-	modelCrossing := basic.JD2DateByZone(contact.ModelCrossing, loc, false)
+	var modelCrossing time.Time
+	if !math.IsNaN(contact.ModelCrossing) {
+		modelCrossing = basic.JD2DateByZone(contact.ModelCrossing, loc, false)
+	}
 	end := basic.JD2DateByZone(contact.End, loc, false)
 	return GalileanPhenomenonContact{
-		Valid:         true,
-		Phase:         GalileanPhenomenonContactPhase(contact.Phase),
-		Start:         start,
-		ModelCrossing: modelCrossing,
-		End:           end,
-		Duration:      end.Sub(start),
+		Valid:             true,
+		Phase:             GalileanPhenomenonContactPhase(contact.Phase),
+		PenumbralFallback: contact.PenumbralFallback,
+		Start:             start,
+		ModelCrossing:     modelCrossing,
+		End:               end,
+		Duration:          end.Sub(start),
 	}
 }

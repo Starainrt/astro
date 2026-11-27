@@ -191,6 +191,21 @@ func (s *File) Coverage(target Body) (start, end float64, ok bool) {
 	return start, end, ok
 }
 
+// AppendCoverageBoundaries 追加天体各已支持分段的 TDB 边界 / append each supported segment's TDB boundaries for a body.
+func (s *File) AppendCoverageBoundaries(dst []float64, body Body) []float64 {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if s.closed {
+		return dst
+	}
+	for _, segment := range s.segments {
+		if segment.frame == 1 && segment.target == body {
+			dst = append(dst, spkJ2000+segment.startET/spkSecondsDay, spkJ2000+segment.endET/spkSecondsDay)
+		}
+	}
+	return dst
+}
+
 // Bodies 返回文件中出现的天体编号 / returns body identifiers present in the file.
 func (s *File) Bodies() []Body {
 	s.mu.RLock()

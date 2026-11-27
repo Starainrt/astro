@@ -78,6 +78,9 @@ func BrightLimbPositionAngleN(date time.Time, n int) float64 {
 	return defaultModule.BrightLimbPositionAngleN(date, n)
 }
 
+// CoordinatedTime 火星协调时，小时 [0,24)，输入无效时为 NaN / Mars coordinated time in hours [0,24), NaN for invalid input.
+func CoordinatedTime(date time.Time) float64 { return defaultModule.CoordinatedTime(date) }
+
 // CulminationTime 中天时刻，取 date 所在当地民用日 / culmination time, on the local civil day of date.
 func CulminationTime(date time.Time, lon float64) time.Time {
 	return defaultModule.CulminationTime(date, lon)
@@ -160,6 +163,16 @@ func LastWesternQuadrature(date time.Time) time.Time {
 	return defaultModule.LastWesternQuadrature(date)
 }
 
+// LocalMeanSolarTime 火星约定地方平太阳时，东经为正，输入无效时为 NaN / conventional Mars local mean solar time for east longitude, NaN for invalid input.
+func LocalMeanSolarTime(date time.Time, eastLongitude float64) float64 {
+	return defaultModule.LocalMeanSolarTime(date, eastLongitude)
+}
+
+// LocalTrueSolarTime 火星地方真太阳时，采用通用站心视太阳方向，输入无效时为 NaN / Mars local true solar time from the generic apparent solar direction, NaN for invalid input.
+func LocalTrueSolarTime(date time.Time, eastLongitude float64) float64 {
+	return defaultModule.LocalTrueSolarTime(date, eastLongitude)
+}
+
 // NextConjunction 下一次合日，取 date 所在当地民用日 / next conjunction with the Sun, on the local civil day of date.
 func NextConjunction(date time.Time) time.Time { return defaultModule.NextConjunction(date) }
 
@@ -239,6 +252,12 @@ func SetTime(date time.Time, lon, lat, height float64, aero bool) (time.Time, er
 func SetTimeN(date time.Time, lon, lat, height float64, aero bool, n int) (time.Time, error) {
 	return defaultModule.SetTimeN(date, lon, lat, height, aero, n)
 }
+
+// SolDate 火星 Sol 日期，输入无效时为 NaN / Mars Sol Date, NaN for invalid input.
+func SolDate(date time.Time) float64 { return defaultModule.SolDate(date) }
+
+// SolarLongitude 火星太阳黄经 Ls，输入无效时为 NaN / Mars solar longitude Ls, NaN for invalid input.
+func SolarLongitude(date time.Time) float64 { return defaultModule.SolarLongitude(date) }
 
 // SunDistance 日心距离 / Sun distance.
 func SunDistance(date time.Time) float64 { return defaultModule.SunDistance(date) }

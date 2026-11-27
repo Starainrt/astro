@@ -10,8 +10,11 @@ const polygonUnionEpsilon = 1e-9
 const polygonUnionProbeOffset = 1e-7
 const polygonUnionSnapGrid = 1e-7
 const polygonUnionNodeGrid = 1e-7
+const polygonOverlayMinArea = 1e-12
 const polygonUnionContainmentToleranceKM = 1.0
 const polygonUnionLocationBinCount = 64
+const polygonUnionBatchThreshold = 5000000
+const polygonUnionBatchVertices = 250000
 
 type polygonUnionPoint struct {
 	x float64
@@ -66,6 +69,23 @@ type polygonUnionEdgeKey struct {
 // are rotated to a local spherical chart first, so the planar edge splitter
 // never sees a coordinate singularity. Disjoint inputs remain disjoint.
 func UnionPolygons(polygons [][]GeoPoint) ([][]GeoPoint, error) {
+	result, err := unionPolygonsLegacy(polygons)
+	if err == nil {
+		return result, nil
+	}
+	rings, buildErr := polygonUnionRings(polygons)
+	if buildErr != nil {
+		return nil, err
+	}
+	polygonUnionAddIntersections(rings, 0)
+	result, recoveryErr := polygonUnionJoinEdges(polygonUnionLimitOuterEdges(rings, 0, regionUnion))
+	if recoveryErr != nil || len(result) == 0 {
+		return nil, err
+	}
+	return result, nil
+}
+
+func unionPolygonsLegacy(polygons [][]GeoPoint) ([][]GeoPoint, error) {
 	if polygonUnionNeedsSphericalChart(polygons) {
 		// Preserve the numerically stable legacy result when it already retains
 		// every input boundary and pole cap. The rotated chart is a recovery
@@ -179,7 +199,7 @@ func unionPolygonsPlanar(polygons [][]GeoPoint) ([][]GeoPoint, error) {
 	if err != nil {
 		return nil, err
 	}
-	polygonUnionAddIntersections(rings)
+	polygonUnionAddIntersections(rings, 0)
 	edges := polygonUnionOuterEdges(rings)
 	if len(edges) == 0 {
 		return nil, fmt.Errorf("polygon union has no outer edges")
@@ -378,7 +398,7 @@ func polygonUnionRingForPoints(points []polygonUnionPoint) polygonUnionRing {
 	}
 }
 
-func polygonUnionAddIntersections(rings []polygonUnionRing) {
+func polygonUnionAddIntersections(rings []polygonUnionRing, split int) {
 	edges := make([]polygonUnionSourceEdgeRef, 0)
 	for ringIndex, ring := range rings {
 		for edgeIndex, edge := range ring.edges {
@@ -395,6 +415,9 @@ func polygonUnionAddIntersections(rings []polygonUnionRing) {
 			second := edges[secondIndex]
 			if second.edge.minX > first.edge.maxX+polygonUnionEpsilon {
 				break
+			}
+			if split != 0 && (first.ringIndex < split) == (second.ringIndex < split) {
+				continue
 			}
 			if first.ringIndex == second.ringIndex && polygonUnionEdgesAdjacent(
 				first.edgeIndex, second.edgeIndex, len(rings[first.ringIndex].points),
@@ -560,7 +583,38 @@ func polygonUnionRingRefContainsPoint(point polygonUnionPoint, ring *polygonUnio
 	return polygonUnionPointLocationInRingRef(point, ring) >= 0
 }
 
+type polygonUnionJoinedRing struct {
+	points []GeoPoint
+	chart  []polygonUnionPoint
+	area   float64
+}
+
 func polygonUnionJoinEdges(edges []polygonUnionEdge) ([][]GeoPoint, error) {
+	results, err := polygonUnionTraceEdges(edges, polygonUnionEpsilon)
+	if err != nil {
+		return nil, err
+	}
+	chartRings := make([][]polygonUnionPoint, len(results))
+	for i := range results {
+		chartRings[i] = results[i].chart
+	}
+	// 环列表无法表达孔洞（内外边界都会当成实体面），检测到严格包含就报错。
+	if inner, outer, ratio, found := polygonUnionNestedRing(chartRings); found && ratio >= polygonUnionHoleAreaFraction {
+		return nil, fmt.Errorf(
+			"polygon union produced a hole (ring %d, area %.6g lies strictly inside ring %d, area %.6g); a ring list cannot represent it",
+			inner, math.Abs(polygonUnionSignedArea(chartRings[inner])),
+			outer, math.Abs(polygonUnionSignedArea(chartRings[outer])),
+		)
+	}
+	sort.Slice(results, func(first, second int) bool { return results[first].area > results[second].area })
+	polygons := make([][]GeoPoint, len(results))
+	for index, result := range results {
+		polygons[index] = result.points
+	}
+	return polygons, nil
+}
+
+func polygonUnionTraceEdges(edges []polygonUnionEdge, minArea float64) ([]polygonUnionJoinedRing, error) {
 	outgoing := make(map[polygonUnionNode][]int, len(edges))
 	for index, edge := range edges {
 		outgoing[polygonUnionNodeForPoint(edge.start)] = append(
@@ -568,13 +622,7 @@ func polygonUnionJoinEdges(edges []polygonUnionEdge) ([][]GeoPoint, error) {
 		)
 	}
 	used := make([]bool, len(edges))
-	type resultRing struct {
-		points []GeoPoint
-		area   float64
-	}
-	results := make([]resultRing, 0, 2)
-	// chartRings 保留图幅坐标，用于并集后检测孔洞。
-	chartRings := make([][]polygonUnionPoint, 0, 2)
+	results := make([]polygonUnionJoinedRing, 0, 2)
 	for firstEdgeIndex := range edges {
 		if used[firstEdgeIndex] {
 			continue
@@ -612,7 +660,7 @@ func polygonUnionJoinEdges(edges []polygonUnionEdge) ([][]GeoPoint, error) {
 		}
 		points = polygonUnionDeduplicatePoints(points)
 		area := polygonUnionSignedArea(points)
-		if len(points) < 3 || math.Abs(area) <= polygonUnionEpsilon {
+		if len(points) < 3 || math.Abs(area) <= minArea {
 			continue
 		}
 		if area < 0 {
@@ -626,23 +674,9 @@ func polygonUnionJoinEdges(edges []polygonUnionEdge) ([][]GeoPoint, error) {
 				Latitude:  point.y,
 			}
 		}
-		results = append(results, resultRing{points: geographic, area: area})
-		chartRings = append(chartRings, points)
+		results = append(results, polygonUnionJoinedRing{points: geographic, chart: points, area: area})
 	}
-	// 环列表无法表达孔洞（内外边界都会当成实体面），检测到严格包含就报错。
-	if inner, outer, ratio, found := polygonUnionNestedRing(chartRings); found && ratio >= polygonUnionHoleAreaFraction {
-		return nil, fmt.Errorf(
-			"polygon union produced a hole (ring %d, area %.6g lies strictly inside ring %d, area %.6g); a ring list cannot represent it",
-			inner, math.Abs(polygonUnionSignedArea(chartRings[inner])),
-			outer, math.Abs(polygonUnionSignedArea(chartRings[outer])),
-		)
-	}
-	sort.Slice(results, func(first, second int) bool { return results[first].area > results[second].area })
-	polygons := make([][]GeoPoint, len(results))
-	for index, result := range results {
-		polygons[index] = result.points
-	}
-	return polygons, nil
+	return results, nil
 }
 
 // polygonUnionHoleAreaFraction 是判定真孔洞的相对面积下限：低于它按数值细条处理，达到或超过则报错。
@@ -836,10 +870,14 @@ func polygonUnionDeduplicatePoints(points []polygonUnionPoint) []polygonUnionPoi
 }
 
 func polygonUnionSignedArea(points []polygonUnionPoint) float64 {
+	if len(points) < 3 {
+		return 0
+	}
 	area := 0.0
+	origin := points[0]
 	for index, current := range points {
 		next := points[(index+1)%len(points)]
-		area += current.x*next.y - next.x*current.y
+		area += (current.x-origin.x)*(next.y-origin.y) - (next.x-origin.x)*(current.y-origin.y)
 	}
 	return area / 2
 }
@@ -922,4 +960,450 @@ func (edges polygonUnionEdgeRefsByX) Less(i, j int) bool {
 		return a.ringIndex < b.ringIndex
 	}
 	return a.edgeIndex < b.edgeIndex
+}
+
+type regionOperation uint8
+
+const (
+	regionUnion regionOperation = iota
+	regionSubtract
+	regionIntersect
+)
+
+func polygonUnionLimitOuterEdges(rings []polygonUnionRing, split int, operation regionOperation) []polygonUnionEdge {
+	edges := make(map[polygonUnionEdgeKey]polygonUnionEdge)
+	neighbors := polygonUnionRingNeighbors(rings)
+	for ringIndex, ring := range rings {
+		interiorLeft := split != 0 || polygonUnionSignedArea(ring.points) > 0
+		var leftInside, rightInside bool
+		previousIntersection := true
+		evaluated := false
+		for edgeIndex, start := range ring.points {
+			end := ring.points[(edgeIndex+1)%len(ring.points)]
+			intersection := len(ring.params[edgeIndex]) > 2
+			uncached := !evaluated || previousIntersection || intersection
+			evaluatedEdge := false
+			params := polygonUnionUniqueParams(ring.params[edgeIndex])
+			for index := 1; index < len(params); index++ {
+				firstParam, secondParam := params[index-1], params[index]
+				if secondParam-firstParam <= polygonUnionEpsilon {
+					continue
+				}
+				pieceStart := polygonUnionInterpolate(start, end, firstParam)
+				pieceEnd := polygonUnionInterpolate(start, end, secondParam)
+				delta := polygonUnionSubtract(pieceEnd, pieceStart)
+				length := math.Hypot(delta.x, delta.y)
+				if length <= polygonUnionEpsilon {
+					continue
+				}
+				middle := polygonUnionInterpolate(pieceStart, pieceEnd, 0.5)
+				if split == 0 {
+					leftInside, rightInside = polygonUnionLimitSides(middle, delta, rings, interiorLeft, neighbors[ringIndex])
+				} else if uncached {
+					left, right := polygonUnionPoint{-delta.y, delta.x}, polygonUnionPoint{delta.y, -delta.x}
+					if operation == regionUnion {
+						leftInside, rightInside = true, polygonUnionOtherRegionInside(middle, right, rings, neighbors[ringIndex], ringIndex, split)
+					} else {
+						leftInside = polygonOverlayContains(middle, left, rings, neighbors[ringIndex], ringIndex, split, operation)
+						rightInside = polygonOverlayContains(middle, right, rings, neighbors[ringIndex], ringIndex, split, operation)
+					}
+					evaluated = true
+				}
+				evaluatedEdge = true
+				if leftInside == rightInside {
+					continue
+				}
+				if rightInside {
+					pieceStart, pieceEnd = pieceEnd, pieceStart
+				}
+				edge := polygonUnionEdge{start: pieceStart, end: pieceEnd}
+				key := polygonUnionKey(edge)
+				edges[key] = edge
+			}
+			if evaluatedEdge {
+				previousIntersection = intersection
+			} else {
+				previousIntersection = previousIntersection || intersection
+			}
+		}
+	}
+	result := make([]polygonUnionEdge, 0, len(edges))
+	for _, edge := range edges {
+		result = append(result, edge)
+	}
+	sort.Slice(result, func(first, second int) bool {
+		a, b := result[first], result[second]
+		if a.start.x != b.start.x {
+			return a.start.x < b.start.x
+		}
+		if a.start.y != b.start.y {
+			return a.start.y < b.start.y
+		}
+		if a.end.x != b.end.x {
+			return a.end.x < b.end.x
+		}
+		return a.end.y < b.end.y
+	})
+	return result
+}
+
+// Region 带孔的地理区域，外环逆时针、孔环顺时针 / geographic region with a counterclockwise outer ring and clockwise holes.
+type Region struct {
+	Outer []GeoPoint
+	Holes [][]GeoPoint
+}
+
+// UnionRegions 在固定经度图幅中合并地理区域并保留孔洞 / union geographic regions in a fixed longitude chart, retaining holes.
+func UnionRegions(polygons [][]GeoPoint) ([]Region, error) {
+	if polygonUnionVertexCount(polygons) > polygonUnionBatchThreshold {
+		return polygonUnionRegionBatches(polygons, polygonUnionBatchVertices)
+	}
+	return polygonUnionRegions(polygons)
+}
+
+func polygonUnionVertexCount(polygons [][]GeoPoint) int64 {
+	var count int64
+	for _, ring := range polygons {
+		count += int64(len(ring))
+	}
+	return count
+}
+
+func polygonUnionRegionBatches(polygons [][]GeoPoint, limit int64) ([]Region, error) {
+	if len(polygons) < 2 || polygonUnionVertexCount(polygons) <= limit {
+		return polygonUnionRegions(polygons)
+	}
+	split := len(polygons) / 2
+	left, err := polygonUnionRegionBatches(polygons[:split], limit)
+	if err != nil {
+		return nil, err
+	}
+	right, err := polygonUnionRegionBatches(polygons[split:], limit)
+	if err != nil {
+		return nil, err
+	}
+	return polygonUnionMergeRegions(left, right)
+}
+
+func polygonUnionMergeRegions(left, right []Region) ([]Region, error) {
+	return overlayCanonicalRegions(left, right, regionUnion)
+}
+
+func overlayCanonicalRegions(left, right []Region, operation regionOperation) ([]Region, error) {
+	var rings []polygonUnionRing
+	add := func(regions []Region) {
+		for _, region := range regions {
+			rings = append(rings, polygonUnionCanonicalRing(region.Outer))
+			for _, hole := range region.Holes {
+				rings = append(rings, polygonUnionCanonicalRing(hole))
+			}
+		}
+	}
+	add(left)
+	split := len(rings)
+	add(right)
+	if operation == regionUnion {
+		polygonUnionAddIntersections(rings, split)
+	} else {
+		polygonUnionRegionIntersections(rings)
+	}
+	return polygonUnionFinishRegions(rings, split, operation)
+}
+
+func polygonOverlayContains(mid, normal polygonUnionPoint, rings []polygonUnionRing, neighbors []int, index, split int, operation regionOperation) bool {
+	inside := [2]bool{}
+	update := func(index int) {
+		ring := &rings[index]
+		if mid.x >= ring.minX-polygonUnionEpsilon && mid.x <= ring.maxX+polygonUnionEpsilon &&
+			mid.y >= ring.minY-polygonUnionEpsilon && mid.y <= ring.maxY+polygonUnionEpsilon && polygonUnionLimitInside(mid, normal, ring) {
+			side := 0
+			if index >= split {
+				side = 1
+			}
+			inside[side] = !inside[side]
+		}
+	}
+	update(index)
+	for _, neighbor := range neighbors {
+		update(neighbor)
+	}
+	return inside[0] && (inside[1] == (operation == regionIntersect))
+}
+
+func polygonUnionOtherRegionInside(mid, normal polygonUnionPoint, rings []polygonUnionRing, neighbors []int, index, split int) bool {
+	inside := false
+	for _, j := range neighbors {
+		if (index < split) == (j < split) {
+			continue
+		}
+		ring := &rings[j]
+		if mid.x < ring.minX-polygonUnionEpsilon || mid.x > ring.maxX+polygonUnionEpsilon || mid.y < ring.minY-polygonUnionEpsilon || mid.y > ring.maxY+polygonUnionEpsilon {
+			continue
+		}
+		if polygonUnionLimitInside(mid, normal, ring) {
+			inside = !inside
+		}
+	}
+	return inside
+}
+
+func polygonUnionCanonicalRing(piece []GeoPoint) polygonUnionRing {
+	if len(piece) > 1 && piece[0] == piece[len(piece)-1] {
+		piece = piece[:len(piece)-1]
+	}
+	points := make([]polygonUnionPoint, len(piece))
+	for j, p := range piece {
+		points[j] = polygonUnionPoint{x: p.Longitude, y: p.Latitude}
+	}
+	ring := polygonUnionRingForPoints(points)
+	ring.locationEdges = nil
+	ring.params = make([][]float64, len(points))
+	params := make([]float64, 2*len(points))
+	for j := range ring.params {
+		params[2*j+1] = 1
+		ring.params[j] = params[2*j : 2*j+2 : 2*j+2]
+	}
+	return ring
+}
+
+func polygonUnionRegions(polygons [][]GeoPoint) ([]Region, error) {
+	rings := make([]polygonUnionRing, 0, len(polygons))
+	for k, polygon := range polygons {
+		if len(openGeoRing(polygon)) < 3 {
+			return nil, fmt.Errorf("polygon %d requires three points", k)
+		}
+		pieces := PolygonFragments(openGeoRing(polygon), ClipView{Projection: ProjectionEquirectangular})
+		if len(pieces) == 0 {
+			return nil, fmt.Errorf("polygon %d has no canonical pieces", k)
+		}
+		for _, piece := range pieces {
+			rings = append(rings, polygonUnionCanonicalRing(piece))
+		}
+	}
+	if len(rings) == 0 {
+		return nil, fmt.Errorf("no input polygons")
+	}
+	polygonUnionRegionIntersections(rings)
+	return polygonUnionFinishRegions(rings, 0, regionUnion)
+}
+
+func polygonUnionFinishRegions(rings []polygonUnionRing, split int, operation regionOperation) ([]Region, error) {
+	edges := polygonUnionLimitOuterEdges(rings, split, operation)
+	if len(edges) == 0 && operation != regionUnion {
+		return nil, nil
+	}
+	joined, err := polygonUnionTraceEdges(edges, polygonOverlayMinArea)
+	if err != nil {
+		return nil, err
+	}
+	if len(joined) == 0 && operation == regionUnion {
+		return nil, fmt.Errorf("no joined rings")
+	}
+	for i := range joined {
+		for j, p := range joined[i].chart {
+			joined[i].points[j] = GeoPoint{Longitude: p.x, Latitude: p.y}
+		}
+	}
+	return polygonUnionClassifyRegions(joined), nil
+}
+
+func polygonUnionClassifyRegions(rings []polygonUnionJoinedRing) []Region {
+	parent := make([]int, len(rings))
+	depth := make([]int, len(rings))
+	for i := range rings {
+		parent[i] = -1
+		for j := range rings {
+			if i == j || rings[j].area <= rings[i].area {
+				continue
+			}
+			// 求交追踪后的边界不互穿，一个非贴边点即可确定嵌套关系；全顶点贴边时再探测边中点。
+			inside := false
+			found := false
+			for _, p := range rings[i].chart {
+				position := polygonUnionPointLocation(p, rings[j].chart)
+				if position != 0 {
+					inside = position > 0
+					found = true
+					break
+				}
+			}
+			if !found {
+				for k, p := range rings[i].chart {
+					next := rings[i].chart[(k+1)%len(rings[i].chart)]
+					mid := polygonUnionInterpolate(p, next, 0.5)
+					position := polygonUnionPointLocation(mid, rings[j].chart)
+					if position != 0 {
+						inside = position > 0
+						break
+					}
+				}
+			}
+			if inside {
+				depth[i]++
+				if parent[i] < 0 || rings[j].area < rings[parent[i]].area {
+					parent[i] = j
+				}
+			}
+		}
+	}
+	order := make([]int, len(rings))
+	for i := range order {
+		order[i] = i
+	}
+	sort.SliceStable(order, func(i, j int) bool { return rings[order[i]].area > rings[order[j]].area })
+	result := make([]Region, 0)
+	indexes := make(map[int]int)
+	for _, i := range order {
+		if depth[i]%2 == 0 {
+			indexes[i] = len(result)
+			result = append(result, Region{Outer: rings[i].points})
+		}
+	}
+	for _, i := range order {
+		if depth[i]%2 == 0 {
+			continue
+		}
+		points := append([]GeoPoint(nil), rings[i].points...)
+		for a, b := 0, len(points)-1; a < b; a, b = a+1, b-1 {
+			points[a], points[b] = points[b], points[a]
+		}
+		ancestor := parent[i]
+		for depth[ancestor]%2 != 0 {
+			ancestor = parent[ancestor]
+		}
+		k := indexes[ancestor]
+		result[k].Holes = append(result[k].Holes, points)
+	}
+	return result
+}
+
+func polygonUnionRingNeighbors(rings []polygonUnionRing) [][]int {
+	order := make([]int, len(rings))
+	for i := range order {
+		order[i] = i
+	}
+	sort.Slice(order, func(i, j int) bool { return rings[order[i]].minX < rings[order[j]].minX })
+	result := make([][]int, len(rings))
+	for k, i := range order {
+		a := rings[i]
+		for _, j := range order[k+1:] {
+			b := rings[j]
+			if b.minX > a.maxX+polygonUnionEpsilon {
+				break
+			}
+			if a.minY > b.maxY+polygonUnionEpsilon || b.minY > a.maxY+polygonUnionEpsilon {
+				continue
+			}
+			result[i] = append(result[i], j)
+			result[j] = append(result[j], i)
+		}
+	}
+	return result
+}
+
+func polygonUnionLimitSides(mid, delta polygonUnionPoint, rings []polygonUnionRing, interiorLeft bool, neighbors []int) (bool, bool) {
+	left := interiorLeft
+	right := !left
+	normal := polygonUnionPoint{-delta.y, delta.x}
+	for _, i := range neighbors {
+		ring := &rings[i]
+		if mid.x < ring.minX-polygonUnionEpsilon || mid.x > ring.maxX+polygonUnionEpsilon || mid.y < ring.minY-polygonUnionEpsilon || mid.y > ring.maxY+polygonUnionEpsilon {
+			continue
+		}
+		if !left {
+			left = polygonUnionLimitInside(mid, normal, ring)
+		}
+		if !right {
+			right = polygonUnionLimitInside(mid, polygonUnionPoint{-normal.x, -normal.y}, ring)
+		}
+		if left && right {
+			break
+		}
+	}
+	return left, right
+}
+
+func polygonUnionLimitInside(p, n polygonUnionPoint, ring *polygonUnionRing) bool {
+	const eps = 0x1p-52
+	inside := false
+	for _, edge := range ring.locationBins[polygonUnionLocationBin(p.y, ring.minY, ring.maxY)] {
+		a, b := edge.start, edge.end
+		ay := polygonUnionLimitSign(a.y-p.y, 4*eps*(math.Abs(a.y)+math.Abs(p.y)), -n.y)
+		by := polygonUnionLimitSign(b.y-p.y, 4*eps*(math.Abs(b.y)+math.Abs(p.y)), -n.y)
+		if (ay > 0) == (by > 0) {
+			continue
+		}
+		d := polygonUnionSubtract(b, a)
+		q := polygonUnionSubtract(p, a)
+		det := polygonUnionCross(d, q)
+		errorBound := 8 * eps * (math.Abs(d.x)*(math.Abs(p.y)+math.Abs(a.y)) + math.Abs(d.y)*(math.Abs(p.x)+math.Abs(a.x)) + math.Abs(d.x*q.y) + math.Abs(d.y*q.x))
+		sign := polygonUnionLimitSign(det, errorBound, polygonUnionCross(d, n))
+		if (d.y > 0 && sign > 0) || (d.y < 0 && sign < 0) {
+			inside = !inside
+		}
+	}
+	return inside
+}
+
+func polygonUnionLimitSign(value, roundoff, derivative float64) int {
+	if value > roundoff {
+		return 1
+	}
+	if value < -roundoff {
+		return -1
+	}
+	if derivative > 0 {
+		return 1
+	}
+	if derivative < 0 {
+		return -1
+	}
+	return 0
+}
+
+func polygonUnionRegionIntersections(rings []polygonUnionRing) {
+	neighbors := polygonUnionRingNeighbors(rings)
+	for i := range rings {
+		a := &rings[i]
+		bins := make([][]int, polygonUnionLocationBinCount)
+		for j, e := range a.edges {
+			first := polygonUnionLocationBin(e.minY-polygonUnionEpsilon, a.minY, a.maxY)
+			last := polygonUnionLocationBin(e.maxY+polygonUnionEpsilon, a.minY, a.maxY)
+			for k := first; k <= last; k++ {
+				bins[k] = append(bins[k], j)
+			}
+		}
+		candidates := append([]int{i}, neighbors[i]...)
+		for _, j := range candidates {
+			if j < i {
+				continue
+			}
+			b := &rings[j]
+			for bi, second := range b.edges {
+				if second.maxY < a.minY-polygonUnionEpsilon || second.minY > a.maxY+polygonUnionEpsilon {
+					continue
+				}
+				firstBin := polygonUnionLocationBin(second.minY-polygonUnionEpsilon, a.minY, a.maxY)
+				lastBin := polygonUnionLocationBin(second.maxY+polygonUnionEpsilon, a.minY, a.maxY)
+				for k := firstBin; k <= lastBin; k++ {
+					for _, ai := range bins[k] {
+						first := a.edges[ai]
+						startBin := polygonUnionLocationBin(first.minY-polygonUnionEpsilon, a.minY, a.maxY)
+						if k > firstBin && k > startBin {
+							continue
+						}
+						if i == j && (ai >= bi || polygonUnionEdgesAdjacent(ai, bi, len(a.points))) {
+							continue
+						}
+						if !polygonUnionEdgeBoundsOverlap(first, second) {
+							continue
+						}
+						ap, an, bp, bn := polygonUnionSegmentIntersections(first.start, first.end, second.start, second.end)
+						a.params[ai] = append(a.params[ai], ap[:an]...)
+						b.params[bi] = append(b.params[bi], bp[:bn]...)
+					}
+				}
+			}
+		}
+	}
 }

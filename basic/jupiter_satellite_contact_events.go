@@ -21,13 +21,14 @@ const (
 
 // JupiterGalileanPhenomenonContact 伽利略卫星接触窗口 / Galilean-satellite contact window.
 //
-// Start/End 表示有限圆盘或有限影斑开始/结束接触的时刻；ModelCrossing 表示这套连续接触模型下，
-// 零半径参考点穿越边界的时刻。
-// Start/End mark the beginning/end of the finite-disk or finite-shadow contact interval.
-// ModelCrossing is the zero-radius boundary crossing in this continuous contact model.
+// 常规窗口的 Start/End 来自有限圆盘或有限影斑模型；ModelCrossing 是零半径参考点穿越边界的时刻，未穿越时为 NaN。
+// For regular windows, Start/End come from the finite-disk or finite-shadow model. ModelCrossing is the zero-radius boundary crossing, or NaN if absent.
 type JupiterGalileanPhenomenonContact struct {
 	Valid bool
 	Phase JupiterGalileanPhenomenonContactPhase
+
+	// PenumbralFallback 备用半影时段，以事件 Greatest 为界 / penumbral segments split at the event Greatest.
+	PenumbralFallback bool
 
 	Start         float64
 	ModelCrossing float64
@@ -36,14 +37,8 @@ type JupiterGalileanPhenomenonContact struct {
 
 // JupiterGalileanPhenomenonContactEvent IMCCE 风格的 D/F 接触事件 / IMCCE-style D/F contact event.
 //
-// 与 `JupiterGalileanPhenomenonEvent` 不同，这里返回的是有限圆盘/有限影斑的初亏与复圆接触窗口；
-// 现有整场事件 API 返回的则是零半径几何模型处于 active 状态的整段区间。
-// 对 `shadow_transit`，这里按 IMCCE 的影凌语义处理：先用半影/本影边界求出部分相持续时间，
-// 再把这段持续时间中心放在旧 `shadow_transit` API 的影轴过盘时刻上。
-// Unlike `JupiterGalileanPhenomenonEvent`, this returns the finite-disk / finite-shadow D/F contact windows.
-// The existing full-event API returns the whole active interval of the zero-radius geometric model.
-// For `shadow_transit`, the partial-phase duration comes from penumbra/umbra boundaries,
-// while the reported D/F time is centered on the shadow-axis limb crossing from the existing full-event model.
+// 有限圆盘或有限影斑的接触窗口。影凌的部分相时长来自半影和本影边界，时刻中心在影轴过盘点上。
+// Finite-disk or finite-shadow contact windows. Shadow-transit partial duration uses the penumbra and umbra edges, centered on the shadow-axis limb crossing.
 type JupiterGalileanPhenomenonContactEvent struct {
 	Valid     bool
 	Satellite int
@@ -63,23 +58,94 @@ type jupiterGalileanContactGeometry struct {
 
 // LastJupiterGalileanPhenomenonContactEventWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
 func LastJupiterGalileanPhenomenonContactEventWithInstance(jd float64, satellite int, phenomenonType JupiterGalileanPhenomenonType, inst *Instance) JupiterGalileanPhenomenonContactEvent {
-	return jupiterGalileanPhenomenonContactEventFromEvent(
-		LastJupiterGalileanPhenomenonEventWithInstance(jd, satellite, phenomenonType, inst), inst,
-	)
+	return searchJupiterGalileanContact(jd, satellite, phenomenonType, -1, inst)
 }
 
 // NextJupiterGalileanPhenomenonContactEventWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
 func NextJupiterGalileanPhenomenonContactEventWithInstance(jd float64, satellite int, phenomenonType JupiterGalileanPhenomenonType, inst *Instance) JupiterGalileanPhenomenonContactEvent {
-	return jupiterGalileanPhenomenonContactEventFromEvent(
-		NextJupiterGalileanPhenomenonEventWithInstance(jd, satellite, phenomenonType, inst), inst,
-	)
+	return searchJupiterGalileanContact(jd, satellite, phenomenonType, 1, inst)
 }
 
 // ClosestJupiterGalileanPhenomenonContactEventWithInstance 用指定星历实例求值；inst 为 nil 时用进程当前模型 / evaluation with an explicit instance; nil uses the process model.
 func ClosestJupiterGalileanPhenomenonContactEventWithInstance(jd float64, satellite int, phenomenonType JupiterGalileanPhenomenonType, inst *Instance) JupiterGalileanPhenomenonContactEvent {
-	return jupiterGalileanPhenomenonContactEventFromEvent(
-		ClosestJupiterGalileanPhenomenonEventWithInstance(jd, satellite, phenomenonType, inst), inst,
-	)
+	last := searchJupiterGalileanContact(jd, satellite, phenomenonType, -1, inst)
+	if last.Valid && last.Disappearance.Start <= jd && jd <= last.Reappearance.End {
+		return last
+	}
+	next := searchJupiterGalileanContact(jd, satellite, phenomenonType, 1, inst)
+	if last.Valid && (!next.Valid || math.Abs(last.Greatest-jd) <= math.Abs(next.Greatest-jd)) {
+		return last
+	}
+	return next
+}
+
+func searchJupiterGalileanContact(jd float64, satellite int, kind JupiterGalileanPhenomenonType, direction int, inst *Instance) JupiterGalileanPhenomenonContactEvent {
+	if !isFinite(jd) || !isValidJupiterGalileanPhenomenonType(kind) {
+		return invalidJupiterGalileanPhenomenonContactEvent()
+	}
+	searchKind := kind
+	if kind == JupiterGalileanEclipse {
+		searchKind = jupiterGalileanPenumbraContact
+	}
+	seed := jd
+	if direction < 0 {
+		seed += jupiterGalileanContactBracketSpanDays
+	}
+	for includeCurrent := true; math.Abs(seed-jd) < jupiterGalileanEventSearchSpanDays; includeCurrent = direction < 0 {
+		whole, ok := searchJupiterGalileanPhenomenonEvent(seed, satellite, searchKind, direction, includeCurrent, inst)
+		if !ok || math.Abs(whole.Greatest-jd) > jupiterGalileanEventSearchSpanDays {
+			break
+		}
+		var contact JupiterGalileanPhenomenonContactEvent
+		if searchKind != kind {
+			center := findJupiterGalileanPhenomenonEventAround(whole.Greatest, satellite, kind, inst)
+			contact = jupiterGalileanPhenomenonContactEventFromEvent(center, inst)
+			if !contact.Valid {
+				contact = partialJupiterGalileanEclipse(whole, center)
+			}
+		} else {
+			contact = jupiterGalileanPhenomenonContactEventFromEvent(whole, inst)
+		}
+		started := contact.Disappearance.Start-jd <= jupiterGalileanEventEpsilonDays
+		if contact.Valid && (direction < 0 && started || direction > 0 && !started) {
+			return contact
+		}
+		if direction > 0 {
+			seed = math.Max(seed, whole.End) + jupiterGalileanEventEpsilonDays
+		} else {
+			seed = math.Min(seed, whole.Start) - jupiterGalileanEventEpsilonDays
+		}
+	}
+	return invalidJupiterGalileanPhenomenonContactEvent()
+}
+
+func partialJupiterGalileanEclipse(whole, center JupiterGalileanPhenomenonEvent) JupiterGalileanPhenomenonContactEvent {
+	greatest := whole.Greatest
+	state := whole.GreatestPhenomenon
+	modelStart, modelEnd := math.NaN(), math.NaN()
+	if center.Valid {
+		greatest, state = center.Greatest, center.GreatestPhenomenon
+		modelStart, modelEnd = center.Start, center.End
+	}
+	return JupiterGalileanPhenomenonContactEvent{
+		Valid: true, Satellite: whole.Satellite, Type: JupiterGalileanEclipse, Greatest: greatest, GreatestPhenomenon: state,
+		Disappearance: JupiterGalileanPhenomenonContact{
+			Valid:             true,
+			Phase:             JupiterGalileanDisappearanceContact,
+			PenumbralFallback: true,
+			Start:             whole.Start,
+			ModelCrossing:     modelStart,
+			End:               greatest,
+		},
+		Reappearance: JupiterGalileanPhenomenonContact{
+			Valid:             true,
+			Phase:             JupiterGalileanReappearanceContact,
+			PenumbralFallback: true,
+			Start:             greatest,
+			ModelCrossing:     modelEnd,
+			End:               whole.End,
+		},
+	}
 }
 
 func jupiterGalileanPhenomenonContactEventFromEvent(event JupiterGalileanPhenomenonEvent, instances ...*Instance) JupiterGalileanPhenomenonContactEvent {
@@ -155,13 +221,16 @@ func refineJupiterGalileanContactPair(
 	if !ok {
 		return JupiterGalileanPhenomenonContact{}, JupiterGalileanPhenomenonContact{}, false
 	}
-	disappearanceEnd, ok := refineJupiterGalileanContactRoot(disappearanceModel, 1, insideTarget)
-	if !ok || disappearanceEnd <= disappearanceStart {
-		return JupiterGalileanPhenomenonContact{}, JupiterGalileanPhenomenonContact{}, false
-	}
-	reappearanceStart, ok := refineJupiterGalileanContactRoot(reappearanceModel, -1, insideTarget)
-	if !ok {
-		return JupiterGalileanPhenomenonContact{}, JupiterGalileanPhenomenonContact{}, false
+	disappearanceEnd, reappearanceStart := greatestJD, greatestJD
+	if insideTarget(greatestJD) < 0 {
+		disappearanceEnd, ok = refineJupiterGalileanContactRoot(disappearanceModel, 1, insideTarget)
+		if !ok || disappearanceEnd <= disappearanceStart {
+			return JupiterGalileanPhenomenonContact{}, JupiterGalileanPhenomenonContact{}, false
+		}
+		reappearanceStart, ok = refineJupiterGalileanContactRoot(reappearanceModel, -1, insideTarget)
+		if !ok {
+			return JupiterGalileanPhenomenonContact{}, JupiterGalileanPhenomenonContact{}, false
+		}
 	}
 	reappearanceEnd, ok := refineJupiterGalileanContactRoot(reappearanceModel, 1, disappearanceStartTarget)
 	if !ok || reappearanceEnd <= reappearanceStart {
@@ -191,8 +260,7 @@ func refineJupiterGalileanEclipseContactPair(
 	if !isFinite(satelliteRadius) || satelliteRadius <= 0 {
 		return JupiterGalileanPhenomenonContact{}, JupiterGalileanPhenomenonContact{}, false
 	}
-	// IMCCE 的 EC.D/EC.F 更接近“目视消失/重现”而不是纯几何接触：
-	// D 相用半影入段近似，F 相用本影/半影出段的中点近似。
+	// D 相取半影入段，F 相取本影出段与半影出段的中点，对应目视消失和重现。
 	penumbraOuterTarget := func(jd float64) float64 {
 		signedDistance, ok := jupiterGalileanEclipseSignedDistanceAt(jd, event.Satellite, true, inst)
 		if !ok {
@@ -226,7 +294,7 @@ func refineJupiterGalileanEclipseContactPair(
 	if !ok {
 		return JupiterGalileanPhenomenonContact{}, JupiterGalileanPhenomenonContact{}, false
 	}
-	disappearanceEnd, ok := refineJupiterGalileanContactRoot(event.Start, 1, penumbraInnerTarget)
+	disappearanceEnd, ok := refineJupiterGalileanInnerContactRoot(event.Start, true, penumbraInnerTarget)
 	if !ok || disappearanceEnd <= disappearanceStart {
 		return JupiterGalileanPhenomenonContact{}, JupiterGalileanPhenomenonContact{}, false
 	}
@@ -234,7 +302,7 @@ func refineJupiterGalileanEclipseContactPair(
 	if !ok {
 		return JupiterGalileanPhenomenonContact{}, JupiterGalileanPhenomenonContact{}, false
 	}
-	reappearancePenumbraStart, ok := refineJupiterGalileanContactRoot(event.End, -1, penumbraInnerTarget)
+	reappearancePenumbraStart, ok := refineJupiterGalileanInnerContactRoot(event.End, false, penumbraInnerTarget)
 	if !ok {
 		return JupiterGalileanPhenomenonContact{}, JupiterGalileanPhenomenonContact{}, false
 	}
@@ -269,78 +337,81 @@ func refineJupiterGalileanEclipseContactPair(
 
 func refineJupiterGalileanShadowContactPair(
 	event JupiterGalileanPhenomenonEvent, instances ...*Instance) (JupiterGalileanPhenomenonContact, JupiterGalileanPhenomenonContact, bool) {
-	inst := instanceValue(instances)
+	contacts, ok := jupiterGalileanShadowContacts(event.Start, event.End, event.Satellite, instanceValue(instances))
+	if !ok {
+		return JupiterGalileanPhenomenonContact{}, JupiterGalileanPhenomenonContact{}, false
+	}
+	if !isFinite(contacts[1]) {
+		contacts[1], contacts[2] = event.Greatest, event.Greatest
+	} else {
+		disappearanceHalf := (contacts[1] - contacts[0]) / 2
+		reappearanceHalf := (contacts[3] - contacts[2]) / 2
+		if event.Start+disappearanceHalf <= event.End-reappearanceHalf {
+			contacts = [4]float64{event.Start - disappearanceHalf, event.Start + disappearanceHalf, event.End - reappearanceHalf, event.End + reappearanceHalf}
+		}
+	}
+	return JupiterGalileanPhenomenonContact{
+			Valid: true, Phase: JupiterGalileanDisappearanceContact,
+			Start: contacts[0], ModelCrossing: event.Start, End: contacts[1],
+		}, JupiterGalileanPhenomenonContact{
+			Valid: true, Phase: JupiterGalileanReappearanceContact,
+			Start: contacts[2], ModelCrossing: event.End, End: contacts[3],
+		}, true
+}
 
+// JupiterGalileanShadowContactsWithInstance 求影凌四个几何接触，输入与输出均为 UTC 儒略日 / solve four geometric shadow contacts in UTC Julian days.
+func JupiterGalileanShadowContactsWithInstance(start, end float64, satellite int, inst *Instance) ([4]float64, bool) {
+	if !isFinite(start) || !isFinite(end) || end <= start || satellite < 1 || satellite > 4 {
+		return [4]float64{}, false
+	}
+	contacts, ok := jupiterGalileanShadowContacts(start, end, satellite, inst)
+	if !ok || !isFinite(contacts[1]) {
+		return [4]float64{}, false
+	}
+	return contacts, true
+}
+
+func jupiterGalileanShadowContacts(start, end float64, satellite int, inst *Instance) ([4]float64, bool) {
 	penumbraMetric := func(jd float64) float64 {
-		value, ok := jupiterGalileanShadowLimbMetricAt(jd, event.Satellite, true, inst)
+		value, ok := jupiterGalileanShadowLimbMetricAt(jd, satellite, true, inst)
 		if !ok {
 			return math.NaN()
 		}
 		return value
 	}
 	umbraMetric := func(jd float64) float64 {
-		value, ok := jupiterGalileanShadowLimbMetricAt(jd, event.Satellite, false, inst)
+		value, ok := jupiterGalileanShadowLimbMetricAt(jd, satellite, false, inst)
 		if !ok {
 			return math.NaN()
 		}
 		return value
 	}
 
-	penumbraSeedStartJD, penumbraSeedStartValue, ok := findJupiterGalileanNegativeMetricSeed(event.Start, penumbraMetric)
-	if !ok {
-		return JupiterGalileanPhenomenonContact{}, JupiterGalileanPhenomenonContact{}, false
+	var contacts [4]float64
+	for index, item := range [...]struct {
+		seed      float64
+		direction int
+		metric    func(float64) float64
+	}{{start, -1, penumbraMetric}, {start, 1, umbraMetric}, {end, -1, umbraMetric}, {end, 1, penumbraMetric}} {
+		seed, value, ok := findJupiterGalileanNegativeMetricSeed(item.seed, item.metric)
+		if ok {
+			contacts[index], ok = refineJupiterGalileanNegativeWindowRoot(seed, value, item.direction, item.metric)
+		}
+		if ok {
+			continue
+		}
+		if index == 0 || index == 3 {
+			return [4]float64{}, false
+		}
+		contacts[index] = math.NaN()
 	}
-	disappearanceStart, ok := refineJupiterGalileanNegativeWindowRoot(penumbraSeedStartJD, penumbraSeedStartValue, -1, penumbraMetric)
-	if !ok {
-		return JupiterGalileanPhenomenonContact{}, JupiterGalileanPhenomenonContact{}, false
+	if contacts[0] >= contacts[3] {
+		return [4]float64{}, false
 	}
-	umbraSeedStartJD, umbraSeedStartValue, ok := findJupiterGalileanNegativeMetricSeed(event.Start, umbraMetric)
-	if !ok {
-		return JupiterGalileanPhenomenonContact{}, JupiterGalileanPhenomenonContact{}, false
+	if !(contacts[0] < contacts[1] && contacts[1] < contacts[2] && contacts[2] < contacts[3]) {
+		contacts[1], contacts[2] = math.NaN(), math.NaN()
 	}
-	disappearanceUmbraIn, ok := refineJupiterGalileanNegativeWindowRoot(umbraSeedStartJD, umbraSeedStartValue, 1, umbraMetric)
-	if !ok || disappearanceUmbraIn <= disappearanceStart {
-		return JupiterGalileanPhenomenonContact{}, JupiterGalileanPhenomenonContact{}, false
-	}
-
-	umbraSeedEndJD, umbraSeedEndValue, ok := findJupiterGalileanNegativeMetricSeed(event.End, umbraMetric)
-	if !ok {
-		return JupiterGalileanPhenomenonContact{}, JupiterGalileanPhenomenonContact{}, false
-	}
-	reappearanceUmbraOut, ok := refineJupiterGalileanNegativeWindowRoot(umbraSeedEndJD, umbraSeedEndValue, -1, umbraMetric)
-	if !ok {
-		return JupiterGalileanPhenomenonContact{}, JupiterGalileanPhenomenonContact{}, false
-	}
-	penumbraSeedEndJD, penumbraSeedEndValue, ok := findJupiterGalileanNegativeMetricSeed(event.End, penumbraMetric)
-	if !ok {
-		return JupiterGalileanPhenomenonContact{}, JupiterGalileanPhenomenonContact{}, false
-	}
-	reappearancePenumbraOut, ok := refineJupiterGalileanNegativeWindowRoot(penumbraSeedEndJD, penumbraSeedEndValue, 1, penumbraMetric)
-	if !ok || reappearancePenumbraOut <= reappearanceUmbraOut {
-		return JupiterGalileanPhenomenonContact{}, JupiterGalileanPhenomenonContact{}, false
-	}
-	disappearanceDuration := disappearanceUmbraIn - disappearanceStart
-	reappearanceDuration := reappearancePenumbraOut - reappearanceUmbraOut
-	if disappearanceDuration <= 0 || reappearanceDuration <= 0 {
-		return JupiterGalileanPhenomenonContact{}, JupiterGalileanPhenomenonContact{}, false
-	}
-	disappearanceCenteredStart := event.Start - disappearanceDuration/2
-	disappearanceCenteredEnd := event.Start + disappearanceDuration/2
-	reappearanceCenteredStart := event.End - reappearanceDuration/2
-	reappearanceCenteredEnd := event.End + reappearanceDuration/2
-	return JupiterGalileanPhenomenonContact{
-			Valid:         true,
-			Phase:         JupiterGalileanDisappearanceContact,
-			Start:         disappearanceCenteredStart,
-			ModelCrossing: event.Start,
-			End:           disappearanceCenteredEnd,
-		}, JupiterGalileanPhenomenonContact{
-			Valid:         true,
-			Phase:         JupiterGalileanReappearanceContact,
-			Start:         reappearanceCenteredStart,
-			ModelCrossing: event.End,
-			End:           reappearanceCenteredEnd,
-		}, true
+	return contacts, true
 }
 
 func findJupiterGalileanNegativeMetricSeed(
@@ -426,6 +497,20 @@ func refineJupiterGalileanContactRoot(
 		nearValue = farValue
 	}
 	return math.NaN(), false
+}
+
+// refineJupiterGalileanInnerContactRoot 半影内切：模型穿越时刻已全入影（值为负）时，入影侧向后、出影侧向前找；尚未全入则反向。
+func refineJupiterGalileanInnerContactRoot(modelCrossingJD float64, ingress bool, target func(jd float64) float64) (float64, bool) {
+	value := target(modelCrossingJD)
+	if !isFinite(value) {
+		return math.NaN(), false
+	}
+	inside := value < 0
+	direction := 1
+	if ingress == inside {
+		direction = -1
+	}
+	return refineJupiterGalileanContactRoot(modelCrossingJD, direction, target)
 }
 
 func bisectJupiterGalileanContactRoot(
@@ -561,14 +646,15 @@ func jupiterGalileanEclipseSignedDistanceAt(jd float64, satellite int, penumbra 
 	return ellipseSignedDistance(xSunAU/radiusAU, ySunAU/radiusAU, scale, context.sunMinorRadius*scale), true
 }
 
+// jupiterGalileanSatelliteRadiusJupiterRadii 返回卫星球半径与木星赤道半径之比。
 func jupiterGalileanSatelliteRadiusJupiterRadii(satellite int) float64 {
 	switch satellite {
 	case 1:
-		return 1821.6 / jupiterGalileanEquatorialRadiusKM
+		return 1829.4 / jupiterGalileanEquatorialRadiusKM
 	case 2:
-		return 1560.8 / jupiterGalileanEquatorialRadiusKM
+		return 1562.6 / jupiterGalileanEquatorialRadiusKM
 	case 3:
-		return 2634.1 / jupiterGalileanEquatorialRadiusKM
+		return 2631.2 / jupiterGalileanEquatorialRadiusKM
 	case 4:
 		return 2410.3 / jupiterGalileanEquatorialRadiusKM
 	default:

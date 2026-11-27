@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/starainrt/astro/basic"
 	"github.com/starainrt/astro/internal/ephem"
 )
 
@@ -67,6 +68,34 @@ func TestType2StateCoverageAndBoundary(t *testing.T) {
 	_, _, err = spk.State(Mars, Sun, spkJ2000+11/spkSecondsDay)
 	if err != ephem.ErrOutOfRange {
 		t.Fatalf("out-of-range error = %v", err)
+	}
+}
+
+func TestSPKSurfaceEventsSegmentGapSynthetic(t *testing.T) {
+	var segments []testSPKSegment
+	for _, span := range [][2]float64{{.01, .33}, {.334, 5}} {
+		start, end := span[0]*spkSecondsDay, span[1]*spkSecondsDay
+		segments = append(segments, testSPKSegment{target: Mars, center: Sun, frame: 1, typ: 3, start: start, end: end,
+			words: type3Words((start+end)/2, (end-start)/2, []float64{225000000, 0, 0}, []float64{0, 2000000 / spkSecondsDay, 0}),
+		})
+	}
+	file, err := Open(writeTestSPK(t, binary.LittleEndian, "LTL-IEEE", segments...))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer file.Close()
+	observer := basic.BodyObserver{Body: basic.SkyMars}
+	for _, engine := range []ephem.Engine{file, ephem.NewStack(file)} {
+		instance := ephem.NewInstance(engine)
+		if _, err := basic.SurfacePositionAtWithInstance(basic.SkySun, observer, spkJ2000+.332, instance); err != ephem.ErrOutOfRange {
+			t.Fatalf("expected missing Mars state, got %v", err)
+		}
+		if events, _, err := basic.SurfaceEventsWithInstance(basic.SkySun, observer, spkJ2000+.02, spkJ2000+1.04, basic.SurfaceOptions{}, instance); len(events) != 0 || err != ephem.ErrOutOfRange {
+			t.Errorf("batch crossed SPK gap: %d events, %v", len(events), err)
+		}
+		if event, err := basic.NextSurfaceEventWithInstance(basic.SkySun, observer, basic.SurfaceRise, spkJ2000+.02, basic.SurfaceOptions{}, instance); err != ephem.ErrOutOfRange {
+			t.Errorf("Next crossed SPK gap: %+v, %v", event, err)
+		}
 	}
 }
 

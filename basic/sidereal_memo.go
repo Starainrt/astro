@@ -7,8 +7,6 @@ import (
 )
 
 // 固定容量缓存以 ΔT 世代区分模型，RWMutex 保护宿主多线程访问。
-const siderealMemoBits = 14
-
 const siderealMemoSize = 1 << siderealMemoBits
 
 type siderealMemoEntry struct {

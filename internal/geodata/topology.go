@@ -28,6 +28,15 @@ func PolylineSegments(points []GeoPoint, view ClipView) [][]GeoPoint {
 
 // PolygonFragments 将地理多边形裁剪到选定地图范围 / PolygonFragments clips a geographic polygon to the selected map extent.
 func PolygonFragments(points []GeoPoint, view ClipView) [][]GeoPoint {
+	return polygonFragments(points, view, stablePolygonArea)
+}
+
+// LegacyPolygonFragments 保留既有图件的碎片取舍 / preserves fragment selection for existing charts.
+func LegacyPolygonFragments(points []GeoPoint, view ClipView) [][]GeoPoint {
+	return polygonFragments(points, view, signedPolygonArea)
+}
+
+func polygonFragments(points []GeoPoint, view ClipView, signedArea func([]GeoPoint) float64) [][]GeoPoint {
 	if len(points) < 3 {
 		return nil
 	}
@@ -53,9 +62,9 @@ func PolygonFragments(points []GeoPoint, view ClipView) [][]GeoPoint {
 		return nil
 	}
 	if shift := equirectangularSeamShift(view); shift != 0 {
-		return splitPolygonAtSeam(points, shift)
+		return splitPolygonAtSeam(points, shift, signedArea)
 	}
-	return splitPolygonAntimeridian(points)
+	return splitPolygonAntimeridian(points, signedArea)
 }
 
 // prepareTopologyPoints 校验裁剪输入：NaN 与 ±Inf 直接拒绝，经度超出 ±180 时按 360 取模归一化
@@ -170,7 +179,7 @@ func clipPolygonHemisphere(points []GeoPoint, hemisphere float64) []GeoPoint {
 	return clipPolygon(points, inside, hemisphereIntersection)
 }
 
-func splitPolygonAntimeridian(points []GeoPoint) [][]GeoPoint {
+func splitPolygonAntimeridian(points []GeoPoint, signedArea func([]GeoPoint) float64) [][]GeoPoint {
 	unwrapped := make([]GeoPoint, len(points))
 	unwrapped[0] = points[0]
 	for index := 1; index < len(points); index++ {
@@ -206,7 +215,7 @@ func splitPolygonAntimeridian(points []GeoPoint) [][]GeoPoint {
 		for index := range clipped {
 			clipped[index].Longitude -= 360 * float64(world)
 		}
-		if math.Abs(signedPolygonArea(clipped)) < 1e-12 {
+		if math.Abs(signedArea(clipped)) < 1e-12 {
 			// 边恰好落在日界线上的多边形可能在相邻世界各输出一次 / A polygon whose edge lies exactly on the antimeridian can be
 			// 可能在相邻世界各输出一次；丢弃重复的 / emitted once for each adjacent world. Drop the duplicate
 			// 零面积片段后再做 GeoJSON 环验证 / zero-area fragment before GeoJSON ring validation.
@@ -244,8 +253,8 @@ func closePoleEnclosingPolygon(points []GeoPoint) []GeoPoint {
 	south := appendPoleClosure(points, closure, first, -90)
 	northInside := sphericalPolygonContainsOrTouches(points, GeoPoint{Longitude: first, Latitude: 90})
 	southInside := sphericalPolygonContainsOrTouches(points, GeoPoint{Longitude: first, Latitude: -90})
-	northArea := math.Abs(signedPolygonArea(north))
-	southArea := math.Abs(signedPolygonArea(south))
+	northArea := math.Abs(stablePolygonArea(north))
+	southArea := math.Abs(stablePolygonArea(south))
 	if northInside == southInside && math.Abs(northArea-southArea) <= 1e-12 {
 		return points
 	}
@@ -325,13 +334,23 @@ func appendPoleClosure(points []GeoPoint, closure, first, poleLatitude float64) 
 }
 
 func signedPolygonArea(points []GeoPoint) float64 {
-	if len(points) < 3 {
-		return 0
-	}
 	area := 0.0
 	for index, point := range points {
 		next := points[(index+1)%len(points)]
 		area += point.Longitude*next.Latitude - next.Longitude*point.Latitude
+	}
+	return area / 2
+}
+
+func stablePolygonArea(points []GeoPoint) float64 {
+	if len(points) < 3 {
+		return 0
+	}
+	area := 0.0
+	origin := points[0]
+	for index, point := range points {
+		next := points[(index+1)%len(points)]
+		area += (point.Longitude-origin.Longitude)*(next.Latitude-origin.Latitude) - (next.Longitude-origin.Longitude)*(point.Latitude-origin.Latitude)
 	}
 	return area / 2
 }
@@ -453,8 +472,8 @@ func splitPolylineAtSeam(points []GeoPoint, shift float64) [][]GeoPoint {
 }
 
 // splitPolygonAtSeam 与 splitPolylineAtSeam 同理，供多边形使用。
-func splitPolygonAtSeam(points []GeoPoint, shift float64) [][]GeoPoint {
-	fragments := splitPolygonAntimeridian(rotateLongitudes(points, -shift))
+func splitPolygonAtSeam(points []GeoPoint, shift float64, signedArea func([]GeoPoint) float64) [][]GeoPoint {
+	fragments := splitPolygonAntimeridian(rotateLongitudes(points, -shift), signedArea)
 	for _, fragment := range fragments {
 		unshiftLongitudesInPlace(fragment, shift)
 	}
@@ -473,15 +492,7 @@ func rotateLongitudes(points []GeoPoint, shift float64) []GeoPoint {
 // unshiftLongitudesInPlace 把接缝坐标系的分段转回地图窗口，结果落在 [shift-180, shift+180]。
 // 窗口两端是同一条接缝经线：分段落在 +180 的点贴的是右边缘，折回 -180 会让闭合边横穿整幅图。
 func unshiftLongitudesInPlace(points []GeoPoint, shift float64) {
-	left := shift - 180
 	for index := range points {
-		value := points[index].Longitude + shift
-		for value < left {
-			value += 360
-		}
-		for value > left+360 {
-			value -= 360
-		}
-		points[index].Longitude = value
+		points[index].Longitude += shift
 	}
 }

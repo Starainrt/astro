@@ -22,7 +22,7 @@ var (
 
 func planetViews() []planetView {
 	planetViewsOnce.Do(func() {
-		planetViewsCache, planetViewsErr = buildPlanetViews(planetRawData)
+		planetViewsCache, planetViewsErr = buildPlanetViews(planetRawTable())
 	})
 	if planetViewsErr != nil {
 		panic(planetViewsErr)

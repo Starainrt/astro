@@ -256,7 +256,7 @@ func lunarEclipseVisibilityPath(value time.Time, frame svgmap.Frame) (string, []
 // lunarEclipseGeoPolygonPath 把经纬度环投影成 SVG 面路径，反经线与画布边缘按共享片段切开。
 func lunarEclipseGeoPolygonPath(boundary []svgmap.GeoPoint, frame svgmap.Frame) string {
 	var builder strings.Builder
-	for _, fragment := range svgmap.PolygonFragments(boundary, frame.Clip()) {
+	for _, fragment := range geodata.LegacyPolygonFragments(boundary, frame.Clip()) {
 		if frame.IsPolar() {
 			fragment = lunarEclipsePolarHorizonClosure(fragment)
 		}

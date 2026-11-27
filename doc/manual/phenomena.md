@@ -1,256 +1,241 @@
-# 通用天象与偕日可见
+# 通用天象搜索
 
 [English](en/phenomena.md) | [返回 README](../../README.md)
 
-`phenomena` 包按地心视黄经、视黄纬搜索任意两天体的事件，计算行星与恒星的晨昏始见、末见，另外提供任意高度升落和近日点、远日点、过交点。包级入口使用进程当前的星历模型，也可以用 `ctx.Phenomena()` 固定星历实例；只有恒星的任意高度升落按传入的视坐标计算，不读星历。
+`phenomena` 包提供不绑定特定天体包的通用天象搜索接口，涵盖黄经穿越、相位（合/冲/方照）、留、最近角距、轨道近远日点与交点、任意高度角穿越、偕日可见以及跨行星表面观测。
 
 ## 目录
 
-- [快速示例](#快速示例)
-- [天体对事件](#天体对事件)
-- [恒星坐标](#恒星坐标)
-- [偕日可见](#偕日可见)
-- [任意高度升落](#任意高度升落)
-- [近日点、远日点与过交点](#近日点远日点与过交点)
-- [API 参考](#api-参考)
-- [参数与返回值约定](#参数与返回值约定)
+- [基本示例](#基本示例)
+- [主要功能](#主要功能)
+  - [黄经穿越、相位与留](#黄经穿越相位与留)
+  - [近日点、远日点与轨道交点](#近日点远日点与轨道交点)
+  - [任意高度角穿越](#任意高度角穿越)
+  - [偕日可见](#偕日可见)
+  - [跨行星表面观测](#跨行星表面观测)
+- [API 概览](#api-概览)
+- [约定与限制](#约定与限制)
 
-## 快速示例
+## 基本示例
 
-```go
-start := time.Date(2020, 10, 1, 0, 0, 0, 0, time.UTC)
-end := time.Date(2021, 3, 1, 0, 0, 0, 0, time.UTC)
-
-events := phenomena.ClosestApproaches(phenomena.Jupiter, phenomena.Saturn, 1, start, end)
-fmt.Println(events[0].Time.UTC().Format("2006-01-02 15:04"), fmt.Sprintf("%.4f", events[0].Value))
-```
-
-```text
-2020-12-21 18:21 0.1018
-```
-
-`ClosestApproaches` 返回窗口内两天体角距的**局部极小**，`Value` 是当时的角距（度）。窗口内没有小于 `maxSeparation` 的极小值时返回空切片。
-
-固定星历实例时换成模块方法：
+搜索 2026 年春分、木星近月以及 2025–2028 年火星冲日：
 
 ```go
-ctx, err := astro.NewContext(astro.ModelLegacy)
-if err != nil {
-	panic(err)
-}
-events = ctx.Phenomena().ClosestApproaches(phenomena.Jupiter, phenomena.Saturn, 1, start, end)
-```
+package main
 
-## 天体对事件
+import (
+	"fmt"
+	"time"
 
-| 入口 | 事件 | `Event.Value` |
-| --- | --- | --- |
-| `LongitudeCrossings(body, lon, start, end)` | 视黄经经过 `lon` | 事件时刻的视黄经（度） |
-| `Stations(body, start, end)` | 视黄经的留（行星） | 留时的视黄经（度） |
-| `AspectCrossings(a, b, angle, start, end)` | `lon(a) − lon(b) = angle`；`0` 为黄经合，`180` 为冲 | 实际的黄经差（度） |
-| `ClosestApproaches(a, b, max, start, end)` | 两天体角距的局部极小 | 角距（度） |
-| `StarApproaches(body, star, max, start, end)` | 天体与恒星角距的局部极小 | 角距（度） |
+	"github.com/starainrt/astro/phenomena"
+)
 
-各入口只接受上表列出的参数，结果按时间升序返回。各行星包里按赤经定义的留与这里按黄经定义的留口径不同，时刻可差数小时。
+func main() {
+	start := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	end := time.Date(2027, 1, 1, 0, 0, 0, 0, time.UTC)
 
-```go
-// 2026 年前两次水星留
-stations := phenomena.Stations(phenomena.Mercury,
-	time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC), time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC))
-for _, e := range stations {
-	fmt.Println(e.Time.UTC().Format("01-02 15:04"), fmt.Sprintf("%.3f", e.Value))
+	// 太阳视黄经穿越 0°（春分）
+	vernal := phenomena.LongitudeCrossings(phenomena.Sun, 0, start, end)
+	fmt.Printf("2026 春分: %s UTC\n", vernal[0].Time.Format("2006-01-02 15:04:05"))
+
+	// 木星与月球在 5° 以内的最近角距（2026 年 1–2 月）
+	approaches := phenomena.ClosestApproaches(phenomena.Jupiter, phenomena.Moon, 5,
+		start, time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC))
+	for _, e := range approaches {
+		fmt.Printf("木星近月: %s UTC  角距 %.2f°\n", e.Time.Format("2006-01-02 15:04:05"), e.Value)
+	}
+
+	// 火星冲日（火星与太阳黄经差 180°）
+	opps := phenomena.AspectCrossings(phenomena.Mars, phenomena.Sun, 180,
+		time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
+		time.Date(2028, 1, 1, 0, 0, 0, 0, time.UTC))
+	for _, e := range opps {
+		fmt.Printf("火星冲日: %s UTC\n", e.Time.Format("2006-01-02 15:04:05"))
+	}
 }
 ```
 
-```text
-02-26 06:48 352.565
-03-20 19:32 338.491
-```
-
-```go
-// 太阳视黄经经过 0°（春分）
-crossings := phenomena.LongitudeCrossings(phenomena.Sun, 0,
-	time.Date(2026, 3, 18, 0, 0, 0, 0, time.UTC), time.Date(2026, 3, 24, 0, 0, 0, 0, time.UTC))
-fmt.Println(crossings[0].Time.UTC().Format("2006-01-02 15:04"))
-```
+输出：
 
 ```text
-2026-03-20 14:45
+2026 春分: 2026-03-20 14:45:57 UTC
+木星近月: 2026-01-03 23:14:28 UTC  角距 3.61°
+木星近月: 2026-01-31 03:39:08 UTC  角距 3.78°
+木星近月: 2026-02-27 07:32:19 UTC  角距 3.91°
+火星冲日: 2025-01-16 02:38:35 UTC
+火星冲日: 2027-02-19 15:50:55 UTC
 ```
 
-## 恒星坐标
+返回时刻保留 `start` 的时区；查询窗口内无命中事件时返回空切片。通过 `ctx.Phenomena()` 可绑定显式星历实例。
 
-行星与恒星的角距、恒星偕日可见都要传入 `StarCoordinate`，内嵌 9100 星表可以直接查：
+## 主要功能
 
-| 入口 | 输入 |
-| --- | --- |
-| `StarCoordinateByName(name)` | 星表中文名/别名或英文常用名，例如 `"天狼星"`、`"sirius"`；同名多星返回 `ErrStarNameAmbiguous` |
-| `StarCoordinateByHR(hr)` | HR 编号 |
-| `StarCoordinateFromStarData(star)` | `star.StarDataByHR` 等取到的星表记录 |
+### 黄经穿越、相位与留
+
+- `LongitudeCrossings(body, deg, start, end)`：天体地心视黄经穿越指定角度（太阳每 15° 对应节气）。
+- `AspectCrossings(a, b, angle, start, end)`：两天体视黄经差 `λ(a) - λ(b)` 穿越指定角度（`0°` 为合、`180°` 为冲、`90°`/`270°` 为弦或方照）。
+- `Stations(body, start, end)`：行星视黄经速率过零的留，`Event.Value` 为留时视黄经（度）。
+- `StarApproaches(body, star, maxSep, start, end)`：天体接近指定恒星；恒星坐标可通过 `StarCoordinateByName` / `StarCoordinateByHR` 从内置星表构造。
 
 ```go
-star, err := phenomena.StarCoordinateByName("天狼星")
-fmt.Println(err, star.ID, fmt.Sprintf("%.6f %.6f %.2f %.2f", star.RA, star.Dec,
-	star.ProperMotionRACosDecMasPerYear, star.ProperMotionDecMasPerYear))
-```
+start := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+end := time.Date(2026, 5, 1, 0, 0, 0, 0, time.UTC)
 
-```text
-<nil> 天狼 101.287083 -16.716111 -553.00 -1205.00
-```
-
-`StarCoordinateByName` 遇到同名多星会返回 `phenomena.ErrStarNameAmbiguous`，未找到返回 `phenomena.ErrStarNotFound`；两者都可用 `errors.Is` 判断。重名时先用 `star.StarDataByNameIn(name, region)` 取到唯一星表记录，再交给 `StarCoordinateFromStarData`：
-
-```go
-data, err := star.StarDataByNameIn("杵增一", "危宿")
-if err != nil {
-	panic(err)
-}
-coord, err := phenomena.StarCoordinateFromStarData(data)
-if err != nil {
-	panic(err)
+for _, s := range phenomena.Stations(phenomena.Mercury, start, end) {
+	fmt.Printf("水星留: %s UTC（视黄经 %.2f°）\n", s.Time.Format("2006-01-02 15:04:05"), s.Value)
 }
 ```
 
-`RA`、`Dec` 为度，`Epoch` 与 `Frame` 必填；自行字段（`ProperMotionRACosDecMasPerYear` 等）按星表常见的 `dRA·cos(Dec)` 约定，单位毫角秒/年。`ParallaxMas`（或等价的 `DistanceLightYear`）给出距离，`RadialVelocityKmPerSecond` 给出视向速度；距离缺失时按二维自行传播，有距离时才计入视向速度。
+输出：
 
-## 偕日可见
+```text
+水星留: 2026-02-26 06:48:10 UTC（视黄经 352.57°）
+水星留: 2026-03-20 19:32:51 UTC（视黄经 338.49°）
+```
 
-`PlanetHeliacalEvents(body, start, end, lon, lat, options)` 与 `StarHeliacalEvents(star, magnitude, start, end, lon, lat, options)` 逐日扫描太阳高度 −18° 到 0° 的晨昏时段，按天光亮度模型求肉眼极限星等，再与目标视星等比较（行星用 Mallama & Hilton 2018 星等），返回四类事件：
+### 近日点、远日点与轨道交点
 
-| 常量 | 含义 |
-| --- | --- |
-| `HeliacalMorningFirst` | 晨始见（偕日升） |
-| `HeliacalMorningLast` | 晨末见 |
-| `HeliacalEveningFirst` | 昏始见 |
-| `HeliacalEveningLast` | 昏末见（偕日落） |
-
-`HeliacalEvent` 中 `Time` 是当次晨昏的最佳可见时刻，`TargetAltitude`、`SunAltitude` 是当时目标与太阳的几何高度（度），`Margin` 是极限星等减目标星等。
-
-| `HeliacalOptions` | 默认 | 说明 |
-| --- | --- | --- |
-| `ExtinctionCoefficient` | `0.25` | 大气消光，星等/大气质量 |
-| `MinTargetAltitude` | `0.5` | 目标最低几何高度（度） |
-| `Moonlight` | `false` | 计入月光散射（Krisciunas–Schaefer） |
+- `Apsides(body, start, end)`：日心距离极值（`Perihelion` / `Aphelion`），支持 `Earth` 及七大行星。
+- `Nodes(body, start, end)`：行星日心黄纬过零的升交点（`AscendingNode`）与降交点（`DescendingNode`）。
 
 ```go
-events := phenomena.PlanetHeliacalEvents(phenomena.Venus,
-	time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC), time.Date(2025, 12, 31, 0, 0, 0, 0, time.UTC),
-	31.23, 30.04, phenomena.HeliacalOptions{})
-for _, e := range events {
-	fmt.Println(e.Kind, e.Time.UTC().Format("2006-01-02"), fmt.Sprintf("margin=%.2f", e.Margin))
+y2026 := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+y2027 := time.Date(2027, 1, 1, 0, 0, 0, 0, time.UTC)
+
+for _, a := range phenomena.Apsides(phenomena.Earth, y2026, y2027) {
+	label := "远日点"
+	if a.Kind == phenomena.Perihelion {
+		label = "近日点"
+	}
+	fmt.Printf("地球%s: %s UTC  日心距 %.6f AU\n", label, a.Time.Format("2006-01-02 15:04:05"), a.DistanceAU)
 }
 ```
 
-```text
-3 2025-03-18 margin=0.10
-0 2025-03-25 margin=0.58
-1 2025-12-01 margin=0.10
-```
-
-`Kind` 打印出来是常量序号，判断时用常量本身比较。`LimitingMagnitude(targetAltitude, sunAltitude, separation, extinction)` 单独给出某一时刻无月夜的极限星等，与事件判定同源：
-
-```go
-fmt.Println(fmt.Sprintf("%.3f", phenomena.LimitingMagnitude(20, -12, 60, 0.25)))
-```
+输出：
 
 ```text
-3.408
+地球近日点: 2026-01-03 17:15:43 UTC  日心距 0.983302 AU
+地球远日点: 2026-07-06 17:30:19 UTC  日心距 1.016644 AU
 ```
 
-结果对消光系数敏感，可见日期差一两天属正常。
+### 任意高度角穿越
 
-## 任意高度升落
-
-`AltitudeCrossing(body, date, lon, lat, height, altitude, options)` 求日、月或行星在 `date` 所在**当地民用日**内首次穿过视高度 `altitude` 的升、落时刻。`StarAltitudeCrossing(date, ra, dec, lon, lat, altitude, options)` 对恒星视坐标做同样计算，它不读星历，也没有模块方法。
-
-| `AltitudeOptions` | 默认 | 说明 |
-| --- | --- | --- |
-| `Limb` | `LimbUpper` | 日月取上缘，也可取 `LimbCenter`、`LimbLower`；行星与恒星忽略 |
-| `PressureHPa` / `TemperatureC` | 标准大气（`0` 值） | 指定实测气象 |
-| `NoRefraction` | `false` | 为 `true` 时按几何高度比较 |
-
-| `AltitudeCrossingResult` | 说明 |
-| --- | --- |
-| `Rise`、`Set` | 升、落时刻，没有事件时为零值 |
-| `HasRise`、`HasSet` | 当天是否存在升、落 |
-| `State` | `AltitudeCrosses`、`AltitudeAlwaysAbove`、`AltitudeAlwaysBelow` 或 `AltitudeTangent`（极值与目标高度相差不足 `1″`） |
-| `MinResidual`、`MaxResidual` | 当天高度与目标高度之差的最小、最大值（度） |
+`AltitudeCrossing` 查询太阳、月球或行星在指定当地日内升、落穿越任意目标高度角的时刻（如 `-6°`/`-12°`/`-18°` 晨昏蒙影或自定义遮挡仰角）；恒星对应 `StarAltitudeCrossing`。
 
 ```go
 cst := time.FixedZone("CST", 8*3600)
-r, err := phenomena.AltitudeCrossing(phenomena.Sun, time.Date(2026, 3, 21, 12, 0, 0, 0, cst),
-	116.4, 39.9, 0, -18, phenomena.AltitudeOptions{})
-fmt.Println(err, r.State, r.Rise.In(cst).Format("15:04:05"), r.Set.In(cst).Format("15:04:05"),
-	fmt.Sprintf("%.3f %.3f", r.MinResidual, r.MaxResidual))
-```
+day := time.Date(2026, 6, 21, 0, 0, 0, 0, cst)
 
-```text
-<nil> 0 04:44:54 19:59:16 -31.806 68.602
-```
-
-```go
-// 北纬 89° 极昼：太阳整天都在 -18° 之上
-polar, err := phenomena.AltitudeCrossing(phenomena.Sun, time.Date(2026, 6, 21, 12, 0, 0, 0, time.UTC),
-	0, 89, 0, -18, phenomena.AltitudeOptions{})
-fmt.Println(err, polar.State, polar.HasRise, polar.HasSet, fmt.Sprintf("%.3f", polar.MinResidual))
-```
-
-```text
-<nil> 1 false false 40.737
-```
-
-```go
-// 天狼星穿过 -0.833° 的升落
-sirius, err := phenomena.StarAltitudeCrossing(time.Date(2026, 1, 1, 12, 0, 0, 0, cst),
-	star.RA, star.Dec, 116.4, 39.9, -0.833, phenomena.AltitudeOptions{Limb: phenomena.LimbCenter})
-fmt.Println(err, sirius.State, sirius.Rise.In(cst).Format("15:04:05"), sirius.Set.In(cst).Format("15:04:05"))
-```
-
-```text
-<nil> 0 19:04:31 05:27:52
-```
-
-`height` 只影响月球视差。需要以下沉地平为基准时，由调用方从 `altitude` 中减去地平俯角。天体不是日、月或行星（例如 `phenomena.Earth`），或恒星视坐标不是有限值时，返回 `basic.ErrInvalidObservationInput`。
-
-## 近日点、远日点与过交点
-
-| 常量 | 事件 |
-| --- | --- |
-| `Perihelion`、`Aphelion` | 近日点、远日点 |
-| `AscendingNode`、`DescendingNode` | 穿过历元平黄道的升交点、降交点 |
-
-`Apsides(body, start, end)` 接受行星或地球（`phenomena.Earth`），`Nodes(body, start, end)` 只接受行星，传地球返回空切片。`OrbitalEvent` 的 `Time` 是事件时刻，`Kind` 是上表常量，`DistanceAU` 是该时刻的日心距（AU）。
-
-```go
-apsides := phenomena.Apsides(phenomena.Earth,
-	time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC), time.Date(2027, 1, 1, 0, 0, 0, 0, time.UTC))
-for _, e := range apsides {
-	fmt.Println(e.Kind, e.Time.UTC().Format("2006-01-02 15:04"), fmt.Sprintf("%.9f AU", e.DistanceAU))
+res, err := phenomena.AltitudeCrossing(phenomena.Sun, day, 116.4, 39.9, 0, -6, phenomena.AltitudeOptions{})
+if err != nil {
+	log.Fatal(err)
 }
-nodes := phenomena.Nodes(phenomena.Jupiter,
-	time.Date(2018, 1, 1, 0, 0, 0, 0, time.UTC), time.Date(2030, 1, 1, 0, 0, 0, 0, time.UTC))
-for _, e := range nodes {
-	fmt.Println(e.Kind, e.Time.UTC().Format("2006-01-02 15:04"), fmt.Sprintf("%.6f AU", e.DistanceAU))
+fmt.Printf("北京夏至民用晨昏 (-6°): 晨始 %s  昏终 %s\n",
+	res.Rise.Format("15:04:05"), res.Set.Format("15:04:05"))
+```
+
+输出：
+
+```text
+北京夏至民用晨昏 (-6°): 晨始 04:11:26  昏终 20:20:51
+```
+
+`res.State` 区分 `AltitudeCrosses`、`AltitudeAlwaysAbove` 与 `AltitudeAlwaysBelow`，`HasRise` / `HasSet` 标识单侧穿越。默认选项按天体中心且不含折射，可通过 `AltitudeOptions` 指定 `Limb`（`LimbCenter`/`LimbUpper`/`LimbLower`）及 `Refraction: true`。
+
+### 偕日可见
+
+`PlanetHeliacalEvents` 与 `StarHeliacalEvents` 估算行星或恒星在晨昏微光中的首次可见与最后可见时刻：
+
+```go
+start := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+end := time.Date(2026, 5, 1, 0, 0, 0, 0, time.UTC)
+
+name := map[phenomena.HeliacalEventKind]string{
+	phenomena.HeliacalMorningFirst: "晨始见（偕日升）",
+	phenomena.HeliacalMorningLast:  "晨末见",
+	phenomena.HeliacalEveningFirst: "昏始见",
+	phenomena.HeliacalEveningLast:  "昏末见（偕日落）",
+}
+
+for _, e := range phenomena.PlanetHeliacalEvents(phenomena.Mercury, start, end, 116.4, 39.9, phenomena.HeliacalOptions{}) {
+	fmt.Printf("水星 %s: %s UTC  目标高度 %.1f°  太阳高度 %.1f°  余量 %.2f 等\n",
+		name[e.Kind], e.Time.Format("2006-01-02 15:04"), e.TargetAltitude, e.SunAltitude, e.Margin)
 }
 ```
 
+输出：
+
 ```text
-0 2026-01-03 09:15 0.983302049 AU
-1 2026-07-06 09:30 1.016643962 AU
-3 2020-02-25 18:09 5.207056 AU
-2 2025-09-19 11:58 5.174312 AU
+水星 昏始见: 2026-02-08 10:20 UTC  目标高度 3.7°  太阳高度 -8.0°  余量 0.10 等
+水星 昏末见（偕日落）: 2026-02-25 10:50 UTC  目标高度 5.6°  太阳高度 -10.2°  余量 0.44 等
 ```
 
-极值取日心距本身：太阳绕质心的反射运动会让天王星、海王星的日心距在近日点附近出现多个小极值，同一段出现多个极小值时只返回前后各 `0.3` 个轨道周期内日心距最小的一个，与吻切轨道近日点可相差数年。
+`Margin` 为天空极限星等与目标视星等之差；可通过 `HeliacalOptions.ExtinctionCoefficient` 指定 V 波段消光系数（可配合 `formula.ExtinctionSchaefer` 计算），通过 `VisualThreshold` 调整判据阈值。
 
-## API 参考
+### 跨行星表面观测
 
-`ctx.Phenomena()` 的方法与同名包级函数签名一致（`StarAltitudeCrossing` 除外）；`NewWithInstance` 用给定星历实例创建模块。各入口的参数与单位见上文各节。
+支持以水星至海王星任意行星表面（气态行星取 1 bar 参考层）为观测点，计算当地恒星时/太阳时、目标站心高度方位以及无折射升落与中天事件。以下以火星盖尔撞击坑（东经 `137.4°`，南纬 `4.6°`）为例：
 
-## 参数与返回值约定
+```go
+obs := phenomena.BodyObserver{
+	Body:          phenomena.Mars,
+	EastLongitude: 137.4, // 东经为正（度）
+	Latitude:      -4.6,  // 大地纬度（度）
+}
+t := time.Date(2026, 11, 14, 0, 0, 0, 0, time.UTC)
 
-- 角度一律为度，`OrbitalEvent.DistanceAU` 为 AU，`StarHeliacalEvents` 的 `magnitude` 为 V 星等。
-- 时间参数按绝对时刻解释（读取其 UTC 字段），返回时刻换算到 `start`（升落类为 `date`）所在的时区。
-- 事件搜索没有结果时返回空切片，不返回错误；只有任意高度升落在输入非法时返回 `basic.ErrInvalidObservationInput`。
-- 事件搜索会用到星历，可以用模块方法固定模型；`StarAltitudeCrossing`、`StarCoordinate*` 与 `LimitingMagnitude` 与星历无关。
-- 行星视星等、赤经留等口径差异见[行星手册](planets.md)；日月升落与观测角语义见[太阳与月亮](sun-moon.md)。
+lt, err := phenomena.SurfaceLocalTimeAt(obs, t)
+if err != nil {
+	log.Fatal(err)
+}
+sunRise, err := phenomena.NextSurfaceRise(phenomena.Sun, obs, t, phenomena.SurfaceOptions{})
+if err != nil {
+	log.Fatal(err)
+}
+earthPos, err := phenomena.SurfacePositionAt(phenomena.Earth, obs, sunRise.Time)
+if err != nil {
+	log.Fatal(err)
+}
+
+fmt.Printf("火星盖尔坑真太阳时: %.2f h  平太阳时: %.2f h  太阳日长: %.5f 地球日\n",
+	lt.LocalTrueSolarTime, lt.LocalMeanSolarTime, lt.SolarDayLength)
+fmt.Printf("下次火星日出: %s UTC（当地真太阳时 %.2f h，方位 %.1f°）\n",
+	sunRise.Time.Format("2006-01-02 15:04:05"), sunRise.Local.LocalTrueSolarTime, sunRise.Position.Azimuth)
+fmt.Printf("此时从火星看地球: 高度 %.1f°  方位 %.1f°  距离 %.3f AU\n",
+	earthPos.Altitude, earthPos.Azimuth, earthPos.DistanceAU)
+```
+
+输出：
+
+```text
+火星盖尔坑真太阳时: 21.99 h  平太阳时: 22.43 h  太阳日长: 1.02749 地球日
+下次火星日出: 2026-11-14 08:15:55 UTC（当地真太阳时 6.04 h，方位 80.9°）
+此时从火星看地球: 高度 -35.7°  方位 66.7°  距离 1.322 AU
+```
+
+- 区间事件查询使用 `SurfaceEvents`；恒星目标使用 `StarSurfacePositionAt`、`StarSurfaceEvents` 及 `NextStarSurfaceRise/Set/Culmination`。
+- 火星 MSD / MTC 与快捷日出日落入口见[行星本地时间与木星旋转角](planets.md#行星本地时间与木星旋转角)。
+- 若输入为西经制图坐标或行星中心纬度，先经 `basic.PlanetographicToEastLongitude` / `basic.PlanetocentricToPlanetodeticLatitude` 转换。
+
+## API 概览
+
+| 分类 | 入口 | 说明 |
+| --- | --- | --- |
+| 天体常量 | `Sun`、`Moon`、`Mercury` … `Neptune`、`Earth` | `Earth` 仅适用于 `Apsides` 与跨行星观测目标 |
+| 黄经 / 相位 / 留 | `LongitudeCrossings`、`AspectCrossings`、`Stations` | 返回 `[]Event`（`Time` 与角量 `Value`） |
+| 最近角距 | `ClosestApproaches`、`StarApproaches` | 返回角距 `≤ maxSeparation`（度）的局部极小值 |
+| 轨道事件 | `Apsides`、`Nodes` | 返回 `[]OrbitalEvent`（含日心距 `DistanceAU`） |
+| 任意高度穿越 | `AltitudeCrossing`、`StarAltitudeCrossing` | 单日内穿过指定高度角的升落时刻与状态 |
+| 偕日可见 | `PlanetHeliacalEvents`、`StarHeliacalEvents`、`LimitingMagnitude` | 晨始见/晨末见/昏始见/昏末见及极限星等估算 |
+| 跨行星表面观测 | `SurfacePositionAt`、`SurfaceLocalTimeAt`、`SurfaceEvents`、`NextSurfaceRise/Set/Culmination` | 恒星版本带 `Star` 前缀；观测行星为水星至海王星 |
+| 恒星构造 | `StarCoordinateByName`、`StarCoordinateByHR`、`StarCoordinateFromStarData` | 由内置星表构造 `StarCoordinate` |
+
+## 约定与限制
+
+- **视位置与视差**：黄经穿越、相位、留与最近角距采用地心视位置。`AltitudeCrossing` 仅对月球计入站心视差；需扣除地平俯角时由调用方预先调整目标高度角。
+- **偕日可见**：基于经验天空亮度与消光公式（默认消光系数 `0.25 mag/airmass`），实际可见性受局地气象、光污染与观测条件影响，仅作窗口规划参考。
+- **跨行星表面观测**：
+  - 均为无折射几何模型（不含大气折射、地形遮挡与自转固有时）；`SurfaceOptions.UpperLimb`（默认 `true`）仅对太阳生效，其余天体与恒星按中心判定。
+  - `LocalTrueSolarTime` 与 `LocalMeanSolarTime` 的小时为当地太阳日的 1/24，`SolarDayLength` 的单位为地球日；`LocalSiderealTime` 与 `SiderealRotationAngle` 单位为**度**。
+  - 行星自转姿态采用 IAU 报告线性模型，近代约 ±500 年内最可靠（`Local.ModelValid` 标识有效年代）。水星轨道倾角接近零导致春分点退化；极昼/极夜超出扫描上限时 `NextSurfaceRise/Set` 返回 `ErrSurfaceEventNotFound`。
+  - 若事件 TT 时刻落在历史正闰秒（`23:59:60`）内，`time.Time` 无法精确表示该秒；需要严格 TT 时刻请使用 `basic.SurfaceEvents` / `basic.NextSurfaceEvent`。

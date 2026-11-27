@@ -16,6 +16,15 @@ const (
 	TimeScaleUT1 = basic.TimeScaleUT1
 )
 
+// EarthUTCDate 绝对时刻在地球 UTC 下的当天零点 / UTC midnight of the instant's civil date.
+func EarthUTCDate(t time.Time) time.Time {
+	if t.IsZero() {
+		return t
+	}
+	utc := t.UTC()
+	return time.Date(utc.Year(), utc.Month(), utc.Day(), 0, 0, 0, 0, time.UTC)
+}
+
 // LabelIn 把民用时刻换成该时标下的时刻值 / converts a civil instant to a value in one scale.
 func LabelIn(scale TimeScale, date time.Time) time.Time {
 	return basic.LabelIn(scale, date)

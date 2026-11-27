@@ -503,10 +503,14 @@ func openRing(points []geodata.GeoPoint) []geodata.GeoPoint {
 }
 
 func polygonArea(points []geodata.GeoPoint) float64 {
+	if len(points) < 3 {
+		return 0
+	}
 	area := 0.0
+	origin := points[0]
 	for index, point := range points {
 		next := points[(index+1)%len(points)]
-		area += point.Longitude*next.Latitude - next.Longitude*point.Latitude
+		area += (point.Longitude-origin.Longitude)*(next.Latitude-origin.Latitude) - (next.Longitude-origin.Longitude)*(point.Latitude-origin.Latitude)
 	}
 	return area / 2
 }

@@ -3,6 +3,7 @@ package geojson
 import (
 	eclipsecore "github.com/starainrt/astro/eclipse"
 	"github.com/starainrt/astro/mercury"
+	"github.com/starainrt/astro/satellite"
 	"github.com/starainrt/astro/venus"
 )
 
@@ -34,6 +35,31 @@ func MarshalLunarEclipseWithTimeMarkers(
 	options TimeMarkerOptions,
 ) ([]byte, error) {
 	return defaultModule.MarshalLunarEclipseWithTimeMarkers(info, boundaryPoints, options)
+}
+
+// MarshalSatelliteCoverage 编码瞬时卫星可见圈、夜区与目视可见区 / encode an instantaneous footprint, night region, and visual coverage.
+func MarshalSatelliteCoverage(coverage satellite.Coverage) ([]byte, error) {
+	return defaultModule.MarshalSatelliteCoverage(coverage)
+}
+
+// MarshalSatelliteCoverageSweep 编码带孔扫掠区、光照轨迹与输出时刻可见圈 / encode swept regions with holes, an illuminated track, and output footprints.
+func MarshalSatelliteCoverageSweep(sweep satellite.CoverageSweep, options SatellitePathOptions) ([]byte, error) {
+	return defaultModule.MarshalSatelliteCoverageSweep(sweep, options)
+}
+
+// MarshalSatelliteGroundTrack 编码带逐点时间的卫星地面轨迹 / encode a satellite ground track with per-point times.
+func MarshalSatelliteGroundTrack(points []satellite.GroundPoint, options SatellitePathOptions) ([]byte, error) {
+	return defaultModule.MarshalSatelliteGroundTrack(points, options)
+}
+
+// MarshalSatelliteTransitPath 编码凌现象带与可选站点图层 / encode a transit band and optional observing-site layers.
+func MarshalSatelliteTransitPath(path satellite.TransitPath, options SatellitePathOptions) ([]byte, error) {
+	return defaultModule.MarshalSatelliteTransitPath(path, options)
+}
+
+// MarshalSatelliteTransitShadow 编码瞬时凌现象足迹，无效快照为空集合 / encode an instantaneous transit footprint, empty for an invalid snapshot.
+func MarshalSatelliteTransitShadow(shadow satellite.TransitShadow) ([]byte, error) {
+	return defaultModule.MarshalSatelliteTransitShadow(shadow)
 }
 
 // MarshalSolarEclipse 将日食半影足迹和可选中心食带编码为 GeoJSON。

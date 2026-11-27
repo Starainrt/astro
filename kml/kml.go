@@ -132,6 +132,7 @@ type folder struct {
 type placemark struct {
 	Name         string        `xml:"name,omitempty"`
 	TimeStamp    *timeStamp    `xml:"TimeStamp,omitempty"`
+	TimeSpan     *timeSpan     `xml:"TimeSpan,omitempty"`
 	StyleURL     string        `xml:"styleUrl,omitempty"`
 	ExtendedData *extendedData `xml:"ExtendedData,omitempty"`
 	geometry
@@ -266,6 +267,8 @@ type element struct {
 	line  [][]float64
 	rings [][][]float64
 	when  string
+	times []string
+	span  *timeSpan
 }
 
 type kmlRoot struct {
@@ -488,16 +491,12 @@ func prepareFeature(feature rawFeature, timeScale string) (*preparedFeature, err
 		if !lineOnly || len(times) != len(elements) {
 			return nil, fmt.Errorf("times array (%d) does not align with %d line segments", len(times), len(elements))
 		}
-		for index := range elements {
-			when, err := normalizeWhen(times[index][0], timeScale)
+		trajectory := satelliteTrajectory(event, role)
+		for index, item := range elements {
+			err := prepared.addTimedLine(item, times[index], timeScale, trajectory)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("line segment %d: %w", index, err)
 			}
-			elements[index].when = when
-			prepared.timed = true
-			prepared.earliest = minTime(prepared.earliest, when)
-			prepared.latest = maxTime(prepared.latest, when)
-			prepared.groups = append(prepared.groups, []element{elements[index]})
 		}
 	case single != "":
 		when, err := normalizeWhen(single, timeScale)
@@ -518,9 +517,49 @@ func prepareFeature(feature rawFeature, timeScale string) (*preparedFeature, err
 	return prepared, nil
 }
 
+func (feature *preparedFeature) addTimedLine(item element, times []string, timeScale string, trajectory bool) error {
+	if !trajectory {
+		times = times[:1]
+	} else if len(times) != len(item.line) {
+		return fmt.Errorf("times do not align with coordinates")
+	}
+	var earliest, latest time.Time
+	for vertex, raw := range times {
+		when, err := normalizeWhen(raw, timeScale)
+		if err != nil {
+			return err
+		}
+		times[vertex] = when
+		earliest, latest = minTime(earliest, when), maxTime(latest, when)
+	}
+	item.when = times[0]
+	if trajectory {
+		item.times = times
+		item.span = &timeSpan{Begin: earliest.Format(time.RFC3339Nano), End: latest.Format(time.RFC3339Nano)}
+	}
+	feature.timed = true
+	if feature.earliest.IsZero() || earliest.Before(feature.earliest) {
+		feature.earliest = earliest
+	}
+	if feature.latest.IsZero() || latest.After(feature.latest) {
+		feature.latest = latest
+	}
+	feature.groups = append(feature.groups, []element{item})
+	return nil
+}
+
+func satelliteTrajectory(event, role string) bool {
+	switch event {
+	case "satellite-coverage", "satellite-sunlit", "satellite-penumbra", "satellite-umbra":
+		return role == "ground-track"
+	case "satellite-transit":
+		return role == "center-line" || role == "left-limit" || role == "right-limit"
+	}
+	return false
+}
+
 func placemarksFor(feature preparedFeature, styleID string, documentEntries map[string]string, noTimes, filled bool) ([]placemark, error) {
 	entries := encodeProperties(feature.props, true)
-	// times 是逐段时刻的嵌套数组：它随 TimeStamp 走，NoTimes 下也不该把坐标级数据抄一遍。
 	delete(entries, "times")
 	if feature.timed && !noTimes {
 		// time 已经变成 TimeStamp，不再重复写进 ExtendedData。
@@ -528,7 +567,13 @@ func placemarksFor(feature preparedFeature, styleID string, documentEntries map[
 	}
 	placemarks := make([]placemark, 0, len(feature.groups))
 	for _, group := range feature.groups {
-		value, err := geometryFor(group, filled)
+		var value geometry
+		var err error
+		if filled && feature.event == "satellite-coverage" && feature.role == "night-region" {
+			value, err = satelliteNightGeometry(group)
+		} else {
+			value, err = geometryFor(group, filled)
+		}
 		if err != nil {
 			return nil, err
 		}
@@ -536,21 +581,30 @@ func placemarksFor(feature preparedFeature, styleID string, documentEntries map[
 			continue
 		}
 		current := placemark{StyleURL: "#" + styleID, geometry: value}
+		var vertexTimes []string
 		if when := uniformWhen(group); when != "" {
 			if !noTimes {
-				current.TimeStamp = &timeStamp{When: when}
+				vertexTimes = group[0].times
+				current.TimeSpan = group[0].span
+				if current.TimeSpan == nil {
+					current.TimeStamp = &timeStamp{When: when}
+				}
 				current.Name = placemarkName(feature.props, group[0].when)
 			} else if label, ok := feature.props["label"].(string); ok && label != "" {
 				current.Name = label
 			}
 		}
-		if len(entries) > 0 {
+		if len(entries) > 0 || len(vertexTimes) > 0 {
 			local := map[string]string{}
 			for name, encoded := range entries {
 				if shared, ok := documentEntries[name]; ok && shared == encoded {
 					continue
 				}
 				local[name] = encoded
+			}
+			if len(vertexTimes) > 0 {
+				encoded, _ := json.Marshal(vertexTimes)
+				local["times"] = string(encoded)
 			}
 			if len(local) > 0 {
 				current.ExtendedData = &extendedData{Data: sortedDataEntries(local)}
@@ -790,6 +844,16 @@ func singleGeometry(item element, filled bool) (geometry, error) {
 		}
 		return geometry{Point: &point{AltitudeMode: "clampToGround", Coordinates: text}}, nil
 	case "LineString":
+		if len(item.times) > 0 {
+			positions, err := linePositions(item.line)
+			if err != nil {
+				return geometry{}, err
+			}
+			if !distinctLinePositions(positions) {
+				return geometry{Point: &point{AltitudeMode: "clampToGround", Coordinates: textForPositions(positions[:1])}}, nil
+			}
+			return geometry{LineString: &lineString{Tessellate: 1, AltitudeMode: "clampToGround", Coordinates: textForPositions(positions)}}, nil
+		}
 		parts, err := seamCutLine(item.line)
 		if err != nil {
 			return geometry{}, err
@@ -1189,10 +1253,14 @@ func equalPosition(a, b []float64) bool {
 }
 
 func signedArea(positions [][]float64) float64 {
+	if len(positions) < 3 {
+		return 0
+	}
 	area := 0.0
+	origin := positions[0]
 	for index, position := range positions {
 		next := positions[(index+1)%len(positions)]
-		area += position[0]*next[1] - next[0]*position[1]
+		area += (position[0]-origin[0])*(next[1]-origin[1]) - (next[0]-origin[0])*(position[1]-origin[1])
 	}
 	return area / 2
 }
@@ -1206,18 +1274,37 @@ func pointText(position []float64) (string, error) {
 }
 
 func lineText(line [][]float64) (string, error) {
+	positions, err := linePositions(line)
+	if err != nil {
+		return "", err
+	}
+	return textForPositions(positions), nil
+}
+
+func linePositions(line [][]float64) ([][]float64, error) {
 	if len(line) < 2 {
-		return "", fmt.Errorf("line requires at least two positions")
+		return nil, fmt.Errorf("line requires at least two positions")
 	}
 	positions := make([][]float64, 0, len(line))
 	for _, position := range line {
 		normalized, err := normalizePosition(position)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 		positions = append(positions, normalized)
 	}
-	return textForPositions(positions), nil
+	return positions, nil
+}
+
+// distinctLinePositions 报告已通过 lineText 校验的线是否经过至少两个不同地点（±180° 与极点经度视为同一处）。
+func distinctLinePositions(line [][]float64) bool {
+	first := line[0]
+	for _, position := range line[1:] {
+		if position[1] != first[1] || math.Abs(first[1]) != 90 && math.Remainder(position[0]-first[0], 360) != 0 {
+			return true
+		}
+	}
+	return false
 }
 
 func textForPositions(positions [][]float64) string {
@@ -1359,6 +1446,40 @@ func resolveStyle(event, role string, polygonal bool, options Options) Style {
 }
 
 func paletteStyle(event, role string) Style {
+	if role == "ground-track" {
+		switch event {
+		case "satellite-sunlit", "satellite-coverage":
+			return Style{LineColor: ColorYellow, LineWidth: 2}
+		case "satellite-penumbra":
+			return Style{LineColor: ColorOrange, LineWidth: 2}
+		case "satellite-umbra":
+			return Style{LineColor: "ff505050", LineWidth: 2}
+		}
+	}
+	if event == "satellite-coverage" {
+		switch role {
+		case "satellite-footprint", "coverage-sweep", "current-satellite-footprint":
+			return Style{LineColor: "ffff8040", FillColor: "40ff8040", LineWidth: 1.5}
+		case "satellite-visible", "visible-sweep":
+			return Style{LineColor: "ff889b32", FillColor: "40889b32", LineWidth: 1.5}
+		case "night-region":
+			return Style{LineColor: ColorGray, FillColor: "40808080", LineWidth: 1}
+		}
+	}
+	if event == "satellite-transit" {
+		switch role {
+		case "transit-band":
+			return Style{LineColor: ColorYellow, FillColor: yellowFill, LineWidth: 2}
+		case "center-line":
+			return Style{LineColor: ColorRed, LineWidth: 3}
+		case "left-limit", "right-limit":
+			return Style{LineColor: ColorOrange, LineWidth: 1}
+		case "target-horizon":
+			return Style{LineColor: ColorGray, LineWidth: 1}
+		case "current-transit-footprint":
+			return Style{LineColor: "ff00008b", FillColor: "4d00008b", LineWidth: 2}
+		}
+	}
 	switch role {
 	case "center-line":
 		return Style{LineColor: ColorBlack, LineWidth: 3}
@@ -1563,12 +1684,24 @@ func documentName(options Options, features []preparedFeature, earliest time.Tim
 
 func descriptionText(options Options, language, timeScale string, events map[string]bool) string {
 	transitOnly := len(events) == 1 && events[eventPlanetTransit]
-	transitMixed := events[eventPlanetTransit] && !transitOnly
+	satelliteTransitOnly := len(events) == 1 && events["satellite-transit"]
+	coverageEvents := 0
+	for _, event := range []string{"satellite-coverage", "satellite-sunlit", "satellite-penumbra", "satellite-umbra"} {
+		if events[event] {
+			coverageEvents++
+		}
+	}
+	satelliteCoverageOnly := coverageEvents > 0 && len(events) == coverageEvents
+	mixed := events[eventPlanetTransit] || events["satellite-transit"] || coverageEvents > 0
 	if language == "en" {
 		text := "Converted from GeoJSON. Layers are grouped by role; red: solar central band; black: center line; green: solar greatest-time isochrone; yellow: magnitude contours and occultation total/partial bands; orange: rise/set phase lines."
 		if transitOnly {
 			text = "Converted from GeoJSON. Layers are grouped by role; transit regions, C1/C4 apparent horizons, C1-C4 topocentric isochrones and greatest transit are kept in separate layers."
-		} else if transitMixed {
+		} else if satelliteTransitOnly {
+			text = "Converted from GeoJSON. Layers are grouped by role; yellow: satellite transit band; red: satellite transit center line; orange: left and right limits; gray: target horizon; dark red: current transit footprint."
+		} else if satelliteCoverageOnly {
+			text = "Converted from GeoJSON. Layers are grouped by role; blue: geometric coverage; teal: visual coverage; gray: night region. Ground tracks are yellow (sunlit), orange (penumbra) or dark gray (umbra)."
+		} else if mixed {
 			text = "Converted from GeoJSON. Layers are grouped by event and role."
 		}
 		if timeScale != "" {
@@ -1579,7 +1712,11 @@ func descriptionText(options Options, language, timeScale string, events map[str
 	text := "由 GeoJSON 转换而来。图层按 role 分组；红：日食中心带；黑：中心线；绿：日食食甚等时线；黄：食分线与掩星全掩/半掩带；橙：日出日落阶段线（初亏/食甚/复圆）。"
 	if transitOnly {
 		text = "由 GeoJSON 转换而来。图层按 role 分组；凌日可见分区、一触/四触视地平线、C1–C4 站心等时线与凌甚点分别成层。"
-	} else if transitMixed {
+	} else if satelliteTransitOnly {
+		text = "由 GeoJSON 转换而来。图层按 role 分组；黄：凌现象带；红：凌现象中心线；橙：左右限；灰：目标地平线；深红：瞬时凌现象足迹。"
+	} else if satelliteCoverageOnly {
+		text = "由 GeoJSON 转换而来。图层按 role 分组；蓝：几何可见区；青绿：目视可见区；灰：夜区。向阳、半影、本影轨迹分别为黄、橙、深灰。"
+	} else if mixed {
 		text = "由 GeoJSON 转换而来。图层按事件和 role 分组。"
 	}
 	if timeScale != "" {
@@ -1589,6 +1726,16 @@ func descriptionText(options Options, language, timeScale string, events map[str
 }
 
 var roleNames = map[string][2]string{
+	"satellite-footprint":         {"卫星可见圈", "Satellite footprint"},
+	"night-region":                {"夜区", "Night region"},
+	"satellite-visible":           {"目视可见区", "Visual coverage"},
+	"ground-track":                {"卫星地面轨迹", "Satellite ground track"},
+	"coverage-sweep":              {"扫掠可见区", "Coverage sweep"},
+	"visible-sweep":               {"扫掠目视区", "Visual coverage sweep"},
+	"current-satellite-footprint": {"当前卫星可见圈", "Current satellite footprint"},
+	"subsatellite-point":          {"星下点", "Subsatellite point"},
+	"observer":                    {"观测点", "Observer"},
+
 	"central-band":                {"中心带", "Central band"},
 	"central-shadow":              {"中心影", "Central shadow"},
 	"central-shadow-footprint":    {"中心影轮廓", "Central shadow footprint"},
@@ -1639,7 +1786,30 @@ var roleNames = map[string][2]string{
 	"c4-isochrone":                {"四触等时线", "C4 isochrones"},
 }
 
+var satelliteRoleNames = map[string][2]string{
+	"transit-band":              {"凌现象带", "Transit band"},
+	"start":                     {"凌始", "Transit start"},
+	"greatest":                  {"凌甚", "Greatest transit"},
+	"end":                       {"凌终", "Transit end"},
+	"left-limit":                {"左限", "Left limit"},
+	"right-limit":               {"右限", "Right limit"},
+	"observer":                  {"观测点", "Observer"},
+	"nearest-point":             {"最近点", "Nearest point"},
+	"nearest-connector":         {"最近点连线", "Nearest-point connector"},
+	"current-transit-footprint": {"当前凌现象足迹", "Current transit footprint"},
+	"current-transit-point":     {"当前中心点", "Current transit centre"},
+	"subsatellite-point":        {"星下点", "Subsatellite point"},
+}
+
 func localizedRole(event, role, language string) string {
+	if event == "satellite-transit" {
+		if name, ok := satelliteRoleNames[role]; ok {
+			if language == "en" {
+				return name[1]
+			}
+			return name[0]
+		}
+	}
 	if role == "greatest" && event == eventPlanetTransit {
 		if language == "en" {
 			return "Greatest transit"
@@ -1669,6 +1839,31 @@ func localizedRole(event, role, language string) string {
 
 func localizedEvent(event, language string) string {
 	switch event {
+	case "satellite-transit":
+		if language == "en" {
+			return "Satellite transit"
+		}
+		return "卫星凌现象"
+	case "satellite-coverage":
+		if language == "en" {
+			return "Satellite coverage"
+		}
+		return "卫星可见范围"
+	case "satellite-sunlit":
+		if language == "en" {
+			return "Sunlit satellite"
+		}
+		return "向阳卫星"
+	case "satellite-penumbra":
+		if language == "en" {
+			return "Penumbral satellite"
+		}
+		return "半影卫星"
+	case "satellite-umbra":
+		if language == "en" {
+			return "Eclipsed satellite"
+		}
+		return "本影卫星"
 	case eventSolarEclipse:
 		if language == "en" {
 			return "Solar eclipse"

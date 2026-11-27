@@ -130,6 +130,16 @@ func MorningTwilightN(date time.Time, lon, lat, angle float64, n int) (time.Time
 	return defaultModule.MorningTwilightN(date, lon, lat, angle, n)
 }
 
+// NextRiseOnMars 火星表面下一次太阳上缘升起，包含起点 / next solar upper-limb rise on Mars including the starting instant.
+func NextRiseOnMars(after time.Time, eastLongitude, latitude float64) (time.Time, error) {
+	return defaultModule.NextRiseOnMars(after, eastLongitude, latitude)
+}
+
+// NextSetOnMars 火星表面下一次太阳上缘落下，包含起点 / next solar upper-limb set on Mars including the starting instant.
+func NextSetOnMars(after time.Time, eastLongitude, latitude float64) (time.Time, error) {
+	return defaultModule.NextSetOnMars(after, eastLongitude, latitude)
+}
+
 // ParallacticAngle 太阳视差角（天顶方向角） / solar parallactic angle.
 func ParallacticAngle(date time.Time, lon, lat float64) float64 {
 	return defaultModule.ParallacticAngle(date, lon, lat)

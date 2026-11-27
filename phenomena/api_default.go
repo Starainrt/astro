@@ -7,6 +7,46 @@ func LongitudeCrossings(body Body, longitude float64, start, end time.Time) []Ev
 	return defaultModule.LongitudeCrossings(body, longitude, start, end)
 }
 
+// NextStarSurfaceCulmination 下一次无折射恒星上中天，包含起点 / next airless stellar upper culmination including the starting instant.
+func NextStarSurfaceCulmination(star StarCoordinate, observer BodyObserver, after time.Time) (SurfaceEvent, error) {
+	return defaultModule.NextStarSurfaceCulmination(star, observer, after)
+}
+
+// NextStarSurfaceRise 下一次无折射恒星升起，包含起点 / next airless stellar rise including the starting instant.
+func NextStarSurfaceRise(star StarCoordinate, observer BodyObserver, after time.Time) (SurfaceEvent, error) {
+	return defaultModule.NextStarSurfaceRise(star, observer, after)
+}
+
+// NextStarSurfaceSet 下一次无折射恒星落下，包含起点 / next airless stellar set including the starting instant.
+func NextStarSurfaceSet(star StarCoordinate, observer BodyObserver, after time.Time) (SurfaceEvent, error) {
+	return defaultModule.NextStarSurfaceSet(star, observer, after)
+}
+
+// NextSurfaceCulmination 下一次无折射目标上中天，包含起点 / next airless target upper culmination including the starting instant.
+func NextSurfaceCulmination(target Body, observer BodyObserver, after time.Time, options SurfaceOptions) (SurfaceEvent, error) {
+	return defaultModule.NextSurfaceCulmination(target, observer, after, options)
+}
+
+// NextSurfaceRise 下一次无折射目标升起，包含起点 / next airless target rise including the starting instant.
+func NextSurfaceRise(target Body, observer BodyObserver, after time.Time, options SurfaceOptions) (SurfaceEvent, error) {
+	return defaultModule.NextSurfaceRise(target, observer, after, options)
+}
+
+// NextSurfaceSet 下一次无折射目标落下，包含起点 / next airless target set including the starting instant.
+func NextSurfaceSet(target Body, observer BodyObserver, after time.Time, options SurfaceOptions) (SurfaceEvent, error) {
+	return defaultModule.NextSurfaceSet(target, observer, after, options)
+}
+
+// StarSurfaceEvents 最多十年区间内全部恒星表面事件与穿越状态 / all stellar surface events and crossing state in an interval of at most ten years.
+func StarSurfaceEvents(star StarCoordinate, observer BodyObserver, start, end time.Time) ([]SurfaceEvent, AltitudeState, error) {
+	return defaultModule.StarSurfaceEvents(star, observer, start, end)
+}
+
+// StarSurfacePositionAt 行星表面的恒星无折射站心视位置 / airless apparent stellar position on a planetary surface.
+func StarSurfacePositionAt(star StarCoordinate, observer BodyObserver, date time.Time) (SurfacePosition, error) {
+	return defaultModule.StarSurfacePositionAt(star, observer, date)
+}
+
 // Stations 视黄经留 / longitude stations.
 func Stations(body Body, start, end time.Time) []Event {
 	return defaultModule.Stations(body, start, end)
@@ -50,4 +90,19 @@ func Nodes(body Body, start, end time.Time) []OrbitalEvent {
 // AltitudeCrossing 日、月或行星穿过任意视高度的时刻 / altitude crossings with the default ephemeris.
 func AltitudeCrossing(body Body, date time.Time, lon, lat, height, altitude float64, options AltitudeOptions) (AltitudeCrossingResult, error) {
 	return defaultModule.AltitudeCrossing(body, date, lon, lat, height, altitude, options)
+}
+
+// SurfaceEvents 最多十年区间内全部无折射表面事件与穿越状态 / all airless surface events and crossing state in an interval of at most ten years.
+func SurfaceEvents(target Body, observer BodyObserver, start, end time.Time, options SurfaceOptions) ([]SurfaceEvent, AltitudeState, error) {
+	return defaultModule.SurfaceEvents(target, observer, start, end, options)
+}
+
+// SurfaceLocalTimeAt 行星表面的恒星时与太阳时 / sidereal and solar times on a planetary surface.
+func SurfaceLocalTimeAt(observer BodyObserver, date time.Time) (SurfaceLocalTime, error) {
+	return defaultModule.SurfaceLocalTimeAt(observer, date)
+}
+
+// SurfacePositionAt 行星表面的无折射站心视位置，不支持月球 / airless apparent position on a planetary surface, excluding the Moon.
+func SurfacePositionAt(target Body, observer BodyObserver, date time.Time) (SurfacePosition, error) {
+	return defaultModule.SurfacePositionAt(target, observer, date)
 }

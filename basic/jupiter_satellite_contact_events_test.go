@@ -99,3 +99,40 @@ func galileanContactDurationToleranceSeconds(phenomenonType JupiterGalileanPheno
 		return 90.0
 	}
 }
+
+// 木影食 D/F 接触窗口的时间先后：慢速的木卫四半影内切可早于零半径穿越，D 窗口终点不得跑到出影一侧。
+func TestJupiterGalileanEclipseContactConsistencyOrder(t *testing.T) {
+	satellites := []int{1, 2, 3, 4}
+	if testing.Short() {
+		satellites = []int{4}
+	}
+	for _, satellite := range satellites {
+		jd := Date2JD(JD2Date(JDCalc(2026, 1, 1)))
+		checked := 0
+		for checked < 12 {
+			event := NextJupiterGalileanPhenomenonEventWithInstance(jd, satellite, JupiterGalileanEclipse, nil)
+			if !event.Valid {
+				t.Fatalf("satellite %d eclipse missing", satellite)
+			}
+			jd = event.End + 1.0/86400
+			contact := jupiterGalileanPhenomenonContactEventFromEvent(event, nil)
+			if !contact.Valid {
+				t.Fatalf("satellite %d contact invalid at %s", satellite, JD2Date(event.Greatest).Format("2006-01-02"))
+			}
+			d, f := contact.Disappearance, contact.Reappearance
+			if !(d.Start < d.End && d.End < contact.Greatest && contact.Greatest < f.Start && f.Start < f.End) {
+				t.Fatalf("satellite %d %s contacts out of order: D %.6f..%.6f G %.6f F %.6f..%.6f", satellite, JD2Date(event.Greatest).Format("2006-01-02"), d.Start, d.End, contact.Greatest, f.Start, f.End)
+			}
+			radius := jupiterGalileanSatelliteRadiusJupiterRadii(satellite)
+			before, _ := jupiterGalileanEclipseSignedDistanceAt(d.End-2.0/86400, satellite, true)
+			after, _ := jupiterGalileanEclipseSignedDistanceAt(d.End+2.0/86400, satellite, true)
+			if !(before+radius > 0 && after+radius < 0) {
+				t.Fatalf("satellite %d D end not within 2 s of penumbral internal contact: %.6f / %.6f", satellite, before+radius, after+radius)
+			}
+			if (d.End-d.Start)*1440 > 20 {
+				t.Fatalf("satellite %d D window %.1f min", satellite, (d.End-d.Start)*1440)
+			}
+			checked++
+		}
+	}
+}

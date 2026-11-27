@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/starainrt/astro/basic"
-	"github.com/starainrt/astro/calendar"
 )
 
 // RingInfo 土星环观测参数 / Saturn ring observing parameters.
@@ -30,7 +29,7 @@ func (module *Saturn) Ring(date time.Time) RingInfo {
 
 // RingN 土星环观测参数（n 变体） / n-parameterised Saturn ring observing parameters.
 func (module *Saturn) RingN(date time.Time, n int) RingInfo {
-	jd := calendar.Date2JD(date.UTC())
+	jd := basic.Date2JD(date.UTC())
 	earthLatitude, sunLatitude, positionAngle, deltaU, majorAxis, minorAxis := basic.SaturnRingParametersNWithInstance(basic.UTC2TT(jd), n, module.inst)
 	return RingInfo{
 		EarthLatitude: earthLatitude,

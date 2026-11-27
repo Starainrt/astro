@@ -9,7 +9,7 @@ import (
 
 func TestPlanetViewsMatchRawCuts(t *testing.T) {
 	views := planetViews()
-	for bodyIndex, raw := range planetRawData {
+	for bodyIndex, raw := range planetRawTable() {
 		view := views[bodyIndex]
 		if math.Float64bits(view.scale) != math.Float64bits(raw[0]) {
 			t.Fatalf("body=%d scale mismatch", bodyIndex)

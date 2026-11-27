@@ -13,8 +13,6 @@ import (
 // it repeatedly for the same instants from independent code paths. This bounded direct-mapped memo
 // removes that redundancy with fixed slots, no allocation and an RWMutex for the c-shared host.
 // Nutation depends only on its argument, so no ΔT generation stamp is needed.
-const nutationMemoBits = 13
-
 const nutationMemoSize = 1 << nutationMemoBits
 
 type nutationMemoEntry struct {

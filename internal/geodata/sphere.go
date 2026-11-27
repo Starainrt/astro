@@ -129,6 +129,29 @@ func sphericalPointOnArc(point, first, second GeoPoint) bool {
 	return math.Abs(firstDistance+secondDistance-arc) <= 1e-9
 }
 
+func sphericalTriangleArea(origin, previous, current geoVector3) float64 {
+	previousDelta := geoVectorAdd(previous, geoVectorScale(origin, -1))
+	currentDelta := geoVectorAdd(current, geoVectorScale(origin, -1))
+	return 2 * math.Atan2(geoVectorDot(origin, geoVectorCross(previousDelta, currentDelta)),
+		1+geoVectorDot(origin, previous)+geoVectorDot(previous, current)+geoVectorDot(current, origin))
+}
+
+// ClockwiseRegionIsComplement 判断顺时针边界的右侧是否超过半球 / reports whether the right side of a clockwise region exceeds a hemisphere.
+func ClockwiseRegionIsComplement(ring []GeoPoint) bool {
+	if len(ring) < 3 {
+		return false
+	}
+	origin := geoPointVector(ring[0])
+	previous := geoPointVector(ring[1])
+	area := 0.0
+	for _, point := range ring[2:] {
+		current := geoPointVector(point)
+		area += sphericalTriangleArea(origin, previous, current)
+		previous = current
+	}
+	return math.Remainder(area, 4*math.Pi) > 0
+}
+
 // sphericalPolygonContainsOrTouches tests a simple ring using its minor great
 // circle edges. It is intentionally internal: map encoders still own the
 // projection-specific winding rules, while topology code needs a seam-free
@@ -151,8 +174,7 @@ func sphericalPolygonContainsOrTouches(polygon []GeoPoint, point GeoPoint) bool 
 		}
 		previous := geoPointVector(previousPoint)
 		current := geoPointVector(currentPoint)
-		area += 2 * math.Atan2(geoVectorDot(origin, geoVectorCross(previous, current)),
-			1+geoVectorDot(origin, previous)+geoVectorDot(previous, current)+geoVectorDot(current, origin))
+		area += sphericalTriangleArea(origin, previous, current)
 		previousTangent := geoVectorAdd(previous, geoVectorScale(target, -geoVectorDot(previous, target)))
 		currentTangent := geoVectorAdd(current, geoVectorScale(target, -geoVectorDot(current, target)))
 		previousTangent, previousOK := geoVectorNormalize(previousTangent)

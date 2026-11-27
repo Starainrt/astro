@@ -2,6 +2,7 @@ package ephem
 
 import (
 	"errors"
+	"math"
 	"testing"
 )
 
@@ -123,5 +124,25 @@ func TestStackChainBeyondInlineCapacity(t *testing.T) {
 	pos, _, err := NewStack(engine).State(previous, SSB, 5)
 	if err != nil || pos != [3]float64{2 * stackInlineBodies, 0, 0} {
 		t.Fatalf("state = %v, %v", pos, err)
+	}
+}
+
+func TestFirstStateGapNaNAndULP(t *testing.T) {
+	engine := stackTestEngine{
+		bodies: []Body{Mars, Sun},
+		pairs:  map[[2]Body][3]float64{{Mars, Sun}: {1, 0, 0}},
+		start:  2451545.0,
+		end:    2451550.0,
+	}
+	if _, gap := FirstStateGap(engine, []Body{Mars}, Sun, math.NaN(), 2451546.0); gap {
+		t.Fatal("NaN start should not report a gap")
+	}
+	if _, gap := FirstStateGap(engine, []Body{Mars}, Sun, 2451546.0, math.NaN()); gap {
+		t.Fatal("NaN end should not report a gap")
+	}
+	even := 2451546.0
+	next := math.Nextafter(even, math.Inf(1))
+	if _, gap := FirstStateGap(engine, []Body{Mars}, Sun, even, next); gap {
+		t.Fatal("adjacent 1-ULP endpoints should not report a gap")
 	}
 }

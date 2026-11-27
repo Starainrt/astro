@@ -31,10 +31,10 @@ type jupiterGalileanL1Term struct {
 	Phase  float64
 }
 
-// JupiterGalileanState 木星伽利略卫星原始状态 / raw Galilean-satellite state.
+// JupiterGalileanState 木星伽利略卫星原始 L1 状态 / raw L1 Galilean-satellite state.
 //
-// 输入 jd 使用 TT/TDB 对应的儒略日；返回值为 IMCCE L1 理论的木心 J2000 平赤道直角坐标与速度，单位 AU / AU/day。
-// The input jd is a TT/TDB Julian day (convert a civil query with UTC2TT(jd)). Returned coordinates are Jovicentric J2000 mean-equatorial position and velocity from the IMCCE L1 theory, in AU and AU/day.
+// 输入 jd 使用 TT/TDB 对应的儒略日；返回值为纯 IMCCE L1 理论的木心 J2000 平赤道直角坐标与速度，单位 AU / AU/day。
+// The input jd is a TT/TDB Julian day (convert a civil query with UTC2TT(jd)). Returned coordinates and velocity are the uncorrected IMCCE L1 Jovicentric J2000 mean-equatorial state, in AU and AU/day.
 type JupiterGalileanState struct {
 	X  float64
 	Y  float64
@@ -46,8 +46,8 @@ type JupiterGalileanState struct {
 
 // JupiterGalileanObservation 木星伽利略卫星视位置 / apparent Galilean-satellite geometry.
 //
-// 视位置相对木星中心定义：X 向天球东为正，Y 向天球北为正，Z>0 表示比木星更远、位于盘后。
-// Apparent offsets are relative to Jupiter's center: X is positive to celestial east, Y to celestial north, and Z>0 means farther than Jupiter and behind the disk.
+// State 使用 JUP365 修正后的木心状态；视位置相对木星中心定义：X 向天球东为正，Y 向天球北为正，Z>0 表示比木星更远、位于盘后。
+// State uses the JUP365-corrected Jovicentric state. Apparent offsets are relative to Jupiter's center: X is positive to celestial east, Y to celestial north, and Z>0 means farther than Jupiter and behind the disk.
 type JupiterGalileanObservation struct {
 	State JupiterGalileanState
 
@@ -65,7 +65,7 @@ type JupiterGalileanObservation struct {
 	InFrontOfJupiter bool
 }
 
-// JupiterGalileanSatelliteState 伽利略卫星木心 J2000 状态 / Jovicentric J2000 state of a Galilean satellite.
+// JupiterGalileanSatelliteState 伽利略卫星纯 L1 木心 J2000 状态 / raw L1 Jovicentric J2000 state of a Galilean satellite.
 //
 // satellite 取 1=Io, 2=Europa, 3=Ganymede, 4=Callisto。jd 为 TT/TDB 对应儒略日。
 // satellite is 1=Io, 2=Europa, 3=Ganymede, 4=Callisto. jd is a TT/TDB Julian day.
@@ -78,7 +78,7 @@ func JupiterGalileanSatelliteState(jd float64, satellite int) JupiterGalileanSta
 	return jupiterGalileanSatelliteStateAtET(et, satellite-1, includeSolarLongPeriod)
 }
 
-// JupiterGalileanSatelliteStates 四颗伽利略卫星木心 J2000 状态 / Jovicentric J2000 states of the four Galilean satellites.
+// JupiterGalileanSatelliteStates 四颗伽利略卫星纯 L1 木心 J2000 状态 / raw L1 Jovicentric J2000 states of the four Galilean satellites.
 //
 // 返回次序固定为 Io、Europa、Ganymede、Callisto。
 // The returned order is Io, Europa, Ganymede, Callisto.
@@ -117,26 +117,27 @@ func JupiterGalileanSatelliteObservationsWithInstance(jde float64, inst *Instanc
 type jupiterGalileanObservationContext struct {
 	inst *Instance
 
-	jd               float64
-	targetJD         float64
-	earthHelioJ2000  Vector3
-	jupiterGeoJ2000  Vector3
-	jupiterDistance  float64
-	jupiterLightTime float64
-	sunDistanceAU    float64
-	east             Vector3
-	north            Vector3
-	lineOfSight      Vector3
-	earthDirection   Vector3
-	sunDirection     Vector3
-	sunLineOfSight   Vector3
-	sunEast          Vector3
-	sunNorth         Vector3
-	earthMinorRadius float64
-	sunMinorRadius   float64
-	bodyX            Vector3
-	bodyY            Vector3
-	bodyZ            Vector3
+	jd                float64
+	targetJD          float64
+	earthHelioJ2000   Vector3
+	jupiterHelioJ2000 Vector3
+	jupiterGeoJ2000   Vector3
+	jupiterDistance   float64
+	jupiterLightTime  float64
+	sunDistanceAU     float64
+	east              Vector3
+	north             Vector3
+	lineOfSight       Vector3
+	earthDirection    Vector3
+	sunDirection      Vector3
+	sunLineOfSight    Vector3
+	sunEast           Vector3
+	sunNorth          Vector3
+	earthMinorRadius  float64
+	sunMinorRadius    float64
+	bodyX             Vector3
+	bodyY             Vector3
+	bodyZ             Vector3
 }
 
 func newJupiterGalileanObservationContext(jde float64, instances ...*Instance) jupiterGalileanObservationContext {
@@ -159,6 +160,7 @@ func newJupiterGalileanObservationContext(jde float64, instances ...*Instance) j
 	context.east = Vector3{-Sin(ra), Cos(ra), 0}
 	context.north = Vector3{-Cos(ra) * Sin(dec), -Sin(ra) * Sin(dec), Cos(dec)}
 	jupiterHelio := rotateEclipticToEquatorial(jupiterHeliocentricVectorJ2000(context.targetJD, inst), orbitJ2000Obliquity)
+	context.jupiterHelioJ2000 = jupiterHelio
 	context.sunDistanceAU = vectorMagnitude(jupiterHelio)
 	context.sunDirection = normalizeVector(Vector3{-jupiterHelio[0], -jupiterHelio[1], -jupiterHelio[2]})
 	context.sunLineOfSight = Vector3{-context.sunDirection[0], -context.sunDirection[1], -context.sunDirection[2]}
@@ -178,7 +180,7 @@ func (context jupiterGalileanObservationContext) observationForSatellite(index i
 	if index < 0 || index >= 4 || context.jupiterDistance == 0 {
 		return invalidJupiterGalileanObservation()
 	}
-	state, geocentric := jupiterGalileanSatelliteAstrometricGeocentric(index, context.jd, context.jupiterLightTime, context.earthHelioJ2000, context.inst)
+	state, geocentric := jupiterGalileanSatelliteAstrometricGeocentric(index, context.jd, context.jupiterLightTime, context.earthHelioJ2000, context.jupiterHelioJ2000, context.inst)
 	direction := normalizeVector(geocentric)
 	ra, dec := vectorToRaDec(direction)
 	distance := vectorMagnitude(geocentric)
@@ -214,7 +216,7 @@ func tangentPlaneOffsetAngles(target, center, east, north Vector3) (float64, flo
 	return math.Atan2(vectorDot(target, east), denominator), math.Atan2(vectorDot(target, north), denominator)
 }
 
-func jupiterGalileanSatelliteAstrometricGeocentric(index int, jd, initialLightTime float64, earthHelioJ2000 Vector3, instances ...*Instance) (JupiterGalileanState, Vector3) {
+func jupiterGalileanSatelliteAstrometricGeocentric(index int, jd, initialLightTime float64, earthHelioJ2000, initialJupiterHelioJ2000 Vector3, instances ...*Instance) (JupiterGalileanState, Vector3) {
 	inst := instanceValue(instances)
 
 	lightTime := initialLightTime
@@ -223,8 +225,11 @@ func jupiterGalileanSatelliteAstrometricGeocentric(index int, jd, initialLightTi
 	includeSolarLongPeriod := jupiterGalileanUseSolarLongPeriod(jd)
 	for i := 0; i < 8; i++ {
 		targetJDE := jd - lightTime
-		jupiterHelio := rotateEclipticToEquatorial(jupiterHeliocentricVectorJ2000(targetJDE, inst), orbitJ2000Obliquity)
-		state = jupiterGalileanSatelliteStateAtET(targetJDE-jupiterGalileanReferenceJD, index, includeSolarLongPeriod)
+		jupiterHelio := initialJupiterHelioJ2000
+		if i > 0 {
+			jupiterHelio = rotateEclipticToEquatorial(jupiterHeliocentricVectorJ2000(targetJDE, inst), orbitJ2000Obliquity)
+		}
+		state = jupiterGalileanSatelliteCorrectedStateAtET(targetJDE-jupiterGalileanReferenceJD, index, includeSolarLongPeriod)
 		result = Vector3{
 			jupiterHelio[0] + state.X - earthHelioJ2000[0],
 			jupiterHelio[1] + state.Y - earthHelioJ2000[1],
@@ -276,6 +281,15 @@ func jupiterHeliocentricVectorJ2000(jde float64, instances ...*Instance) Vector3
 
 func jupiterGalileanSatelliteStateAtET(et float64, index int, includeSolarLongPeriod bool) JupiterGalileanState {
 	elements := jupiterGalileanElementsAtET(et, index, includeSolarLongPeriod)
+	return jupiterGalileanStateFromElements(elements, index)
+}
+
+func jupiterGalileanSatelliteCorrectedStateAtET(et float64, index int, includeSolarLongPeriod bool) JupiterGalileanState {
+	elements := jupiterGalileanCorrectedElementsAtET(et, index, includeSolarLongPeriod)
+	return jupiterGalileanStateFromElements(elements, index)
+}
+
+func jupiterGalileanStateFromElements(elements jupiterGalileanElements, index int) JupiterGalileanState {
 	pv := jupiterGalileanElementsToPV(jupiterGalileanMu[index], elements)
 	cosNode, sinNode := math.Cos(jupiterGalileanFrameNode), math.Sin(jupiterGalileanFrameNode)
 	cosTilt, sinTilt := math.Cos(jupiterGalileanFrameTilt), math.Sin(jupiterGalileanFrameTilt)
@@ -316,23 +330,12 @@ func jupiterGalileanElementsAtET(et float64, index int, includeSolarLongPeriod b
 	return combined
 }
 
-func jupiterGalileanEvaluateSeries(blocks [4][]jupiterGalileanL1Term, angleTime, et float64, includeSolarLongPeriod bool, index int) jupiterGalileanElements {
-	vals := [5]float64{}
-	if includeSolarLongPeriod {
-		x := (et/365.25 - 0.5*(812.721806990360-819.727638594856)) / (0.5 * (812.721806990360 - -819.727638594856))
-		tn := [9]float64{1, x}
-		for i := 2; i < len(tn); i++ {
-			tn[i] = 2*x*tn[i-1] - tn[i-2]
-		}
-		for variable := 0; variable < len(vals); variable++ {
-			sum := 0.0
-			for term := 0; term < len(tn); term++ {
-				sum += jupiterGalileanL1Chebyshev[index][variable][term] * tn[term]
-			}
-			vals[variable] = sum - 0.5*jupiterGalileanL1Chebyshev[index][variable][0]
-		}
-	}
+func jupiterGalileanCorrectedElementsAtET(et float64, index int, includeSolarLongPeriod bool) jupiterGalileanElements {
+	return jupiterGalileanFoldedElementsAtET(et, index, includeSolarLongPeriod)
+}
 
+func jupiterGalileanEvaluateSeries(blocks [4][]jupiterGalileanL1Term, angleTime, et float64, includeSolarLongPeriod bool, index int) jupiterGalileanElements {
+	vals := jupiterGalileanSolarTermsAtET(et, includeSolarLongPeriod, index)
 	result := jupiterGalileanElements{}
 	for blockIndex, terms := range blocks {
 		realPart, imagPart := 0.0, 0.0
@@ -358,6 +361,26 @@ func jupiterGalileanEvaluateSeries(blocks [4][]jupiterGalileanL1Term, angleTime,
 		}
 	}
 	return result
+}
+
+func jupiterGalileanSolarTermsAtET(et float64, includeSolarLongPeriod bool, index int) [5]float64 {
+	vals := [5]float64{}
+	if includeSolarLongPeriod {
+		x := (et/365.25 - 0.5*(812.721806990360-819.727638594856)) / (0.5 * (812.721806990360 - -819.727638594856))
+		tn := [9]float64{1, x}
+		for i := 2; i < len(tn); i++ {
+			tn[i] = 2*x*tn[i-1] - tn[i-2]
+		}
+		for variable := 0; variable < len(vals); variable++ {
+			sum := 0.0
+			for term := 0; term < len(tn); term++ {
+				sum += jupiterGalileanL1Chebyshev[index][variable][term] * tn[term]
+			}
+			vals[variable] = sum - 0.5*jupiterGalileanL1Chebyshev[index][variable][0]
+		}
+	}
+
+	return vals
 }
 
 func jupiterGalileanElementsToPV(mu float64, elements jupiterGalileanElements) [6]float64 {

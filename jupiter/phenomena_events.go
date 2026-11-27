@@ -35,12 +35,10 @@ const (
 //
 // Start、Greatest、End 都保持调用者输入的时区。
 // GreatestState 是食甚/现象最深时刻对应的瞬时现象标志与影心偏移。
-// 这里的 Start/End 基于零半径几何模型是否 active，不是 IMCCE 年表中的 D/F 接触时刻；
-// 如果需要有限圆盘/有限影斑的接触窗口，请改用 `GalileanPhenomenonContactEvent`。
+// Start/End 是零半径模型的活动区间。有限圆盘接触用 GalileanPhenomenonContactEvent。
 // Start, Greatest, and End preserve the caller's timezone.
 // GreatestState contains the instantaneous phenomenon flags and shadow offsets at greatest event depth.
-// Start/End here are based on whether the zero-radius geometric model is active, not the IMCCE D/F contact times.
-// Use `GalileanPhenomenonContactEvent` when you need finite-disk or finite-shadow contact windows.
+// Start/End are the active interval of the zero-radius model. Finite-disk contacts use GalileanPhenomenonContactEvent.
 type GalileanPhenomenonEvent struct {
 	Valid     bool
 	Satellite int

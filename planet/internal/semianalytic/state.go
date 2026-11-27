@@ -1,3 +1,6 @@
+//go:build !astro_lowmem
+// +build !astro_lowmem
+
 // Package semianalytic 内置半解析模型：VSOP2013/TOP2013 与 MPP02 结构、按 DE441 重拟的表，提供历元 L/B/R 与 ICRF 几何状态。
 package semianalytic
 

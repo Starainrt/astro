@@ -4,56 +4,55 @@ import (
 	"time"
 
 	"github.com/starainrt/astro/basic"
-	"github.com/starainrt/astro/calendar"
 )
 
 // N variants keep the same semantics as the non-N APIs; n < 0 means full series.
 
 // ApparentLoN 视黄经（n 变体） / n-parameterised apparent ecliptic longitude.
 func (module *Venus) ApparentLoN(date time.Time, n int) float64 {
-	jd := calendar.Date2JD(date.UTC())
+	jd := basic.Date2JD(date.UTC())
 	return basic.VenusApparentLoNWithInstance(basic.UTC2TT(jd), n, module.inst)
 }
 
 // ApparentBoN 视黄纬（n 变体） / n-parameterised apparent ecliptic latitude.
 func (module *Venus) ApparentBoN(date time.Time, n int) float64 {
-	jd := calendar.Date2JD(date.UTC())
+	jd := basic.Date2JD(date.UTC())
 	return basic.VenusApparentBoNWithInstance(basic.UTC2TT(jd), n, module.inst)
 }
 
 // ApparentRaN 视赤经（n 变体） / n-parameterised apparent right ascension.
 func (module *Venus) ApparentRaN(date time.Time, n int) float64 {
-	jd := calendar.Date2JD(date.UTC())
+	jd := basic.Date2JD(date.UTC())
 	return basic.VenusApparentRaNWithInstance(basic.UTC2TT(jd), n, module.inst)
 }
 
 // ApparentDecN 视赤纬（n 变体） / n-parameterised apparent declination.
 func (module *Venus) ApparentDecN(date time.Time, n int) float64 {
-	jd := calendar.Date2JD(date.UTC())
+	jd := basic.Date2JD(date.UTC())
 	return basic.VenusApparentDecNWithInstance(basic.UTC2TT(jd), n, module.inst)
 }
 
 // ApparentRaDecN 视赤经赤纬（n 变体） / n-parameterised apparent right ascension and declination.
 func (module *Venus) ApparentRaDecN(date time.Time, n int) (float64, float64) {
-	jd := calendar.Date2JD(date.UTC())
+	jd := basic.Date2JD(date.UTC())
 	return basic.VenusApparentRaDecNWithInstance(basic.UTC2TT(jd), n, module.inst)
 }
 
 // ApparentMagnitudeN 视星等（n 变体） / n-parameterised apparent magnitude.
 func (module *Venus) ApparentMagnitudeN(date time.Time, n int) float64 {
-	jd := calendar.Date2JD(date.UTC())
+	jd := basic.Date2JD(date.UTC())
 	return basic.VenusMagNWithInstance(basic.UTC2TT(jd), n, module.inst)
 }
 
 // EarthDistanceN 地球距离（n 变体） / n-parameterised Earth distance.
 func (module *Venus) EarthDistanceN(date time.Time, n int) float64 {
-	jd := calendar.Date2JD(date.UTC())
+	jd := basic.Date2JD(date.UTC())
 	return basic.EarthVenusAwayNWithInstance(basic.UTC2TT(jd), n, module.inst)
 }
 
 // SunDistanceN 太阳距离（n 变体） / n-parameterised Sun distance.
 func (module *Venus) SunDistanceN(date time.Time, n int) float64 {
-	jd := calendar.Date2JD(date.UTC())
+	jd := basic.Date2JD(date.UTC())
 	return basic.PlanetCoordinateNWithInstance(2, 2, basic.UTC2TT(jd), n, module.inst)
 }
 

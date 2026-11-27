@@ -1,3 +1,6 @@
+//go:build !astro_lowmem
+// +build !astro_lowmem
+
 package planet
 
 var planetRawData = [][]float64{

@@ -20,31 +20,10 @@ type basisSeg struct {
 	c [6][basisDegree + 1]float64
 }
 
-var basisTable [basisSegs]basisSeg
-
 // EclipticBasisExact 历元平黄道在 J2000 平赤道下的正交基：x 指向平春分点，z 为黄道极 / exact basis of the mean ecliptic of date.
 func EclipticBasisExact(epj float64) (x, y, z Vector3) {
 	z = EclipticPole(epj)
 	x, _ = Normalize(Cross(EquatorPole(epj), z))
-	return x, Cross(z, x), z
-}
-
-// EclipticBasis 同 EclipticBasisExact，覆盖区间内用分段 Chebyshev 近似（差 < 1e-12 rad），区间外精确计算 / cached form of EclipticBasisExact.
-func EclipticBasis(epj float64) (x, y, z Vector3) {
-	u := (epj - basisStart) / basisSpan
-	i := int(math.Floor(u))
-	if i < 0 || i >= basisSegs {
-		return EclipticBasisExact(epj)
-	}
-	seg := &basisTable[i]
-	seg.once.Do(func() { seg.fit(basisStart + float64(i)*basisSpan) })
-	s := 2*(u-float64(i)) - 1
-	var v [6]float64
-	for k := range v {
-		v[k] = clenshaw(&seg.c[k], s)
-	}
-	x = Vector3{v[0], v[1], v[2]}
-	z = Vector3{v[3], v[4], v[5]}
 	return x, Cross(z, x), z
 }
 

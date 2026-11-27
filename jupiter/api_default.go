@@ -88,6 +88,11 @@ func CentralMeridiansN(date time.Time, n int) CentralMeridianInfo {
 	return defaultModule.CentralMeridiansN(date, n)
 }
 
+// ClosestGalileanMutualEvent 最近一次伽利略卫星互现象 / closest Galilean mutual event.
+func ClosestGalileanMutualEvent(date time.Time, first, second int, phenomenonType GalileanMutualPhenomenonType) GalileanMutualEvent {
+	return defaultModule.ClosestGalileanMutualEvent(date, first, second, phenomenonType)
+}
+
 // ClosestGalileanPhenomenonContactEvent 最近一次 IMCCE 风格接触事件 / closest IMCCE-style contact event.
 func ClosestGalileanPhenomenonContactEvent(date time.Time, satellite int, phenomenonType GalileanPhenomenonType) GalileanPhenomenonContactEvent {
 	return defaultModule.ClosestGalileanPhenomenonContactEvent(date, satellite, phenomenonType)
@@ -138,6 +143,11 @@ func EarthDistance(date time.Time) float64 { return defaultModule.EarthDistance(
 // EarthDistanceN 地球距离（n 变体） / n-parameterised Earth distance.
 func EarthDistanceN(date time.Time, n int) float64 { return defaultModule.EarthDistanceN(date, n) }
 
+// GalileanEventsBetween 从 start 逐次 Next 汇总极大时刻早于 end 的事件，跨度最多 366 天 / collect successive Next events from start with Greatest before end, spanning at most 366 days.
+func GalileanEventsBetween(start, end time.Time, options GalileanEventsOptions) ([]GalileanEventEntry, error) {
+	return defaultModule.GalileanEventsBetween(start, end, options)
+}
+
 // HourAngle 地心视时角，不含站心视差 / geocentric apparent hour angle without topocentric parallax.
 func HourAngle(date time.Time, lon float64) float64 { return defaultModule.HourAngle(date, lon) }
 
@@ -160,6 +170,11 @@ func LastConjunction(date time.Time) time.Time { return defaultModule.LastConjun
 // LastEasternQuadrature 上一次东方照，取 date 所在当地民用日 / previous eastern quadrature, on the local civil day of date.
 func LastEasternQuadrature(date time.Time) time.Time {
 	return defaultModule.LastEasternQuadrature(date)
+}
+
+// LastGalileanMutualEvent 上一次伽利略卫星互现象 / previous Galilean mutual event.
+func LastGalileanMutualEvent(date time.Time, first, second int, phenomenonType GalileanMutualPhenomenonType) GalileanMutualEvent {
+	return defaultModule.LastGalileanMutualEvent(date, first, second, phenomenonType)
 }
 
 // LastGalileanPhenomenonContactEvent 上一次 IMCCE 风格接触事件 / previous IMCCE-style contact event.
@@ -196,6 +211,11 @@ func NextConjunction(date time.Time) time.Time { return defaultModule.NextConjun
 // NextEasternQuadrature 下一次东方照，取 date 所在当地民用日 / next eastern quadrature, on the local civil day of date.
 func NextEasternQuadrature(date time.Time) time.Time {
 	return defaultModule.NextEasternQuadrature(date)
+}
+
+// NextGalileanMutualEvent 下一次伽利略卫星互现象 / next Galilean mutual event.
+func NextGalileanMutualEvent(date time.Time, first, second int, phenomenonType GalileanMutualPhenomenonType) GalileanMutualEvent {
+	return defaultModule.NextGalileanMutualEvent(date, first, second, phenomenonType)
 }
 
 // NextGalileanPhenomenonContactEvent 下一次 IMCCE 风格接触事件 / next IMCCE-style contact event.
@@ -262,6 +282,11 @@ func RiseTime(date time.Time, lon, lat, height float64, aero bool) (time.Time, e
 // RiseTimeN 升起时间（n 变体） / n-parameterised rise time.
 func RiseTimeN(date time.Time, lon, lat, height float64, aero bool, n int) (time.Time, error) {
 	return defaultModule.RiseTimeN(date, lon, lat, height, aero, n)
+}
+
+// RotationAngle 木星 ICRF 本初子午线旋转角，输入无效时为 NaN / Jovian ICRF prime meridian rotation angle, NaN for invalid input.
+func RotationAngle(date time.Time, system RotationSystem) float64 {
+	return defaultModule.RotationAngle(date, system)
 }
 
 // SatellitePhenomena 木星四颗伽利略卫星瞬时现象，内部换算为 TT/TDB 历元求值 / instantaneous phenomena of Jupiter's four Galilean satellites, converted internally to the TT/TDB epoch.

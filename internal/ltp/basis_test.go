@@ -28,6 +28,10 @@ func TestEclipticBasisMatchesExact(t *testing.T) {
 			t.Fatalf("epj %v: outside the cache the exact basis must be used", epj)
 		}
 	}
+	nx, _, _ := EclipticBasis(math.NaN())
+	if !math.IsNaN(nx[0]) {
+		t.Fatalf("NaN input produced %v", nx)
+	}
 }
 
 func BenchmarkEclipticBasis(b *testing.B) {

@@ -13,6 +13,7 @@ import (
 	"github.com/starainrt/astro/moon"
 	"github.com/starainrt/astro/neptune"
 	"github.com/starainrt/astro/phenomena"
+	"github.com/starainrt/astro/satellite"
 	"github.com/starainrt/astro/saturn"
 	"github.com/starainrt/astro/sun"
 	"github.com/starainrt/astro/uranus"
@@ -64,6 +65,8 @@ type Context struct {
 	phenomenaObj  *phenomena.Phenomena
 	geojsonOnce   sync.Once
 	geojsonObj    *geojson.Generator
+	satelliteOnce sync.Once
+	satelliteObj  *satellite.Satellite
 }
 
 // NewContext 创建独立模型上下文；内置模型不得带 Engine，ModelCustom 必须且只能带一个非 nil 只读 Engine，
@@ -204,6 +207,13 @@ func (context *Context) GeoJSON() *geojson.Generator {
 	context = context.self()
 	context.geojsonOnce.Do(func() { context.geojsonObj = geojson.NewWithInstance(context.instance()) })
 	return context.geojsonObj
+}
+
+// Satellite 返回人造卫星模块 / the artificial satellite module.
+func (context *Context) Satellite() *satellite.Satellite {
+	context = context.self()
+	context.satelliteOnce.Do(func() { context.satelliteObj = satellite.NewWithInstance(context.instance()) })
+	return context.satelliteObj
 }
 
 var globalMu sync.RWMutex

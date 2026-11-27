@@ -4,56 +4,55 @@ import (
 	"time"
 
 	"github.com/starainrt/astro/basic"
-	"github.com/starainrt/astro/calendar"
 )
 
 // N variants keep the same semantics as the non-N APIs; n < 0 means full series.
 
 // ApparentLoN 视黄经（n 变体） / n-parameterised apparent ecliptic longitude.
 func (module *Mercury) ApparentLoN(date time.Time, n int) float64 {
-	jd := calendar.Date2JD(date.UTC())
+	jd := basic.Date2JD(date.UTC())
 	return basic.MercuryApparentLoNWithInstance(basic.UTC2TT(jd), n, module.inst)
 }
 
 // ApparentBoN 视黄纬（n 变体） / n-parameterised apparent ecliptic latitude.
 func (module *Mercury) ApparentBoN(date time.Time, n int) float64 {
-	jd := calendar.Date2JD(date.UTC())
+	jd := basic.Date2JD(date.UTC())
 	return basic.MercuryApparentBoNWithInstance(basic.UTC2TT(jd), n, module.inst)
 }
 
 // ApparentRaN 视赤经（n 变体） / n-parameterised apparent right ascension.
 func (module *Mercury) ApparentRaN(date time.Time, n int) float64 {
-	jd := calendar.Date2JD(date.UTC())
+	jd := basic.Date2JD(date.UTC())
 	return basic.MercuryApparentRaNWithInstance(basic.UTC2TT(jd), n, module.inst)
 }
 
 // ApparentDecN 视赤纬（n 变体） / n-parameterised apparent declination.
 func (module *Mercury) ApparentDecN(date time.Time, n int) float64 {
-	jd := calendar.Date2JD(date.UTC())
+	jd := basic.Date2JD(date.UTC())
 	return basic.MercuryApparentDecNWithInstance(basic.UTC2TT(jd), n, module.inst)
 }
 
 // ApparentRaDecN 视赤经赤纬（n 变体） / n-parameterised apparent right ascension and declination.
 func (module *Mercury) ApparentRaDecN(date time.Time, n int) (float64, float64) {
-	jd := calendar.Date2JD(date.UTC())
+	jd := basic.Date2JD(date.UTC())
 	return basic.MercuryApparentRaDecNWithInstance(basic.UTC2TT(jd), n, module.inst)
 }
 
 // ApparentMagnitudeN 视星等（n 变体） / n-parameterised apparent magnitude.
 func (module *Mercury) ApparentMagnitudeN(date time.Time, n int) float64 {
-	jd := calendar.Date2JD(date.UTC())
+	jd := basic.Date2JD(date.UTC())
 	return basic.MercuryMagNWithInstance(basic.UTC2TT(jd), n, module.inst)
 }
 
 // EarthDistanceN 地球距离（n 变体） / n-parameterised Earth distance.
 func (module *Mercury) EarthDistanceN(date time.Time, n int) float64 {
-	jd := calendar.Date2JD(date.UTC())
+	jd := basic.Date2JD(date.UTC())
 	return basic.EarthMercuryAwayNWithInstance(basic.UTC2TT(jd), n, module.inst)
 }
 
 // SunDistanceN 太阳距离（n 变体） / n-parameterised Sun distance.
 func (module *Mercury) SunDistanceN(date time.Time, n int) float64 {
-	jd := calendar.Date2JD(date.UTC())
+	jd := basic.Date2JD(date.UTC())
 	return basic.PlanetCoordinateNWithInstance(1, 2, basic.UTC2TT(jd), n, module.inst)
 }
 

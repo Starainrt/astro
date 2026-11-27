@@ -21,7 +21,8 @@ const (
 	// JupiterGalileanEclipse 食 / eclipse in Jupiter's shadow.
 	JupiterGalileanEclipse JupiterGalileanPhenomenonType = "eclipse"
 	// JupiterGalileanShadowTransit 影凌 / shadow transit across Jupiter.
-	JupiterGalileanShadowTransit JupiterGalileanPhenomenonType = "shadow_transit"
+	JupiterGalileanShadowTransit   JupiterGalileanPhenomenonType = "shadow_transit"
+	jupiterGalileanPenumbraContact JupiterGalileanPhenomenonType = "penumbra_contact"
 )
 
 // JupiterGalileanPhenomenonEvent 伽利略卫星现象整场事件 / full Galilean-satellite phenomenon event.
@@ -51,6 +52,9 @@ type jupiterGalileanMetricSample struct {
 type jupiterGalileanShadowPoint struct {
 	hasIntersection bool
 	visible         bool
+	axisValid       bool
+	axisMetric      float64
+	axisXJupiterR   float64
 	pathLengthAU    float64
 	xAU             float64
 	yAU             float64
@@ -96,7 +100,7 @@ func searchJupiterGalileanPhenomenonEvent(
 	includeCurrent bool, instances ...*Instance) (JupiterGalileanPhenomenonEvent, bool) {
 	inst := instanceValue(instances)
 
-	if !isFinite(jd) || direction == 0 || satellite < 1 || satellite > 4 || !isValidJupiterGalileanPhenomenonType(phenomenonType) {
+	if !isFinite(jd) || direction == 0 || satellite < 1 || satellite > 4 || !isValidJupiterGalileanPhenomenonType(phenomenonType) && phenomenonType != jupiterGalileanPenumbraContact {
 		return invalidJupiterGalileanPhenomenonEvent(), false
 	}
 
@@ -426,7 +430,7 @@ func jupiterGalileanPhenomenonMetricAt(
 	phenomenonType JupiterGalileanPhenomenonType, instances ...*Instance) jupiterGalileanMetricSample {
 	inst := instanceValue(instances)
 
-	if !isFinite(jd) || satellite < 1 || satellite > 4 || !isValidJupiterGalileanPhenomenonType(phenomenonType) {
+	if !isFinite(jd) || satellite < 1 || satellite > 4 || !isValidJupiterGalileanPhenomenonType(phenomenonType) && phenomenonType != jupiterGalileanPenumbraContact {
 		return jupiterGalileanMetricSample{
 			metric:     math.Inf(1),
 			signed:     math.NaN(),
@@ -470,9 +474,15 @@ func jupiterGalileanPhenomenonMetricAt(
 	shadowPoint := context.shadowPointFor(stateVector)
 	shadowMetric := math.Inf(1)
 	shadowTransit := false
+	shadowSigned := math.NaN()
+	if shadowPoint.axisValid {
+		shadowMetric = shadowPoint.axisMetric
+		shadowSigned = shadowPoint.axisXJupiterR
+	}
 	if shadowPoint.hasIntersection {
 		shadowMetric = ellipseMetric(shadowPoint.xJupiterRadii, shadowPoint.yJupiterRadii, 1, context.earthMinorRadius)
 		shadowTransit = shadowPoint.visible && shadowMetric <= 1+1e-12
+		shadowSigned = shadowPoint.xJupiterRadii
 	}
 
 	phenomenon := JupiterGalileanPhenomenon{
@@ -518,17 +528,26 @@ func jupiterGalileanPhenomenonMetricAt(
 		return jupiterGalileanMetricSample{
 			active: phenomenon.Eclipse, metric: metric, signed: xSun, phenomenon: phenomenon,
 		}
+	case jupiterGalileanPenumbraContact:
+		scale := jupiterPenumbraScale(zSunAU, context.sunDistanceAU)
+		metric := sunMetric + 4
+		active := false
+		if scale > 0 {
+			minor := context.sunMinorRadius * scale
+			metric = ellipseMetric(xSun, ySun, scale, minor)
+			moonRadius := jupiterGalileanSatelliteRadiusJupiterRadii(satellite)
+			if metric <= math.Pow(1+moonRadius/minor, 2) {
+				active = ellipseSignedDistance(xSun, ySun, scale, minor) < moonRadius
+			}
+		}
+		return jupiterGalileanMetricSample{active: active, metric: metric, signed: xSun, phenomenon: phenomenon}
 	case JupiterGalileanShadowTransit:
 		metric := shadowMetric
 		if shadowPoint.hasIntersection && !shadowPoint.visible {
 			metric += 4
 		}
-		signed := math.NaN()
-		if shadowPoint.hasIntersection {
-			signed = shadowPoint.xJupiterRadii
-		}
 		return jupiterGalileanMetricSample{
-			active: phenomenon.ShadowTransit, metric: metric, signed: signed, phenomenon: phenomenon,
+			active: phenomenon.ShadowTransit, metric: metric, signed: shadowSigned, phenomenon: phenomenon,
 		}
 	default:
 		return jupiterGalileanMetricSample{
@@ -539,6 +558,11 @@ func jupiterGalileanPhenomenonMetricAt(
 
 func (context jupiterGalileanObservationContext) shadowPointFor(stateVector Vector3) jupiterGalileanShadowPoint {
 	radiusAU := jupiterGalileanEquatorialRadiusKM / astronomicalUnitKM
+	axisX, axisY, axisOK := context.shadowAxisPosition(stateVector, radiusAU)
+	axisMetric := math.Inf(1)
+	if axisOK {
+		axisMetric = ellipseMetric(axisX, axisY, 1, context.earthMinorRadius)
+	}
 	satelliteBody := context.toBodyCoordinates(stateVector)
 	satelliteBody = Vector3{
 		satelliteBody[0] / radiusAU,
@@ -548,7 +572,11 @@ func (context jupiterGalileanObservationContext) shadowPointFor(stateVector Vect
 	directionBody := context.toBodyCoordinates(context.sunLineOfSight)
 	intersectionBody, ok := ellipsoidRayIntersection(satelliteBody, directionBody, jupiterPolarRadiusRatio())
 	if !ok {
-		return jupiterGalileanShadowPoint{}
+		return jupiterGalileanShadowPoint{
+			axisValid:     axisOK,
+			axisMetric:    axisMetric,
+			axisXJupiterR: axisX,
+		}
 	}
 	normalBody := Vector3{
 		intersectionBody[0],
@@ -571,12 +599,32 @@ func (context jupiterGalileanObservationContext) shadowPointFor(stateVector Vect
 	return jupiterGalileanShadowPoint{
 		hasIntersection: true,
 		visible:         vectorDot(normalBody, earthBody) > 0,
+		axisValid:       axisOK,
+		axisMetric:      axisMetric,
+		axisXJupiterR:   axisX,
 		pathLengthAU:    math.Sqrt(dx*dx + dy*dy + dz*dz),
 		xAU:             xAU,
 		yAU:             yAU,
 		xJupiterRadii:   xR,
 		yJupiterRadii:   yR,
 	}
+}
+
+func (context jupiterGalileanObservationContext) shadowAxisPosition(stateVector Vector3, radiusAU float64) (float64, float64, bool) {
+	toward := vectorDot(context.sunLineOfSight, context.lineOfSight)
+	if math.Abs(toward) < 1e-12 {
+		return 0, 0, false
+	}
+	step := -vectorDot(stateVector, context.lineOfSight) / toward
+	if step <= 0 || !isFinite(step) {
+		return 0, 0, false
+	}
+	point := Vector3{
+		stateVector[0] + step*context.sunLineOfSight[0],
+		stateVector[1] + step*context.sunLineOfSight[1],
+		stateVector[2] + step*context.sunLineOfSight[2],
+	}
+	return vectorDot(point, context.east) / radiusAU, vectorDot(point, context.north) / radiusAU, true
 }
 
 func jupiterGalileanOrbitPeriodDays(satellite int) float64 {

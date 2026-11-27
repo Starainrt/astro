@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/starainrt/astro/basic"
@@ -751,21 +752,36 @@ var chineseMonths = map[string]int{
 	"七": 7, "八": 8, "九": 9, "十": 10,
 }
 
-// 正则提到包级：文本入口每次解析都会用到，每次重编译会白花几十微秒。
+// chineseDatePatterns 首次解析文本时才编译：不解析文本的程序不付编译开销，TinyGo 也能裁掉 regexp 与 unicode 表。
+type chineseDatePatterns struct {
+	prefixYear, digit, date *regexp.Regexp
+}
+
 var (
-	chineseDatePrefixYearPattern = regexp.MustCompile(`^([-一二三四五六七八九十零〇\d]+?)年`)
-	digitPattern                 = regexp.MustCompile(`\d+`)
-	chineseDatePattern           = regexp.MustCompile(`^([\p{Han}]+?)([-负負一二三四五六七八九十零〇\d]*?元?)年([\p{Han}\d]+?)月([\p{Han}\d]+?)日?$`)
+	chinesePatternsOnce sync.Once
+	chinesePatternsVal  chineseDatePatterns
 )
+
+func chinesePatterns() *chineseDatePatterns {
+	chinesePatternsOnce.Do(func() {
+		chinesePatternsVal = chineseDatePatterns{
+			prefixYear: regexp.MustCompile(`^([-一二三四五六七八九十零〇\d]+?)年`),
+			digit:      regexp.MustCompile(`\d+`),
+			date:       regexp.MustCompile(`^([\p{Han}]+?)([-负負一二三四五六七八九十零〇\d]*?元?)年([\p{Han}\d]+?)月([\p{Han}\d]+?)日?$`),
+		}
+	})
+	return &chinesePatternsVal
+}
 
 func parseChineseDate(dateStr string) (LunarTime, error) {
 	var result LunarTime
 	var err error
 	result.desc = dateStr
+	patterns := chinesePatterns()
 	if strings.HasPrefix(dateStr, "前") {
 		originDateStr := dateStr
 		dateStr = strings.TrimPrefix(dateStr, "前")
-		re := chineseDatePrefixYearPattern
+		re := patterns.prefixYear
 		matches := re.FindStringSubmatch(dateStr)
 		if len(matches) == 2 {
 			year, err := parseDirectYear(matches[1])
@@ -781,7 +797,7 @@ func parseChineseDate(dateStr string) (LunarTime, error) {
 		dateStr = "公元" + dateStr
 	}
 	// 正则表达式匹配日期格式
-	re := chineseDatePattern
+	re := patterns.date
 	matches := re.FindStringSubmatch(dateStr)
 	if len(matches) < 5 {
 		return result, fmt.Errorf("无效的日期格式: %s", dateStr)
@@ -804,7 +820,7 @@ func parseChineseDate(dateStr string) (LunarTime, error) {
 			sign = -1
 			yearStr = strings.TrimPrefix(strings.TrimPrefix(yearStr, "负"), "負")
 		}
-		if digitPattern.MatchString(yearStr) {
+		if patterns.digit.MatchString(yearStr) {
 			result.year, err = strconv.Atoi(yearStr)
 			if err != nil {
 				return result, fmt.Errorf("无效的年份: %s", matches[2])
@@ -833,7 +849,7 @@ func parseChineseDate(dateStr string) (LunarTime, error) {
 	if month, ok := chineseMonths[monthStr]; ok {
 		result.month = month
 	} else {
-		if digitPattern.MatchString(monthStr) {
+		if patterns.digit.MatchString(monthStr) {
 			result.month, err = strconv.Atoi(monthStr)
 		} else {
 			// 尝试将月份字符串转换为数字
@@ -859,7 +875,7 @@ func parseChineseDate(dateStr string) (LunarTime, error) {
 	if day, ok := chineseDays[dayStr]; ok {
 		result.day = day
 	} else {
-		if digitPattern.MatchString(dayStr) {
+		if patterns.digit.MatchString(dayStr) {
 			result.day, err = strconv.Atoi(dayStr)
 			if err != nil {
 				return result, fmt.Errorf("无效的日期: %s", dayStr)
@@ -876,7 +892,7 @@ func parseChineseDate(dateStr string) (LunarTime, error) {
 }
 
 func parseDirectYear(yearStr string) (int, error) {
-	if digitPattern.MatchString(yearStr) {
+	if chinesePatterns().digit.MatchString(yearStr) {
 		year, err := strconv.Atoi(yearStr)
 		if err != nil {
 			return 0, fmt.Errorf("无效的年份: %s", yearStr)

@@ -2,57 +2,21 @@
 
 [English](en/orbit.md) | [返回 README](../../README.md)
 
-`orbit` 包用于按日心二体轨道根数传播天体位置，支持小行星、彗星、矮行星和自定义假想轨道。七大行星由各行星包使用当前星历模型计算，默认构建使用半解析模型，也可选择 Legacy 或自定义引擎。
-
-需要时可以用 `StateWithOptions` 带行星摄动传播到目标历元：
-
-| `PropagationOptions` 字段 | 含义 |
-| --- | --- |
-| `Perturbers` | 摄动天体；一旦非空就必须同时给出星历源 |
-| `Engine` / `Context` | 摄动星历源，两个字段类型相同（`StateProvider`，即 `astro.Engine`）且 `Engine` 优先；传 `*spk.File` 或自定义引擎 |
-| `Step` | 最大步长，单位日 |
-| `Tolerance` | 步长加倍的相对误差阈值 |
-
-- 选项零值严格走现有二体数学链，与 `State` 完全一致。
-- 积分器按太阳中心引力加直接项与间接项求和。`Perturbers` 只接受水星至海王星、地球、月球与地月质心（3）；未知天体，或地月质心与地球/月球同时出现，都返回 `ErrUnsupportedPerturber`。
-- 积分从 `EpochJD` 起算；近日点形式只有在 `EpochJD` 为 0 时才从 `TpJD` 起算。
-- `NewEphemerisEngine` 可把这条传播链接入 `astro.NewStack`：根数与选项在创建时固定，引擎缓存的检查点不影响结果，任意查询顺序都与直接调用 `StateWithOptions` 逐位一致。
-- 摄动结果依赖根数质量和积分时长，长期高精度任务仍应优先使用 SPK。
-
-`orbit.Elements` 支持两种常见写法：
-
-- 经典椭圆根数：`A/E/I/Omega/W/M0`
-- 近日点形式：`Q/E/I/Omega/W/TpJD`，适合彗星和高偏心率轨道
-
-`orbit.Elements` 的参考系固定为 J2000 平黄道/平春分点。
-
-站心与升落接口的经度东正西负、纬度北正南负、椭球高单位米；位置与站心量也能与[恒星](star.md#恒星)、[坐标工具](coord.md#坐标工具)手册里的接口配合使用。
+`orbit` 包用于按日心轨道根数传播小行星、彗星、矮行星及自定义目标的位置、站心升落与视星等，支持经典椭圆根数、近日点形式、可选的行星数值摄动传播，以及经典视双星轨道求解。
 
 ## 目录
 
-- [用轨道根数计算谷神星位置](#用轨道根数计算谷神星位置)
-- [API 参考](#api-参考)
-  - [轨道根数](#轨道根数)
-  - [位置](#位置)
-  - [几何量](#几何量)
-  - [升落与中天](#升落与中天)
-  - [测光](#测光)
-  - [视双星](#视双星)
-- [常用场景](#常用场景)
-  - [按位置层次取小行星坐标](#按位置层次取小行星坐标)
-  - [今晚会不会升起、现在多高](#今晚会不会升起现在多高)
-  - [距日距地、相位角与 H-G 视星等](#距日距地相位角与-h-g-视星等)
-  - [轨道类型与位置层次](#轨道类型与位置层次)
-- [参数与返回值约定](#参数与返回值约定)
-  - [位置层次](#位置层次)
-  - [单位与坐标口径](#单位与坐标口径)
-  - [时标与输入格式](#时标与输入格式)
-  - [零值与越界](#零值与越界)
-  - [精度与适用范围](#精度与适用范围)
-  - [常见误用](#常见误用)
-- [相关手册](#相关手册)
+- [基本示例](#基本示例)
+- [主要功能](#主要功能)
+  - [近日点形式（彗星、抛物线与双曲线轨道）](#近日点形式彗星抛物线与双曲线轨道)
+  - [行星摄动传播与多源星历接入](#行星摄动传播与多源星历接入)
+  - [视双星轨道](#视双星轨道)
+- [API 概览](#api-概览)
+- [约定与限制](#约定与限制)
 
-## 用轨道根数计算谷神星位置
+## 基本示例
+
+使用 1 号小行星谷神星（1 Ceres）的 J2000 平黄道根数，计算指定时刻的地心视赤道坐标、H-G 视星等以及上海站心的高度角与升起时刻：
 
 ```go
 package main
@@ -68,62 +32,10 @@ import (
 func main() {
 	cst := time.FixedZone("CST", 8*3600)
 	when := time.Date(2025, 11, 21, 20, 0, 0, 0, cst)
+	lon, lat, height := 121.4737, 31.2304, 20.0 // 上海，椭球高 20 m
+
 	ceres := orbit.Elements{
-		EpochJD: 2461000.5, A: 2.765615651508659, E: 0.07957631994408416,
-		I: 10.58788658206854, Omega: 80.24963090816965,
-		W: 73.29975464616518, M0: 231.5397330043706,
-	}
-	pos := orbit.ApparentGeocentricEquatorial(when, ceres)
-	fmt.Printf("RA=%.6f Dec=%.6f deg distance=%.6f AU\n", pos.RA, pos.Dec, pos.Distance)
-	rise, err := orbit.RiseTime(when, ceres, 121.4737, 31.2304, 20, true)
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Println(rise.Format(time.RFC3339))
-}
-```
-
-根数使用 J2000 平黄道参考系，历元为 TT/TDB 儒略日。这里是日心二体传播；长时间跨度或近距离掠过行星时，摄动误差需要另外评估。
-
-## API 参考
-
-### 轨道根数
-
-| 名称 | 用途 | 单位与口径 |
-| --- | --- | --- |
-| `Elements` | 日心二体圆锥曲线根数 | `EpochJD`/`TpJD` 为 TT/TDB 儒略日；`A`/`Q` 为 AU，`I`/`Omega`/`W`/`M0` 为度，`E` 无量纲；`ADot`…`MDot` 为每天变化量，只作用于经典椭圆形式 |
-| `MeanMotion` | 平均角速度 | 度/日；抛物线与双曲线返回 `NaN`；`MDot` 非零时直接取它 |
-| `MeanAnomaly` | 平近点角 | 度（`[0,360)`）；抛物线与双曲线返回 `NaN` |
-| `TrueAnomaly` | 真近点角 | 度（`[0,360)`）；椭圆、抛物、双曲线都有解，根数非法时返回 `NaN` |
-
-平近点角与真近点角按同一组根数求解，`MDot` 可以替代默认平均角速度：
-
-```go
-fmt.Println(orbit.MeanMotion(ceres), orbit.MeanAnomaly(when, ceres), orbit.TrueAnomaly(when, ceres))
-
-// 抛物线与双曲线只能走近日点形式，平均角速度与平近点角没有定义。
-parabolic := orbit.Elements{Q: 0.9, E: 1, I: 30, Omega: 40, W: 50, TpJD: 2461000.5}
-hyperbolic := orbit.Elements{Q: 1.2, E: 1.05, I: 30, Omega: 40, W: 50, TpJD: 2461000.5}
-fmt.Println(orbit.MeanMotion(parabolic), orbit.MeanAnomaly(when, parabolic))
-fmt.Println(orbit.TrueAnomaly(when, parabolic), orbit.TrueAnomaly(when, hyperbolic))
-```
-
-完整示例同时给出椭圆根数与近日点根数两条链路：
-
-```go
-package main
-
-import (
-	"fmt"
-	"time"
-
-	"github.com/starainrt/astro/orbit"
-)
-
-func main() {
-	// 1 Ceres 的一组经典椭圆根数，参考系为 J2000 平黄道/平春分点。
-	ceres := orbit.Elements{
-		EpochJD: 2461000.5,
+		EpochJD: 2461000.5, // TT/TDB 儒略日
 		A:       2.765615651508659,
 		E:       0.07957631994408416,
 		I:       10.58788658206854,
@@ -131,168 +43,68 @@ func main() {
 		W:       73.29975464616518,
 		M0:      231.5397330043706,
 	}
-	ceresPos := orbit.ApparentGeocentricEquatorial(
-		time.Date(2025, 11, 12, 0, 0, 0, 0, time.UTC),
-		ceres,
-	)
-	fmt.Printf("ceres ra=%.6f dec=%.6f distance=%.6f\n", ceresPos.RA, ceresPos.Dec, ceresPos.Distance)
 
-	// 哈雷彗星示例：用近日点距离 Q 和近日点通过时刻 TpJD 描述。
-	halley := orbit.Elements{
-		Q:     0.5870992,
-		E:     0.9671429,
-		I:     162.26269,
-		Omega: 58.42008,
-		W:     111.33249,
-		TpJD:  2446467.395,
+	pos := orbit.ApparentGeocentricEquatorial(when, ceres)
+	mag := orbit.AsteroidMagnitudeHG(when, ceres, 3.34, 0.12) // H=3.34, G=0.12
+	alt := orbit.Altitude(when, ceres, lon, lat, height)
+	rise, err := orbit.RiseTime(when, ceres, lon, lat, height, true)
+	if err != nil {
+		log.Fatal(err)
 	}
-	halleyPos := orbit.ApparentGeocentricEquatorial(
-		time.Date(1986, 2, 9, 0, 0, 0, 0, time.UTC),
-		halley,
-	)
-	fmt.Printf("halley ra=%.6f dec=%.6f distance=%.6f\n", halleyPos.RA, halleyPos.Dec, halleyPos.Distance)
+
+	fmt.Printf("谷神星 (2025-11-21 20:00 CST): RA=%.3f° Dec=%.3f° 距地=%.4f AU 视星等=%.2f\n",
+		pos.RA, pos.Dec, pos.Distance, mag)
+	fmt.Printf("上海高度 %.2f°  当日升起 %s\n", alt, rise.Format("15:04:05"))
 }
 ```
 
-输出结果：
+输出：
 
 ```text
-ceres ra=7.743516 dec=-10.625287 distance=2.164391
-halley ra=312.106763 dec=-11.828059 distance=1.533936
+谷神星 (2025-11-21 20:00 CST): RA=7.128° Dec=-10.028° 距地=2.2625 AU 视星等=8.36
+上海高度 48.47°  当日升起 14:41:49
 ```
 
-轨道根数本身有历元，离历元越远，静态根数误差越明显。若数据源提供 `ADot/EDot/IDot/OmegaDot/WDot/MDot` 这类长期线性变化率，也可以填入 `Elements`，用于减轻中长期漂移。
+根数参考系固定为 **J2000 平黄道 / 平春分点**，`EpochJD` / `TpJD` 为 TT/TDB 儒略日，角度单位为度，距离单位为 AU。与 J2000 星表比对使用 `AstrometricGeocentricEquatorialJ2000`，近地站心位置使用 `ApparentTopocentricEquatorial`。
 
-### 位置
+## 主要功能
 
-| 名称 | 用途 | 单位与口径 |
-| --- | --- | --- |
-| `EclipticPosition` | 黄道球坐标返回值 | `Lon`/`Lat` 度，`Distance` AU |
-| `EquatorialPosition` | 赤道球坐标返回值 | `RA`/`Dec` 度，`Distance` AU |
-| `HeliocentricEclipticJ2000` | 日心 J2000 平黄道 | 几何量，不加光行时 |
-| `HeliocentricEcliptic` | 日心历元黄道 | 几何量，参考系为当日平分点 |
-| `GeocentricEclipticJ2000` | 地心 J2000 平黄道 | 几何量，地球与目标同取该时刻位置 |
-| `GeocentricEcliptic` | 地心历元黄道 | 几何量，参考系为当日平分点 |
-| `GeocentricEquatorialJ2000` | 地心 J2000 平赤道 | 几何量，黄赤交角用 J2000 值 |
-| `GeocentricEquatorial` | 地心历元平赤道 | 几何量，黄赤交角取当日值 |
-| `AstrometricGeocentricEquatorialJ2000` | 地心测算 J2000 赤道 | 在几何量上加光行时，可与 J2000 星表直接比对 |
-| `ApparentGeocentricEcliptic` | 地心视黄道 | 光行时 + 章动，不含完整光行差 |
-| `ApparentGeocentricEquatorial` | 地心视赤道 | 光行时 + 章动，不含完整光行差 |
-| `ApparentTopocentricEquatorial` | 站心视赤道 | 在视赤道上再叠加站心视差修正 |
+### 近日点形式（彗星、抛物线与双曲线轨道）
 
-同一时刻沿"几何 → 光行时 → 章动 → 站心"逐层加码：
+彗星及 `E >= 1` 的抛物线、双曲线轨道采用近日点距离 `Q`（AU）与过近日点时刻 `TpJD`（TT/TDB 儒略日）：
 
 ```go
-h := orbit.HeliocentricEcliptic(when, ceres)                  // 日心历元黄道，几何量
-g := orbit.GeocentricEquatorialJ2000(when, ceres)             // 地心 J2000 平赤道
-a := orbit.ApparentGeocentricEquatorial(when, ceres)          // 地心视赤道
-t := orbit.ApparentTopocentricEquatorial(when, ceres, 121.4737, 31.2304, 20)
-e := orbit.ApparentGeocentricEcliptic(when, ceres)
-fmt.Printf("h=%.6f %.6f %.6f\n", h.Lon, h.Lat, h.Distance)
-fmt.Printf("g=%.6f %.6f %.6f\n", g.RA, g.Dec, g.Distance)
-fmt.Printf("a=%.6f %.6f t=%.6f %.6f e=%.6f\n", a.RA, a.Dec, t.RA, t.Dec, e.Lon)
-```
-
-`...J2000` 与不带后缀的历元量是两套参考系：前者固定到 J2000 平黄道/平春分点，适合与星表比对和长期存档；后者使用当日平黄道/平春分点，适合表达“当天天空”。地心量里的 `Distance` 在几何接口上是该时刻的瞬时距离，在 `Astrometric...` 上是光行时收敛后的距离，两者相差约光行时对应的位移。
-
-### 几何量
-
-| 名称 | 用途 | 单位与口径 |
-| --- | --- | --- |
-| `SunDistance` | 日心距离 | AU，几何量 |
-| `EarthDistance` | 地心距离 | AU，几何量 |
-| `Elongation` | 日距角 | 度，地心视方向上的角距 |
-| `PhaseAngle` | 相位角 | 度，0° 为全亮面朝向观测者 |
-| `IlluminatedFraction` | 被照亮比例 | 无量纲，通常落在 `[0,1]` |
-| `Phase` | 被照亮比例别名 | 与 `IlluminatedFraction` 同义 |
-| `ParallacticAngle` | 视差角（天顶方向角） | 度，时角与赤纬取自同一次站心求解 |
-
-`orbit` 也提供了常见观测几何量和轻量测光接口：
-
-```go
-r := orbit.SunDistance(when, ceres)                         // 日心距离
-delta := orbit.EarthDistance(when, ceres)                   // 地心距离
-elong := orbit.Elongation(when, ceres)                      // 日距角
-phase := orbit.PhaseAngle(when, ceres)                      // 相位角
-k := orbit.IlluminatedFraction(when, ceres)                 // 被照亮比例
-mag := orbit.AsteroidMagnitudeHG(when, ceres, 3.34, 0.12)   // H-G 视星等
-q := orbit.ParallacticAngle(when, ceres, 121.4737, 31.2304, 20) // 站心视差角
-
-fmt.Printf("r=%.6f delta=%.6f elong=%.6f phase=%.6f k=%.6f mag=%.3f q=%.6f\n",
-	r, delta, elong, phase, k, mag, q)
-```
-
-日距角接近 180° 时相位角接近 0°，`IlluminatedFraction` 接近 1；这三个量都由同一组地心几何推出。
-
-`ParallacticAngle` 不另求赤纬，它与 `HourAngle` 复用同一次站心求解，两者严格自洽。几何量都只依赖 `date` 的绝对时刻，不含观测者参数；含站心参数的只有 `ParallacticAngle` 一个。
-
-### 升落与中天
-
-| 名称 | 用途 | 单位与口径 |
-| --- | --- | --- |
-| `Altitude` | 视高度角 | 度，站心视位置与观测者当地民用时刻 |
-| `Zenith` | 天顶距 | 度，等于 `90 - Altitude` |
-| `Azimuth` | 视方位角 | 度，正北 0°、向东增加 |
-| `HourAngle` | 站心视时角 | 度 |
-| `CulminationTime` | 中天时刻 | `time.Time`，保持输入 `date` 的时区 |
-| `RiseTime` | 升起时刻 | `(time.Time, error)`，第二返回值为哨兵错误 |
-| `SetTime` | 落下时刻 | `(time.Time, error)`，第二返回值为哨兵错误 |
-| `ERR_ORBIT_NEVER_RISE` | 目标当日永不升起的哨兵错误 | 由 `RiseTime` 返回 |
-| `ERR_ORBIT_NEVER_SET` | 目标当日永不落下的哨兵错误 | 由 `SetTime` 返回 |
-
-```go
-fmt.Println(orbit.Zenith(when, ceres, 121.4737, 31.2304, 20))
-fmt.Println(orbit.HourAngle(when, ceres, 121.4737, 31.2304, 20))
-fmt.Println(orbit.CulminationTime(when, ceres, 121.4737, 31.2304, 20).Format(time.RFC3339))
-
-day := time.Date(2025, 11, 21, 0, 0, 0, 0, site)
-set, err := orbit.SetTime(day, ceres, 121.4737, 31.2304, 20, true)
-if errors.Is(err, orbit.ERR_ORBIT_NEVER_SET) {
-	fmt.Println("当日不落", set)
+halley := orbit.Elements{
+	Q: 0.5870992, E: 0.9671429, I: 162.26269,
+	Omega: 58.42008, W: 111.33249, TpJD: 2446467.395,
 }
+hp := orbit.ApparentGeocentricEquatorial(time.Date(1986, 2, 9, 0, 0, 0, 0, time.UTC), halley)
+fmt.Printf("哈雷彗星 (1986-02-09 UTC): RA=%.2f° Dec=%.2f° 距地=%.4f AU\n", hp.RA, hp.Dec, hp.Distance)
 ```
 
-已有轨道根数时，也可以把它当作一个“可观测目标”来求站心观测量：
+输出：
 
-```go
-site := time.FixedZone("CST", 8*3600)
-when := time.Date(2025, 11, 21, 20, 0, 0, 0, site)
-
-alt := orbit.Altitude(when, ceres, 121.4737, 31.2304, 20) // 视高度角
-az := orbit.Azimuth(when, ceres, 121.4737, 31.2304, 20)   // 视方位角
-rise, _ := orbit.RiseTime(time.Date(2025, 11, 21, 0, 0, 0, 0, site), ceres, 121.4737, 31.2304, 20, true) // 升起时刻
-
-fmt.Printf("alt=%.6f az=%.6f rise=%s\n", alt, az, rise.Format(time.RFC3339))
+```text
+哈雷彗星 (1986-02-09 UTC): RA=312.11° Dec=-11.83° 距地=1.5339 AU
 ```
 
-这些观测接口基于站心视坐标计算，适合直接拿去做小行星、彗星或自定义二体目标的升落和指向辅助。
+当 `Q > 0` 且 `TpJD` 有限时优先按近日点形式求解。抛物线与双曲线无平均角速度与平近点角（`MeanMotion` / `MeanAnomaly` 返回 `NaN`），`TrueAnomaly` 与全部位置接口均正常求解。
 
-`aero` 为假时判据是几何地平线，为真时把目标高度取到 `-0.5667°` 并叠加依椭球高、纬度算出的地平俯角。`RiseTime`/`SetTime` 的第二个返回值是真正的错误：只有当日确实没有升/落才映射成 `ERR_ORBIT_NEVER_RISE` / `ERR_ORBIT_NEVER_SET`，其余失败原样透传。
+### 行星摄动传播与多源星历接入
 
-### 测光
+跨度较长或近距离掠过行星时，可通过 `StateWithOptions` 启用行星引力摄动数值积分，或使用 `NewEphemerisEngine` 将其封装为引擎接入 `astro.NewStackInstance`：
 
-| 名称 | 用途 | 单位与口径 |
-| --- | --- | --- |
-| `AsteroidMagnitudeHG` | 小行星 H-G 模型视星等 | `absoluteMagnitude` 为绝对星等 H，`slopeParameter` 为斜率参数 G；无单位 |
+| `PropagationOptions` 字段 | 说明 |
+| --- | --- |
+| `Perturbers` | 摄动天体列表（支持水星至海王星、地球、月球及地月质心）；非空时须同时提供星历源 |
+| `Engine` / `Context` | 摄动天体星历源（如 `*spk.File` 或 `astro.Instance`），`Engine` 优先 |
+| `Step` / `Tolerance` | 最大积分步长（日）与步长自适应相对误差阈值 |
 
-```go
-fmt.Printf("H-G magnitude=%.3f\n", orbit.AsteroidMagnitudeHG(when, ceres, 3.34, 0.12))
-fmt.Printf("r=%.6f delta=%.6f elong=%.6f\n",
-	orbit.SunDistance(when, ceres), orbit.EarthDistance(when, ceres), orbit.Elongation(when, ceres))
-fmt.Printf("phase=%.6f k=%.6f k2=%.6f\n",
-	orbit.PhaseAngle(when, ceres), orbit.IlluminatedFraction(when, ceres), orbit.Phase(when, ceres))
-```
+`PropagationOptions` 零值严格执行二体解析传播。长期高精度任务建议直接使用 JPL SPK 文件，见[显式星历实例](ephemeris.md)。
 
-H-G 模型只用日心距、地心距和相位角，不引入目标的半径、反照率或自转；`G` 的取值由外部星表给出，本包不做默认值填充。
+### 视双星轨道
 
-### 视双星
-
-| 名称 | 用途 | 单位与口径 |
-| --- | --- | --- |
-| `VisualBinaryElements` | 视双星轨道要素 | `PeriodYears` 平太阳年，`PeriastronYear` 带小数的年，`SemiMajorAxis` 角秒，`Inclination`/`AscendingNode`/`PeriastronArgument` 度，`Eccentricity` 无量纲 |
-| `VisualBinaryPosition` | 视双星计算结果 | `MeanAnomaly`/`EccentricAnomaly`/`TrueAnomaly`/`PositionAngle` 度，`Radius`/`Separation` 角秒 |
-| `VisualBinary` | 按时刻求视双星位置 | 先把时刻换算为 UTC 小数年，再套经典视轨道公式 |
-| `VisualBinaryByYear` | 按小数年求视双星位置 | 直接给小数年，跳过时刻换算 |
+`VisualBinary(date, elems)` 与 `VisualBinaryByYear(decimalYear, elems)` 按经典表观轨道公式计算伴星相对主星的位置角（正北 `0°`、向东增加，度）与角距（角秒）：
 
 ```go
 gammaVir := orbit.VisualBinaryElements{
@@ -300,157 +112,35 @@ gammaVir := orbit.VisualBinaryElements{
 	SemiMajorAxis: 3.746, Inclination: 146.05, AscendingNode: 31.78, PeriastronArgument: 252.88,
 }
 vb := orbit.VisualBinaryByYear(2026.0, gammaVir)
-fmt.Printf("theta=%.6f rho=%.6f M=%.6f\n", vb.PositionAngle, vb.Separation, vb.MeanAnomaly)
+fmt.Printf("室女座γ视双星 (2026.0): 位置角 %.2f°  角距 %.3f\"\n", vb.PositionAngle, vb.Separation)
 ```
 
-`orbit` 里还带了一个视双星求解器，直接按《天文算法》第 55 章的经典表观轨道公式输出位置角和角距：
-
-```go
-gammaVir := orbit.VisualBinaryElements{
-	PeriodYears:        171.37,
-	PeriastronYear:     1836.433,
-	Eccentricity:       0.8808,
-	SemiMajorAxis:      3.746,
-	Inclination:        146.05,
-	AscendingNode:      31.78,
-	PeriastronArgument: 252.88,
-}
-vb := orbit.VisualBinary(time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC), gammaVir)
-fmt.Printf("theta=%.6f rho=%.6f\n", vb.PositionAngle, vb.Separation) // 位置角与角距
-```
-
-位置角按北为 0°、东为 90° 度量，角距离与径矢 `Radius` 的单位都是角秒。
-
-## 常用场景
-
-### 按位置层次取小行星坐标
-
-```go
-helio := orbit.HeliocentricEcliptic(when, ceres)
-geo := orbit.GeocentricEclipticJ2000(when, ceres)
-ast := orbit.AstrometricGeocentricEquatorialJ2000(when, ceres)
-app := orbit.ApparentGeocentricEquatorial(when, ceres)
-fmt.Println(helio.Lon, helio.Lat, helio.Distance)
-fmt.Println(geo.Lon, geo.Lat, geo.Distance)
-fmt.Println(ast.RA, ast.Dec)
-fmt.Println(app.RA, app.Dec, app.Distance)
-```
+输出：
 
 ```text
-19.251489 -9.315340 2.912174
-2.147652 -12.026350 2.262445
-6.795211 -10.172420
-7.125008 -10.028726 2.262489
+室女座γ视双星 (2026.0): 位置角 353.10°  角距 3.383"
 ```
 
-四个层次含义不同：`Heliocentric*` 是相对太阳的位置（第一个数就是日心距），`Geocentric*J2000` 是 J2000 口径的地心位置，`Astrometric*J2000` 已加光行时、适合与星表对表，`Apparent*` 是当日视位置、观测与出图用它。需要站心视位置用 `ApparentTopocentricEquatorial(when, ceres, lon, lat, height)`。
+## API 概览
 
-### 今晚会不会升起、现在多高
-
-```go
-fmt.Println(orbit.RiseTime(when, ceres, 121.4737, 31.2304, 20, true))
-fmt.Println(orbit.CulminationTime(when, ceres, 121.4737, 31.2304, 20))
-fmt.Println(orbit.Altitude(when, ceres, 121.4737, 31.2304, 20),
-	orbit.Azimuth(when, ceres, 121.4737, 31.2304, 20))
-```
-
-```text
-2025-11-21 14:41:48.913 CST <nil>
-2025-11-21 20:19:34 CST
-48.472628 172.699168
-```
-
-- `aero = true` 用蒙气差与视半径修正后的地平；`height` 是椭球高（米）；经度东正西负。
-- 环极或极区目标没有升落：`RiseTime`/`SetTime` 返回 `orbit.ERR_ORBIT_NEVER_RISE` / `ERR_ORBIT_NEVER_SET` 哨兵错误，用 `errors.Is` 判定。
-
-### 距日距地、相位角与 H-G 视星等
-
-```go
-fmt.Println(orbit.SunDistance(when, ceres), orbit.EarthDistance(when, ceres))
-fmt.Println(orbit.Elongation(when, ceres), orbit.PhaseAngle(when, ceres))
-fmt.Println(orbit.IlluminatedFraction(when, ceres), orbit.AsteroidMagnitudeHG(when, ceres, 3.34, 0.12))
-```
-
-```text
-2.912174 2.262445
-122.264630 16.670089
-0.978986 8.360
-```
-
-- `PhaseAngle` 是太阳-天体-地球夹角（度），`IlluminatedFraction` 是照明比例；`Phase` 只是 `IlluminatedFraction` 的别名，别把它当成相位角。
-- H-G 视星等要传绝对星等 `H` 与斜率参数 `G`（示例用谷神星的 `3.34` 与 `0.12`）。
-
-### 轨道类型与位置层次
-
-```go
-parabolic := orbit.Elements{Q: 0.9, E: 1, I: 30, Omega: 40, W: 50, TpJD: 2461000.5}
-hyperbolic := orbit.Elements{Q: 1.2, E: 1.05, I: 30, Omega: 40, W: 50, TpJD: 2461000.5}
-fmt.Println(orbit.MeanMotion(parabolic), orbit.MeanAnomaly(when, parabolic))
-fmt.Println(orbit.TrueAnomaly(when, parabolic), orbit.TrueAnomaly(when, hyperbolic))
-fmt.Println(orbit.MeanMotion(ceres))
-```
-
-```text
-NaN NaN
-0.817533 0.537610
-0.21429712142765137
-```
-
-- 抛物线与双曲线只能走近日点形式（`Q` + `TpJD`）：平均角速度与平近点角没有定义、返回 `NaN`，真近点角三种轨道都有解。
-- 与外部星历对表时先统一位置层次与参考系（`Elements` 固定为 J2000 平黄道/平春分点）；`ADot…WDot` 只作用于经典椭圆形式，`MDot` 非零时可直接替代默认平均角速度。
-
-## 参数与返回值约定
-
-### 位置层次
-
-| 层次 | 代表接口 | 包含的改正 |
+| 分类 | 入口 | 说明 |
 | --- | --- | --- |
-| 日心几何 | `HeliocentricEcliptic` / `HeliocentricEclipticJ2000` | 无 |
-| 地心几何 | `GeocentricEcliptic` / `GeocentricEclipticJ2000` / `GeocentricEquatorial` / `GeocentricEquatorialJ2000` | 减去地球日心位置 |
-| 地心测算 | `AstrometricGeocentricEquatorialJ2000` | 光行时 |
-| 地心视 | `ApparentGeocentricEcliptic` / `ApparentGeocentricEquatorial` | 光行时 + 章动 |
-| 站心视 | `ApparentTopocentricEquatorial` 及全部升落接口 | 光行时 + 章动 + 站心视差 |
+| 根数与近点角 | `Elements` / `MeanMotion` / `MeanAnomaly` / `TrueAnomaly` | 经典椭圆（`A/E/.../M0/EpochJD` 及变化率 `ADot…MDot`）与近日点形式（`Q/E/.../TpJD`） |
+| 位置层次 | `HeliocentricEcliptic[J2000]` | 日心几何黄道 |
+| | `GeocentricEcliptic[J2000]` / `GeocentricEquatorial[J2000]` | 地心几何黄道 / 赤道 |
+| | `AstrometricGeocentricEquatorialJ2000` | 地心 J2000 测算坐标（含光行时） |
+| | `ApparentGeocentricEcliptic` / `ApparentGeocentricEquatorial` | 地心当日视位置（光行时 + 章动） |
+| | `ApparentTopocentricEquatorial` | 站心当日视位置（再叠加站心视差） |
+| 摄动传播 | `State` / `StateWithOptions` / `NewEphemerisEngine` | ICRF 几何状态与星历引擎封装 |
+| 几何与测光 | `SunDistance` / `EarthDistance` / `Elongation` / `PhaseAngle` / `IlluminatedFraction`（别名 `Phase`） / `AsteroidMagnitudeHG` | 距离（AU）、日距角/相位角（度）、受照比例、H-G 星等 |
+| 站心与升落 | `Altitude` / `Azimuth` / `Zenith` / `HourAngle` / `ParallacticAngle` / `CulminationTime` / `RiseTime` / `SetTime` | 极区或当日无升落返回 `ERR_ORBIT_NEVER_RISE` / `ERR_ORBIT_NEVER_SET` |
+| 视双星 | `VisualBinary` / `VisualBinaryByYear` | 位置角（度）与角距（角秒） |
 
-### 单位与坐标口径
+## 约定与限制
 
-- 角度一律用度，距离用 AU，站心与升落接口的椭球高用米，时间用 `time.Time`。
-- `Elements` 的参考系是 J2000 平黄道/平春分点；`...J2000` 结尾的接口保持该参考系，其余 `HeliocentricEcliptic`/`GeocentricEcliptic`/`GeocentricEquatorial` 是历元（of date）量，换参考系时不要混用。
-- 位置分三层：`Heliocentric*`/`Geocentric*` 是几何量，`AstrometricGeocentricEquatorialJ2000` 在几何量上加光行时（按距离迭代求解，上限 8 次、`1e-12` 天收敛），`Apparent*` 在光行时之上再加章动。仓库的行星口径就是“光行时 + 章动、不含完整外部光行差模型”，所以 `Apparent*` 与行星包同级，不应把它当成全项视位置。
-- `MeanMotion`/`MeanAnomaly`/`TrueAnomaly` 输出度；`MeanMotion` 与 `MeanAnomaly` 对抛物线和双曲线没有定义。
+- **大气折射**：`Apparent*` 与 `Altitude` 均不含大气折射；仅 `RiseTime` / `SetTime` 在 `aero=true` 时计入标准地平折射与椭球高地平俯角。
+- **`Phase` 与 `PhaseAngle`**：`Phase` 为 `IlluminatedFraction`（`0–1` 受照比例）的别名，太阳-天体-地球夹角应调用 `PhaseAngle`。
+- **非法输入**：`Elements` 零值不构成有效轨道，非法根数在位置与近点角接口中返回 `NaN`；`StateWithOptions` 传入不支持的摄动天体或同时包含地月质心与地球/月球时返回 `ErrUnsupportedPerturber`。
+- **线性变化率**：`ADot`…`WDot` 仅对经典椭圆形式生效；近日点形式下仅非零 `MDot` 覆盖平均角速度，摄动积分时若同时给出 `EpochJD` 则以其为积分起点。
 
-### 时标与输入格式
-
-- `EpochJD` 与 `TpJD` 都是 TT/TDB 儒略日；坐标、几何量与测光接口把 `date` 当绝对时刻处理（`date.UTC()` 后经 `UTC2TT` 换成 TT/TDB）。`UTC2TT` 在 1972-01-01 之前把民用时刻按 UT1 处理，窗口内使用内置闰秒表，闰秒表可用 `astro.SetTTMinusUTC` 覆盖。
-- 瞬时站心量将 `date` 的当地字段与 `date.Zone()` 偏移一起换回绝对时刻。同一时刻用 UTC 或当地时区表示，所得位置相同。升落搜索还按当地日期选事件，因此应选择观测日历所用的时区。
-- `CulminationTime`、`RiseTime`、`SetTime` 的结果保持输入 `date` 的时区，是民用时刻；三者内部在 `date.Hour() > 12` 时先回退 12 小时，以保持搜索锚点在所选日期内。
-- 公开 API 的含 `time.Time` 输出一律是民用时刻（UTC 标签）；UT1 与 TT 只出现在内部换算里，需要显式换算时用根包的 `astro.UT1FromUTC` / `astro.TTFromUTC`。
-
-### 零值与越界
-
-- `Elements` 零值不是合法轨道。经典椭圆形式要求 `A` 有限且为正、`E` 落在 `[0,1)`、`EpochJD` 与 `M0` 有限；`E >= 1` 的抛物线与双曲线只能走近日点形式，此时要求 `Q` 有限且为正、`TpJD` 有限、`E >= 0`，三个角度 `I`/`Omega`/`W` 都必须有限。
-- `Q > 0` 且 `TpJD` 有限时优先按近日点形式解释，`A`/`M0`/`EpochJD` 被忽略；此时 `ADot`/`EDot`/`IDot`/`OmegaDot`/`WDot` 都不生效，只有 `MDot` 非零时会被当作平均角速度使用。摄动传播例外：近日点形式同时给出 `EpochJD` 时，它被当作密切历元，即积分起点。
-- 根数非法时 `MeanMotion`、`MeanAnomaly` 返回 `NaN`，位置接口返回三个 `NaN`；`AsteroidMagnitudeHG` 在输入非有限或日心距、地心距、相位角非正时返回 `NaN`，H-G 相位混合项为零时返回 `+Inf`。
-- `RiseTime` 与 `SetTime` 在给定当地日内找不到升/落时返回哨兵错误 `ERR_ORBIT_NEVER_RISE` / `ERR_ORBIT_NEVER_SET`，其它失败原样透传；成功时第二个返回值为 `nil`。
-- `VisualBinary` 与 `VisualBinaryByYear` 在 `PeriodYears <= 0`、`SemiMajorAxis <= 0`、`Eccentricity` 不落在 `[0,1)` 或任一要素非有限时，把 `VisualBinaryPosition` 的全部数值字段填成 `NaN`。
-
-### 精度与适用范围
-
-- `orbit` 是二体圆锥曲线传播：只含所给根数，不含行星摄动、非引力项与相对论改正；离历元越远，静态根数的误差越大，`ADot`…`WDot` 只能缓解线性漂移，不能替代重新拟合或数值积分。
-- `Apparent*` 与站心量的差别只在几何与章动，不含大气折射；升落接口的 `aero=true` 才把地平折射算进判据（目标高度取 `-0.5667°`，再叠加依椭球高与纬度算出的地平俯角）。
-- `RiseTime`/`SetTime` 内部用 `round(observerLon/15)` 的标称时区迭代升落几何，因此观测点经度最好落在时区中心附近；只调用一次求根，极区或拱极目标的边界情况以哨兵错误为准。
-- 视双星求解器用的是《天文算法》第 55 章的经典视轨道公式，`Eccentricity >= 1` 时不适用；它只做几何投影，不含质量、光度或摄动信息。
-
-### 常见误用
-
-- 把 `HeliocentricEcliptic` 的返回值当作地心坐标：日心量的原点是太阳，地心量已经减掉了地球的日心位置。
-- 把 `Apparent*` 当作含大气折射的视位置：折射只出现在升落判据与观测类接口里，坐标接口不含折射。
-- 用零值 `Elements` 探路：`MeanMotion` 与位置接口会安静地返回 `NaN`，不会报错。
-- 在近日点形式里期待 `ADot`…`WDot` 生效：这些变化率只在经典椭圆形式下参与传播。
-
-## 相关手册
-
-- 恒星与星表：[恒星](star.md#恒星)
-- 坐标系换算与站心量：[坐标工具](coord.md#坐标工具)
-- 日出日落、月出月落的同类接口：[太阳与月亮](sun-moon.md#日出日落月出月落)
-
-> 需要把这里的黄道/赤道坐标接到恒星表或站心量上时，参见[恒星](star.md#恒星)与[坐标工具](coord.md#坐标工具)。
+相关手册：[恒星](star.md) | [坐标工具](coord.md) | [显式星历实例](ephemeris.md)

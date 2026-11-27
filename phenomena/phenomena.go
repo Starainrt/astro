@@ -11,7 +11,7 @@ import (
 // Body 可搜索的天体 / searchable body.
 type Body = basic.SkyBody
 
-// Earth 地球，只用于 Apsides / Earth, valid only for Apsides.
+// Earth 地球，用于 Apsides 与跨行星观测目标 / Earth for Apsides and observations from other planets.
 const Earth = basic.SkyEarth
 
 const (
@@ -174,3 +174,18 @@ func (module *Phenomena) Apsides(body Body, start, end time.Time) []OrbitalEvent
 func (module *Phenomena) Nodes(body Body, start, end time.Time) []OrbitalEvent {
 	return orbital(basic.PlanetNodesWithInstance(body, toTT(start), toTT(end), module.inst), start.Location())
 }
+
+// BodyObserver 行星表面观测者 / observer on a planetary surface.
+type BodyObserver = basic.BodyObserver
+
+// SurfaceOptions 无折射表面高度事件选项 / airless surface altitude event options.
+type SurfaceOptions = basic.SurfaceOptions
+
+// SurfaceEventKind 行星表面瞬时事件种类 / kind of instantaneous surface event.
+type SurfaceEventKind = basic.SurfaceEventKind
+
+// SurfacePosition 行星表面无折射站心视位置 / airless apparent position on a planetary surface.
+type SurfacePosition = basic.SurfacePosition
+
+// SurfaceLocalTime 行星表面的恒星时与太阳时 / sidereal and solar times on a planetary surface.
+type SurfaceLocalTime = basic.SurfaceLocalTime

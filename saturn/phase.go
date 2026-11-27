@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/starainrt/astro/basic"
-	"github.com/starainrt/astro/calendar"
 )
 
 // PhaseAngle 相位角，单位度 / phase angle in degrees.
@@ -48,5 +47,5 @@ func (module *Saturn) BrightLimbPositionAngleN(date time.Time, n int) float64 {
 }
 
 func phaseJD(date time.Time) float64 {
-	return basic.UTC2TT(calendar.Date2JD(date.UTC()))
+	return basic.UTC2TT(basic.Date2JD(date.UTC()))
 }
